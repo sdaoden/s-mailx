@@ -61,10 +61,12 @@ enum a_coll_flags{
 	a_COLL_MODIFIER_MASK = a_COLL_IGNERR | a_COLL_EVAL,
 	a_COLL_COAP_NOSIGTERM = 1u<<3,
 
-	a_COLL_NEED_Y_INJECT_RESTART = 1u<<4, /* -Y support, interactive mode */
-	a_COLL_CAN_DELAY_INJECT = 1u<<5, /* <> mx_GO_INPUT_DELAY_INJECTIONS; NOT during Y_INJECT_RESTART take-over */
-	a_COLL_EVER_LEFT_INPUT_LOOPS = 1u<<6,
-	a_COLL_ROUND_MASK = a_COLL_NEED_Y_INJECT_RESTART | a_COLL_CAN_DELAY_INJECT | a_COLL_EVER_LEFT_INPUT_LOOPS
+	a_COLL_PREAMBLE_OK = 1u<<4, /* Preamble worked, a SIGINT may no longer bail (due to half-setup state) */
+	a_COLL_NEED_Y_INJECT_RESTART = 1u<<5, /* -Y support, interactive mode */
+	a_COLL_CAN_DELAY_INJECT = 1u<<6, /* <> mx_GO_INPUT_DELAY_INJECTIONS; NOT during Y_INJECT_RESTART take-over */
+	a_COLL_EVER_LEFT_INPUT_LOOPS = 1u<<7,
+	a_COLL_ROUND_MASK = a_COLL_PREAMBLE_OK | a_COLL_NEED_Y_INJECT_RESTART | a_COLL_CAN_DELAY_INJECT |
+			a_COLL_EVER_LEFT_INPUT_LOOPS
 };
 
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
@@ -159,7 +161,8 @@ static boole a_coll_quote_message(struct a_coll_quote_ctx *cqcp);
 static boole a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
 
 /* Parse off the message header from fp and store relevant fields in hp, replace a_coll->cc_fp with a shiny new
- * version without any header.  Takes care for closing of fp and a_coll->cc_fp as necessary */
+ * version without any header.  Takes care for closing of fp and a_coll->cc_fp as necessary.
+ * For the -t template mode do_delayed_due_t also finalizes PREAMBLE_OK */
 static boole a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, boole do_delayed_due_t);
 
 /* Edit the message being collected on fp.
@@ -191,7 +194,7 @@ a_coll_exec_cmd(struct header *hp, char const *linebuf, uz linesize){
 	/* Problem: there are rfc822 message attachments and the user uses `~:' to change the current file.
 	 * TODO Unfortunately we cannot simply keep a pointer to, or increment a reference count of the current `file'
 	 * TODO (mailbox that is) object, because the codebase doesn't deal with that at all; so, until some far later
-	 * TODO time, copy the name of the path, and warn the user if it changed;
+	 * TODO time, copy the name of the path, and warn the user if it changed; same for *quote-as-attachment*.
 	 * TODO COULD use ATTACHMENTS_CONV_TMPFILE attachment type, i.e., copy the message attachments over to
 	 * TODO temporary files, but that would require more changes so that the user still can recognize in `~@' etc.
 	 * TODO that its a rfc822 message attachment; see below */
@@ -226,7 +229,7 @@ a_coll_exec_cmd(struct header *hp, char const *linebuf, uz linesize){
 jleave:
 	if(mnbuf != NIL){
 		if(su_cs_cmp(mnbuf, mailname))
-			n_err(_("Mailbox changed: it is likely that existing rfc822 attachments became invalid!\n"));
+			n_err(_("Mailbox changed: rfc822 attachments and *quote-as-attachment* now invalid!\n"));
 		su_FREE(mnbuf);
 	}
 
@@ -723,6 +726,9 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, boole do_delay
 
 		if(!a_coll_message_inject_head(nf))
 			goto jleave;
+
+		/* */
+		a_coll->cc_flags |= a_COLL_PREAMBLE_OK;
 	}
 
 	while((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
@@ -1064,38 +1070,24 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 	NYD_IN;
 	ASSERT(checkaddr_err != NIL);
 
-	STRUCT_ZERO(struct a_coll_ctx, &cc);
-	mx_DIG_MSG_COMPOSE_CREATE(&cc.cc_dmc, hp);
-
-	/* Start catching signals from here, but we still die on interrupts until we are in the main loop */
-	sigfillset(&cc.cc_sig_nset);
-	sigprocmask(SIG_BLOCK, &cc.cc_sig_nset, &cc.cc_sig_oset);
-
 	n_pstate |= n_PS_COMPOSE_MODE;
 	a_coll = &cc;
 
-	mx_fs_linepool_aquire(&a_coll->cc_lndata, &a_coll->cc_lnsize);
-	a_coll->cc_flags = a_COLL_CAN_DELAY_INJECT;
+	STRUCT_ZERO(struct a_coll_ctx, &cc);
+	mx_fs_linepool_aquire(&cc.cc_lndata, &cc.cc_lnsize);
+	cc.cc_flags = a_COLL_CAN_DELAY_INJECT;
+	mx_DIG_MSG_COMPOSE_CREATE(&cc.cc_dmc, hp);
 
-	if((a_coll->cc_sig_hdl_int = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-		safe_signal(SIGINT, &a_coll_sigint);
-	if((a_coll->cc_sig_hdl_hup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
-		safe_signal(SIGHUP, &a_coll_sighup);
-	if(sigsetjmp(a_coll->cc_sig_jmp_abort, 1))
-		goto jerr_nosig;
-	if(sigsetjmp(a_coll->cc_sig_jmp_int, 1))
-		goto jerr_nosig;
-
-	sigprocmask(SIG_SETMASK, &a_coll->cc_sig_oset, NIL);
-
-	if((a_coll->cc_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+	if((cc.cc_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
 		n_perr(_("collect: temporary mail file"), 0);
-		goto jerr;
+		goto j_leave;
 	}
 
 	/* If about to prompt for a subject, refrain from printing a newline after headers (since some people mind) */
+	/* TODO -t template mode is unfortunately very special, everywhere ("DOM" parser should MIME rewrite be) */
 	getfields = 0;
-	if(!(n_poption & n_PO_t_FLAG)){
+	UNINIT(gfield, 0);
+	if(LIKELY(!(n_poption & n_PO_t_FLAG))){
 		gfield = GTO | GSUBJECT | GCC | GBCC | GNL;
 		if(ok_blook(fullnames))
 			gfield |= GCOMMA;
@@ -1114,98 +1106,125 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 					gfield &= ~(GCC | GNL), getfields |= GCC;
 			}
 		}
-	}else{
-		UNINIT(gfield, 0);
 	}
 
-	ASSERT(!a_coll->cc_sig_int);
+	/* Start custom signal catching from here */
+	sigfillset(&cc.cc_sig_nset);
+	sigprocmask(SIG_BLOCK, &cc.cc_sig_nset, &cc.cc_sig_oset);
 
-	if(UNLIKELY(sigsetjmp(a_coll->cc_sig_jmp_int, 1))){
+	if((cc.cc_sig_hdl_int = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+		safe_signal(SIGINT, &a_coll_sigint);
+	if((cc.cc_sig_hdl_hup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
+		safe_signal(SIGHUP, &a_coll_sighup);
+	if(sigsetjmp(cc.cc_sig_jmp_abort, 1))
+		goto jerr_nosig;
+	if(sigsetjmp(cc.cc_sig_jmp_int, 1))
+		goto jerr_nosig;
+
+	sigprocmask(SIG_SETMASK, &cc.cc_sig_oset, NIL);
+
+	/* Unfortunately we are still jumping around.  Install the also standard-implied SIGINT jump now */
+	if(UNLIKELY(sigsetjmp(cc.cc_sig_jmp_int, 1))){
 		/* Come here for printing the after-signal message */
-		if(a_coll->cc_sig_int){
+		ASSERT(cc.cc_coap == NIL);
+		ASSERT(cc.cc_coapm == NIL);
+		if(cc.cc_sig_int){
+			/* Simply bail if we were interrupted before the preamble (-enter hook etc) was worked */
+			if(!(cc.cc_flags & a_COLL_PREAMBLE_OK))
+				goto jerr;
 			if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
 				n_err(_("\n(Interrupt -- one more to kill letter)\n"));
 		}
+		goto jintro_skip;
+	}
+
+	/* intro {{{ */
+
+	if(UNLIKELY(n_poption & n_PO_t_FLAG)){
+		ASSERT(getfields == 0);
+		ASSERT(mp == NIL);
+		ASSERT(quotefile == NIL);
 	}else{
 		/* Ask for some headers first, as necessary */
 		if(getfields)
 			grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
-		/* Execute compose-enter; delayed for -t mode */
-		if(!(n_poption & n_PO_t_FLAG) && (cp = ok_vlook(on_compose_enter)) != NIL){
+		if((cp = ok_vlook(on_compose_enter)) != NIL){
 			setup_from_and_sender(hp);
 			temporary_compose_mode_hook_call(cp);
 		}
 
-		if(!(n_poption & n_PO_t_FLAG)){
-			if(!a_coll_message_inject_head(a_coll->cc_fp))
-				goto jerr;
+		if(!a_coll_message_inject_head(a_coll->cc_fp))
+			goto jerr;
 
-			/* Quote an original message */
-			if(mp != NIL){
-				struct a_coll_quote_ctx cqc;
+		/* Quote an original message */
+		if(mp != NIL){
+			struct a_coll_quote_ctx cqc;
 
-				STRUCT_ZERO(struct a_coll_quote_ctx, &cqc);
-				cqc.cqc_fp = a_coll->cc_fp;
-				cqc.cqc_hp = hp;
-				if(msf & n_MAILSEND_IS_FWD){
-					cqc.cqc_quoteitp = mx_IGNORE_FWD;
-					cqc.cqc_add_cc = cqc.cqc_is_forward = TRU1;
-				}else{
-					cqc.cqc_quoteitp = mx_IGNORE_ALL;
-					cqc.cqc_indent_prefix = ok_vlook(indentprefix);
-				}
-				cqc.cqc_action = SEND_QUOTE;
-				cqc.cqc_mp = mp;
-
-				if(!a_coll_quote_message(&cqc))
-					goto jerr;
+			STRUCT_ZERO(struct a_coll_quote_ctx, &cqc);
+			cqc.cqc_fp = a_coll->cc_fp;
+			cqc.cqc_hp = hp;
+			if(msf & n_MAILSEND_IS_FWD){
+				cqc.cqc_quoteitp = mx_IGNORE_FWD;
+				cqc.cqc_add_cc = cqc.cqc_is_forward = TRU1;
+			}else{
+				cqc.cqc_quoteitp = mx_IGNORE_ALL;
+				cqc.cqc_indent_prefix = ok_vlook(indentprefix);
 			}
-		}
+			cqc.cqc_action = SEND_QUOTE;
+			cqc.cqc_mp = mp;
 
-		if(quotefile != NIL){
-			if((n_pstate_err_no = a_coll_include_file(quotefile, FAL0, FAL0)) != su_ERR_NONE)
+			if(!a_coll_quote_message(&cqc))
 				goto jerr;
 		}
 
-		if(n_psonce & n_PSO_INTERACTIVE){
-			if(!(n_pstate & n_PS_ROBOT))
-				a_coll->cc_hist_s = n_string_reserve(n_string_creat_auto(&a_coll->cc_hist_s_b), 80);
+		if(quotefile != NIL && ((n_pstate_err_no = a_coll_include_file(quotefile, FAL0, FAL0)) != su_ERR_NONE))
+			goto jerr;
 
-			if(!(n_pstate & n_PS_ROBOT)){
-				/* Print what we have sofar also on the terminal (if useful) */
-				if(mx_go_input_have_injections()){
-					a_coll->cc_flags |= a_COLL_NEED_Y_INJECT_RESTART;
-					a_coll->cc_flags &= ~a_COLL_CAN_DELAY_INJECT;
-				}else{
+		/* For -t mode this is set once we finalize template read in a_coll_makeheader()! */
+		cc.cc_flags |= a_COLL_PREAMBLE_OK;
+	}
+
+	if(n_psonce & n_PSO_INTERACTIVE){
+		if(!(n_pstate & n_PS_ROBOT))
+			a_coll->cc_hist_s = n_string_reserve(n_string_creat_auto(&a_coll->cc_hist_s_b), 80);
+
+		if(!(n_pstate & n_PS_ROBOT)){
+			/* Print what we have sofar also on the terminal (if useful) */
+			if(mx_go_input_have_injections()){
+				a_coll->cc_flags |= a_COLL_NEED_Y_INJECT_RESTART;
+				a_coll->cc_flags &= ~a_COLL_CAN_DELAY_INJECT;
+			}else{
 jy_inject_restart:
-					if((cp = ok_vlook(editalong)) == NIL){
-						if(msf & n_MAILSEND_HEADERS_PRINT)
-							n_puthead(TRU1, hp, n_stdout, gfield, SEND_TODISP, CONV_NONE,
-								NIL, NIL);
+				if((cp = ok_vlook(editalong)) == NIL){
+					if(msf & n_MAILSEND_HEADERS_PRINT)
+						n_puthead(TRU1, hp, n_stdout, gfield, SEND_TODISP, CONV_NONE,
+							NIL, NIL);
 
-						rewind(a_coll->cc_fp);
-						while((c = getc(a_coll->cc_fp)) != EOF) /* XXX bytewise, yuck! */
-							putc(c, n_stdout);
-						if(fseek(a_coll->cc_fp, 0, SEEK_END))
-							goto jerr;
-						fflush(n_stdout);
-					}else{
-						if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NIL) != su_ERR_NONE)
-							goto jerr;
+					rewind(a_coll->cc_fp);
+					while((c = getc(a_coll->cc_fp)) != EOF) /* XXX bytewise, yuck! */
+						putc(c, n_stdout);
+					if(fseek(a_coll->cc_fp, 0, SEEK_END))
+						goto jerr;
+					fflush(n_stdout);
+				}else{
+					if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NIL) != su_ERR_NONE)
+						goto jerr;
 
-						/* Print msg mandated by the Mail Reference Manual */
+					/* Print msg mandated by the Mail Reference Manual */
 jcont:
-						if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-								!(a_coll->cc_flags & a_COLL_NEED_Y_INJECT_RESTART))
-							fputs(_("(continue)\n"), n_stdout);
-						fflush(n_stdout);
-					}
+
+					if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
+							!(a_coll->cc_flags & a_COLL_NEED_Y_INJECT_RESTART))
+						fputs(_("(continue)\n"), n_stdout);
+					fflush(n_stdout);
 				}
 			}
 		}
 	}
+	/* }}} */
 
+jintro_skip:
 	/* If not under shell hook control */
 	if(a_coll->cc_coap == NIL){
 		/* No command escapes, interrupts not expected? */
@@ -1244,7 +1263,10 @@ jcont:
 		a_coll->cc_escape = *ok_vlook(escape);
 	}
 
-	/* The "interactive" collect loop */
+	/* The "interactive" collect loop {{{ */
+	if(0){
+	}
+
 	a_coll->cc_flags &= a_COLL_ROUND_MASK;
 	if(ok_blook(errexit))
 		a_coll->cc_flags |= a_COLL_ERREXIT;
@@ -1867,8 +1889,9 @@ jhistcont:
 		if(c != '\0')
 			goto jcont;
 	}
+	/* }}} */
 
-jout:
+jout:	/* Tail processing after user edit: hooks, auto-injections (update manual "Compose mode" on change) {{{ */
 	a_coll->cc_flags |= a_COLL_EVER_LEFT_INPUT_LOOPS;
 
 	/* Do we have *on-compose-splice-shell*, or *on-compose-splice*?
@@ -1939,10 +1962,6 @@ jout:
 		/*a_coll->cc_ifs_saved = NIL;*/
 	}
 
-	/*
-	 * Note: the order of the following steps is documented in "Compose mode"'.  Adjust the manual on change!!
-	 */
-
 	/* Final chance to edit headers, if not already above; and *asksend* */
 	if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
 		if(ok_blook(bsdcompat) || ok_blook(askatend)){
@@ -1988,13 +2007,12 @@ jreasksend:
 		}
 	}
 
-	/* Execute compose-leave */
 	if((cp = ok_vlook(on_compose_leave)) != NIL){
 		setup_from_and_sender(hp);
 		temporary_compose_mode_hook_call(cp);
 	}
 
-	/* Add automatic recipients */
+	/* Automatic recipients */
 	if((cp = ok_vlook(autocc)) != NIL && *cp != '\0')
 		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, (GCC | (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))),
 				EACM_NORMAL, checkaddr_err));
@@ -2053,8 +2071,8 @@ jreasksend:
 	if(v15_compat != NIL)
 		n_OBSOLETE(_("please use *message-inject-tail*, not *NAIL_TAIL*"));
 
-	if(((cp = ok_vlook(message_inject_tail)) != NIL ||
-			(cp = v15_compat) != NIL) && !a_coll_putesc(cp, TRU1, a_coll->cc_fp))
+	if(((cp = ok_vlook(message_inject_tail)) != NIL || (cp = v15_compat) != NIL) &&
+			!a_coll_putesc(cp, TRU1, a_coll->cc_fp))
 		goto jerr;
 	}
 
@@ -2069,53 +2087,56 @@ jreasksend:
 		if((ap->a_flink = hp->h_attach) != NIL)
 			hp->h_attach->a_blink = ap;
 		hp->h_attach = ap;
-		ap->a_msgno = S(int,P2UZ(mp - message + 1));
+		ap->a_msgno = S(int,P2UZ(mp - message + 1)); /* TODO _exec_cmd() warned user if mailbox changed! */
 		ap->a_content_description = ok_vlook(content_description_quote_attachment);
 	}
+	/* }}} */
 
-	sigprocmask(SIG_BLOCK, &a_coll->cc_sig_nset, NIL);
+	sigprocmask(SIG_BLOCK, &cc.cc_sig_nset, NIL);
 jleave:
-	mx_fs_linepool_release(a_coll->cc_lndata, a_coll->cc_lnsize);
-	mx_DIG_MSG_COMPOSE_GUT(&a_coll->cc_dmc);
-	safe_signal(SIGINT, a_coll->cc_sig_hdl_int);
-	safe_signal(SIGHUP, a_coll->cc_sig_hdl_hup);
-
-	a_coll = NIL;
-	n_pstate &= ~n_PS_COMPOSE_MODE;
+	safe_signal(SIGINT, cc.cc_sig_hdl_int);
+	safe_signal(SIGHUP, cc.cc_sig_hdl_hup);
 	sigprocmask(SIG_SETMASK, &cc.cc_sig_oset, NIL);
 
 	if(cc.cc_emsg != NIL)
 		n_err(V_(cc.cc_emsg));
 
+j_leave:
+	mx_DIG_MSG_COMPOSE_GUT(&cc.cc_dmc);
+	mx_fs_linepool_release(cc.cc_lndata, cc.cc_lnsize);
+
+	a_coll = NIL;
+	n_pstate &= ~n_PS_COMPOSE_MODE;
+
 	NYD_OU;
 	return cc.cc_fp;
 
 jerr:
-	sigprocmask(SIG_BLOCK, &a_coll->cc_sig_nset, NIL);
+	sigprocmask(SIG_BLOCK, &cc.cc_sig_nset, NIL);
 jerr_nosig:
-	if(a_coll->cc_coap != NIL && a_coll->cc_coap != R(struct a_coll_ocs_arg*,-1)){
-		if(!(a_coll->cc_flags & a_COLL_COAP_NOSIGTERM))
-			mx_fs_pipe_signal(a_coll->cc_coap->coa_stdout, SIGTERM);
+	if(cc.cc_coap != NIL && cc.cc_coap != R(struct a_coll_ocs_arg*,-1)){
+		if(!(cc.cc_flags & a_COLL_COAP_NOSIGTERM))
+			mx_fs_pipe_signal(cc.cc_coap->coa_stdout, SIGTERM);
 		mx_go_splice_hack_remove_after_jump();
 	}
-	if(a_coll->cc_ifs_saved != NIL)
-		ok_vset(ifs, a_coll->cc_ifs_saved);
+	if(cc.cc_ifs_saved != NIL)
+		ok_vset(ifs, cc.cc_ifs_saved);
 
-	if(a_coll->cc_fp != NIL){
-		mx_fs_close(a_coll->cc_fp);
-		a_coll->cc_fp = NIL;
+	if(cc.cc_fp != NIL){
+		mx_fs_close(cc.cc_fp);
+		cc.cc_fp = NIL;
 	}
 
 	/* TODO We don't save in $DEAD upon error because msg not readily composed?
 	 * TODO This is no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
 	if(*checkaddr_err != 0){
 		if(*checkaddr_err == 111)
-			a_coll->cc_emsg = N_("Compose mode splice hook failure\n");
+			cc.cc_emsg = N_("Compose mode splice hook failure\n");
 		else
-			a_coll->cc_emsg = N_("Some addressees were classified as \"hard error\"\n");
-	}else if(!a_coll->cc_sig_int){
+			cc.cc_emsg = N_("Some addressees were classified as \"hard error\"\n");
+	}else if(!cc.cc_sig_int){
 		*checkaddr_err = TRU1; /* TODO ugly: "sendout_error" now.. */
-		a_coll->cc_emsg = N_("Failed to prepare composed message\n");
+		cc.cc_emsg = N_("Failed to prepare composed message\n");
 	}
 	goto jleave;
 }
