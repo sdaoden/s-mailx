@@ -875,18 +875,22 @@ ck_exx() {
 
 	TESTS_PERFORMED=$(add ${TESTS_PERFORMED} 1)
 
-	if [ ${__qm__} -eq 0 ]; then
+	if [ -n "${__expect__}" ]; then
+		if [ ${__expect__} -ne ${__qm__} ]; then
+			ESTAT=1
+			t_echoerr "${1}: unexpected exit status: ${__qm__} != ${__expected__}"
+			TESTS_FAILED=$(add ${TESTS_FAILED} 1)
+			return
+		fi
+	elif [ ${__qm__} -eq 0 ]; then
 		ESTAT=1
 		t_echoerr "${1}: unexpected 0 exit status: ${__qm__}"
 		TESTS_FAILED=$(add ${TESTS_FAILED} 1)
-	elif [ -n "${__expect__}" ] && [ ${__expect__} -ne ${__qm__} ]; then
-		ESTAT=1
-		t_echoerr "${1}: unexpected exit status: ${__qm__} != ${__expected__}"
-		TESTS_FAILED=$(add ${TESTS_FAILED} 1)
-	else
-		t_echook "${1}"
-		TESTS_OK=$(add ${TESTS_OK} 1)
+		return
 	fi
+
+	t_echook "${1}"
+	TESTS_OK=$(add ${TESTS_OK} 1)
 }
 
 filter_err_sani() {
