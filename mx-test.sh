@@ -1505,21 +1505,48 @@ t_input_inject_semicolon_seq() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	define mydeepmac {
-		;;;echon '(mydeepmac)';;;
-	}
-	define mymac {
-		echon this_is_mymac;;;;;;call mydeepmac;echon ';';
-	}
-	echon one';';call mymac;echon two";";;;call mymac;echo three$';';
-	define mymac {
-		echon this_is_mymac;call mydeepmac;;;echon ,TOO'!;';
-	}
-	echon one';';call mymac;echon two";";call mymac;echo three$';';
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+define mydeepmac {
+	;;;echon '(mydeepmac)';;;
+}
+define mymac {
+	echon this_is_mymac;;;;;;call mydeepmac;echon ';';
+}
+echon one';';call mymac;echon two";";;;call mymac;echo three$';';
+define mymac {
+	echon this_is_mymac;call mydeepmac;;;echon ,TOO'!;';
+}
+echon one';';call mymac;echon two";";call mymac;echo three$';';
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '512117110 140'
+
+	#{{{
+	<< '__EOT' ${cat} > ./txitquit.in
+define l3 {
+	ec l3>; eval $fun; ec l3<
+}
+define l2 {
+	ec l2>; eval $call l3; ec l2<
+}
+define l1 {
+	ec l1>; eval $xcall l2; ec l1<
+}
+call l1
+__EOT
+	#}}}
+	< ./txitquit.in ${MAILX} ${ARGS} -Sfun=quit -Scall=call -Sxcall=call > ./txitquit-1 2>${E0}
+	cke0 xitquit-1 0 ./txitquit-1 '1755936229 12'
+	< ./txitquit.in ${MAILX} ${ARGS} -Sfun=quit -Scall=xcall -Sxcall=call > ./txitquit-2 2>${E0}
+	cke0 xitquit-2 0 ./txitquit-2 '1755936229 12'
+	< ./txitquit.in ${MAILX} ${ARGS} -Sfun=quit -Scall=xcall -Sxcall=xcall > ./txitquit-3 2>${E0}
+	cke0 xitquit-3 0 ./txitquit-3 '1755936229 12'
+	< ./txitquit.in ${MAILX} ${ARGS} -Sfun=exit -Scall=call -Sxcall=call > ./txitquit-4 2>${E0}
+	cke0 xitquit-4 0 ./txitquit-4 '1755936229 12'
+	< ./txitquit.in ${MAILX} ${ARGS} -Sfun=exit -Scall=xcall -Sxcall=call > ./txitquit-5 2>${E0}
+	cke0 xitquit-5 0 ./txitquit-5 '1755936229 12'
+	< ./txitquit.in ${MAILX} ${ARGS} -Sfun=exit -Scall=xcall -Sxcall=xcall > ./txitquit-6 2>${E0}
+	cke0 xitquit-6 0 ./txitquit-6 '1755936229 12'
 
 	t_epilog "${@}"
 } #}}}
