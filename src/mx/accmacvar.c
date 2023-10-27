@@ -3057,7 +3057,7 @@ static void
 a_amv_var_obsolete(char const *name){
 	NYD2_IN;
 
-	if(!su_state_has(su_STATE_REPRODUCIBLE)){
+	if(!su_state_has(su_STATE_REPRODUCIBLE) && !ok_blook(quiet)){
 		if(UNLIKELY(a_amv_var_obsol == NIL))
 			a_amv_var_obsol = su_cs_dict_set_threshold(su_cs_dict_create(&a_amv_var__obsol,
 						(su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
