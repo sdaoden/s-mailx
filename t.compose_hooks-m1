@@ -1,0 +1,66 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
+From: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
+Sender: <sender@exam.ple>
+To: this-goes@nowhere, diet spliced <To@exam.ple>, <To2@exam.ple>,
+ To3@exam.ple
+Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple,
+ alter1@exam.ple
+Bcc: diet spliced <bCc@exam.ple>, <bCc2@exam.ple>, bCc3@exam.ple,
+ alter3@exam.ple, alter4@exam.ple
+Subject: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
+Message-ID: <messAge-id@exam.ple>
+In-Reply-To: <in-Reply-to@exam.ple> <in-Reply-to2@exam.ple>
+ <in-Reply-to3@exam.ple>
+References: <rEfErEncEs@exam.ple> <rEfErEncEs2@exam.ple>
+ <rEfErEncEs3@exam.ple>
+Reply-To: diet spliced <reply-To@exam.ple>, <reply-To2@exam.ple>,
+ reply-To3@exam.ple
+Mail-Followup-To: this-goes@nowhere, diet spliced <To@exam.ple>,
+ <To2@exam.ple>, To3@exam.ple, diet spliced <cC@exam.ple>,
+ <cC2@exam.ple>, cC3@exam.ple, <sender@exam.ple>
+freeForm1: diet <freeForm1@exam.ple> spliced
+freeForm1: <freeForm12@exam.ple>
+freeForm1: freeForm13@exam.ple
+freeform2: diet <freeform2@exam.ple> spliced
+freeform2: <freeform22@exam.ple>
+freeform2: freeform23@exam.ple
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-ID: <19961002015007.AQACA%from@exam.ple>
+
+body
+oce>
+oce=
+oce<
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=ascii
+Content-Disposition: attachment; filename="rctl"
+Content-ID: <10.du@ich>
+Content-Description: Au
+
+line one
+line two
+line three
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: application/x-sh; charset=latin1
+Content-Disposition: attachment; filename="tat"
+Content-ID: <20.du@wir>
+Content-Description: Au2
+
+echo four
+echo five
+echo six
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+

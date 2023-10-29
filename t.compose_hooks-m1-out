@@ -1,0 +1,313 @@
+on-compose-enter
+alternates alter1@exam.ple alter2@exam.ple
+0/0/NONE
+210 'To Mailx-Raw-To Mailx-Command'
+212 Mailx-Command
+mail
+
+501 Subject
+211 To
+this-goes@nowhere this-goes@nowhere
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+0/0/NONE
+210 'To Mailx-Raw-To Mailx-Command'
+0/0/NONE
+on-compose-embed
+t_hea ENTER
+210=1=To Mailx-Raw-To Mailx-Command
+ia from 1-0: ok
+210=2=From 1
+ia from 1-1: ok
+210=2=From 2
+ia from 1-2: ok
+210=2=From 3
+ia from 1-3: ok
+210=1=From
+ia from 1-4: ok
+211=7=From from@exam.ple diet spliced <from@exam.ple> from2@exam.ple <from2@exam.ple> from3@exam.ple from3@exam.ple
+ia from 1-5: ok
+210=1=From To Mailx-Raw-To Mailx-Command
+ir (sender) 0-1: ok
+210=2=Sender 1
+ir sender 1-1: ok
+506=1=Sender
+ir sender 1-4: ok
+210=1=Sender
+ir sender 1-5: ok
+211=3=Sender sender@exam.ple <sender@exam.ple>
+ir sender 1-6: ok
+210=1=From Sender To Mailx-Raw-To Mailx-Command
+ia To 1-0: ok
+210=2=To 2
+ia To 1-1: ok
+210=2=To 3
+ia To 1-2: ok
+210=2=To 4
+ia To 1-3: ok
+210=1=To
+ia To 1-4: ok
+211=9=To this-goes@nowhere this-goes@nowhere To@exam.ple diet spliced <To@exam.ple> To2@exam.ple <To2@exam.ple> To3@exam.ple To3@exam.ple
+ia To 1-5: ok
+210=1=From Sender To Mailx-Raw-To Mailx-Command
+ia cC 1-0: ok
+210=2=Cc 1
+ia cC 1-1: ok
+210=2=Cc 2
+ia cC 1-2: ok
+210=2=Cc 3
+ia cC 1-3: ok
+210=1=Cc
+ia cC 1-4: ok
+211=7=Cc cC@exam.ple diet spliced <cC@exam.ple> cC2@exam.ple <cC2@exam.ple> cC3@exam.ple cC3@exam.ple
+ia cC 1-5: ok
+210=1=From Sender To Cc Mailx-Raw-To Mailx-Command
+ia bCc 1-0: ok
+210=2=Bcc 1
+ia bCc 1-1: ok
+210=2=Bcc 2
+ia bCc 1-2: ok
+210=2=Bcc 3
+ia bCc 1-3: ok
+210=1=Bcc
+ia bCc 1-4: ok
+211=7=Bcc bCc@exam.ple diet spliced <bCc@exam.ple> bCc2@exam.ple <bCc2@exam.ple> bCc3@exam.ple bCc3@exam.ple
+ia bCc 1-5: ok
+210=1=From Sender To Cc Bcc Mailx-Raw-To Mailx-Command
+ia reply-To 1-0: ok
+210=2=Reply-To 1
+ia reply-To 1-1: ok
+210=2=Reply-To 2
+ia reply-To 1-2: ok
+210=2=Reply-To 3
+ia reply-To 1-3: ok
+210=1=Reply-To
+ia reply-To 1-4: ok
+211=7=Reply-To reply-To@exam.ple diet spliced <reply-To@exam.ple> reply-To2@exam.ple <reply-To2@exam.ple> reply-To3@exam.ple reply-To3@exam.ple
+ia reply-To 1-5: ok
+210=1=From Sender To Cc Bcc Reply-To Mailx-Raw-To Mailx-Command
+ia mail-Followup-to 1-0: ok
+210=2=Mail-Followup-To 1
+ia mail-Followup-to 1-1: ok
+210=2=Mail-Followup-To 2
+ia mail-Followup-to 1-2: ok
+210=2=Mail-Followup-To 3
+ia mail-Followup-to 1-3: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 1-4: ok
+211=7=Mail-Followup-To mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple> mail-Followup-to2@exam.ple <mail-Followup-to2@exam.ple> mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
+ia mail-Followup-to 1-5: ok
+210=1=From Sender To Cc Bcc Reply-To Mail-Followup-To Mailx-Raw-To Mailx-Command
+ir (messAge-id) 0-1: ok
+210=2=Message-ID 1
+ir messAge-id 1-1: ok
+506=1=Message-ID
+ir messAge-id 1-4: ok
+210=1=Message-ID
+ir messAge-id 1-5: ok
+211=3=Message-ID messAge-id@exam.ple messAge-id@exam.ple
+ir messAge-id 1-6: ok
+210=1=From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID Mailx-Raw-To Mailx-Command
+ir (rEfErEncEs) 0-1: ok
+210=2=References 1
+ir rEfErEncEs 1-1: ok
+210=2=References 2
+ir rEfErEncEs 1-2: ok
+210=2=References 3
+ir rEfErEncEs 1-3: ok
+210=1=References
+ir rEfErEncEs 1-5: ok
+211=7=References rEfErEncEs@exam.ple rEfErEncEs@exam.ple rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
+ir rEfErEncEs 1-6: ok
+210=1=From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References Mailx-Raw-To Mailx-Command
+ir (in-Reply-to) 0-1: ok
+210=2=In-Reply-To 1
+ir in-Reply-to 1-1: ok
+210=2=In-Reply-To 2
+ir in-Reply-to 1-2: ok
+210=2=In-Reply-To 3
+ir in-Reply-to 1-3: ok
+210=1=In-Reply-To
+ir in-Reply-to 1-5: ok
+211=7=In-Reply-To in-Reply-to@exam.ple in-Reply-to@exam.ple in-Reply-to2@exam.ple in-Reply-to2@exam.ple in-Reply-to3@exam.ple in-Reply-to3@exam.ple
+ir in-Reply-to 1-6: ok
+210=1=From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command
+ir (subject) 0-1: ok
+210=2=Subject 1
+ir subject 1-1: ok
+210=2=Subject 1
+ir subject 1-2: ok
+210=2=Subject 1
+ir subject 1-3: ok
+210=1=Subject
+ir subject 1-5: ok
+212=2=Subject <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
+ir subject 1-6: ok
+210=1=Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command
+ia freeForm1 1-0: ok
+210=2=freeForm1 1
+ia freeForm1 1-1: ok
+210=2=freeForm1 2
+ia freeForm1 1-2: ok
+210=2=freeForm1 3
+ia freeForm1 1-3: ok
+210=1=freeForm1
+ia freeForm1 1-4: ok
+212=4=freeForm1 diet <freeForm1@exam.ple> spliced <freeForm12@exam.ple> freeForm13@exam.ple
+ia freeForm1 1-5: ok
+210=1=Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command freeForm1
+ia freeform2 1-0: ok
+210=2=freeform2 4
+ia freeform2 1-1: ok
+210=2=freeform2 5
+ia freeform2 1-2: ok
+210=2=freeform2 6
+ia freeform2 1-3: ok
+210=1=freeform2
+ia freeform2 1-4: ok
+212=4=freeform2 diet <freeform2@exam.ple> spliced <freeform22@exam.ple> freeform23@exam.ple
+ia freeform2 1-5: ok
+212=2=Mailx-Command mail
+t_hea 1000: ok
+211=3=Mailx-Raw-To this-goes@nowhere this-goes@nowhere
+t_hea 1001: ok
+t_hea LEAVE
+t_attach ENTER
+501=1=
+a 0-1: ok
+501=1=
+attach 0-2: ok
+501=1=
+attach 0-3: ok
+210=1=1
+attach 1-1: ok
+212=2= ./t.readctl=ascii
+attach 1-2: ok
+212=9=./t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename t.readctl content-disposition attachment
+attach 1-3: ok
+212=9=t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename t.readctl content-disposition attachment
+attach 1-4: ok
+212=9=1 creation-name ./t.readctl=ascii open-path ./t.readctl filename t.readctl content-disposition attachment
+attach 1-5: ok
+210=1=1
+attach 1-6: ok
+210=1=1
+attach 1-7: ok
+210=1=1
+attach 1-8: ok
+212=13=./t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-9: ok
+212=13=t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-10: ok
+212=13=rctl creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-11: ok
+212=13=1 creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-12: ok
+210=1=2
+attach 2-1: ok
+212=3= ./t.readctl=ascii ./t.attach=latin1
+attach 2-2: ok
+212=9=./t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename t.attach content-disposition attachment
+attach 2-3: ok
+212=9=t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename t.attach content-disposition attachment
+attach 2-4: ok
+212=9=2 creation-name ./t.attach=latin1 open-path ./t.attach filename t.attach content-disposition attachment
+attach 2-5: ok
+210=1=2
+attach 2-6: ok
+210=1=2
+attach 2-7: ok
+210=1=2
+attach 2-8: ok
+210=1=2
+attach 2-9: ok
+212=15=./t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-10: ok
+212=15=t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-11: ok
+212=15=tat creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-12: ok
+212=15=2 creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-13: ok
+210: Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command freeForm1 freeform2
+212:  ./t.readctl=ascii ./t.attach=latin1
+-------
+Message contains:
+Author: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
+From: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
+Sender: <sender@exam.ple>
+To: this-goes@nowhere, diet spliced <To@exam.ple>, <To2@exam.ple>,
+ To3@exam.ple
+Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple
+Bcc: diet spliced <bCc@exam.ple>, <bCc2@exam.ple>, bCc3@exam.ple
+Subject: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
+Reply-To: diet spliced <reply-To@exam.ple>, <reply-To2@exam.ple>,
+ reply-To3@exam.ple
+freeForm1: diet <freeForm1@exam.ple> spliced
+freeForm1: <freeForm12@exam.ple>
+freeForm1: freeForm13@exam.ple
+freeform2: diet <freeform2@exam.ple> spliced
+freeform2: <freeform22@exam.ple>
+freeform2: freeform23@exam.ple
+
+body
+oce>
+oce=
+-------
+Attachments:
+#1: rctl [./t.readctl -- unclassified content, incs=reproducible_build (no conversion)]
+#2: tat [./t.attach -- application/x-sh, incs=reproducible_build (no conversion)]
+on-compose-leave
+alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
+0/0/NONE
+210 'Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command freeForm1 freeform2'
+212 Mailx-Command
+mail
+
+212 Subject
+'<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple'
+
+211 To
+this-goes@nowhere this-goes@nowhere
+To@exam.ple 'diet spliced <To@exam.ple>'
+To2@exam.ple '<To2@exam.ple>'
+To3@exam.ple To3@exam.ple
+
+211 Cc
+cC@exam.ple 'diet spliced <cC@exam.ple>'
+cC2@exam.ple '<cC2@exam.ple>'
+cC3@exam.ple cC3@exam.ple
+
+211 Bcc
+bCc@exam.ple 'diet spliced <bCc@exam.ple>'
+bCc2@exam.ple '<bCc2@exam.ple>'
+bCc3@exam.ple bCc3@exam.ple
+
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+0/0/NONE
+210 'Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command freeForm1 freeform2'
+0/0/NONE
+on-compose-cleanup
+# no alternates registered

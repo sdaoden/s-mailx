@@ -1,0 +1,30 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: t1@o
+Subject: s1
+
+b1
+
+--
+mysig
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: t2@o
+Subject: s2
+
+b2
+
+--
+mysig
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: t3@o
+Subject: s3
+
+b3
+_/\_
+_/\_--
+_/\_mysig
+

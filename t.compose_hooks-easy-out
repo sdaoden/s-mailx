@@ -1,0 +1,40 @@
+#unset: oce
+#unset: ocm
+#unset: ocl
+#unset: occ
+in oce=1
+in embed=1
+-------
+Message contains:
+Author: i@u
+From: i@u
+To: t@o
+Subject: sub
+
+embed>
+1
+1
+in ocl=1
+in occ=1
+set oce=1
+set ocm=1
+set ocl=1
+set occ=1
+in oce=2
+in embed=2
+-------
+Message contains:
+Author: c1@i
+From: c1@i
+To: t@o
+Subject: sub
+
+embed>
+2
+2
+in ocl=2
+in occ=2
+set oce=1
+set ocm=1
+set ocl=1
+set occ=1

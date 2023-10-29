@@ -1,0 +1,1054 @@
+on-compose-enter
+alternates alter1@exam.ple alter2@exam.ple
+0/0/NONE
+210 'To Mailx-Raw-To Mailx-Command'
+212 Mailx-Command
+mail
+
+501 Subject
+211 To
+this-goes@nowhere this-goes@nowhere
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+0/0/NONE
+210 'To Mailx-Raw-To Mailx-Command'
+0/0/NONE
+on-compose-embed
+t_hea ENTER
+210=1=To Mailx-Raw-To Mailx-Command
+ia from 1-0: ok
+210=2=From 1
+ia from 1-1: ok
+210=2=From 2
+ia from 1-2: ok
+210=2=From 3
+ia from 1-3: ok
+210=1=From
+ia from 1-4: ok
+211=7=From from@exam.ple diet spliced <from@exam.ple> from2@exam.ple <from2@exam.ple> from3@exam.ple from3@exam.ple
+ia from 1-5: ok
+210=1=From
+ia from 2-1: ok
+501=1=From
+ia from 2-2: ok
+501=1=From
+ia from 2-3: ok
+501=1=From
+ia from 2-4: ok
+210=2=From 1
+ia from 3-1: ok
+210=2=From 2
+ia from 3-2: ok
+210=2=From 3
+ia from 3-3: ok
+210=1=From
+ia from 3-4: ok
+211=7=From xfrom@exam.ple diet spliced <xfrom@exam.ple> xfrom2@exam.ple <xfrom2@exam.ple> xfrom3@exam.ple xfrom3@exam.ple
+ia from 3-5: ok
+210=1=From
+ia from 3-6: ok
+210=1=From
+ia from 3-7: ok
+210=1=From
+ia from 3-8: ok
+501=1=From
+ia from 3-9: ok
+505=1=invalid position: T
+ia from 3-10: ok
+501=1=From
+ia from 3-11: ok
+501=1=From
+ia from 3-12: ok
+210=2=From 1
+ia from 4-1: ok
+210=2=From 2
+ia from 4-2: ok
+210=2=From 3
+ia from 4-3: ok
+210=1=From
+hea list from 4-4: ok
+211=7=From from@exam.ple diet <from@exam.ple> from2@exam.ple (comment) "\"Quot" (e) "d\"" <from2@exam.ple> from3@exam.ple from3@exam.ple
+ia from 4-5: ok
+210=1=From
+ia from 4-6: ok
+211=5=From from@exam.ple diet <from@exam.ple> from2@exam.ple (comment) "\"Quot" (e) "d\"" <from2@exam.ple>
+ia from 4-7: ok
+210=1=From
+ia from 4-8: ok
+211=3=From from@exam.ple diet <from@exam.ple>
+ia from 4-9: ok
+210=1=From
+ia from 4-10: ok
+501=1=From
+ia from 4-11: ok
+505=1=invalid position: T
+ia from 4-12: ok
+501=1=From
+ia from 4-13: ok
+501=1=From
+ia from 4-14: ok
+210=1=To Mailx-Raw-To Mailx-Command
+ir (sender) 0-1: ok
+210=2=Sender 1
+ir sender 1-1: ok
+506=1=Sender
+ir sender 1-4: ok
+210=1=Sender
+ir sender 1-5: ok
+211=3=Sender sender@exam.ple <sender@exam.ple>
+ir sender 1-6: ok
+210=1=Sender
+ir sender 2-1: ok
+501=1=Sender
+ir sender 2-2: ok
+501=1=Sender
+ ir sender 2-3: ok
+501=1=Sender
+ir sender 2-4: ok
+210=2=Sender 1
+ir sender 3-1: ok
+210=1=Sender
+ir sender 3-4: ok
+211=3=Sender sender@exam.ple <sender@exam.ple>
+ir sender 3-5: ok
+210=1=Sender
+ir sender 3-6: ok
+501=1=Sender
+ir sender 3-9: ok
+505=1=invalid position: T
+ir sender 3-10: ok
+501=1=Sender
+ir sender 3-11: ok
+210=2=Sender 1
+ir sender 4-1: ok
+210=1=Sender
+ir sender 4-4: ok
+211=3=Sender sender@exam.ple sender <sender@exam.ple>
+ir sender 4-5: ok
+210=1=Sender
+ir sender 4-10: ok
+501=1=Sender
+ir sender 4-11: ok
+505=1=invalid position: T
+ir sender 4-12: ok
+501=1=Sender
+ir sender 4-13: ok
+210=1=To Mailx-Raw-To Mailx-Command
+ia To 1-0: ok
+210=2=To 2
+ia To 1-1: ok
+210=2=To 3
+ia To 1-2: ok
+210=2=To 4
+ia To 1-3: ok
+210=1=To
+ia To 1-4: ok
+211=9=To this-goes@nowhere this-goes@nowhere To@exam.ple diet spliced <To@exam.ple> To2@exam.ple <To2@exam.ple> To3@exam.ple To3@exam.ple
+ia To 1-5: ok
+210=1=To
+ia To 2-1: ok
+501=1=To
+ia To 2-2: ok
+501=1=To
+ia To 2-3: ok
+501=1=To
+ia To 2-4: ok
+210=2=To 1
+ia To 3-1: ok
+210=2=To 2
+ia To 3-2: ok
+210=2=To 3
+ia To 3-3: ok
+210=1=To
+ia To 3-4: ok
+211=7=To xTo@exam.ple diet spliced <xTo@exam.ple> xTo2@exam.ple <xTo2@exam.ple> xTo3@exam.ple xTo3@exam.ple
+ia To 3-5: ok
+210=1=To
+ia To 3-6: ok
+210=1=To
+ia To 3-7: ok
+210=1=To
+ia To 3-8: ok
+501=1=To
+ia To 3-9: ok
+505=1=invalid position: T
+ia To 3-10: ok
+501=1=To
+ia To 3-11: ok
+501=1=To
+ia To 3-12: ok
+210=2=To 1
+ia To 4-1: ok
+210=2=To 2
+ia To 4-2: ok
+210=2=To 3
+ia To 4-3: ok
+210=1=To
+hea list To 4-4: ok
+211=7=To To@exam.ple diet <To@exam.ple> To2@exam.ple (comment) "\"Quot" (e) "d\"" <To2@exam.ple> To3@exam.ple To3@exam.ple
+ia To 4-5: ok
+210=1=To
+ia To 4-6: ok
+211=5=To To@exam.ple diet <To@exam.ple> To2@exam.ple (comment) "\"Quot" (e) "d\"" <To2@exam.ple>
+ia To 4-7: ok
+210=1=To
+ia To 4-8: ok
+211=3=To To@exam.ple diet <To@exam.ple>
+ia To 4-9: ok
+210=1=To
+ia To 4-10: ok
+501=1=To
+ia To 4-11: ok
+505=1=invalid position: T
+ia To 4-12: ok
+501=1=To
+ia To 4-13: ok
+501=1=To
+ia To 4-14: ok
+210=1=Mailx-Raw-To Mailx-Command
+ia cC 1-0: ok
+210=2=Cc 1
+ia cC 1-1: ok
+210=2=Cc 2
+ia cC 1-2: ok
+210=2=Cc 3
+ia cC 1-3: ok
+210=1=Cc
+ia cC 1-4: ok
+211=7=Cc cC@exam.ple diet spliced <cC@exam.ple> cC2@exam.ple <cC2@exam.ple> cC3@exam.ple cC3@exam.ple
+ia cC 1-5: ok
+210=1=Cc
+ia cC 2-1: ok
+501=1=Cc
+ia cC 2-2: ok
+501=1=Cc
+ia cC 2-3: ok
+501=1=Cc
+ia cC 2-4: ok
+210=2=Cc 1
+ia cC 3-1: ok
+210=2=Cc 2
+ia cC 3-2: ok
+210=2=Cc 3
+ia cC 3-3: ok
+210=1=Cc
+ia cC 3-4: ok
+211=7=Cc xcC@exam.ple diet spliced <xcC@exam.ple> xcC2@exam.ple <xcC2@exam.ple> xcC3@exam.ple xcC3@exam.ple
+ia cC 3-5: ok
+210=1=Cc
+ia cC 3-6: ok
+210=1=Cc
+ia cC 3-7: ok
+210=1=Cc
+ia cC 3-8: ok
+501=1=Cc
+ia cC 3-9: ok
+505=1=invalid position: T
+ia cC 3-10: ok
+501=1=Cc
+ia cC 3-11: ok
+501=1=Cc
+ia cC 3-12: ok
+210=2=Cc 1
+ia cC 4-1: ok
+210=2=Cc 2
+ia cC 4-2: ok
+210=2=Cc 3
+ia cC 4-3: ok
+210=1=Cc
+hea list cC 4-4: ok
+211=7=Cc cC@exam.ple diet <cC@exam.ple> cC2@exam.ple (comment) "\"Quot" (e) "d\"" <cC2@exam.ple> cC3@exam.ple cC3@exam.ple
+ia cC 4-5: ok
+210=1=Cc
+ia cC 4-6: ok
+211=5=Cc cC@exam.ple diet <cC@exam.ple> cC2@exam.ple (comment) "\"Quot" (e) "d\"" <cC2@exam.ple>
+ia cC 4-7: ok
+210=1=Cc
+ia cC 4-8: ok
+211=3=Cc cC@exam.ple diet <cC@exam.ple>
+ia cC 4-9: ok
+210=1=Cc
+ia cC 4-10: ok
+501=1=Cc
+ia cC 4-11: ok
+505=1=invalid position: T
+ia cC 4-12: ok
+501=1=Cc
+ia cC 4-13: ok
+501=1=Cc
+ia cC 4-14: ok
+210=1=Mailx-Raw-To Mailx-Command
+ia bCc 1-0: ok
+210=2=Bcc 1
+ia bCc 1-1: ok
+210=2=Bcc 2
+ia bCc 1-2: ok
+210=2=Bcc 3
+ia bCc 1-3: ok
+210=1=Bcc
+ia bCc 1-4: ok
+211=7=Bcc bCc@exam.ple diet spliced <bCc@exam.ple> bCc2@exam.ple <bCc2@exam.ple> bCc3@exam.ple bCc3@exam.ple
+ia bCc 1-5: ok
+210=1=Bcc
+ia bCc 2-1: ok
+501=1=Bcc
+ia bCc 2-2: ok
+501=1=Bcc
+ia bCc 2-3: ok
+501=1=Bcc
+ia bCc 2-4: ok
+210=2=Bcc 1
+ia bCc 3-1: ok
+210=2=Bcc 2
+ia bCc 3-2: ok
+210=2=Bcc 3
+ia bCc 3-3: ok
+210=1=Bcc
+ia bCc 3-4: ok
+211=7=Bcc xbCc@exam.ple diet spliced <xbCc@exam.ple> xbCc2@exam.ple <xbCc2@exam.ple> xbCc3@exam.ple xbCc3@exam.ple
+ia bCc 3-5: ok
+210=1=Bcc
+ia bCc 3-6: ok
+210=1=Bcc
+ia bCc 3-7: ok
+210=1=Bcc
+ia bCc 3-8: ok
+501=1=Bcc
+ia bCc 3-9: ok
+505=1=invalid position: T
+ia bCc 3-10: ok
+501=1=Bcc
+ia bCc 3-11: ok
+501=1=Bcc
+ia bCc 3-12: ok
+210=2=Bcc 1
+ia bCc 4-1: ok
+210=2=Bcc 2
+ia bCc 4-2: ok
+210=2=Bcc 3
+ia bCc 4-3: ok
+210=1=Bcc
+hea list bCc 4-4: ok
+211=7=Bcc bCc@exam.ple diet <bCc@exam.ple> bCc2@exam.ple (comment) "\"Quot" (e) "d\"" <bCc2@exam.ple> bCc3@exam.ple bCc3@exam.ple
+ia bCc 4-5: ok
+210=1=Bcc
+ia bCc 4-6: ok
+211=5=Bcc bCc@exam.ple diet <bCc@exam.ple> bCc2@exam.ple (comment) "\"Quot" (e) "d\"" <bCc2@exam.ple>
+ia bCc 4-7: ok
+210=1=Bcc
+ia bCc 4-8: ok
+211=3=Bcc bCc@exam.ple diet <bCc@exam.ple>
+ia bCc 4-9: ok
+210=1=Bcc
+ia bCc 4-10: ok
+501=1=Bcc
+ia bCc 4-11: ok
+505=1=invalid position: T
+ia bCc 4-12: ok
+501=1=Bcc
+ia bCc 4-13: ok
+501=1=Bcc
+ia bCc 4-14: ok
+210=1=Mailx-Raw-To Mailx-Command
+ia reply-To 1-0: ok
+210=2=Reply-To 1
+ia reply-To 1-1: ok
+210=2=Reply-To 2
+ia reply-To 1-2: ok
+210=2=Reply-To 3
+ia reply-To 1-3: ok
+210=1=Reply-To
+ia reply-To 1-4: ok
+211=7=Reply-To reply-To@exam.ple diet spliced <reply-To@exam.ple> reply-To2@exam.ple <reply-To2@exam.ple> reply-To3@exam.ple reply-To3@exam.ple
+ia reply-To 1-5: ok
+210=1=Reply-To
+ia reply-To 2-1: ok
+501=1=Reply-To
+ia reply-To 2-2: ok
+501=1=Reply-To
+ia reply-To 2-3: ok
+501=1=Reply-To
+ia reply-To 2-4: ok
+210=2=Reply-To 1
+ia reply-To 3-1: ok
+210=2=Reply-To 2
+ia reply-To 3-2: ok
+210=2=Reply-To 3
+ia reply-To 3-3: ok
+210=1=Reply-To
+ia reply-To 3-4: ok
+211=7=Reply-To xreply-To@exam.ple diet spliced <xreply-To@exam.ple> xreply-To2@exam.ple <xreply-To2@exam.ple> xreply-To3@exam.ple xreply-To3@exam.ple
+ia reply-To 3-5: ok
+210=1=Reply-To
+ia reply-To 3-6: ok
+210=1=Reply-To
+ia reply-To 3-7: ok
+210=1=Reply-To
+ia reply-To 3-8: ok
+501=1=Reply-To
+ia reply-To 3-9: ok
+505=1=invalid position: T
+ia reply-To 3-10: ok
+501=1=Reply-To
+ia reply-To 3-11: ok
+501=1=Reply-To
+ia reply-To 3-12: ok
+210=2=Reply-To 1
+ia reply-To 4-1: ok
+210=2=Reply-To 2
+ia reply-To 4-2: ok
+210=2=Reply-To 3
+ia reply-To 4-3: ok
+210=1=Reply-To
+hea list reply-To 4-4: ok
+211=7=Reply-To reply-To@exam.ple diet <reply-To@exam.ple> reply-To2@exam.ple (comment) "\"Quot" (e) "d\"" <reply-To2@exam.ple> reply-To3@exam.ple reply-To3@exam.ple
+ia reply-To 4-5: ok
+210=1=Reply-To
+ia reply-To 4-6: ok
+211=5=Reply-To reply-To@exam.ple diet <reply-To@exam.ple> reply-To2@exam.ple (comment) "\"Quot" (e) "d\"" <reply-To2@exam.ple>
+ia reply-To 4-7: ok
+210=1=Reply-To
+ia reply-To 4-8: ok
+211=3=Reply-To reply-To@exam.ple diet <reply-To@exam.ple>
+ia reply-To 4-9: ok
+210=1=Reply-To
+ia reply-To 4-10: ok
+501=1=Reply-To
+ia reply-To 4-11: ok
+505=1=invalid position: T
+ia reply-To 4-12: ok
+501=1=Reply-To
+ia reply-To 4-13: ok
+501=1=Reply-To
+ia reply-To 4-14: ok
+210=1=Mailx-Raw-To Mailx-Command
+ia mail-Followup-to 1-0: ok
+210=2=Mail-Followup-To 1
+ia mail-Followup-to 1-1: ok
+210=2=Mail-Followup-To 2
+ia mail-Followup-to 1-2: ok
+210=2=Mail-Followup-To 3
+ia mail-Followup-to 1-3: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 1-4: ok
+211=7=Mail-Followup-To mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple> mail-Followup-to2@exam.ple <mail-Followup-to2@exam.ple> mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
+ia mail-Followup-to 1-5: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 2-1: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 2-2: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 2-3: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 2-4: ok
+210=2=Mail-Followup-To 1
+ia mail-Followup-to 3-1: ok
+210=2=Mail-Followup-To 2
+ia mail-Followup-to 3-2: ok
+210=2=Mail-Followup-To 3
+ia mail-Followup-to 3-3: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 3-4: ok
+211=7=Mail-Followup-To xmail-Followup-to@exam.ple diet spliced <xmail-Followup-to@exam.ple> xmail-Followup-to2@exam.ple <xmail-Followup-to2@exam.ple> xmail-Followup-to3@exam.ple xmail-Followup-to3@exam.ple
+ia mail-Followup-to 3-5: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 3-6: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 3-7: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 3-8: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 3-9: ok
+505=1=invalid position: T
+ia mail-Followup-to 3-10: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 3-11: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 3-12: ok
+210=2=Mail-Followup-To 1
+ia mail-Followup-to 4-1: ok
+210=2=Mail-Followup-To 2
+ia mail-Followup-to 4-2: ok
+210=2=Mail-Followup-To 3
+ia mail-Followup-to 4-3: ok
+210=1=Mail-Followup-To
+hea list mail-Followup-to 4-4: ok
+211=7=Mail-Followup-To mail-Followup-to@exam.ple diet <mail-Followup-to@exam.ple> mail-Followup-to2@exam.ple (comment) "\"Quot" (e) "d\"" <mail-Followup-to2@exam.ple> mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
+ia mail-Followup-to 4-5: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 4-6: ok
+211=5=Mail-Followup-To mail-Followup-to@exam.ple diet <mail-Followup-to@exam.ple> mail-Followup-to2@exam.ple (comment) "\"Quot" (e) "d\"" <mail-Followup-to2@exam.ple>
+ia mail-Followup-to 4-7: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 4-8: ok
+211=3=Mail-Followup-To mail-Followup-to@exam.ple diet <mail-Followup-to@exam.ple>
+ia mail-Followup-to 4-9: ok
+210=1=Mail-Followup-To
+ia mail-Followup-to 4-10: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 4-11: ok
+505=1=invalid position: T
+ia mail-Followup-to 4-12: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 4-13: ok
+501=1=Mail-Followup-To
+ia mail-Followup-to 4-14: ok
+210=1=Mailx-Raw-To Mailx-Command
+ir (messAge-id) 0-1: ok
+210=2=Message-ID 1
+ir messAge-id 1-1: ok
+506=1=Message-ID
+ir messAge-id 1-4: ok
+210=1=Message-ID
+ir messAge-id 1-5: ok
+211=3=Message-ID messAge-id@exam.ple messAge-id@exam.ple
+ir messAge-id 1-6: ok
+210=1=Message-ID
+ir messAge-id 2-1: ok
+501=1=Message-ID
+ir messAge-id 2-2: ok
+501=1=Message-ID
+ ir messAge-id 2-3: ok
+501=1=Message-ID
+ir messAge-id 2-4: ok
+210=2=Message-ID 1
+ir messAge-id 3-1: ok
+210=1=Message-ID
+ir messAge-id 3-4: ok
+211=3=Message-ID messAge-id@exam.ple messAge-id@exam.ple
+ir messAge-id 3-5: ok
+210=1=Message-ID
+ir messAge-id 3-6: ok
+501=1=Message-ID
+ir messAge-id 3-9: ok
+505=1=invalid position: T
+ir messAge-id 3-10: ok
+501=1=Message-ID
+ir messAge-id 3-11: ok
+210=2=Message-ID 1
+ir messAge-id 4-1: ok
+210=1=Message-ID
+ir messAge-id 4-4: ok
+211=3=Message-ID messAge-id@exam.ple messAge-id@exam.ple
+ir messAge-id 4-5: ok
+210=1=Message-ID
+ir messAge-id 4-10: ok
+501=1=Message-ID
+ir messAge-id 4-11: ok
+505=1=invalid position: T
+ir messAge-id 4-12: ok
+501=1=Message-ID
+ir messAge-id 4-13: ok
+210=1=Mailx-Raw-To Mailx-Command
+ir (rEfErEncEs) 0-1: ok
+210=2=References 1
+ir rEfErEncEs 1-1: ok
+210=2=References 2
+ir rEfErEncEs 1-2: ok
+210=2=References 3
+ir rEfErEncEs 1-3: ok
+210=1=References
+ir rEfErEncEs 1-5: ok
+211=7=References rEfErEncEs@exam.ple rEfErEncEs@exam.ple rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
+ir rEfErEncEs 1-6: ok
+210=1=References
+ir rEfErEncEs 2-1: ok
+501=1=References
+ir rEfErEncEs 2-2: ok
+501=1=References
+ ir rEfErEncEs 2-3: ok
+501=1=References
+ir rEfErEncEs 2-4: ok
+210=2=References 1
+ir rEfErEncEs 3-1: ok
+210=2=References 2
+ir rEfErEncEs 3-2: ok
+210=2=References 3
+ir rEfErEncEs 3-3: ok
+210=1=References
+ir rEfErEncEs 3-4: ok
+211=7=References rEfErEncEs@exam.ple rEfErEncEs@exam.ple rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
+ir rEfErEncEs 3-5: ok
+210=1=References
+ir rEfErEncEs 3-6: ok
+210=1=References
+ir rEfErEncEs 3-7: ok
+210=1=References
+ir rEfErEncEs 3-8: ok
+501=1=References
+ir rEfErEncEs 3-9: ok
+505=1=invalid position: T
+ir rEfErEncEs 3-10: ok
+501=1=References
+ir rEfErEncEs 3-11: ok
+210=2=References 1
+ir rEfErEncEs 4-1: ok
+210=2=References 2
+ir rEfErEncEs 4-2: ok
+210=2=References 3
+ir rEfErEncEs 4-3: ok
+210=1=References
+ir rEfErEncEs 4-4: ok
+211=7=References rEfErEncEs@exam.ple rEfErEncEs@exam.ple rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
+ir rEfErEncEs 4-5: ok
+210=1=References
+ir rEfErEncEs 4-6: ok
+211=5=References rEfErEncEs@exam.ple rEfErEncEs@exam.ple rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple
+ir rEfErEncEs 4-7: ok
+210=1=References
+ir rEfErEncEs 4-8: ok
+211=3=References rEfErEncEs@exam.ple rEfErEncEs@exam.ple
+ir rEfErEncEs 4-9: ok
+210=1=References
+ir rEfErEncEs 4-10: ok
+501=1=References
+ir rEfErEncEs 4-11: ok
+505=1=invalid position: T
+ir rEfErEncEs 4-12: ok
+501=1=References
+ir rEfErEncEs 4-13: ok
+210=1=Mailx-Raw-To Mailx-Command
+ir (in-Reply-to) 0-1: ok
+210=2=In-Reply-To 1
+ir in-Reply-to 1-1: ok
+210=2=In-Reply-To 2
+ir in-Reply-to 1-2: ok
+210=2=In-Reply-To 3
+ir in-Reply-to 1-3: ok
+210=1=In-Reply-To
+ir in-Reply-to 1-5: ok
+211=7=In-Reply-To in-Reply-to@exam.ple in-Reply-to@exam.ple in-Reply-to2@exam.ple in-Reply-to2@exam.ple in-Reply-to3@exam.ple in-Reply-to3@exam.ple
+ir in-Reply-to 1-6: ok
+210=1=In-Reply-To
+ir in-Reply-to 2-1: ok
+501=1=In-Reply-To
+ir in-Reply-to 2-2: ok
+501=1=In-Reply-To
+ ir in-Reply-to 2-3: ok
+501=1=In-Reply-To
+ir in-Reply-to 2-4: ok
+210=2=In-Reply-To 1
+ir in-Reply-to 3-1: ok
+210=2=In-Reply-To 2
+ir in-Reply-to 3-2: ok
+210=2=In-Reply-To 3
+ir in-Reply-to 3-3: ok
+210=1=In-Reply-To
+ir in-Reply-to 3-4: ok
+211=7=In-Reply-To in-Reply-to@exam.ple in-Reply-to@exam.ple in-Reply-to2@exam.ple in-Reply-to2@exam.ple in-Reply-to3@exam.ple in-Reply-to3@exam.ple
+ir in-Reply-to 3-5: ok
+210=1=In-Reply-To
+ir in-Reply-to 3-6: ok
+210=1=In-Reply-To
+ir in-Reply-to 3-7: ok
+210=1=In-Reply-To
+ir in-Reply-to 3-8: ok
+501=1=In-Reply-To
+ir in-Reply-to 3-9: ok
+505=1=invalid position: T
+ir in-Reply-to 3-10: ok
+501=1=In-Reply-To
+ir in-Reply-to 3-11: ok
+210=2=In-Reply-To 1
+ir in-Reply-to 4-1: ok
+210=2=In-Reply-To 2
+ir in-Reply-to 4-2: ok
+210=2=In-Reply-To 3
+ir in-Reply-to 4-3: ok
+210=1=In-Reply-To
+ir in-Reply-to 4-4: ok
+211=7=In-Reply-To in-Reply-to@exam.ple in-Reply-to@exam.ple in-Reply-to2@exam.ple in-Reply-to2@exam.ple in-Reply-to3@exam.ple in-Reply-to3@exam.ple
+ir in-Reply-to 4-5: ok
+210=1=In-Reply-To
+ir in-Reply-to 4-6: ok
+211=5=In-Reply-To in-Reply-to@exam.ple in-Reply-to@exam.ple in-Reply-to2@exam.ple in-Reply-to2@exam.ple
+ir in-Reply-to 4-7: ok
+210=1=In-Reply-To
+ir in-Reply-to 4-8: ok
+211=3=In-Reply-To in-Reply-to@exam.ple in-Reply-to@exam.ple
+ir in-Reply-to 4-9: ok
+210=1=In-Reply-To
+ir in-Reply-to 4-10: ok
+501=1=In-Reply-To
+ir in-Reply-to 4-11: ok
+505=1=invalid position: T
+ir in-Reply-to 4-12: ok
+501=1=In-Reply-To
+ir in-Reply-to 4-13: ok
+210=1=Mailx-Raw-To Mailx-Command
+ir (subject) 0-1: ok
+210=2=Subject 1
+ir subject 1-1: ok
+210=2=Subject 1
+ir subject 1-2: ok
+210=2=Subject 1
+ir subject 1-3: ok
+210=1=Subject
+ir subject 1-5: ok
+212=2=Subject <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
+ir subject 1-6: ok
+210=1=Subject
+ir subject 2-1: ok
+501=1=r
+ir subject 2-2: ok
+501=1=Subject
+ ir subject 2-3: ok
+501=1=Subject
+ir subject 2-4: ok
+210=2=Subject 1
+ir subject 3-1: ok
+210=2=Subject 1
+ir subject 3-2: ok
+210=2=Subject 1
+ir subject 3-3: ok
+210=1=Subject
+ir subject 3-4: ok
+212=2=Subject <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
+ir subject 3-5: ok
+210=2=Subject 1
+ir subject 3-6: ok
+501=1=remove-
+ir subject 3-9: ok
+505=1=invalid position: T
+ir subject 3-10: ok
+501=1=Subject
+ir subject 3-11: ok
+210=2=Subject 1
+ir subject 4-1: ok
+210=2=Subject 1
+ir subject 4-2: ok
+210=2=Subject 1
+ir subject 4-3: ok
+210=1=Subject
+ir subject 4-4: ok
+212=2=Subject  subject <subject@exam.ple>  <subject2@exam.ple>  subject3@exam.ple
+ir subject 4-5: ok
+210=2=Subject 1
+ir subject 4-10: ok
+501=1=remove-
+ir subject 4-11: ok
+505=1=invalid position: T
+ir subject 4-12: ok
+501=1=Subject
+ir subject 4-13: ok
+210=1=Mailx-Raw-To Mailx-Command
+ia freeForm1 1-0: ok
+210=2=freeForm1 1
+ia freeForm1 1-1: ok
+210=2=freeForm1 2
+ia freeForm1 1-2: ok
+210=2=freeForm1 3
+ia freeForm1 1-3: ok
+210=1=freeForm1
+ia freeForm1 1-4: ok
+212=4=freeForm1 diet <freeForm1@exam.ple> spliced <freeForm12@exam.ple> freeForm13@exam.ple
+ia freeForm1 1-5: ok
+210=1=freeForm1
+ia freeForm1 2-1: ok
+501=1=freeForm1
+ia freeForm1 2-2: ok
+501=1=freeForm1
+ia freeForm1 2-3: ok
+501=1=freeForm1
+ia freeForm1 2-4: ok
+210=2=freeForm1 1
+ia freeForm1 3-1: ok
+210=2=freeForm1 2
+ia freeForm1 3-2: ok
+210=2=freeForm1 3
+ia freeForm1 3-3: ok
+210=1=freeForm1
+ia freeForm1 3-4: ok
+212=4=freeForm1 diet <xfreeForm1@exam.ple> spliced <xfreeForm12@exam.ple> xfreeForm13@exam.ple
+ia freeForm1 3-5: ok
+210=2=freeForm1 0
+ia freeForm1 3-6: ok
+210=2=freeForm1 0
+ia freeForm1 3-7: ok
+210=2=freeForm1 0
+ia freeForm1 3-8: ok
+501=1=freeForm1
+ia freeForm1 3-9: ok
+505=1=invalid position: T
+ia freeForm1 3-10: ok
+501=1=freeForm1
+ia freeForm1 3-11: ok
+501=1=freeForm1
+ia freeForm1 3-12: ok
+210=2=freeForm1 1
+ia freeForm1 4-1: ok
+210=2=freeForm1 2
+ia freeForm1 4-2: ok
+210=2=freeForm1 3
+ia freeForm1 4-3: ok
+210=1=freeForm1
+hea list freeForm1 4-4: ok
+212=4=freeForm1 diet <freeForm1@exam.ple> <freeForm12@exam.ple> (comment) \"Quot(e)d\" freeForm13@exam.ple
+ia freeForm1 4-5: ok
+210=2=freeForm1 0
+ia freeForm1 4-6: ok
+212=3=freeForm1 diet <freeForm1@exam.ple> <freeForm12@exam.ple> (comment) \"Quot(e)d\"
+ia freeForm1 4-7: ok
+210=2=freeForm1 0
+ia freeForm1 4-8: ok
+212=2=freeForm1 diet <freeForm1@exam.ple>
+ia freeForm1 4-9: ok
+210=2=freeForm1 0
+ia freeForm1 4-10: ok
+501=1=freeForm1
+ia freeForm1 4-11: ok
+505=1=invalid position: T
+ia freeForm1 4-12: ok
+501=1=freeForm1
+ia freeForm1 4-13: ok
+501=1=freeForm1
+ia freeForm1 4-14: ok
+210=1=Mailx-Raw-To Mailx-Command
+ia freeform2 1-0: ok
+210=2=freeform2 1
+ia freeform2 1-1: ok
+210=2=freeform2 2
+ia freeform2 1-2: ok
+210=2=freeform2 3
+ia freeform2 1-3: ok
+210=1=freeform2
+ia freeform2 1-4: ok
+212=4=freeform2 diet <freeform2@exam.ple> spliced <freeform22@exam.ple> freeform23@exam.ple
+ia freeform2 1-5: ok
+210=1=freeform2
+ia freeform2 2-1: ok
+501=1=freeform2
+ia freeform2 2-2: ok
+501=1=freeform2
+ia freeform2 2-3: ok
+501=1=freeform2
+ia freeform2 2-4: ok
+210=2=freeform2 1
+ia freeform2 3-1: ok
+210=2=freeform2 2
+ia freeform2 3-2: ok
+210=2=freeform2 3
+ia freeform2 3-3: ok
+210=1=freeform2
+ia freeform2 3-4: ok
+212=4=freeform2 diet <xfreeform2@exam.ple> spliced <xfreeform22@exam.ple> xfreeform23@exam.ple
+ia freeform2 3-5: ok
+210=2=freeform2 0
+ia freeform2 3-6: ok
+210=2=freeform2 0
+ia freeform2 3-7: ok
+210=2=freeform2 0
+ia freeform2 3-8: ok
+501=1=freeform2
+ia freeform2 3-9: ok
+505=1=invalid position: T
+ia freeform2 3-10: ok
+501=1=freeform2
+ia freeform2 3-11: ok
+501=1=freeform2
+ia freeform2 3-12: ok
+210=2=freeform2 1
+ia freeform2 4-1: ok
+210=2=freeform2 2
+ia freeform2 4-2: ok
+210=2=freeform2 3
+ia freeform2 4-3: ok
+210=1=freeform2
+hea list freeform2 4-4: ok
+212=4=freeform2 diet <freeform2@exam.ple> <freeform22@exam.ple> (comment) \"Quot(e)d\" freeform23@exam.ple
+ia freeform2 4-5: ok
+210=2=freeform2 0
+ia freeform2 4-6: ok
+212=3=freeform2 diet <freeform2@exam.ple> <freeform22@exam.ple> (comment) \"Quot(e)d\"
+ia freeform2 4-7: ok
+210=2=freeform2 0
+ia freeform2 4-8: ok
+212=2=freeform2 diet <freeform2@exam.ple>
+ia freeform2 4-9: ok
+210=2=freeform2 0
+ia freeform2 4-10: ok
+501=1=freeform2
+ia freeform2 4-11: ok
+505=1=invalid position: T
+ia freeform2 4-12: ok
+501=1=freeform2
+ia freeform2 4-13: ok
+501=1=freeform2
+ia freeform2 4-14: ok
+212=2=Mailx-Command mail
+t_hea 1000: ok
+211=3=Mailx-Raw-To this-goes@nowhere this-goes@nowhere
+t_hea 1001: ok
+t_hea LEAVE
+t_attach ENTER
+501=1=
+a 0-1: ok
+501=1=
+attach 0-2: ok
+501=1=
+attach 0-3: ok
+210=1=1
+attach 1-1: ok
+212=2= ./t.readctl=ascii
+attach 1-2: ok
+212=9=./t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename t.readctl content-disposition attachment
+attach 1-3: ok
+212=9=t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename t.readctl content-disposition attachment
+attach 1-4: ok
+212=9=1 creation-name ./t.readctl=ascii open-path ./t.readctl filename t.readctl content-disposition attachment
+attach 1-5: ok
+210=1=1
+attach 1-6: ok
+210=1=1
+attach 1-7: ok
+210=1=1
+attach 1-8: ok
+212=13=./t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-9: ok
+212=13=t.readctl creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-10: ok
+212=13=rctl creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-11: ok
+212=13=1 creation-name ./t.readctl=ascii open-path ./t.readctl filename rctl content-description Au content-id 10.du@ich content-disposition attachment
+attach 1-12: ok
+210=1=2
+attach 2-1: ok
+212=3= ./t.readctl=ascii ./t.attach=latin1
+attach 2-2: ok
+212=9=./t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename t.attach content-disposition attachment
+attach 2-3: ok
+212=9=t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename t.attach content-disposition attachment
+attach 2-4: ok
+212=9=2 creation-name ./t.attach=latin1 open-path ./t.attach filename t.attach content-disposition attachment
+attach 2-5: ok
+210=1=2
+attach 2-6: ok
+210=1=2
+attach 2-7: ok
+210=1=2
+attach 2-8: ok
+210=1=2
+attach 2-9: ok
+212=15=./t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-10: ok
+212=15=t.attach creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-11: ok
+212=15=tat creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-12: ok
+212=15=2 creation-name ./t.attach=latin1 open-path ./t.attach filename tat content-description Au2 content-id 20.du@wir content-type application/x-sh content-disposition attachment
+attach 2-13: ok
+210=1=./t.readctl
+attach 3-1: ok
+210=1=./t.attach
+attach 3-2: ok
+501=1=
+attach 3-3: ok
+501=1=
+attach 3-4: ok
+501=1=
+attach 3-5: ok
+210=1=1
+attach 4-1: ok
+210=1=2
+attach 4-2: ok
+212=3= ./t.attach=latin1 ./t.attach=latin1
+attach 4-3: ok
+506=1=
+attach 4-4 : ok
+505=1=invalid position: T
+attach 4-5: ok
+210=1=./t.attach
+attach 4-6: ok
+210=1=./t.attach
+attach 4-7: ok
+501=1=
+aattach 4-8 : ok
+501=1=
+attach 4-9: ok
+210=1=1
+attach 5-1: ok
+210=1=2
+attach 5-2: ok
+210=1=3
+attach 5-3: ok
+212=4= ./t.attach=latin1 ./t.attach=latin1 ./t.attach=latin1
+attach 5-4: ok
+210=1=3
+attach 5-5: ok
+501=1=
+attach 5-6: ok
+210=1=2
+attach 5-7: ok
+501=1=
+attach 5-8: ok
+210=1=1
+attach 5-9: ok
+501=1=
+attach 5-10: ok
+501=1=
+attach 5-11: ok
+210=1=1
+attach 6-1: ok
+210=1=2
+attach 6-2: ok
+210=1=3
+attach 6-3: ok
+212=4= ./t.attach=latin1 ./t.attach=latin1 ./t.attach=latin1
+attach 6-4: ok
+210=1=1
+attach 6-5: ok
+210=1=1
+attach 6-6: ok
+210=1=1
+attach 6-7: ok
+501=1=
+attach 6-8: ok
+501=1=
+attach 6-9: ok
+t_attach LEAVE
+210: Mailx-Raw-To Mailx-Command
+501: 
+-------
+Message contains:
+body
+oce>
+oce=
+on-compose-leave
+alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
+0/0/NONE
+210 'Mailx-Raw-To Mailx-Command'
+212 Mailx-Command
+mail
+
+501 Subject
+501 To
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+0/0/NONE
+210 'Mailx-Raw-To Mailx-Command'
+0/0/NONE
+on-compose-cleanup
+# no alternates registered

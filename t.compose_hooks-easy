@@ -1,0 +1,25 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: i@u
+From: i@u
+To: t@o
+Subject: sub
+
+embed>
+1
+1
+embed<
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: c1@i
+From: c1@i
+To: t@o
+Subject: sub
+
+embed>
+2
+2
+1
+embed<
+
