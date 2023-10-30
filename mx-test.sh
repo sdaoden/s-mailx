@@ -10378,7 +10378,7 @@ t_cmd_escapes() { #{{{
 		gmX from 'ex6@am.ple' sub sub6; } > ./t.mbox
 	ck 1 - ./t.mbox '911181609 2184'
 
-	# ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
+	# ~@ is tested with other attachment stuff, ~^ in compose_edits,digmsg,compose_hooks
 	#{{{
 	${cat} <<- '__EOT' > ./t2.in
 set Sign=SignVar sign=signvar DEAD=./t.txt
@@ -10387,158 +10387,187 @@ headerpick type retain Subject
 headerpick forward retain Subject To
 reply 2
 !!1 Not escaped.  And shell test last, right before !..
-!:echo 1
-!:   echo 2 only echoed via colon
-!:echo 2:$?/$^ERRNAME
-!_  echo 3 only echoed via underscore
-!:echo 3:$?/$^ERRNAME
+!:ec 1
+!:   ec 2 only echoed via colon
+!:ec 2:$?/$^ERRNAME
+!_  ec 3 only echoed via underscore
+!:ec 3:$?/$^ERRNAME
 !< ./t.txt
-!:echo 4:$?/$^ERRNAME
+!:ec 4:$?/$^ERRNAME
 !<! echo 5 shell echo included
-!:echo 5:$?/$^ERRNAME
+!:ec 5:$?/$^ERRNAME
 !| echo 6 pipecmd-pre; cat; echo 6 pipecmd-post
-!:echo 6:$?/$^ERRNAME
+!:ec 6:$?/$^ERRNAME
 7 and 8 are ~A and ~a:
 !A
-!:echo 7:$?/$^ERRNAME
+!:ec 7:$?/$^ERRNAME
 !a
-!:echo 8:$?/$^ERRNAME
+!:ec 8:$?/$^ERRNAME
 !b 9 added ~b cc <ex1@am.ple>
-!:echo 9:$?/$^ERRNAME
+!:ec 9:$?/$^ERRNAME
 !c 10 added ~c c <ex2@am.ple>
-!:echo 10:$?/$^ERRNAME
+!:ec 10:$?/$^ERRNAME
 11 next ~d / $DEAD
 !d
-!:echo 11:$?/$^ERRNAME
+!:ec 11:$?/$^ERRNAME
 12: ~F
 !F
-!:echo 12:$?/$^ERRNAME
+!:ec 12:$?/$^ERRNAME
 13: ~F 1 3
 !F 1 3
-!:echo 13:$?/$^ERRNAME
+!:ec 13:$?/$^ERRNAME
 !F 1000
-!:echo 13-1:$?/$^ERRNAME; set posix
+!:ec 13-1:$?/$^ERRNAME; set posix
 14: ~f (headerpick: subject)
 !f
-!:echo 14:$?/$^ERRNAME; unset posix forward-inject-head quote-inject-head
+!:ec 14:$?/$^ERRNAME; unset posix forward-inject-head quote-inject-head
 14.1: ~f (!posix: injections; headerpick: subject to)
 !f
-!:echo 14.1:$?/$^ERRNAME; set forward-add-cc
+!:ec 14.1:$?/$^ERRNAME; set forward-add-cc
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 !f 3
-!:echo 14.2:$?/$^ERRNAME; set fullnames
+!:ec 14.2:$?/$^ERRNAME; set fullnames
 14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
 !f 1
-!:echo 14.3:$?/$^ERRNAME; set nofullnames noforward-add-cc posix
+!:ec 14.3:$?/$^ERRNAME; set nofullnames noforward-add-cc posix
 15: ~f 1
 !f 1
-!:echo 15:$?/$^ERRNAME
+!:ec 15:$?/$^ERRNAME
 15.5: nono: ~H, ~h
 !H
-!:echo 15.5-1:$?/$^ERRNAME
+!:ec 15.5-1:$?/$^ERRNAME
 !h
-!:echo 15.5-2:$?/$^ERRNAME
+!:ec 15.5-2:$?/$^ERRNAME
 16, 17: ~I Sign, ~i Sign
 !I Sign
-!:echo 16:$?/$^ERRNAME
+!:ec 16:$?/$^ERRNAME
 !i Sign
-!:echo 17:$?/$^ERRNAME
+!:ec 17:$?/$^ERRNAME
 18: ~M
 !M
-!:echo 18:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
+!:ec 18:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 19: ~M 1
 !M 1
-!:echo 19:$?/$^ERRNAME
+!:ec 19:$?/$^ERRNAME
 20: ~m
 !m
-!:echo 20:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
+!:ec 20:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 21: ~m 3
 !m 3
-!:echo 21:$?/$^ERRNAME
+!:ec 21:$?/$^ERRNAME
 !: # Initially ~Q was _exactly_ like
 28,29 nothing, 30-34: ~Q
-!:echo quote=<$quote>
+!:ec quote=<$quote>
 30: ~Q
 !Q
-!:echo 30:$?/$^ERRNAME
+!:ec 30:$?/$^ERRNAME
 31: ~Q 1 3
 !Q 1 3
-!:echo 31:$?/$^ERRNAME
+!:ec 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
 !:set quote-inject-head=%a quote-inject-tail=--%r
 32: ~Q
 !Q
-!:echo 32:$?/$^ERRNAME
+!:ec 32:$?/$^ERRNAME
 set noquote-inject-head noquote-inject-tail quote-add-cc
 !:set noquote-inject-head noquote-inject-tail quote-add-cc
 33: ~Q 4
 !Q 4
-!:echo 33:$?/$^ERRNAME
+!:ec 33:$?/$^ERRNAME
 set fullnames
 !:set fullnames
 34: ~Q 5
 !Q 5
-!:echo 34:$?/$^ERRNAME
+!:ec 34:$?/$^ERRNAME
 unset fullnames, quote stuff
 !:unset quote quote-add-cc fullnames
 22: ~R ./t.txt
 !R ./t.txt
-!:echo 22:$?/$^ERRNAME
+!:ec 22:$?/$^ERRNAME
 23: ~r ./t.txt
 !r ./t.txt
-!:echo 23:$?/$^ERRNAME
+!:ec 23:$?/$^ERRNAME
+!:se i='x y z'
+23.1: ~r - _EOT
+!r - _EOT
+l1
+$i
+l3
+_EOT
+!:ec 23.1:$?/$^ERRNAME
+23.2: ~r - '_EOT'
+!r - '_EOT'
+l1
+$i
+l3
+_EOT
+!:ec 23.2:$?/$^ERRNAME
+23.3: ~r - -_EOT
+!r - -_EOT
+	l1
+		$i
+			l3
+_EOT
+!:ec 23.3:$?/$^ERRNAME
+23.4: ~r - '-_EOT'
+!r - '-_EOT'
+	l1
+		$i
+			l3
+_EOT
+!:ec 23.4:$?/$^ERRNAME
 24: ~s this new subject
 !s 24 did new ~s ubject
-!:echo 24:$?/$^ERRNAME
+!:ec 24:$?/$^ERRNAME
 !t 25 added ~t o <ex3@am.ple>
-!:echo 25:$?/$^ERRNAME
+!:ec 25:$?/$^ERRNAME
 26.1: ~U
 !U
-!:echo 26.1:$?/$^ERRNAME
+!:ec 26.1:$?/$^ERRNAME
 26.2: ~U 1
 !U 1
-!:echo 26.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
+!:ec 26.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 27.1: ~u
 !u
-!:echo 27.1:$?/$^ERRNAME
+!:ec 27.1:$?/$^ERRNAME
 27.2: ~u 1
 !u 1
-!:echo 27.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
+!:ec 27.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 and i ~w rite this out to ./t3
 !w ./t3
-!:echo i ~w:$?/$^ERRNAME bang-data<$bang-data>
+!:ec i ~w:$?/$^ERRNAME bang-data<$bang-data>
 !:set x=$escape;set escape=~
 ~!echo shell command output
-~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~!echo no_!_bang\!
-~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~:set bang
 ~!echo NO-!-BANG\!
-~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~!echo no=!=bang\!
-~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~:set nobang escape=$x
 50:F
 !F 6
-!:echo 50 was F:$?/$^ERRNAME
+!:ec 50 was F:$?/$^ERRNAME
 51:f
 !f 6
-!:echo 51 was f:$?/$^ERRNAME
+!:ec 51 was f:$?/$^ERRNAME
 52:M
 !M 6
-!:echo 52 was M:$?/$^ERRNAME
+!:ec 52 was M:$?/$^ERRNAME
 53:m
 !m 6
-!:echo 53 was m:$?/$^ERRNAME; set quote
+!:ec 53 was m:$?/$^ERRNAME; set quote
 54:Q
 !Q 6
-!:echo 54 was Q:$?/$^ERRNAME
+!:ec 54 was Q:$?/$^ERRNAME
 55:U
 !U 6
-!:echo 55 was U:$?/$^ERRNAME
+!:ec 55 was U:$?/$^ERRNAME
 56:u
 !u 6
-!:echo 56 was u:$?/$^ERRNAME
+!:ec 56 was u:$?/$^ERRNAME
 !.
 	__EOT
 	#}}}
@@ -10547,8 +10576,8 @@ and i ~w rite this out to ./t3
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '913351364 8043' '3575876476 49'
-	ck 3-nohtml - ./t3 '1594635428 4442'
+	ck 2-nohtml - ./t2-nohtml '1956008563 8221' '3575876476 49'
+	ck 3-nohtml - ./t3 '3451667501 4548'
 
 	if have_feat filter-html-tagsoup; then
 		> ./t3
@@ -10556,8 +10585,8 @@ and i ~w rite this out to ./t3
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '2160913844 7983' '3575876476 49'
-		ck 3-html - ./t3 '1594635428 4442'
+		ck 2-html - ./t2-html '2965430993 8161' '3575876476 49'
+		ck 3-html - ./t3 '3451667501 4548'
 	else
 		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
 	fi
@@ -11115,6 +11144,38 @@ define .h4 {
   digmsg - h l
   ec 3:$^0: $^*
 }
+define hd1 { # TODO no here document expansion yet +hhd[234]
+  Ciao!
+	!r - _EOT
+$sign
+_EOT
+ech 1
+	!:ec 1
+}
+define hd2 {
+  Ciao!
+	!r - -_EOT
+				$sign
+				_EOT
+				ech 2
+	!:ec 2
+}
+define hd3 {
+  Ciao!
+	!r - '_EOT'
+$sign
+_EOT
+ech 3
+	!:ec 3
+}
+define hd4 {
+  Ciao!
+	!r - '-_EOT'
+		$sign
+		_EOT
+		ech 4
+	!:ec 4
+}
 se on-compose-embed=h1
 m t1@o
 !ss1
@@ -11139,10 +11200,30 @@ m t4@o
 b4
 !.
 ec $!/$?/$^ERRNAME
+se on-compose-embed=hd1
+m h1@o
+!sh1
+!.
+ec $!/$?/$^ERRNAME
+se on-compose-embed=hd2
+m h2@o
+!sh2
+!.
+ec $!/$?/$^ERRNAME
+se on-compose-embed=hd3
+m h3@o
+!sh3
+!.
+ec $!/$?/$^ERRNAME
+se on-compose-embed=hd4
+m h4@o
+!sh4
+!.
+ec $!/$?/$^ERRNAME
 __EOT
 	#}}}
-	cke0 sig 0 ./tsig '2082310561 510'
-	ck sig-out - ./tsig.out '4217399061 218'
+	cke0 sig 0 ./tsig '4084945788 1022'
+	ck sig-out - ./tsig.out '1600160517 286'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://teasy -Sescape=! > ./teasy.out 2>${E0}
