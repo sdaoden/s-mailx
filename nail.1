@@ -9004,6 +9004,10 @@ is a required argument in non-interactive mode.
 A single-quoted delimiter will avoid
 .Sx "Shell-style expansions"
 of data read (\*(ID no expansion yet regardless).
+If the delimiter starts with hyphen-minus
+.Ql -
+any leading tabs of data read until and including the delimiter itself
+is discarded: like this natural indentation in source files is possible.
 .
 .Mx
 .It Ic ~s Ar string

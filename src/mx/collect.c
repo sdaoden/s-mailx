@@ -245,6 +245,8 @@ jleave:
 
 static s32
 a_coll_include_file(char const *name, boole indent, boole writestat){
+	enum{a_NONE = su_ERR_NONE, a_HERE = 1<<0, a_HERE_QUOTE = 1<<1, a_HERE_TAB = 1<<2};
+
 	FILE *fbuf;
 	char const *heredb, *indb;
 	uz linesize, heredl, indl, cnt, linelen;
@@ -253,7 +255,7 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
 	s32 rv;
 	NYD_IN;
 
-	rv = su_ERR_NONE;
+	rv = a_NONE;
 	lc = cc = 0;
 	mx_fs_linepool_aquire(&linebuf, &linesize);
 	heredb = NIL;
@@ -264,39 +266,54 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
 	if(name == R(char*,-1)){
 		fbuf = n_stdin;
 		name = n_hy;
-	}else if(name[0] == '-' && (name[1] == '\0' || su_cs_is_space(name[1]))){
-		fbuf = n_stdin;
+	}
+	/* Otherwise hyphen-minus specials not from command line -q */
+	else if(UNLIKELY(writestat && name[0] == '-' && (name[1] == '\0' || su_cs_is_space(name[1])))){
+		fbuf = NIL;
+
 		if(name[1] == '\0'){
 			if(!(n_psonce & n_PSO_INTERACTIVE)){
-				n_err(_("~< -: HERE-delimiter required in non-interactive mode\n"));
+				n_err(_("~< -: HERE-delimiter is required in non-interactive mode\n"));
 				rv = su_ERR_INVAL;
 				goto jleave;
 			}
 		}else{
+			rv = a_HERE;
+
 			for(heredb = &name[2]; *heredb != '\0' && su_cs_is_space(*heredb); ++heredb){
 			}
+
 			if((heredl = su_cs_len(heredb)) == 0){
-jdelim_empty:
-				n_err(_("~< - HERE-delimiter: delimiter must not be empty\n"));
+jhere_err:
+				n_err(_("~< - HERE-delimiter: delimiter: empty (less -), or contains whitespace\n"));
 				rv = su_ERR_INVAL;
 				goto jleave;
 			}
 
 			if(*heredb == '\''){
-				for(indb = ++heredb; *indb != '\0' && *indb != '\''; ++indb){
-				}
-				if(*indb == '\0'){
-					n_err(_("~< - HERE-delimiter: missing trailing quote\n"));
-					rv = su_ERR_INVAL;
-					goto jleave;
-				}else if(indb[1] != '\0'){
-					n_err(_("~< - HERE-delimiter: trailing characters after quote\n"));
+				rv |= a_HERE_QUOTE;
+
+				for(indb = ++heredb; *indb != '\0' && *indb != '\''; ++indb)
+					if(su_cs_is_space(*indb))
+						goto jhere_err;
+
+				if(*indb == '\0' || indb[1] != '\0'){
+					n_err(_("~< - HERE-delimiter: no trailing quote, or trailing garbage\n"));
 					rv = su_ERR_INVAL;
 					goto jleave;
 				}
 				if((heredl = P2UZ(indb - heredb)) == 0)
-					goto jdelim_empty;
+					goto jhere_err;
 				heredb = savestrbuf(heredb, heredl);
+			}else for(indb = heredb; *indb != '\0'; ++indb)
+				if(su_cs_is_space(*indb))
+					goto jhere_err;
+
+			if(*heredb == '-'){
+				rv |= a_HERE_TAB;
+				if(--heredl == 0)
+					goto jhere_err;
+				++heredb;
 			}
 		}
 		name = n_hy;
@@ -307,12 +324,42 @@ jdelim_empty:
 
 	indl = indent ? su_cs_len(indb = ok_vlook(indentprefix)) : 0;
 
-	if(fbuf != n_stdin)
+	if(fbuf != NIL && fbuf != n_stdin)
 		cnt = fsize(fbuf);
-	while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NIL : &cnt), &linelen, fbuf, FAL0) != NIL){
-		if(heredl > 0 && heredl == linelen - 1 && !su_mem_cmp(heredb, linebuf, heredl)){
-			heredb = NIL;
-			break;
+	for(;;){
+		char *lb;
+		uz ll;
+
+		if(fbuf != NIL){
+			if(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NIL : &cnt), &linelen, fbuf, FAL0) == NIL)
+				break;
+		}else{
+			int i;
+
+			i = mx_go_input((mx_GO_INPUT_CTX_COMPOSE /*| mx_GO_INPUT_FORCE_STDIN*/),
+					su_empty, &linebuf, &linesize, NIL, NIL);
+			if(i < 0) /* TODO ERROR! */
+				break;
+			linebuf[i] = '\n';
+			linelen = S(uz,++i);
+		}
+
+		ll = linelen;
+		lb = linebuf;
+
+		if(UNLIKELY((rv & a_HERE) && ll > 0)){
+			if(rv & a_HERE_TAB){
+				while(*lb == '\t'){
+					if(--ll == 0)
+						break;
+					++lb;
+				}
+			}
+			/* TODO a_HERE_QUOTE not supported (ie ONLY it is) */
+			if(ll > 0 && heredl == ll - 1 && !su_mem_cmp(heredb, lb, heredl)){
+				heredb = NIL;
+				break;
+			}
 		}
 
 		if(indl > 0){
@@ -321,13 +368,18 @@ jdelim_empty:
 			cc += indl;
 		}
 
-		if(fwrite(linebuf, sizeof *linebuf, linelen, a_coll->cc_fp) != linelen)
-			goto jerrno;
+		/* Last line without LF? */
+		if(ll == 0)
+			continue;
 
-		cc += linelen;
+		if(fwrite(lb, sizeof *lb, ll, a_coll->cc_fp) != ll)
+			goto jerrno;
+		cc += ll;
 		++lc;
 	}
-	if(ferror(fbuf)){
+	if(fbuf == NIL){
+		/* xxx no error indicator for mx_go_input() */
+	}else if(ferror(fbuf)){
 		rv = su_ERR_IO;
 		goto jleave;
 	}
@@ -338,21 +390,20 @@ jerrno:
 		goto jleave;
 	}
 
-	if(heredb != NIL)
-		rv = su_ERR_NOTOBACCO;
+	rv = (heredb == NIL) ? su_ERR_NONE : su_ERR_NOTOBACCO;
 jleave:
 	mx_fs_linepool_release(linebuf, linesize);
 
-	if(fbuf != NIL){
-		if(fbuf != n_stdin)
-			mx_fs_close(fbuf);
-		else if(heredl > 0)
-			clearerr(n_stdin);
-	}
+	if(fbuf == NIL)
+		mx_go_input_clearerr();
+	else if(fbuf != n_stdin)
+		mx_fs_close(fbuf);
+	else
+		clearerr(n_stdin);
 
 	if(writestat)
 		fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
-			n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : su_empty), lc, cc);
+			n_shexp_quote_cp(name, FAL0), (rv != su_ERR_NONE ? " " n_ERROR : su_empty), lc, cc);
 
 	NYD_OU;
 	return rv;
@@ -1967,7 +2018,7 @@ jearg:
 							break;
 						}
 						goto jhistcont;
-					}else if(c != '<' && *cp == '-' && (cp[1] == '\0' || su_cs_is_space(cp[1]))){
+					}else if(*cp == '-' && (cp[1] == '\0' || su_cs_is_space(cp[1]))){
 						/* xxx ugly special treatment for HERE-delimiter stuff */
 					}else{
 						struct n_string s2, *s2p = &s2;
