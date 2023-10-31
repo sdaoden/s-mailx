@@ -337,6 +337,8 @@ enum n_shexp_parse_flags{
    /* Skip anything "dangerous" or environment changing, like command
     * substitation or arithmetic expansions */
    n_SHEXP_PARSE_IGN_SUBST_ACTIVE = n_SHEXP_PARSE_IGN_SUBST_ARITH,
+   /* Ignore mx_scope: create a temporary environment for all changes! */
+   n_SHEXP_PARSE_SCOPE_CAPSULE = 1u<<14, /* TODO NOT IMPLEMENTED YET! SEARCH! */
 
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the

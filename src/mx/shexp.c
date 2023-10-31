@@ -1208,6 +1208,11 @@ n_shexp_parse_token(BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
 	if(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)
 		flags |= n_SHEXP_PARSE_QUOTE_AUTO_CLOSE;
 
+	if(flags & n_SHEXP_PARSE_SCOPE_CAPSULE){ /* TODO: NOT IMPLEMENTED! */
+		scope = mx_SCOPE_LOCAL;
+		/* create temporary environment */
+	}
+
 	if((flags & n_SHEXP_PARSE_TRUNC) && store != NIL)
 		store = n_string_trunc(store, 0);
 
@@ -1996,6 +2001,10 @@ jleave:
 jleave_quick:
 	ASSERT((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
 	ASSERT((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
+
+	if(flags & n_SHEXP_PARSE_SCOPE_CAPSULE){ /* TODO: NOT IMPLEMENTED! */
+		/* destroy temporary environment */
+	}
 
 	NYD2_OU;
 	return rv;
