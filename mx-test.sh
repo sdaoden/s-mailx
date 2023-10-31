@@ -10516,6 +10516,22 @@ _EOT
 			l3
 _EOT
 !:ec 23.4:$?/$^ERRNAME
+!:# TODO 23.[56]: n_SHEXP_PARSE_SCOPE_CAPSULE not yet honoured
+!:se i=11; vpospar set d o h
+23.5: ~< - -_EOT NUTS
+!< - -_EOT
+	l1
+		"$i" i	am  "ya" '$i'  no  '$((i = i + 1 + 1))', or "$@",  or $@, or $'a\tb'
+			l3
+_EOT
+!:ec 23.5:$?/$^ERRNAME
+23.6: ~R - -_EOT NUTS
+!R - -_EOT
+	l1
+		"$i" i	am  "ya" '$i'  no  '$((i = i + 1 + 1))', or "$@",  or $@, or $'a\tb'
+			l3
+_EOT
+!:ec 23.6:$?/$^ERRNAME
 24: ~s this new subject
 !s 24 did new ~s ubject
 !:ec 24:$?/$^ERRNAME
@@ -10576,8 +10592,8 @@ and i ~w rite this out to ./t3
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '1956008563 8221' '3575876476 49'
-	ck 3-nohtml - ./t3 '3451667501 4548'
+	ck 2-nohtml - ./t2-nohtml '562812187 8461' '3575876476 49'
+	ck 3-nohtml - ./t3 '1553884295 4748'
 
 	if have_feat filter-html-tagsoup; then
 		> ./t3
@@ -10585,8 +10601,8 @@ and i ~w rite this out to ./t3
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '2965430993 8161' '3575876476 49'
-		ck 3-html - ./t3 '3451667501 4548'
+		ck 2-html - ./t2-html '2830642515 8401' '3575876476 49'
+		ck 3-html - ./t3 '1553884295 4748'
 	else
 		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
 	fi
@@ -11222,8 +11238,8 @@ m h4@o
 ec $!/$?/$^ERRNAME
 __EOT
 	#}}}
-	cke0 sig 0 ./tsig '4084945788 1022'
-	ck sig-out - ./tsig.out '1600160517 286'
+	cke0 sig 0 ./tsig '1696504352 1030'
+	ck sig-out - ./tsig.out '1548089240 288'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://teasy -Sescape=! > ./teasy.out 2>${E0}

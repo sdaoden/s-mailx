@@ -247,6 +247,8 @@ static s32
 a_coll_include_file(char const *name, boole indent, boole writestat){
 	enum{a_NONE = su_ERR_NONE, a_HERE = 1<<0, a_HERE_QUOTE = 1<<1, a_HERE_TAB = 1<<2};
 
+	struct str si;
+	struct n_string so_b, *sop;
 	FILE *fbuf;
 	char const *heredb, *indb;
 	uz linesize, heredl, indl, cnt, linelen;
@@ -261,6 +263,7 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
 	heredb = NIL;
 	heredl = 0;
 	UNINIT(indb, NIL);
+	UNINIT(sop, NIL);
 
 	/* -q with standard input is special */
 	if(name == R(char*,-1)){
@@ -305,9 +308,14 @@ jhere_err:
 				if((heredl = P2UZ(indb - heredb)) == 0)
 					goto jhere_err;
 				heredb = savestrbuf(heredb, heredl);
-			}else for(indb = heredb; *indb != '\0'; ++indb)
-				if(su_cs_is_space(*indb))
-					goto jhere_err;
+			}else{
+				for(indb = heredb; *indb != '\0'; ++indb)
+					if(su_cs_is_space(*indb))
+						goto jhere_err;
+
+				sop = n_string_creat_auto(&so_b);
+				sop = n_string_reserve(sop, 121);
+			}
 
 			if(*heredb == '-'){
 				rv |= a_HERE_TAB;
@@ -355,6 +363,32 @@ jhere_err:
 					++lb;
 				}
 			}
+
+			if(ll > 0 && !(rv & a_HERE_QUOTE)){
+				BITENUM(u32,n_shexp_state) shs;
+				void const *cookie;
+
+				si.s = lb;
+				si.l = ll;
+				sop = n_string_trunc(sop, 0);
+				cookie = NIL;
+
+				for(;;){
+					shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_IGN_EMPTY |
+								n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_SCOPE_CAPSULE |
+								n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+								n_SHEXP_PARSE_QUOTE_AUTO_DQ),
+							mx_SCOPE_LOCAL, sop, &si, &cookie);
+					if(shs & n_SHEXP_STATE_STOP)
+						break;
+					if(shs & n_SHEXP_STATE_OUTPUT)
+						sop = n_string_push_c(sop, ' ');
+				}
+
+				lb = sop->s_dat;
+				ll = sop->s_len;
+			}
+
 			/* TODO a_HERE_QUOTE not supported (ie ONLY it is) */
 			if(ll > 0 && heredl == ll - 1 && !su_mem_cmp(heredb, lb, heredl)){
 				heredb = NIL;
