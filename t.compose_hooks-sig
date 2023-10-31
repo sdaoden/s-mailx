@@ -44,7 +44,8 @@ To: h1@o
 Subject: h1
 
 Ciao!
-$sign
+
+--Silver
 ech 1
 
 From reproducible_build Wed Oct  2 01:50:07 1996
@@ -53,7 +54,8 @@ To: h2@o
 Subject: h2
 
 Ciao!
-$sign
+
+--Silver
 ech 2
 
 From reproducible_build Wed Oct  2 01:50:07 1996

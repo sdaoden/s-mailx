@@ -188,6 +188,14 @@ l3
 l1
 $i
 l3
+23.5: ~< - -_EOT NUTS
+l1
+"11" i	am  "ya" '11'  no  '13', or "d o h",  or d o h, or $'a\tb'
+l3
+23.6: ~R - -_EOT NUTS
+ |l1
+ |"13" i	am  "ya" '13'  no  '15', or "d o h",  or d o h, or $'a\tb'
+ |l3
 24: ~s this new subject
 26.1: ~U
 -------- Original Message --------
@@ -351,6 +359,10 @@ Interpolating: 5
 23.3:0/NONE
 - 3/9
 23.4:0/NONE
+- 3/72
+23.5:0/NONE
+- 3/78
+23.6:0/NONE
 24:0/NONE
 25:0/NONE
 Interpolating: 2
@@ -361,7 +373,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./t3 190/4554
+./t3 198/4748
 i ~w:0/NONE bang-data<>
 shell command output
 shell:0/NONE bang-data<echo shell command output>
