@@ -28,3 +28,49 @@ _/\_
 _/\_--
 _/\_mysig
 
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: t4@o
+Subject: s4
+
+b4
+Ciao!
+
+--Silver
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: h1@o
+Subject: h1
+
+Ciao!
+$sign
+ech 1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: h2@o
+Subject: h2
+
+Ciao!
+$sign
+ech 2
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: h3@o
+Subject: h3
+
+Ciao!
+$sign
+ech 3
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: h4@o
+Subject: h4
+
+Ciao!
+$sign
+ech 4
+

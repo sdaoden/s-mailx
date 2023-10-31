@@ -172,6 +172,22 @@ unset fullnames, quote stuff
  |included file
 23: ~r ./t.txt
 included file
+23.1: ~r - _EOT
+l1
+x y z
+l3
+23.2: ~r - '_EOT'
+l1
+$i
+l3
+23.3: ~r - -_EOT
+l1
+x y z
+l3
+23.4: ~r - '-_EOT'
+l1
+$i
+l3
 24: ~s this new subject
 26.1: ~U
 -------- Original Message --------
@@ -327,6 +343,14 @@ Interpolating: 5
 22:0/NONE
 ./t.txt 1/14
 23:0/NONE
+- 3/12
+23.1:0/NONE
+- 3/9
+23.2:0/NONE
+- 3/12
+23.3:0/NONE
+- 3/9
+23.4:0/NONE
 24:0/NONE
 25:0/NONE
 Interpolating: 2
@@ -337,7 +361,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./t3 174/4442
+./t3 190/4554
 i ~w:0/NONE bang-data<>
 shell command output
 shell:0/NONE bang-data<echo shell command output>

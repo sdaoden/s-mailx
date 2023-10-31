@@ -4,3 +4,20 @@
 0/0/NONE
 ./tsig.in 3/22
 0/0/NONE
+1:210: Subject To Mailx-Raw-To Mailx-Command
+2:210 'Subject To Mailx-Raw-To Mailx-Command'
+
+3:210: Subject To Mailx-Raw-To Mailx-Command
+0/0/NONE
+- 1/6
+1
+0/0/NONE
+- 1/6
+2
+0/0/NONE
+- 1/6
+3
+0/0/NONE
+- 1/6
+4
+0/0/NONE

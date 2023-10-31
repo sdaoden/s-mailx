@@ -158,6 +158,22 @@ unset fullnames, quote stuff
  |included file
 23: ~r ./t.txt
 included file
+23.1: ~r - _EOT
+l1
+x y z
+l3
+23.2: ~r - '_EOT'
+l1
+$i
+l3
+23.3: ~r - -_EOT
+l1
+x y z
+l3
+23.4: ~r - '-_EOT'
+l1
+$i
+l3
 24: ~s this new subject
 26.1: ~U
 -------- Original Message --------
