@@ -10367,8 +10367,6 @@ __EOT
 } #}}}
 
 t_cmd_escapes() { #{{{
-	# quote and cmd escapes because this (since Mail times) is worked in the
-	# big collect() monster of functions
 	t_prolog "${@}"
 
 	echo 'included file' > ./t.txt
@@ -10380,7 +10378,7 @@ t_cmd_escapes() { #{{{
 
 	# ~@ is tested with other attachment stuff, ~^ in compose_edits,digmsg,compose_hooks
 	#{{{
-	${cat} <<- '__EOT' > ./t2.in
+	${cat} << '__EOT' > ./t2.in
 set Sign=SignVar sign=signvar DEAD=./t.txt
 set forward-inject-head quote-inject-head
 headerpick type retain Subject
@@ -10584,15 +10582,22 @@ and i ~w rite this out to ./t3
 56:u
 !u 6
 !:ec 56 was u:$?/$^ERRNAME
+Line \
+	escaping \
+	 	  	   works
+!: ec 100 \
+	Line \
+	  	  escaping \
+works
 !.
-	__EOT
+__EOT
 	#}}}
 
 	< t2.in ${MAILX} ${ARGS} -Rf -Sescape=! -Sindentprefix=' |' \
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '562812187 8461' '3575876476 49'
+	ck 2-nohtml - ./t2-nohtml '134380868 8505' '3575876476 49'
 	ck 3-nohtml - ./t3 '1553884295 4748'
 
 	if have_feat filter-html-tagsoup; then
@@ -10601,7 +10606,7 @@ and i ~w rite this out to ./t3
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '2830642515 8401' '3575876476 49'
+		ck 2-html - ./t2-html '2021040974 8445' '3575876476 49'
 		ck 3-html - ./t3 '1553884295 4748'
 	else
 		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
