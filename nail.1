@@ -3264,14 +3264,14 @@ and
 .Sh COMMANDS
 .
 .\" intro {{{
-In normal input mode (when not in
+In normal input mode (not
 .Sx "Compose mode" )
 input is read in lines.
 An unquoted reverse solidus
 .Ql \e
 at the end of a line
 .Dq escapes
-the newline character: it is discarded and the next line of input is
+the newline character: it is discarded, and the next line of input is
 used as a follow-up line, with all leading whitespace removed.
 Once a line is completed, the whitespace characters
 .Cm space , tabulator , newline
@@ -8203,15 +8203,24 @@ ged message.
 .\" .Sh COMMAND ESCAPES {{{
 .Sh "COMMAND ESCAPES"
 .
-.Sx "Compose mode"
-command escapes offer attachment management, header editing, invocation of
-.Sx COMMANDS ,
-and more.
-Available when interactive, requested via
-.Fl ~ ,
-or in batch mode
+In interactive
+.Sx "Compose mode" ,
+within
+.Va on-compose-embed ,
+or when requested via
+.Fl ~
+or batch mode
 .Pf ( Fl # )
-they are only recognized in the leftmost column and consist of an
+command escapes offer attachment management, header editing,
+.Sx COMMANDS
+access and more.
+Whenever supported, an unquoted reverse solidus
+.Ql \e
+at the end of any input line
+.Dq escapes
+the newline character: it is discarded, and the next line of input is
+used as a follow-up line, with all leading whitespace removed.
+Escapes are only recognized in the leftmost column, and consist of the
 .Va escape
 character (default tilde
 .Ql ~ ) ,
@@ -8221,10 +8230,10 @@ and a command character.
 Interspersed whitespace is ignored.
 To write an
 .Va escape
-character in the leftmost column, double it.
+in the leftmost column, double it.
 Addition to the \*(oPal
 .Ic history
-is prevented by placing any number of whitespace after
+is avoided by whitespace after
 .Va escape .
 The \*(oPal key
 .Ic bind Ns
@@ -11385,14 +11394,14 @@ hook that is invoked once the
 .Sx "Compose mode"
 user interaction has ended (but see
 .Va asksend ) .
-It can act like an interactive user, and for example use
+It runs in
 .Sx "COMMAND ESCAPES"
-or
-.Ic digmsg :
+mode and can act like an interactive user.
 .
 .Bd -literal -offset indent
 # Create a signature
 set on-compose-embed=ocm
+
 define ocm {
   ~< ~/.mysig
 }
