@@ -292,6 +292,7 @@ ex6@am.ple wrote:
 56:u
 -------- Original Message --------
 Body
+Line escaping works
 
 1
 2 only echoed via colon
@@ -397,3 +398,4 @@ Interpolating: 6
 55 was U:0/NONE
 Interpolating: 6
 56 was u:0/NONE
+100 Line escaping works
