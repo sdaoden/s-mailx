@@ -5595,17 +5595,17 @@ __EOT
    :
 __EOT
 	<< '__EOT' 6< ./tifsin ${MAILX} ${ARGS} -X 'readctl create 6' > ./tifs 2>${E0}
-commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
-set ifs=:
+commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+se ifs=:
 read a b c;x
 read a b c;x
 read a b c;x
 read a b c;x
 read a b c;x
 read a b c;x
-unset a b c;read a b c;x
+uns a b c;read a b c;x
 read a b c;x
-readctl remove 6;echo readctl remove:$?/$^ERRNAME
+readctl r 6;ec readctl remove:$?/$^ERRNAME
 __EOT
 	#}}}
 	cke0 ifs 0 ./tifs '890153490 298'
@@ -5615,32 +5615,48 @@ __EOT
 		echo 'hey1.0,:'"'"'you    ",:world!:mars.	'
 		echo 'hey2.0,:'"'"'you    ",:world!:mars.:	'
 		echo 'hey3.0,:'"'"'you    ",:world!:mars.::	'
-		echo 'hey1.0,:'"'"'you    ",:world!:mars.	'
-		echo 'hey2.0,:'"'"'you    ",:world!:mars.:	'
-		echo 'hey3.0,:'"'"'you    ",:world!:mars.::	'
 	} > ./tifsin-2
 	</dev/null ${MAILX} ${ARGS} -X '
 commandalias r read
-commandalias x echo \$?/\$^ERRNAME
-commandalias y x <\$a><\$b><\$c><\$d><\$e>
+commandalias y ec <\$a><\$b><\$c><\$d><\$e>
 define x {
 	local set v=$*
-	readctl creat ./tifsin-2;x
-	set ifs=":	";eval r $v;unset ifs;y
-	set ifs=":	";eval r $v;unset ifs;y
-	set ifs=":	";eval r $v;unset ifs;y
-	set ifs=:;eval r $v;unset ifs;y
-	set ifs=:;eval r $v;unset ifs;y
-	set ifs=:;eval r $v;unset ifs;y
-	readctl remo ./tifsin-2;x
+	readctl c ./tifsin-2
+	se ifs=":	";eval r $v;uns ifs;y
+	se ifs=":	";eval r $v;uns ifs;y
+	se ifs=":	";eval r $v;uns ifs;y
+	readctl r ./tifsin-2; readctl c ./tifsin-2
+	set ifs=:;eval r $v;uns ifs;y
+	set ifs=:;eval r $v;uns ifs;y
+	set ifs=:;eval r $v;uns ifs;y
+	readctl r ./tifsin-2; ec
 }
+call x a
+call x a b
 call x a b c
 call x a b c d
 call x a b c d e
 ' \
 	> ./tifs-2 2>${E0}
 	#}}}
-	cke0 ifs-2 0 ./tifs-2 '3840749226 897'
+	cke0 ifs-2 0 ./tifs-2 '730636002 1250'
+
+	#{{{
+	${cat} << '__EOT' > ./tifs-3-in
+		   #212		 $SHELL du		
+		   212		 #$SHELL du		
+		   212		 $SHELL #du		
+
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./tifs-3-in' > ./tifs-3 2>${E0}
+commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+read a;x
+read a b;x
+read a b c;x
+readctl r ./tifs-3-in;ec readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
+	cke0 ifs-3 0 ./tifs-3 '316016421 114'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./treadall 2>${E0}
@@ -5730,6 +5746,27 @@ call x2 readall;echo "G<$ourvar>"
 	#}}}
 	cke0 our 0 ./tour '4284478842 287'
 
+	#{{{
+	${cat} << '__EOT' > ./tresult-set-in
+one
+1 2
+1 2 '3 3.5'
+
+1 2 '3 3.5' 4
+1 2 '3 3.5' 4 5
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./tresult-set-in' > ./tresult-set 2>${E0}
+commandalias x ec '$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^3<$^3> ^*<$^*>'
+define t {
+	read ^;local se x=$? y=$^ERRNAME;x
+	if $x -ge 0; xcall t; en
+}
+call t
+readctl r ./tresult-set-in;ec readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
+	cke0 result-set 0 ./tresult-set '3320907390 324'
+
 	t_epilog "${@}"
 } #}}}
 
@@ -5743,17 +5780,34 @@ t_readsh() { #{{{
    from@exam.ple ' diet spliced <from@exam.ple>   ''a'  
    from@exam.ple' diet spliced <from@exam.ple>   ''a'  
 __EOT
-	<< '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
-commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./t1in' > ./t1 2>${E0}
+commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
 readsh a b c;x
 readsh a b c;x
 readsh a b c;x
 readsh a b c;x
-unset a b c;read a b c;x
-readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
+uns a b c;read a b c;x
+readctl r ./t1in;echo readctl remove:$?/$^ERRNAME
 __EOT
 	#}}}
 	cke0 1 0 ./t1 '2955084684 291'
+
+	#{{{
+	${cat} << '__EOT' > ./t2in
+		   #212'	'	 $SHELL du		
+		   212		 #$SHELL du		
+		   212	'	 '$SHELL #du		
+
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./t2in' > ./t2 2>${E0}
+commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+readsh a;x
+readsh a b;x
+readsh a b c;x
+readctl r ./t2in;ec readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
+	cke0 2 0 ./t2 '780130043 115'
 
 	#{{{
 	{
@@ -5761,26 +5815,26 @@ __EOT
 		echo kadabra
 	} > ./tlocalin
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x echo \$?/\$^ERRNAME
+commandalias x ec \$?/\$^ERRNAME
 define x {
-	readctl creat ./tlocalin;x
-	local readsh locvar;x;echo "L<$locvar>"
-	readctl remo ./tlocalin;x
+	readctl c ./tlocalin;x
+	local readsh locvar;x;ec "L<$locvar>"
+	readctl r ./tlocalin;x
 }
 define x2 {
 	echo ==$locvar
-	readctl creat ./tlocalin;x
-	local readsh locvar;x;echo "L<$locvar>"
+	readctl c ./tlocalin;x
+	local readsh locvar;x;ec "L<$locvar>"
 	xcall y2
 }
 define y2 {
 	echo ===$locvar
-	local readsh locvar;x;echo "L<$locvar>"
-	readctl remo ./tlocalin;x
+	local readsh locvar;x;ec "L<$locvar>"
+	readctl r ./tlocalin;x
 }
 set locvar=run
-call x;echo "G<$locvar>"
-call x2;echo "G<$locvar>"
+call x;ec "G<$locvar>"
+call x2;ec "G<$locvar>"
 ' \
 	> ./tlocal 2>${E0}
 	#}}}
@@ -5816,6 +5870,27 @@ call x2;echo "G<$ourvar>"
 	> ./tour 2>${E0}
 	#}}}
 	cke0 our 0 ./tour '4070904975 104'
+
+	#{{{
+	${cat} << '__EOT' > ./tresult-set-in
+one
+1 2
+1 2 '3 3.5'
+
+1 2 '3 3.5' 4
+1 2 '3 3.5' 4 5
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./tresult-set-in' > ./tresult-set 2>${E0}
+commandalias x ec '$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^3<$^3> ^*<$^*>'
+define t {
+	readsh ^;local se x=$? y=$^ERRNAME;x
+	if $x -ge 0; xcall t; en
+}
+call t
+readctl r ./tresult-set-in;ec readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
+	cke0 result-set 0 ./tresult-set '3887266309 327'
 
 	t_epilog "${@}"
 } #}}}

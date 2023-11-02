@@ -223,7 +223,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(pipe, 1, a_cmd_cad_pipe){
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 mx_CMD_ARG_DESC_SUBCLASS_DEF(read, 1, a_cmd_cad_read){
-	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
@@ -241,7 +241,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_cmd_cad_readctl){
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 mx_CMD_ARG_DESC_SUBCLASS_DEF(readsh, 1, a_cmd_cad_readsh){
-	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
@@ -772,13 +772,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 {"reply", &c_reply, (A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_reply),
 	 N_("(r) Reply to originator and recipients of <msglist>")},
 	{"read", &c_read, (HG | L | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_read),
-	 N_("Read a line into <variable>(s), split at $ifs")},
+	 N_("Read a line into [<variable>(s)] or the result set, split at $ifs")},
 	{"readall", &c_readall, (HG | L | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_readall),
 	 N_("Read anything from standard input until EOF into <variable>")},
 	{"readctl", &c_readctl, (M | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_readctl),
 	 N_("[<show>] or <create|set|remove> <spec> read channels")},
 	{"readsh", &c_readsh, (HG | L | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_readsh),
-	 N_("Read a line input into <variable>(s), split at shell tokens")},
+	 N_("Parse a line as shell tokens (quote removal) into [<variable>(s)] or the result set")},
 	{"remove", &c_remove, (M | SC | TWYSH), 1, MAC, NIL,
 	 N_("Remove the named `folder's")},
 	{"rename", &c_rename, (M | SC | TWYSH), 2, 2, NIL,

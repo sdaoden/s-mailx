@@ -254,7 +254,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 			cpp[i++] = UNCONST(char*,(x->dmsl_len > 0) ? x->dmsl_dat : su_empty);
 		cpp[i] = NIL;
 
-		if(mx_var_caret_array_set(NIL, cps, i, NIL, cpp) != su_ERR_NONE)
+		if(mx_var_result_set_set(NIL, cps, i, NIL, cpp) != su_ERR_NONE)
 			dmslp = NIL;
 	}else{
 		struct str s_b;

@@ -277,7 +277,7 @@ jglob_next:
 			goto su_NYD_OU_LABEL;
 		}
 
-		if(mx_var_caret_array_set(NIL, arg0, i_all, NIL, C(char const*const*,cpp_all)) == su_ERR_NONE)
+		if(mx_var_result_set_set(NIL, arg0, i_all, NIL, C(char const*const*,cpp_all)) == su_ERR_NONE)
 			fcp->fc_varres = su_ienc_uz(fcp->fc_iencbuf, i_all, 10);
 		else{
 jglob_eover:
