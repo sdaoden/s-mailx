@@ -50,6 +50,7 @@
 #include "mx/cmd-shortcut.h"
 #include "mx/compat.h"
 #include "mx/dig-msg.h"
+#include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/net-pop3.h"
@@ -569,13 +570,13 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       fm |= FEDIT_RDONLY;
 
    /* C99 */{
-      enum fexp_mode fexpm;
+      enum mx_fexp_mode fexpm;
 
       if((who = mx_shortcut_expand(name)) != NIL){
-         fexpm = FEXP_NVAR;
+         fexpm = mx_FEXP_NVAR;
          name = who;
       }else
-         fexpm = FEXP_SHORTCUT | FEXP_NSHELL;
+         fexpm = mx_FEXP_SHORTCUT | mx_FEXP_NSHELL;
 
       if(name[0] == '%'){
          char const *cp;
@@ -606,7 +607,7 @@ jlogname:
             fm |= FEDIT_SYSBOX;
       }
 
-      if((name = fexpand(name, fexpm)) == NIL)
+      if((name = mx_fexpand(name, fexpm)) == NIL)
          goto jem1;
    }
 
@@ -1214,9 +1215,9 @@ n_folder_query(void){
       /* Expand the *folder*; skip %: prefix for simplicity of use */
       if(cp[0] == '%' && cp[1] == ':')
          cp += 2;
-      if((err = (cp = fexpand(cp,
-               (FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL | FEXP_NGLOB))
-               ) == NIL) /*|| *cp == '\0'*/)
+      cp = mx_fexpand(cp, (mx_FEXP_NSPECIAL | mx_FEXP_NFOLDER | mx_FEXP_NSHELL |
+            mx_FEXP_NGLOB));
+      if((err = ((cp == NIL) /*|| *cp == '\0'*/)))
          goto jset;
       else{
          uz i;

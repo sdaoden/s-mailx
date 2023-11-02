@@ -81,6 +81,7 @@ su_EMPTY_FILE()
 
 #include "mx/compat.h"
 #include "mx/cred-auth.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/net-socket.h"
@@ -528,7 +529,7 @@ a_xtls_rand_init(void){
          (cp = ok_vlook(ssl_rand_file)) != NIL){
       x = NIL;
       if(*cp != '\0'){
-         if((x = fexpand(cp, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
+         if((x = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
             n_err(_("*tls-rand-file*: expansion of %s failed "
                   "(using default)\n"),
                n_shexp_quote_cp(cp, FAL0));
@@ -623,7 +624,7 @@ a_xtls_init(void){
          msg = "[default]";
          cp = NULL;
          flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
-      }else if((msg = cp, cp = fexpand(cp, FEXP_DEF_LOCAL_FILE_VAR)) != NIL)
+      }else if((msg = cp, cp = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE_VAR)) != NIL)
          flags = 0;
       else{
          n_err(_("*tls-config-file*: file expansion failed: %s\n"),
@@ -1158,7 +1159,7 @@ a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
    /* Certificate via ssl-cert */
    if((certchain = cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL){
       n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-cert*"));
-      if((cp_base = fexpand(cp, FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
+      if((cp_base = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
          n_err(_("*ssl-cert* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jleave;
@@ -1185,7 +1186,7 @@ a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
    /* PrivateKey via ssl-key */
    if((cp = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL){
       n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-key*"));
-      if((cp_base = fexpand(cp, FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
+      if((cp_base = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
          n_err(_("*ssl-key* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jleave;
@@ -1306,7 +1307,7 @@ jenocmd:
 
       /* Filename transformations to be applied? */
       if(f & a_EXPAND_MASK){
-         if((cp = fexpand(val, FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
+         if((cp = mx_fexpand(val, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
             if(pairs == NULL)
                pairs = n_UNCONST(n_empty);
             n_err(_("*tls-config-pairs*: value expansion failed: %s: %s; "
@@ -1355,10 +1356,10 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
 
    if((ca_dir = xok_vlook(tls_ca_dir, urlp, OXM_ALL)) != NULL ||
          (ca_dir = xok_vlook(ssl_ca_dir, urlp, OXM_ALL)) != NULL)
-      ca_dir = fexpand(ca_dir, FEXP_DEF_LOCAL_FILE_VAR);
+      ca_dir = mx_fexpand(ca_dir, mx_FEXP_DEF_LOCAL_FILE_VAR);
    if((ca_file = xok_vlook(tls_ca_file, urlp, OXM_ALL)) != NULL ||
          (ca_file = xok_vlook(ssl_ca_file, urlp, OXM_ALL)) != NULL)
-      ca_file = fexpand(ca_file, FEXP_DEF_LOCAL_FILE_VAR);
+      ca_file = mx_fexpand(ca_file, mx_FEXP_DEF_LOCAL_FILE_VAR);
 
    if(ca_file != NIL && a_xtls_SSL_CTX_load_verify_file(ctxp, ca_file) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
@@ -1763,7 +1764,7 @@ jloop:
    }
 
 jopen:
-   if((cp = fexpand(cp, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
+   if((cp = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
       goto jleave;
    if((fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL)
       n_perr(cp, 0);
@@ -1821,7 +1822,7 @@ a_xtls_smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
 
    for (nfield = savestr(cfiles);
          (cfield = su_cs_sep_c(&nfield, ',', TRU1)) != NULL;) {
-      if((x = fexpand(cfield, FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
+      if((x = mx_fexpand(cfield, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
             (fp = mx_fs_open(cfield = x, mx_FS_O_RDONLY)) == NIL){
          n_perr(cfiles, 0);
          goto jerr;
@@ -1940,7 +1941,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)/*TODO nevertried*/
 jredo_v15:
    if ((crl_file = n_var_oklook(fok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
-      if((crl_file = fexpand(crl_file, FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
+      if((crl_file = mx_fexpand(crl_file, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
             load_crl1(store, crl_file) != OKAY)
          goto jleave;
       any = TRU1;
@@ -1954,7 +1955,7 @@ jredo_v15:
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       char *x;
 
-      if((x = fexpand(crl_dir, FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
+      if((x = mx_fexpand(crl_dir, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
             (dirp = opendir(crl_dir = x)) == NIL){
          n_perr(crl_dir, 0);
          goto jleave;
@@ -2318,9 +2319,9 @@ c_verify(void *vp)
    X509_STORE_set_verify_cb_func(store, &a_xtls_verify_cb);
 
    if((ca_dir = ok_vlook(smime_ca_dir)) != NIL)
-      ca_dir = fexpand(ca_dir, FEXP_DEF_LOCAL_FILE_VAR);
+      ca_dir = mx_fexpand(ca_dir, mx_FEXP_DEF_LOCAL_FILE_VAR);
    if((ca_file = ok_vlook(smime_ca_file)) != NIL)
-      ca_file = fexpand(ca_file, FEXP_DEF_LOCAL_FILE_VAR);
+      ca_file = mx_fexpand(ca_file, mx_FEXP_DEF_LOCAL_FILE_VAR);
 
    if(ca_file != NIL && a_xtls_X509_STORE_load_file(store, ca_file) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
@@ -2533,7 +2534,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    UNINIT(cipher, NIL);
    rv = yp = fp = bp = hp = NULL;
 
-   if((certfile = fexpand(xcertfile, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
+   if((certfile = mx_fexpand(xcertfile, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
       goto jleave;
 
    a_xtls_init();

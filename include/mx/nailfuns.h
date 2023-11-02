@@ -990,24 +990,8 @@ FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
 #endif
 
 /*
- * shexp.c
+ * shexp-*.c
  */
-
-/* Evaluate the string given as a new mailbox name. Supported meta characters:
- * . %  for my system mail box
- * . %user for user's system mail box
- * . #  for previous file
- * . &  invoker's mbox file
- * . +file file in folder directory
- * . any shell meta character (except for FEXP_NSHELL)
- * XXX ->name_expand */
-FL char *fexpand(char const *name, BITENUM(u32,fexp_mode) fexpm);
-
-/* Like fexpand(), but may instead return an array of strings in the
- * auto-reclaimed result storage; might have expanded the first member before
- * fnmatch, but no further: these come directly via fnmatch! */
-FL char **mx_shexp_name_expand_multi(char const *name,
-      BITENUM(u32,fexp_mode) fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
@@ -1043,9 +1027,6 @@ FL char *n_shexp_quote_cp(char const *cp, boole rndtrip);
 /* Can name be used as a variable name (for the process environment)?
  * I.e., this returns false for special parameter names like $# etc. */
 FL boole n_shexp_is_valid_varname(char const *name, boole forenviron);
-
-/* `shcodec' */
-FL int c_shcodec(void *vp);
 
 /*
  * strings.c

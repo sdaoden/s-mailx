@@ -52,6 +52,7 @@ su_EMPTY_FILE()
 #include <su/mem-bag.h>
 
 #include "mx/cmd.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/mime-param.h"
 #include "mx/net-socket.h"
@@ -465,7 +466,7 @@ c_certsave(void *vp){
       char *file, *cp;
 
       file = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
-      if((cp = fexpand(file, FEXP_DEF_LOCAL_FILE)) == NIL || *cp == '\0'){
+      if((cp = mx_fexpand(file, mx_FEXP_DEF_LOCAL_FILE)) == NIL || *cp == '\0'){
          n_err(_("certsave: file expansion failed: %s\n"),
             n_shexp_quote_cp(file, FAL0));
          vp = NULL;
