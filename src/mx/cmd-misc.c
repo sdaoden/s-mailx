@@ -27,6 +27,7 @@
 #include <sys/utsname.h>
 
 #include <su/cs.h>
+#include <su/icodec.h>
 #include <su/mem.h>
 #include <su/sort.h>
 
@@ -154,23 +155,24 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
 static int
 a_cmisc_read(void * volatile vp, boole atifs){
 	struct n_sigman sm;
-	struct str trim;
 	struct n_string s_b, *s;
 	int rv;
+	boole rset;
 	struct mx_cmd_arg *cap;
 	struct mx_cmd_arg_ctx *cacp;
-	char const *ifs, *cp;
 	char *linebuf;
-	uz linesize, i;
+	uz linesize, ncnt;
 	NYD2_IN;
 
 	s = n_string_creat_auto(&s_b);
-	s = n_string_reserve(s, 64 -1);
 	mx_fs_linepool_aquire(&linebuf, &linesize);
-
-	ifs = atifs ? ok_vlook(ifs) : NIL; /* (ifs has default value) */
+	
 	cacp = vp;
 	cap = cacp->cac_arg;
+	rset = (cacp->cac_no == 1 && cap->ca_arg.ca_str.l == 1 && *cap->ca_arg.ca_str.s == '^');
+	if(rset)
+		cap = NIL;
+	ncnt = 0;
 
 	n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
 	case 0:
@@ -185,27 +187,46 @@ a_cmisc_read(void * volatile vp, boole atifs){
 	rv = mx_go_input((((n_pstate & n_PS_COMPOSE_MODE) ? mx_GO_INPUT_CTX_COMPOSE : mx_GO_INPUT_CTX_DEFAULT) |
 			mx_GO_INPUT_FORCE_STDIN | mx_GO_INPUT_NL_ESC | mx_GO_INPUT_PROMPT_NONE/* XXX POSIX: PS2: yes*/),
 			NIL, &linebuf, &linesize, NIL, NIL);
-	if(rv < 0){
-		if(!mx_go_input_is_eof())
-			n_pstate_err_no = su_ERR_BADF;
-		goto jleave;
-	}else if(rv == 0){
-		if(mx_go_input_is_eof()){
+	if(UNLIKELY(rv <= 0)){
+		boole x;
+
+		x = mx_go_input_is_eof();
+
+		if(rv < 0){
+			if(!x)
+				n_pstate_err_no = su_ERR_BADF;
+			goto jleave;
+		}
+		if(x){
 			rv = -1;
 			goto jleave;
 		}
 	}else{
+		struct str trim;
+		struct mx_cmd_arg **npp;
+		char const *ifs;
+
+		ifs = ok_vlook(ifs); /* (ifs has default value) */
+		if(rset)
+			npp = &cap;
+		else
+			s = n_string_reserve(s, 64 -1);
 		trim.s = linebuf;
 		trim.l = rv;
 
-		for(; cap != NIL; cap = cap->ca_next){
+		for(;;){
 			if(trim.l == 0)
 				break;
 
-			if(n_str_trim_ifs(&trim, n_STR_TRIM_BOTH, FAL0)->l == 0)
-				break;
+			s = n_string_trunc(s, 0);
 
 			if(atifs){
+				uz i;
+				char const *cp;
+
+				if(n_str_trim_ifs(&trim, n_STR_TRIM_FRONT, FAL0)->l == 0)
+					break;
+
 				for(cp = trim.s, i = 1;; ++cp, ++i){
 					if(su_cs_find_c(ifs, *cp) != NIL){
 						/* POSIX says for read(1) (with -r):
@@ -215,43 +236,68 @@ a_cmisc_read(void * volatile vp, boole atifs){
 						 *     assignment sequence described above
 						 *   . The delimiter(s) that follow the field corresponding to last var
 						 *   . The remaining fields and their delimiters, with trailing IFS
-						 *   white space ignored */
-						if(cap->ca_next == NIL && trim.l - i != 0)
-							goto jitall;
-						s = n_string_assign_buf(s, trim.s, i - 1);
+						 *     white space ignored */
+						s = n_string_push_buf(s, trim.s, i - 1);
 						trim.s += i;
 						trim.l -= i;
-						break;
-					}
 
-					if(i == trim.l){
+						if(!rset && cap->ca_next == NIL && trim.l > 0){
+							/* If it was _only_ the delimiter, done */
+							n_str_trim_ifs(&trim, n_STR_TRIM_END, FAL0);
+							if(trim.l == 0)
+								break;
+							++trim.l;
+							--trim.s;
+							goto jitall;
+						}
+						break;
+					}else if(i == trim.l){
 jitall:
-						s = n_string_assign_buf(s, trim.s, trim.l);
+						s = n_string_push_buf(s, trim.s, trim.l);
 						trim.l = 0;
 						break;
 					}
 				}
 			}else{
-				s = n_string_trunc(s, 0);
 jsh_redo:
 				if(n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IFS_VAR |
-							n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE),
+							n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
+							n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_IGN_SUBST_ALL),
 						cacp->cac_scope_pp, s, &trim, NIL) & n_SHEXP_STATE_STOP)
 					trim.l = 0;
-				else if(cap->ca_next == NIL)
+				else if(!rset && cap->ca_next == NIL){
+					s = n_string_push_c(s, *ifs);
 					goto jsh_redo;
+				}
 			}
 
-			if(!a_cmisc_read_set(cap->ca_arg.ca_str.s, n_string_cp(s), cacp->cac_scope)){
-				n_pstate_err_no = su_ERR_NOTSUP;
-				rv = -1;
-				break;
+			if(rset){
+				*npp = su_AUTO_TCALLOC(struct mx_cmd_arg, 1);
+				(*npp)->ca_arg.ca_str.s = n_string_cp(s);
+				(*npp)->ca_arg.ca_str.l = s->s_len;
+				npp = &(*npp)->ca_next;
+				s = n_string_creat_auto(s);
+				++ncnt;
+			}else{
+				if(!a_cmisc_read_set(cap->ca_arg.ca_str.s, n_string_cp(s), cacp->cac_scope)){
+					n_pstate_err_no = su_ERR_NOTSUP;
+					rv = -1;
+					break;
+				}
+
+				if((cap = cap->ca_next) == NIL)
+					break;
 			}
 		}
 	}
 
-	/* Set the remains to the empty string */
-	for(; cap != NIL; cap = cap->ca_next)
+	/* Set $^0, or the remains to the empty string */
+	if(rset){
+		s = n_string_resize(s, su_IENC_BUFFER_SIZE);
+		if((n_pstate_err_no = mx_var_result_set_set(NIL, su_ienc_s32(s->s_dat, rv, 10), ncnt, cap, NIL)
+				) != su_ERR_NONE)
+			rv = -1;
+	}else for(; cap != NIL; cap = cap->ca_next)
 		if(!a_cmisc_read_set(cap->ca_arg.ca_str.s, su_empty, cacp->cac_scope)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			rv = -1;

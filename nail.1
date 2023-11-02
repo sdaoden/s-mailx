@@ -5846,11 +5846,11 @@ the descriptor will be closed automatically.
 .Xr glob 7
 expands all arguments; upon success it makes none to many results
 accessible in
-.Cm local Ns
--\:most scope via
-.Va ^# , ^1
-etc, and outputs
-.Va ^# ;
+.Mx -sx
+.Sx "result set"
+accessors
+.Va ^# , ^0 , ^1
+etc;
 .Va ^0
 holds the argument(s as a space-separated string).
 Without
@@ -6314,11 +6314,10 @@ Match groups (in parenthesis, see
 .Xr re_format 7
 or
 .Xr regex 7 ,
-dependent on host system) can be accessed in
-.Cm local Ns
--\:most scope via the
-.Va ^
-multiplexer sub-variables
+dependent on host system) are stored in
+.Mx -sx
+.Sx "result set"
+accessors
 .Va ^# , ^0 , ^1
 etc, for example
 .Ql if knoedel =~? .*(OEDE).*; ec yes, $^1 is in $^0; en .
@@ -6865,9 +6864,18 @@ into to the given variable(s), which must honour
 .Sx "variable name rules"
 .Pf ( Va \&!
 error codes apply).
+Creates a
+.Mx -sx
+.Sx "result set"
+with accessors
+.Va ^# , ^0 , ^1
+etc when used without arguments.
+.Pp
 The exit status
 .Va \&?
-reports the number of bytes read, or
+reports the number of bytes read (duplicated into
+.Va ^0
+with result set), or
 .Ql -1
 on error, with
 .Va \&!
@@ -6876,8 +6884,9 @@ set to
 in case of I/O errors, or
 .Va ^ERR Ns -NONE
 upon End-Of-File (with no more bytes to read).
-With more fields than variables, successive data is assigned to the last;
-with less fields than variables, unused are assigned empty strings.
+Except with result sets, more fields than variables assign successive
+data to the last, and less fields than variables assign empty strings to
+unused ones.
 (Behaves like
 .Ev SHELL Ns
 s
@@ -6892,14 +6901,16 @@ read a b c
 \*(OU   H  e  l  l  o
 echo "$? <$a> <$b> <$c>"
 \*(OU16 <H> <e> <l  l  o>
+
 set ifs=:; read a b c;unset ifs
 hey2.0,:"'you    ",:world!:mars.:
 echo <$a><$b><$c><$d>
 \*(OU<hey2.0,><"'you    ",><world!:mars.:><>
-set ifs=:; read a b c d;unset ifs
-hey2.0,:"'you    ",:world!:mars.:
-echo <$a><$b><$c><$d>
-\*(OU<hey2.0,><"'you    ",><world!><mars.>
+
+read
+\*(OU  H e l l o
+ec $^# <$^0> <$^5> <$^*>
+\*(OU5 <11> <o> <H e l l o>
 .Ed
 .
 .Mx
@@ -6989,11 +7000,14 @@ endif
 .It Ic readsh
 \*(NQ Like
 .Ic read ,
-but splits on shell token boundaries
-.Pf ( Sx "Shell-style argument quoting" )
+but splits on shell token boundaries in a special mode where number sign
+.Ql #
+is an ordinary character and
+.Sx "Shell-style expansions"
+are not performed
+.Pf ( Sx "Shell-style argument quoting" ) ,
 rather than at
-.Va ifs ,
-and performs quote removal.
+.Va ifs .
 .
 .Mx
 .It Ic remove
@@ -7991,11 +8005,12 @@ or
 dependent on host system) given as the second argument.
 .Ql \&?
 modifier suffix is supported.
-With the optional third argument the match group accessors
+With the optional third argument the
+.Mx -sx
+.Sx "result set"
+accessors
 .Va ^# , ^0 , ^1
-are set (in
-.Cm local Ns
--\:most scope) for successful matches, and the argument is interpreted
+are set for successful matches, and the argument is interpreted
 as if specified within dollar-single-quote
 .Pf ( Sx "Shell-style argument quoting" ) :
 .Bd -literal -offset indent
@@ -9323,11 +9338,12 @@ s may signal an error number via
 .Mx
 .Mx
 .It Va ^? , ^* , ^@ , ^# , ^0 , ^1 , ..
-Access, in the
+.Mx -ix "result set"
+Result set access, in the
 .Cm local Ns
 -\:most
 .Mx -sx
-.Sx scope ,
+.Sx scope :
 extended
 .Ic return
 values of the last
@@ -9343,10 +9359,14 @@ and
 as well as other dedicated (documented) result sets, for example of
 .Ic fop
 .Cm \&\&glob ,
-or the circumflex mode of
+the circumflex mode of
 .Ic digmsg
 and
-.Ic ~^ .
+.Ic ~^ ,
+or
+.Ic read
+and
+.Ic readsh .
 .Va \&\&^#
 holds the number of accessible values
 .Pf ( Va \&\&^1
