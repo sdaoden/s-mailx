@@ -199,7 +199,10 @@ a_cmisc_read(void * volatile vp, boole atifs){
 		trim.l = rv;
 
 		for(; cap != NIL; cap = cap->ca_next){
-			if(trim.l == 0 || (atifs && n_str_trim_ifs(&trim, FAL0)->l == 0))
+			if(trim.l == 0)
+				break;
+
+			if(n_str_trim_ifs(&trim, n_STR_TRIM_BOTH, FAL0)->l == 0)
 				break;
 
 			if(atifs){

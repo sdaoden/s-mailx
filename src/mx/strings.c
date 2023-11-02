@@ -219,35 +219,39 @@ FL struct str *
 }
 
 FL struct str *
-n_str_trim(struct str *self, enum n_str_trim_flags stf){
+n_str_trim(struct str *self, BITENUM(u32,n_str_trim_flags) stf){
 	uz l;
 	char const *cp;
 	NYD2_IN;
 
 	cp = self->s;
+	if((l = self->l) == 0)
+		goto jleave;
 
-	if((l = self->l) > 0 && (stf & n_STR_TRIM_FRONT)){
+	if(stf & n_STR_TRIM_FRONT){
 		while(su_cs_is_space(*cp)){
 			++cp;
 			if(--l == 0)
 				break;
 		}
-		self->s = n_UNCONST(cp);
+		self->s = UNCONST(char*,cp);
 	}
 
-	if(l > 0 && (stf & n_STR_TRIM_END)){
+	if((stf & n_STR_TRIM_END) && l > 0){
 		for(cp += l -1; su_cs_is_space(*cp); --cp)
 			if(--l == 0)
 				break;
 	}
+
 	self->l = l;
 
+jleave:
 	NYD2_OU;
 	return self;
 }
 
 FL struct str *
-n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
+n_str_trim_ifs(struct str *self, BITENUM(u32,n_str_trim_flags) stf, boole dodefaults){ /* TODO revisit */
 	char s, t, n, c;
 	char const *ifs, *cp;
 	uz l, i;
@@ -268,14 +272,17 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 		case '\n': n = c; break;
 		default:
 			/* Need to go the slow path */
-			while(su_cs_find_c(ifs, *cp) != NIL){
-				++cp;
-				if(--l == 0)
-					break;
+			if((stf & n_STR_TRIM_FRONT)){
+				ASSERT(l > 0);
+				while(su_cs_find_c(ifs, *cp) != NIL){
+					++cp;
+					if(--l == 0)
+						break;
+				}
+				self->s = UNCONST(char*,cp);
 			}
-			self->s = UNCONST(char*,cp);
 
-			if(l > 0){
+			if((stf & n_STR_TRIM_END) && l > 0){
 				for(cp += l -1; su_cs_find_c(ifs, *cp) != NIL;){
 					if(--l == 0)
 						break;
@@ -283,8 +290,8 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 					else if(*--cp == '\\'){
 						sz j;
 
-						for(j = 1; l - S(uz,j) > 0 && cp[-j] == '\\'; ++j)
-							;
+						for(j = 1; l - S(uz,j) > 0 && cp[-j] == '\\'; ++j){
+						}
 						if(j & 1){
 							++l;
 							break;
@@ -292,17 +299,19 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 					}
 				}
 			}
+
 			self->l = l;
 
 			if(!dodefaults)
 				goto jleave;
 			cp = self->s;
 			++i;
-			break;
+			goto jdefaults;
 		}
 	}
 
 	/* No ifs-ws?  No more data?  No trimming */
+jdefaults:
 	if(l == 0 || (i == 0 && !dodefaults))
 		goto jleave;
 
@@ -312,7 +321,8 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 		n = '\n';
 	}
 
-	if(l > 0){
+	if((stf & n_STR_TRIM_FRONT)){
+		ASSERT(l > 0);
 		while((c = *cp) != '\0' && (c == s || c == t || c == n)){
 			++cp;
 			if(--l == 0)
@@ -321,7 +331,7 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 		self->s = UNCONST(char*,cp);
 	}
 
-	if(l > 0){
+	if((stf & n_STR_TRIM_END) && l > 0){
 		for(cp += l -1; (c = *cp) != '\0' && (c == s || c == t || c == n);){
 			if(--l == 0)
 				break;
@@ -329,8 +339,8 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 			else if(*--cp == '\\'){
 				sz j;
 
-				for(j = 1; l - S(uz,j) > 0 && cp[-j] == '\\'; ++j)
-					;
+				for(j = 1; l - S(uz,j) > 0 && cp[-j] == '\\'; ++j){
+				}
 				if(j & 1){
 					++l;
 					break;
@@ -340,6 +350,7 @@ n_str_trim_ifs(struct str *self, boole dodefaults){ /* TODO revisit */
 	}
 
 	self->l = l;
+
 jleave:
 	NYD2_OU;
 	return self;
