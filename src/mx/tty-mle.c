@@ -50,6 +50,7 @@
 #ifdef mx_HAVE_MLE
 # include "mx/cmd.h"
 # include "mx/colour.h"
+# include "mx/fexpand.h"
 # include "mx/file-locks.h"
 # include "mx/go.h"
 # include "mx/sigs.h"
@@ -129,7 +130,7 @@ CTA(a_TTY_LINE_MAX <= S32_MAX, "a_TTY_LINE_MAX larger than S32_MAX, but the MLE 
 # define a_TTY_SCROLL_MARGIN_RIGHT 10
 
 /* fexpand() flags for expand-on-tab */
-# define a_TTY_TAB_FEXP_FL (FEXP_SILENT | FEXP_LOCAL | FEXP_SHORTCUT)
+# define a_TTY_TAB_FEXP_FL (mx_FEXP_SILENT | mx_FEXP_LOCAL | mx_FEXP_SHORTCUT)
 
 /* Columns to ripoff: position indicator.
  * Should be >= 4 to dig the position indicator that we place (if there is
@@ -916,7 +917,7 @@ a_tty_hist__query_config(void){
 	if((rv = ok_vlook(history_file)) == NIL)
 		rv = cp;
 	if(rv != NIL)
-		rv = fexpand(rv, FEXP_DEF_LOCAL_FILE_VAR);
+		rv = mx_fexpand(rv, mx_FEXP_DEF_LOCAL_FILE_VAR);
 
 	NYD2_OU;
 	return rv;
@@ -2337,7 +2338,7 @@ jleave:
 }
 
 static u32
-a_tty_kht(struct a_tty_line *tlp){ /* xxx huge: monster: split */
+a_tty_kht(struct a_tty_line *tlp){ /* xxx huge: monster: split {{{ */
 	struct su_pathinfo pi;
 	struct su_mem_bag *membag, *membag_persist, membag__buf[1];
 	struct str orig, bot, topp, sub, exp, preexp;
@@ -2454,7 +2455,7 @@ jredo:
 	exp_res = first_token ? mx_cmd_by_name_match_all(&sub) : NIL;
 	if(exp_res == NIL){
 		first_token = FAL0;
-		exp_res = mx_shexp_name_expand_multi(sub.s, a_TTY_TAB_FEXP_FL);
+		exp_res = mx_fexpand_multi(sub.s, a_TTY_TAB_FEXP_FL);
 	}
 	mx_sigs_all_rele();
 
@@ -2727,7 +2728,7 @@ jnope:
 	f &= a_TTY_VF_BELL; /* XXX -> *line-editor-completion-bell*? or so */
 	rv = 0;
 	goto jleave;
-}
+} /* }}} */
 
 # ifdef mx_HAVE_HISTORY
 static u32

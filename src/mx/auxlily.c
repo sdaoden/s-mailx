@@ -53,6 +53,7 @@
 #include "mx/child.h"
 #include "mx/cmd.h"
 #include "mx/colour.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/termios.h"
@@ -287,7 +288,7 @@ n_getdeadletter(void){
 
 	bla = FAL0;
 jredo:
-	cp = fexpand(ok_vlook(DEAD), (FEXP_DEF_LOCAL_FILE_VAR));
+	cp = mx_fexpand(ok_vlook(DEAD), (mx_FEXP_DEF_LOCAL_FILE_VAR));
 	if(cp == NIL || su_cs_len(cp) >= PATH_MAX){
 		if(!bla){
 			n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),

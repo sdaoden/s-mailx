@@ -183,28 +183,6 @@ enum fedit_mode{
    FEDIT_ACCOUNT = 1u<<4 /* setfile() called by `account' */
 };
 
-enum fexp_mode{
-   FEXP_MOST,
-   FEXP_SILENT = 1u<<0, /* Do not print but only return errors */
-   FEXP_LOCAL = 1u<<1, /* Result must be local file/maildir (glob-expands) */
-   FEXP_LOCAL_FILE = 1u<<2, /* ^ local FILE: strips PROTO:// (glob-expands)! */
-   FEXP_SHORTCUT = 1u<<3, /* Do expand shortcuts */
-   FEXP_NSPECIAL = 1u<<4, /* No %,#,& specials */
-   FEXP_NFOLDER = 1u<<5, /* NSPECIAL and no + folder, too */
-   FEXP_NSHELL = 1u<<6, /* No shell expansion (does not cover ~/, $VAR) */
-   FEXP_NTILDE = 1u<<7, /* No ~/ expansion */
-   FEXP_NVAR = 1u<<8, /* No $VAR expansion */
-   FEXP_NGLOB = 1u<<9, /* No globbing */
-
-   /* Actually does expand ~/ etc. */
-   FEXP_NONE = FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NVAR | FEXP_NGLOB,
-   /* What comes in via variable usually should be expanded */
-   FEXP_DEF_FOLDER_VAR = FEXP_SHORTCUT | FEXP_NGLOB,
-   FEXP_DEF_FOLDER = FEXP_DEF_FOLDER_VAR | FEXP_NVAR,
-   FEXP_DEF_LOCAL_FILE_VAR = FEXP_LOCAL_FILE | FEXP_DEF_FOLDER_VAR,
-   FEXP_DEF_LOCAL_FILE = FEXP_DEF_LOCAL_FILE_VAR | FEXP_NVAR
-};
-
 enum mx_header_subject_edit_flags{
    mx_HEADER_SUBJECT_EDIT_NONE = 0,
    /* Whether MIME decoding has to be performed first.
@@ -332,10 +310,15 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGN_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
    n_SHEXP_PARSE_IGN_COMMENT = 1u<<10, /* # does not start a comment */
-   n_SHEXP_PARSE_IGN_SUBST_VAR = 1u<<11, /* ${} are skipped not expanded */
-   n_SHEXP_PARSE_IGN_SUBST_ARITH = 1u<<12, /* $(()) is skipped not expanded */
-   /* Skip anything "dangerous" or environment changing, like command
-    * substitation or arithmetic expansions */
+   n_SHEXP_PARSE_IGN_QUOTES = 1u<<11, /* ', ", $' quotes have no meaning */
+   n_SHEXP_PARSE_IGN_ALL = n_SHEXP_PARSE_IGN_COMMENT |
+         n_SHEXP_PARSE_IGN_QUOTES,
+   n_SHEXP_PARSE_IGN_SUBST_VAR = 1u<<12, /* ${} are skipped not expanded */
+   n_SHEXP_PARSE_IGN_SUBST_ARITH = 1u<<13, /* $(()) is skipped not expanded */
+   n_SHEXP_PARSE_IGN_SUBST_ALL = n_SHEXP_PARSE_IGN_SUBST_VAR |
+         n_SHEXP_PARSE_IGN_SUBST_ARITH,
+   /* Skip anything "dangerous" or environment changing, like command TODO
+    * substitation or arithmetic expansions TODO not enough callees! */
    n_SHEXP_PARSE_IGN_SUBST_ACTIVE = n_SHEXP_PARSE_IGN_SUBST_ARITH,
    /* Ignore mx_scope: create a temporary environment for all changes! */
    n_SHEXP_PARSE_SCOPE_CAPSULE = 1u<<14, /* TODO NOT IMPLEMENTED YET! SEARCH! */

@@ -32,6 +32,7 @@
 #include <su/mem-bag.h>
 #include <su/path.h>
 
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/iconv.h"
@@ -166,7 +167,7 @@ mx_attachments_append(struct mx_attachment *aplist, char const *file, BITENUM(u3
 
 		/* Only ~/ tilde expansion */
 jrefexp:
-		if((file = fexpand(file, (FEXP_LOCAL_FILE | FEXP_NONE))) == NIL){
+		if((file = mx_fexpand(file, (mx_FEXP_LOCAL_FILE | mx_FEXP_NONE))) == NIL){
 			aerr = mx_ATTACHMENTS_ERR_OTHER;
 			goto jleave;
 		}

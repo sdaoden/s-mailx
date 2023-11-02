@@ -40,6 +40,7 @@ su_EMPTY_FILE()
 
 #include "mx/child.h"
 #include "mx/cmd.h"
+#include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/time.h"
@@ -215,7 +216,7 @@ a_fop__expand(struct a_fop_ctx *fcp){
 	}else if(!(fcp->fc_subcmd->fs_flags & a_FOP_MOD_GLOB)){
 		fcp->fc_arg = fcp->fc_argv[0];
 
-		if((fcp->fc_varres = fexpand(fcp->fc_arg, (FEXP_DEF_LOCAL_FILE & ~FEXP_NGLOB))) == NIL){
+		if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, (mx_FEXP_DEF_LOCAL_FILE & ~mx_FEXP_NGLOB))) == NIL){
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		}
@@ -239,7 +240,7 @@ jglob_next:
 			arg0 = savecatsep(arg0, ' ', cap->ca_arg.ca_str.s);
 		}
 
-		cpp = mx_shexp_name_expand_multi(cap->ca_arg.ca_str.s, (FEXP_DEF_LOCAL_FILE_VAR & ~FEXP_NGLOB));
+		cpp = mx_fexpand_multi(cap->ca_arg.ca_str.s, (mx_FEXP_DEF_LOCAL_FILE_VAR & ~mx_FEXP_NGLOB));
 
 		if(cpp != NIL){
 			for(i = 0; cpp[i] != NIL; ++i){
@@ -354,7 +355,7 @@ jflesyn:
 		goto jflesyn;
 
 	fcp->fc_arg = fcp->fc_argv[0];
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -488,7 +489,7 @@ a_fop__mkdir(struct a_fop_ctx *fcp){
 	if(a1 == NIL)
 		a1 = su_empty;
 
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -550,7 +551,7 @@ jesyn:
 	}
 
 	fcp->fc_arg = fcp->fc_argv[0];
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -676,8 +677,8 @@ a_fop__rename(struct a_fop_ctx *fcp){
 
 		fcp->fc_arg = fcp->fc_argv[0];
 
-		if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL ||
-				(src = fexpand(fcp->fc_argv[1], FEXP_DEF_LOCAL_FILE)) == NIL){
+		if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL ||
+				(src = mx_fexpand(fcp->fc_argv[1], mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		}else if(!su_path_rename(fcp->fc_varres, src)){
@@ -729,7 +730,7 @@ a_fop__rm(struct a_fop_ctx *fcp){
 	}
 	fcp->fc_arg = fcp->fc_argv[0];
 
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -756,7 +757,7 @@ a_fop__rmdir(struct a_fop_ctx *fcp){
 	}
 	fcp->fc_arg = fcp->fc_argv[0];
 
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -786,7 +787,7 @@ a_fop__stat(struct a_fop_ctx *fcp){
 	}
 	fcp->fc_arg = fcp->fc_argv[0];
 
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -867,7 +868,7 @@ a_fop__touch(struct a_fop_ctx *fcp){
 	}
 	fcp->fc_arg = fcp->fc_argv[0];
 
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, FEXP_DEF_LOCAL_FILE)) == NIL){
+	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;

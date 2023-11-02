@@ -48,6 +48,7 @@
 #include "mx/child.h"
 #include "mx/compat.h"
 #include "mx/colour.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/filter-html.h"
 /* TODO but only for creating chain! */
@@ -1539,7 +1540,7 @@ jgetname:
       if(*f2 == '|')
          /* Pipes are expanded by the shell */
          f = f2;
-      else if((f3 = fexpand(f2, FEXP_DEF_LOCAL_FILE)) == NIL)
+      else if((f3 = mx_fexpand(f2, mx_FEXP_DEF_LOCAL_FILE)) == NIL)
          /* (Error message written by fexpand()) */
          goto jgetname;
       else
