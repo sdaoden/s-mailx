@@ -10590,34 +10590,79 @@ __EOT
 
 	# Modifiers and whitespace indulgence; first matches t_eval():1
 	#{{{
-	${cat} <<- '__EOT' > ./.t7-in
-		body
-		!:set i=du
-		!:echo 1:
-		! : echo $i
-		!	:	echo '$i'
-		!$:echo '$i'
-		!:echo 2:
-		!:echo "\"'$i'\""
-		!$:echo "\"'$i'\""
-		!$$:echo "\"'$i'\""
-		!	  $	$	$	$ : echo "\"'$i'\""
-		! :echo one
-		!		  <./t.nosuch
-		!					 :echo two
-		!	 :		 set i=./t.nosuch
-		!	  -	  $	 <			$i
-		!:echo three
-		!	 :		 set errexit
-		!	  -	$	<	 $i
-		!-$: echo four
-		!$<		./t.nosuch
-		!	 :		 echo five
-		__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t7 -Sescape=! -Spwd="$(${pwd})" -s testsub one@to.invalid >./t6 2>${EX}
+
+body
+!:set i=du
+!:echo 1:
+! : echo $i
+!	:	echo '$i'
+!$:echo '$i'
+!:echo 2:
+!:echo "\"'$i'\""
+!$:echo "\"'$i'\""
+!$$:echo "\"'$i'\""
+!	  $	$	$	$ : echo "\"'$i'\""
+! :echo one
+!		  <./t.nosuch
+!					 :echo two
+!	 :		 set i=./t.nosuch
+!	  -	  $	 <			$i
+!:echo three
+!	 :		 set errexit
+!	  -	$	<	 $i
+!-$: echo four
+!$<		./t.nosuch
+!	 :		 echo five
+__EOT
 	#}}}
-	< ./.t7-in ${MAILX} ${ARGS} -Smta=test://t7 -Sescape=! -Spwd="$(${pwd})" -s testsub one@to.invalid >./t6 2>${EX}
 	ck 6 4 ./t6 '892731775 136' '472073999 207'
 	[ -f ./t7 ]; ck_exx 7
+
+	# `~x'/`~q' ok
+	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' x |
+		${MAILX} ${ARGS} -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-1-dead > ./txq-1 2>${E0}
+	cke0 xq-1 0 ./txq-1 '1870974669 6'
+	[ -f ./txq.mbox ]; ck_exx xq-1-mbox
+	[ -f ./txq-1-dead ]; ck_exx xq-1-dead
+	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' q |
+		${MAILX} ${ARGS} -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-2-dead > ./txq-2 2>${E0}
+	cke0 xq-2 0 ./txq-2 '3893194637 22'
+	[ -f ./txq.mbox ]; ck_exx xq-2-mbox
+	ck xq-2-dead - ./txq-2-dead '3297016598 52'
+
+	#{{{ `exit'/`quit' honoured via ~:call
+	<< '__EOT' ${cat} > ./txitquit.in
+define fun {
+	ec fun>; eval $cmd $*; ec fun<
+}
+define ocm {
+	ec ocm>; eval $call fun 5; ec ocm<
+}
+ec g1
+mail t@o
+!:call ocm
+b
+!.
+ec g2
+__EOT
+	#}}}
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=exit -Scall=call > ./txitquit-1 2>${E0}
+	cke0 xitquit-1 5 ./txitquit-1 '320480849 13'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-1-mbox
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=exit -Scall=xcall > ./txitquit-2 2>${E0}
+	cke0 xitquit-2 5 ./txitquit-2 '320480849 13'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-2-mbox
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=call > ./txitquit-3 2>${E0}
+	cke0 xitquit-3 5 ./txitquit-3 '320480849 13'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-3-mbox
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=xcall > ./txitquit-4 2>${E0}
+	cke0 xitquit-4 5 ./txitquit-4 '320480849 13'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-4-mbox
+
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=: -Scall=call > ./txitquit-5 2>${E0}
+	cke0 xitquit-5 0 ./txitquit-5 '1559643201 26'
+	ck xitquit-5-mbox - ./txitquit.mbox '823956539 99'
 
 	t_epilog "${@}"
 } #}}}
@@ -11071,19 +11116,19 @@ define .h4 {
   ec 3:$^0: $^*
 }
 se on-compose-embed=h1
-mail t1@o
+m t1@o
 !ss1
 b1
 !.
 ec $!/$?/$^ERRNAME
 se on-compose-embed=h2
-mail t2@o
+m t2@o
 !ss2
 b2
 !.
 ec $!/$?/$^ERRNAME
 se on-compose-embed=h3
-mail t3@o
+m t3@o
 !ss3
 b3
 !.
@@ -11126,14 +11171,13 @@ define occ {
 	se from=c$occ@i
 }
 se on-compose-enter=oce on-compose-embed=ocm on-compose-leave=ocl on-compose-cleanup=occ from=i@u
-#
 var oce ocm ocl occ
-mail
+m
 !tt@o
 !ssub
 !.
 var oce ocm ocl occ
-local mail t@o
+local m t@o
 !ssub
 !.
 var oce ocm ocl occ
@@ -11141,6 +11185,85 @@ __EOT
 	#}}}
 	cke0 easy 0 ./teasy '2727359398 304'
 	ck easy-out - ./teasy.out '2448673264 368'
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://tsyn1.mbox -Sescape=! > ./tsyn1 2>${E0}
+define oce {
+	ec in oce
+}
+define fun {
+	ec fun: no escapes!
+}
+define ocm {
+	!:ec in embed
+	embed>
+	!:call fun
+	!p
+	!x
+	ec ERR
+	xit
+}
+define ocl {
+	ec in ocl
+}
+define occ {
+	ec in occ
+}
+se on-compose-enter=oce on-compose-embed=ocm on-compose-leave=ocl on-compose-cleanup=occ
+#
+ec g1
+mail t@o
+!ssub
+!.
+ec g2
+__EOT
+	#}}}
+	cke0 syn1 0 ./tsyn1 '1917408233 94'
+	[ -f ./tsyn1.mbox ]; ck_exx syn1-mbox
+
+	#{{{
+	<< '__EOT' ${cat} > ./txitquit.in
+define fun {
+	ec fun: no escapes!
+	eval $cmd $*
+}
+define ocm {
+	!:ec in embed
+	embed>
+	!:eval $call fun 5
+	!p
+}
+define ocl {
+	ec in ocl
+}
+define occ {
+	ec in occ
+}
+se on-compose-embed=ocm on-compose-leave=ocl on-compose-cleanup=occ
+#
+ec g1
+mail t@o
+!ssub
+!.
+ec g2
+__EOT
+	#}}}
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=xit -Scall=call > ./txitquit-1 2>${E0}
+	cke0 xitquit-1 5 ./txitquit-1 '3432455750 29'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-1-mbox
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=xit -Scall=xcall > ./txitquit-2 2>${E0}
+	cke0 xitquit-2 5 ./txitquit-2 '3432455750 29'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-2-mbox
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=call > ./txitquit-3 2>${E0}
+	cke0 xitquit-3 5 ./txitquit-3 '3432455750 29'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-3-mbox
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=xcall > ./txitquit-4 2>${E0}
+	cke0 xitquit-4 5 ./txitquit-4 '3432455750 29'
+	[ -f ./txitquit.mbox ]; ck_exx xitquit-4-mbox
+
+	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=: -Scall=call > ./txitquit-5 2>${E0}
+	cke0 xitquit-5 0 ./txitquit-5 '1177374138 101'
+	ck xitquit-5-mbox - ./txitquit.mbox '3205730227 117'
 
 	{ echo line one&&echo line two&&echo line three; } > ./t.readctl
 	{ echo echo four&&echo echo five&&echo echo six; } > ./t.attach

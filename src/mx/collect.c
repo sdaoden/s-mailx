@@ -113,7 +113,8 @@ struct a_coll_ctx{
 	BITENUM(u8,mx_scope) cc_scope;
 	u8 cc_eof_cnt;
 	char cc_escape;
-	u8 cc__pad[5];
+	char cc_exit_cmd; /* Tested by .cc_ocembed after return */
+	u8 cc__pad[4];
 	struct header *cc_hp;
 	s8 *cc_checkaddr_err;
 	FILE *cc_fp; /* File for saving away */
@@ -961,10 +962,11 @@ a_coll_sigint(int s){ /* XXX uses non-async-safe things */
 		siglongjmp(a_coll->cc_sig_jmp_int, 1);
 	}
 
-	if(s != 0)
+	if(s != 0){
 		savedeadletter(a_coll->cc_fp, TRU1);
-	else
-		n_exit_status |= n_EXIT_SEND_ERROR;
+		n_pstate_ex_no = 1;
+		n_pstate_err_no = su_ERR_INTR;
+	}
 
 	/* Aborting message, no need to fflush() .. */
 	siglongjmp(a_coll->cc_sig_jmp_abort, 1);
@@ -1357,8 +1359,11 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 	if((cp = ok_vlook(on_compose_embed)) != NIL){
 		setup_from_and_sender(hp);
 		cc.cc_ocembed = cp;
+		ASSERT(cc.cc_exit_cmd == '\0');
 		temporary_compose_mode_hook_call(cp, TRU1);
 		cc.cc_ocembed = NIL;
+		if(cc.cc_exit_cmd != '\0')
+			a_coll_sigint((cc.cc_exit_cmd == 'x') ? 0 : SIGINT);
 	}
 
 	/* Final chance to edit headers, if not already above; and *asksend* */
@@ -1798,6 +1803,10 @@ jearg:
 				a_coll->cc_flags &= ~a_COLL_ERREXIT;
 			if(n_pstate_ex_no != 0 && a_COLL_HARDERR())
 				goto jleave;
+			if(n_psonce & n_PSO_EXIT_MASK){
+				c = (n_psonce & n_PS_ERR_XIT) ? 'x' : 'q';
+				goto jqx;
+			}
 			if(a_coll->cc_coap == NIL)
 				a_coll->cc_escape = *ok_vlook(escape); /* Reset just in case it was changed */
 			hist &= ~a_HIST_GABBY;
@@ -2097,10 +2106,12 @@ jIi_putesc:
 			/* Force a quit, act like an interrupt had happened */
 			if(cnt != 0)
 				goto jearg;
+jqx:
 			/* If running a splice hook, assume it quits on its own now, otherwise we (no true out-of-band
 			* IPC to signal this state, XXX) have to SIGTERM it in order to stop this wild beast */
 			a_coll->cc_flags |= a_COLL_COAP_NOSIGTERM;
 			a_coll->cc_sig_int = TRU1;
+			a_coll->cc_exit_cmd = S(char,c);
 			/* *on-compose-embed* must "unroll" naturally! */
 			if(a_coll->cc_ocembed != NIL){
 				mx_go_input_force_eof();
