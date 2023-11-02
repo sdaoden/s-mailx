@@ -93,8 +93,8 @@
 #define n_IDNA_IMPL_LIBIDN 1
 #define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
 
-/* Max readable line width */
-#define mx_LINESIZE (su_PAGE_SIZE - 1)
+/* Max line width (less X so that PAGE_SIZE*2 usually suffices for all) */
+#define mx_LINESIZE ((su_PAGE_SIZE * 2) - (su_PAGE_SIZE / 2))
 #define mx_LINEPOOL_QUEUE_MAX 2
 
 /* Our I/O buffer size */
