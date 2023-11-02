@@ -2639,8 +2639,7 @@ c_exit(void *vp){
 	if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
 		fflush(NIL);
 		_exit(n_exit_status);
-	}else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
-		n_err(_("exit: delayed until compose mode is left\n")); /* XXX ..log? */
+	}
 
 	n_psonce |= n_PSO_XIT;
 
@@ -2660,8 +2659,7 @@ c_quit(void *vp){
 	if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
 		fflush(NIL);
 		_exit(n_exit_status);
-	}else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
-		n_err(_("quit: delayed until compose mode is left\n")); /* XXX ..log? */
+	}
 
 	n_psonce |= n_PSO_QUIT;
 
