@@ -3511,7 +3511,7 @@ jeover:
 		appp = (a_amv_lopts->as_up != NIL) ? a_amv_lopts->as_up->as_amcap->amca_rem_rval : &a_amv_rem_rval;
 
 		ASSERT(cacp->cac_no > 0);
-		xrv = mx_var_caret_array_set(appp, a_amv_lopts->as_amcap->amca_name, --cacp->cac_no, cap_save->ca_next, NIL);
+		xrv = mx_var_result_set_set(appp, a_amv_lopts->as_amcap->amca_name, --cacp->cac_no, cap_save->ca_next, NIL);
 		appp->app_is_ret = TRU1;
 
 		if(xrv != su_ERR_NONE)
@@ -3922,7 +3922,7 @@ jleave:
 #endif /* mx_HAVE_REGEX */
 
 FL s32
-mx_var_caret_array_set(void *appp_or_nil, char const *name, u32 argc,
+mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
 		struct mx_cmd_arg const *cap_or_nil, char const * const *argv_or_nil){
 	char **cpp;
 	s32 rv;

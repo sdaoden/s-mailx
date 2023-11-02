@@ -195,7 +195,7 @@ FL s32 mx_var_re_match_set(u32 group_count, char const *dat,
 /* argc *does not* include $^0 (name)!  If argc is 0 clears and sets $^0.
  * [appp_or_nil defaults to the current scope; always NIL, local to _amv_.]
  * One of cap_or_nil and argv_or_nil must be set.  NONE,OVERFLOW,NOMEM */
-FL s32 mx_var_caret_array_set(void *appp_or_nil, char const *name, u32 argc,
+FL s32 mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
       struct mx_cmd_arg const *cap_or_nil, char const * const *argv_or_nil);
 
 /* Setting up batch mode, variable-handling side */
