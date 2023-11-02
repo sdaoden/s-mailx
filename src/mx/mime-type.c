@@ -32,6 +32,7 @@
 #include <su/mem-bag.h>
 #include <su/utf.h>
 
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/mime-enc.h"
@@ -298,7 +299,7 @@ a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){
 	char const *cp;
 	NYD_IN;
 
-	if((cp = fexpand(file, FEXP_DEF_LOCAL_FILE_VAR)) == NIL || (fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
+	if((cp = mx_fexpand(file, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL || (fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
 		cp = NIL;
 		goto jleave;
 	}

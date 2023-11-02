@@ -52,6 +52,9 @@ EXPORT int c_readsh(void *vp);
 /* `readall' */
 EXPORT int c_readall(void *vp);
 
+/* `shcodec' */
+EXPORT int c_shcodec(void *vp);
+
 /* `version' */
 EXPORT int c_version(void *vp);
 

@@ -33,9 +33,11 @@
 
 #include "mx/child.h"
 #include "mx/cmd.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/sigs.h"
+#include "mx/ui-str.h"
 
 #include "mx/cmd-misc.h"
 /*#define NYDPROF_ENABLE*/
@@ -57,7 +59,7 @@ static boole a_cmisc_read_set(char const *cp, char const *value, enum mx_scope s
 static sz a_cmisc_version_cmp(void const *s1, void const *s2);
 
 static char const *
-a_cmisc_bangexp(char const *cp){
+a_cmisc_bangexp(char const *cp){ /* {{{ */
 	/* SysV 10 and POSIX.1-2023 compatible */
 	struct n_string bang_i, *bang;
 	char c;
@@ -99,10 +101,10 @@ a_cmisc_bangexp(char const *cp){
 
 	NYD_OU;
 	return cp;
-}
+} /* }}} */
 
 static int
-a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
+a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! {{{ */
 	struct n_string s_b, *s;
 	int rv;
 	char const *cp;
@@ -150,10 +152,10 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
 
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
 static int
-a_cmisc_read(void * volatile vp, boole atifs){
+a_cmisc_read(void * volatile vp, boole atifs){ /* {{{ */
 	struct n_sigman sm;
 	struct n_string s_b, *s;
 	int rv;
@@ -311,7 +313,7 @@ jleave:
 	NYD2_OU;
 	n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 	return rv;
-}
+} /* }}} */
 
 static boole
 a_cmisc_read_set(char const *cp, char const *value, enum mx_scope scope){
@@ -352,7 +354,7 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
 }
 
 int
-mx_shell_cmd(char const *cmd, char const *vputvar_or_nil, enum mx_scope scope){
+mx_shell_cmd(char const *cmd, char const *vputvar_or_nil, enum mx_scope scope){ /* {{{ */
 	struct mx_child_ctx cc;
 	sigset_t mask;
 	int rv;
@@ -421,7 +423,7 @@ mx_shell_cmd(char const *cmd, char const *vputvar_or_nil, enum mx_scope scope){
 
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 int
 c_shell(void *vp){
@@ -509,7 +511,7 @@ c_chdir(void *vp){
 
 	if(*(arglist = vp) == NIL)
 		cp = ok_vlook(HOME);
-	else if((cp = fexpand(*arglist, (FEXP_LOCAL | FEXP_DEF_FOLDER))) == NIL)
+	else if((cp = mx_fexpand(*arglist, (mx_FEXP_LOCAL | mx_FEXP_DEF_FOLDER))) == NIL)
 		goto jleave;
 
 	if(chdir(cp) == -1){
@@ -589,7 +591,7 @@ c_readsh(void *vp){
 }
 
 int
-c_readall(void *vp){ /* TODO 64-bit retval */
+c_readall(void *vp){ /* TODO 64-bit retval {{{ */
 	struct n_sigman sm;
 	struct n_string s_b, *s;
 	char *linebuf;
@@ -665,10 +667,80 @@ jleave:
 	NYD2_OU;
 	n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 	return rv;
-}
+} /* }}} */
+
+FL int
+c_shcodec(void *vp){ /* {{{ */
+	struct str in;
+	struct n_string sou_b, *soup;
+	boole norndtrip;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
+	NYD_IN;
+
+	n_pstate_err_no = su_ERR_NONE;
+	soup = n_string_creat_auto(&sou_b);
+	cacp = vp;
+	cap = cacp->cac_arg;
+	in = cap->ca_next->ca_arg.ca_str;
+
+	if((norndtrip = (*cap->ca_arg.ca_str.s == '+'))){
+		++cap->ca_arg.ca_str.s;
+		/*--cap->ca_arg.ca_str.l;*/
+	}
+
+	if(su_cs_starts_with_case("encode", cap->ca_arg.ca_str.s))
+		soup = n_shexp_quote(soup, &in, !norndtrip);
+	else if(!norndtrip && su_cs_starts_with_case("decode", cap->ca_arg.ca_str.s)){
+		for(;;){
+			BITENUM(u32,n_shexp_state) shs;
+
+			shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY),
+					cacp->cac_scope_pp, soup, &in, NIL);
+			if(shs & n_SHEXP_STATE_ERR_MASK){
+				soup = n_string_assign_cp(soup, cap->ca_next->ca_arg.ca_str.s);
+				n_pstate_err_no = su_ERR_CANCELED;
+				vp = NIL;
+				break;
+			}
+			if(shs & n_SHEXP_STATE_STOP)
+				break;
+		}
+	}else
+		goto jesynopsis;
+
+	if(cacp->cac_vput != NIL){
+		n_string_cp(soup);
+		if(!n_var_vset(cacp->cac_vput, R(up,soup->s_dat), cacp->cac_scope_vput)){
+			n_pstate_err_no = su_ERR_NOTSUP;
+			vp = NIL;
+		}
+	}else{
+		struct str out;
+
+		in.s = n_string_cp(soup);
+		in.l = soup->s_len;
+		mx_makeprint(&in, &out);
+		if(fprintf(n_stdout, "%s\n", out.s) < 0){
+			n_pstate_err_no = su_err_by_errno();
+			vp = NIL;
+		}
+		su_FREE(out.s);
+	}
+
+jleave:
+	NYD_OU;
+	return (vp != NIL ? su_EX_OK : su_EX_ERR);
+
+jesynopsis:
+	mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("shcodec"), NIL);
+	n_pstate_err_no = su_ERR_INVAL;
+	vp = NIL;
+	goto jleave;
+} /* }}} */
 
 int
-c_version(void *vp){
+c_version(void *vp){ /* {{{ */
 	struct utsname ut;
 	struct n_string s_b, *s;
 	int rv;
@@ -752,7 +824,7 @@ c_version(void *vp){
 
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 #include "su/code-ou.h"
 #undef su_FILE

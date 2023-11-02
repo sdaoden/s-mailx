@@ -4206,15 +4206,15 @@ t_call_ret() { #{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 define w1 {
 	echon ">$1 "
-	eval local pp : \$((i = $1 + 1))
+	local pp : $((i = $1 + 1))
 	if $i -le 42
 		local pp : $((j = i & 7))
-		if $j -eq 7; echo .; end
+		if $j -eq 7; echo .; en
 		call w1 $i
-		local set i=$? k=$!
+		local se i=$? k=$!
 		: $((j = i & 7))
 		echon "<$1/$i/$k "
-		if $j -eq 7; echo .; end
+		if $j -eq 7; echo .; en
 	else
 		echo ! The end for $1
 	end
@@ -4223,14 +4223,14 @@ define w1 {
 # Transport $?/$! up the call chain
 define w2 {
 	echon ">$1 "
-	eval local pp : \$((i = $1 + 1))
+	local pp : $((i = $1 + 1))
 	if $1 -lt 42
 		call w2 $i
-		local set i=$? j=$! k=$^ERRNAME
+		local se i=$? j=$! k=$^ERRNAME
 		echon "<$1/$i/$k "
 		return $i $j ^ $((i + j))
 	else
-		echo ! The end for $1
+		ec ! The end for $1
 		return $i $^ERR-BUSY ^ $((i + 1))
 	end
 	echoerr au
@@ -4238,33 +4238,33 @@ define w2 {
 # Up and down it goes
 define w3 {
 	echon ">$1/$2 "
-	eval local pp : \$((i = $1 + 1))
+	local pp : $((i = $1 + 1))
 	if $1 -lt 42
 		call w3 $i $2
-		local set i=$? j=$!
-		eval local pp : \$((k = $1 - $2))
+		local se i=$? j=$!
+		local pp : $((k = $1 - $2))
 		if $k -eq 21
-			eval : \$((i = $1 + 1, j = $2 + 1))
-			echo "# <$i/$j> .. "
+			: $((i = $1 + 1, j = $2 + 1))
+			ec "# <$i/$j> .. "
 			call w3 $i $j
-			set i=$? j=$!
+			se i=$? j=$!
 		end
 		eval echon "<\$1=\$i/\$^ERRNAME-$j"
 		return $i $j ^ $^1 $^2 $^3 $^4
 	else
-		echo ! The end for $1=$i/$2
+		ec ! The end for $1=$i/$2
 		if -n "$2"
 			return $i $^ERR-DOM ^ $i $((i + 1))
-		else
+		el
 			return $i $^ERR-BUSY ^ $i $((i + 2))
-		end
+		en
 	end
 	echoerr au
 }
 define nada {
 	return ^
 }
-commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^*<$^*> ^@<"$^@"> ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
+commandali x 'ec ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^*<$^*> ^@<"$^@"> ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
 call w1 0; x
 call nada; x
 call w2 0; x
@@ -4674,7 +4674,7 @@ define r4 {
 		ec --r4-${1}-ou;show
 		return
 	end
-	eval local pp : \$((i += $2 + 1))
+	local pp : $((i += $2 + 1))
 	ec --r4-stress-${1}-$i
 	eval ${_x}call r4 $1 $i
 }
@@ -5176,9 +5176,9 @@ t_xcall_heavy() { #{{{
 define work {
 	echon "$1 "
 	i "$3" == ""; local se l='local pp'; el; local se l; en
-	eval $l : \$((i = $1 + 1))
+	eval $l : $((i = $1 + 1))
 	if $i -le "$max"
-		eval $l : \$((j = i & 7))
+		eval $l : $((j = i & 7))
 		if $j -eq 7
 			echo .
 		en
@@ -5218,7 +5218,7 @@ __EOT
 	${cat} << '__EOT' > ./t.in
 \define __w {
 	\echon "$1 "
-	local pp eval : \$((i = $1 + 1))
+	local pp : $((i = $1 + 1))
 	\if $i -le 111
 		local pp : $((j = i & 7))
 		\if $j -eq 7; \echo .; \end
@@ -5502,31 +5502,38 @@ var i2 i' \
 t_atxplode() { #{{{
 	t_prolog "${@}"
 
+#	# disproofer (needs bash or so)
+#	#{{{
+#	${cat} > ./t.sh << '_EOT'
+#x() { echo $#; }
+#xxx() {
+#	printf " (1/$#: <$1>)"
+#	shift
+#	if [ $# -gt 0 ]; then
+#		xxx "$@"
+#	else
+#		echo
+#	fi
+#}
+#yyy() {
+#	eval "$@ ' ball"
+#}
+#set --
+#x "$@"
+#x "$@"''
+#x " $@"
+#x "$@ "
+#printf yyy;yyy 'xxx' "b\$'\t'u ' "
+#printf xxx;xxx arg ,b		u.
+#printf xxx;xxx arg ,  .
+#printf xxx;xxx arg ,ball.
+#_EOT
+#	#}}}
+#	${SHELL} ./t.sh > ./t1disproof 2>${E0}
+#	cke0 1disproof 0 ./t1disproof '41566293 164'
+
 	#{{{
-	${cat} > ./t.sh << '_EOT'; ${cat} > ./t.rc << '_EOT'
-x() { echo $#; }
-xxx() {
-	printf " (1/$#: <$1>)"
-	shift
-	if [ $# -gt 0 ]; then
-		xxx "$@"
-	else
-		echo
-	fi
-}
-yyy() {
-	eval "$@ ' ball"
-}
-set --
-x "$@"
-x "$@"''
-x " $@"
-x "$@ "
-printf yyy;yyy 'xxx' "b\$'\t'u ' "
-printf xxx;xxx arg ,b		u.
-printf xxx;xxx arg ,  .
-printf xxx;xxx arg ,ball.
-_EOT
+	<< '_EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 define x {
 	echo $#
 }
@@ -5550,11 +5557,35 @@ echon xxx;call xxx arg ,  .
 echon xxx;call xxx arg ,ball.
 _EOT
 	#}}}
-	${MAILX} ${ARGS} -X'source ./t.rc' -Xx > ./t1 2>${E0}
 	cke0 1 0 ./t1 '41566293 164'
 
-	#${SHELL} ./t.sh > ./t1disproof 2>${E0}
-	#cke0 1disproof 0 ./t1disproof '41566293 164'
+	# same but notation
+	#{{{
+	<< '_EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
+define x {
+	echo ${#}
+}
+define xxx {
+	echon " (1/${#}: <${1}>)"
+	shift
+	if ${#} -gt 0; \xcall xxx "${@}"; end
+	ec
+}
+define yyy {
+	eval "${@} ' ball"
+}
+vpospar set
+call x "${@}"
+call x "${@}"''
+call x " ${@}"
+call x "${@} "
+echon yyy;call yyy '\call xxx' "b\$'\t'u ' "
+echon xxx;call xxx arg ,b		 u.
+echon xxx;call xxx arg ,  .
+echon xxx;call xxx arg ,ball.
+_EOT
+	#}}}
+	cke0 2 0 ./t2 '41566293 164'
 
 	t_epilog "${@}"
 } #}}}
@@ -12259,7 +12290,7 @@ define read_mline_res {
 	end
 }
 define _work {
-	if $# -eq 1; local set i=$1; else; eval local pp : \$((i = $2, ++i)); endif
+	if $# -eq 1; local set i=$1; else; local pp : $((i = $2, ++i)); endif
 	if $i -lt 111
 		: $((j = i % 10))
 		if $j -ne 0
@@ -12271,7 +12302,7 @@ define _work {
 		eval \\$j _work $1 $i
 		return $?
 	end
-	eval : \$((i += $1))
+	: $((i += $1))
 	return $i
 }
 define _read {

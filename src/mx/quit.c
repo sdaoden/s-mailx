@@ -46,6 +46,7 @@
 
 #include "mx/compat.h"
 #include "mx/dig-msg.h"
+#include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
@@ -625,9 +626,10 @@ save_mbox_for_possible_quitstuff(void){ /* TODO try to get rid of that */
    char const *cp;
    NYD2_IN;
 
-   if((cp = fexpand("&", FEXP_NVAR)) == NULL)
-      cp = n_empty;
-   su_cs_pcopy_n(_mboxname, cp, sizeof _mboxname);
+   if((cp = mx_fexpand("&", mx_FEXP_NVAR)) == NIL)
+      cp = su_empty;
+   su_cs_pcopy_n(_mboxname, cp, sizeof(_mboxname));
+
    NYD2_OU;
 }
 

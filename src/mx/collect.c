@@ -37,6 +37,7 @@
 #include "mx/cmd-edit.h"
 #include "mx/cmd-misc.h"
 #include "mx/dig-msg.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"
 #include "mx/go.h"
@@ -1519,7 +1520,7 @@ jreasksend:
 
 		n_OBSOLETE(_("please use *on-compose-embed* and/or *message-inject-tail*, not *signature*"));
 
-		if((cpq = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL){
+		if((cpq = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 			n_err(_("*signature* expands to invalid file: %s\n"), n_shexp_quote_cp(cp, FAL0));
 			goto jerr;
 		}
@@ -2070,7 +2071,7 @@ jearg:
 
 						cp = n_string_cp(s2p);
 
-						if((cp = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL){
+						if((cp = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 							if(a_COLL_HARDERR())
 								goto jleave;
 							n_pstate_err_no = su_ERR_INVAL;
@@ -2255,7 +2256,7 @@ jqx:
 			/* Write the message on a file */
 			if(cnt == 0)
 				goto jearg;
-			if((cp = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL){
+			if((cp = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 				n_err(_("Write what file!?\n"));
 				if(a_COLL_HARDERR())
 					goto jleave;

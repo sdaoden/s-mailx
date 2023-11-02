@@ -38,6 +38,7 @@ su_EMPTY_FILE()
 
 #include "mx/cmd.h"
 #include "mx/child.h"
+#include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/url.h"
 
@@ -122,7 +123,7 @@ a_netrc_create(void){
 		if((fi = mx_fs_pipe_open(netrc_load, mx_FS_PIPE_READ, ok_vlook(SHELL), NIL, -1)) == NIL)
 			goto jerrdoc;
 	}else{
-		if((netrc_load = fexpand(ok_vlook(NETRC), FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
+		if((netrc_load = mx_fexpand(ok_vlook(NETRC), mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
 			goto jleave;
 
 		if((fi = mx_fs_open(netrc_load, mx_FS_O_RDONLY)) == NIL)
