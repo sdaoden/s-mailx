@@ -339,7 +339,7 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 
 	/* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
-	if(n_str_trim_ifs(&line, TRU1)->l == 0){
+	if(n_str_trim_ifs(&line, n_STR_TRIM_BOTH, TRU1)->l == 0){
 		line.s[0] = '\0';
 		flags |= a_IS_EMPTY;
 		gecp->gec_hist_flags = a_GO_HIST_NONE;
@@ -452,7 +452,7 @@ jrestart:
 
 	/* We need to trim for a possible history entry, but do it anyway and insert a space for argument separation in
 	 * case of alias expansion.  Also, do terminate again because nothing prevents aliases from introducing WS */
-	n_str_trim_ifs(&line, TRU1);
+	n_str_trim_ifs(&line, n_STR_TRIM_BOTH, TRU1);
 	line.s[line.l] = '\0';
 
 	/* Lengthy history entry setup, possibly even redundant.  But having normalized history entries is a good
