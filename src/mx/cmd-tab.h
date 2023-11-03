@@ -316,7 +316,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(shcodec, 2, a_cmd_cad_shcodec){
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-mx_CMD_ARG_DESC_SUBCLASS_DEF(shift, 1, a_cmd_cad_shift){
+mx_CMD_ARG_DESC_SUBCLASS_DEF(shift, 2, a_cmd_cad_shift){
+	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_HONOUR_STOP,
+		n_SHEXP_PARSE_TRIM_IFSSPACE},
 	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
@@ -823,7 +825,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"shcodec", &c_shcodec, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_shcodec),
 	 N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")},
 	{"shift", &c_shift, (HG | M | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_shift),
-	 N_("Shift [<count>] (1) positional parameters at the front (the back if negative)")},
+	 N_("Shift ([^] result set) [<count>](1) parameters at front (back if negative)")},
 	{"shortcut", &c_shortcut, (M | TWYSH), 0, MAC, NIL,
 	 N_("Define [:<shortcut> plus <expansion>:], or list shortcuts")},
 	{"Show", &c_show, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
