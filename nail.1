@@ -7335,9 +7335,17 @@ Positive numbers remove at the front, negative at the back.
 0 does nothing, successfully.
 Shifting more than
 .Va #
-is an error.
+is an error otherwis otherwise
 The stack as such can be managed via
 .Ic vpospar .
+If the first argument is a circumflex
+.Ql ^
+the
+.Va ^
+multiplexer sub-variable
+.Va ^# , ^0 , ^1
+array is shifted instead.
+.
 .
 .Mx
 .It Ic show

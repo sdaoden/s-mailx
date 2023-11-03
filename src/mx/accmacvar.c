@@ -3399,44 +3399,56 @@ jleave:
 
 FL int
 c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
-	struct a_amv_pospar *appp;
-	struct mx_cmd_arg_ctx *cacp;
+	struct mx_cmd_arg *cap;
+	boole ispp;
 	s64 c, ca;
 	int rv;
 	NYD_IN;
 
 	rv = su_EX_ERR;
 	c = 1;
-	cacp = vp;
+	ispp = TRU1;
 
-	if(cacp->cac_no > 0 &&
-			(su_idec_s64_cp(&c, cacp->cac_arg->ca_arg.ca_str.s, 10, NIL
-				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
-		n_err(_("shift: invalid argument: %s\n"), cacp->cac_arg->ca_arg.ca_str.s);
-		goto jleave;
+	for(cap = S(struct mx_cmd_arg_ctx*,vp)->cac_arg; cap != NIL; cap = cap->ca_next){
+		struct str *sp;
+
+		sp = &cap->ca_arg.ca_str;
+
+		if(sp->l == 1 && sp->s[0] == '^'){
+			if(ispp != TRU1)
+				goto jearg;
+			ispp = FAL0;
+		}else if((su_idec_s64_cp(&c, sp->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+				) != su_IDEC_STATE_CONSUMED){
+jearg:
+			n_err(_("shift: invalid or yet seen argument: %s\n"), sp);
+			goto jleave;
+		}
 	}
 
-	if(c == 0)
-		goto jok;
+	if(LIKELY(c != 0)){
+		struct a_amv_pospar *appp;
 
-	/* If in in a macro/xy */
-	if(mx_go_ctx_is_macro()){
-		ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
-		appp = a_amv_lopts->as_amcap->amca_pospar;
-	}else
-		appp = &a_amv_pospar;
+		if(mx_go_ctx_is_macro()){
+			struct a_amv_mac_call_args *amcap;
 
-	ca = ABS(c);
-	if(UCMP(64, ca, >, appp->app_count)){
-		n_err(_("shift: cannot shift %" PRId64 " of %u parameters\n"), c, appp->app_count);
-		goto jleave;
+			ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
+			amcap = a_amv_lopts->as_amcap;
+			appp = ispp ? amcap->amca_pospar : amcap->amca_rem_rval;
+		}else
+			appp = ispp ? &a_amv_pospar : &a_amv_rem_rval;
+
+		ca = ABS(c);
+		if(UCMP(64, ca, >, appp->app_count)){
+			n_err(_("shift: cannot shift %" PRId64 " of %u parameters\n"), c, appp->app_count);
+			goto jleave;
+		}
+
+		if(c > 0)
+			appp->app_idx += S(u32,ca);
+		appp->app_count -= S(u32,ca);
 	}
 
-	if(c > 0)
-		appp->app_idx += S(u32,ca);
-	appp->app_count -= S(u32,ca);
-
-jok:
 	rv = su_EX_OK;
 jleave:
 	NYD_OU;
