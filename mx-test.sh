@@ -4301,22 +4301,22 @@ define t {
 	en
 	x;ec
 }
-#unset errexit
+#uns errexit
 call t 1.1 - '' 1
 call t 1.2 - '' 1 2
 call t 1.3 - '' 1 2 3
 call t 1.4 - '' 1 2 3 4
-set errexit
+se errexit
 call t 2.1 - ' ' 1
 call t 2.2 - ' ' 1 2
 call t 2.3 - ' ' 1 2 3
 call t 2.4 - ' ' 1 2 3 4
-unset errexit
+uns errexit
 call t 3.1 '' '' 1
 call t 3.2 '' '' 1 2
 call t 3.3 '' '' 1 2 3
 call t 3.4 '' '' 1 2 3 4
-set errexit
+se errexit
 call t 4.1 '' ' ' 1
 call t 4.2 '' ' ' 1 2
 call t 4.3 '' ' ' 1 2 3
@@ -4326,6 +4326,58 @@ call t X.Y '' '' 1
 __EOT
 	#}}}
 	ck 1 1 ./t1 '3671555072 2480' '1985631949 292'
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
+commandalias x ec 'n<$n>s<$s>,?<$?><$^ERRNAME>,^#<$^#>,^*<$^*>,^@<"$^@">'
+define c {
+	local se i=$1 j=$2
+
+	if -n "$j"; se j=" $j"; en
+	se j="$i$j"
+	if $((--i)) -gt 0; xcall c $i "$j"; en
+	eval return ^ $j
+}
+define t {
+	local se n=$1 s=$2 ie=$3
+	call c $4
+	if -n "$ie"
+		se ie=ignerr
+	en
+	eval $ie shift ^ ${s}2
+	x
+	shift ^ ${s}0
+	x
+	if $^# -gt 0
+		shift ^ ${s}1
+	en
+	x;ec
+}
+#uns errexit
+call t 1.1 - '' 1
+call t 1.2 - '' 2
+call t 1.3 - '' 3
+call t 1.4 - '' 4
+se errexit
+call t 2.1 - ' ' 1
+call t 2.2 - ' ' 2
+call t 2.3 - ' ' 3
+call t 2.4 - ' ' 4
+uns errexit
+call t 3.1 '' '' 1
+call t 3.2 '' '' 2
+call t 3.3 '' '' 3
+call t 3.4 '' '' 4
+se errexit
+call t 4.1 '' ' ' 1
+call t 4.2 '' ' ' 2
+call t 4.3 '' ' ' 3
+call t 4.4 '' ' ' 4
+#
+call t X.Y '' '' 1
+__EOT
+	#}}}
+	ck 2 1 ./t2 '3023576362 1908' '1985631949 292'
 
 	t_epilog "${@}"
 } #}}}
