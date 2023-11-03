@@ -3278,7 +3278,7 @@ Once a line is completed, the whitespace characters
 as well as those defined by
 .Va ifs
 are removed from both ends.
-\*(OP Prepending any whitespace prevents addition to the
+\*(OP Any preceded whitespace however prevents addition to
 .Ic history .
 .
 .Pp
@@ -3295,18 +3295,43 @@ line will be interpreted according to command-specific rules, most often
 In interactive mode a command-less line (with optional arguments) invokes
 .Ic next .
 .
-.Pp
-This behaviour is different to the
-.Ev SHELL ,
-which is a programming language with syntactic elements of clearly
-defined semantics, and therefore capable to sequentially expand and
-evaluate individual elements of a line.
+.Bd -filled -offset indent
+.Sy Remarks:
+this behaviour is different to the
+.Ev SHELL
+programming language with its syntactic elements of clearly defined
+semantics, capable to sequentially expand and evaluate individual
+elements of a line.  For us
 .Ql \&? set one=spoon two=$one
 for example will never assign
 .Ql spoon
-to two, because it is the command
+to two, because the command
 .Ic set
-that performs the assignment, long after the expansion has happened.
+itself performs the assignment, long after the expansion has happened.
+.Ed
+.
+.Pp
+When a command returns its exit status is available in the variable
+.Va \&? ;
+in error cases an error number is announced in
+.Va \&!
+(and accompanies) (\*(ID Yet too often the umbrella value
+.Va ^ERR Ns -INVAL
+will be seen).
+A non-0 exit status has a meaning in the state machine: a
+.Ic set
+.Va errexit
+will cause a program exit, just like any error while loading
+.Sx "Resource files"
+in
+.Va posix
+mode.
+.Cm ignerr ,
+one of the
+.Sx "Command modifiers" ,
+instructs the state machine to ignore errors;
+.Sx "COMMAND ESCAPES"
+offer a similar mechanism.
 .
 .Pp
 A list of all commands in lookup order that not always fits the
@@ -4188,6 +4213,7 @@ may be displayed as
 .\" .Ss "Commands" {{{
 .Ss "Commands"
 .
+.
 .Bl -tag -width ".It Ic BaNg"
 .
 .Mx
@@ -4204,9 +4230,7 @@ when
 is set (see there); reverse solidus has no other special meaning.
 .Cm vput
 .Pf ( Sx "Command modifiers" )
-and error number
-.Va \&!
-are supported.
+is supported.
 A 0 or positive exit status
 .Va \&?
 reflects the exit status of the command, negative ones either
@@ -4254,9 +4278,7 @@ nor are
 .Sx "Message states"
 updated.
 .Cm vput
-and the error number
-.Va \&!
-are supported.
+is supported.
 .
 .Mx
 .It Ic \&:
@@ -4368,9 +4390,7 @@ account myisp {
 Perform email address codec transformations on raw-data argument, rather
 according to email standards (RFC 5322; \*(ID will furtherly improve).
 Supports
-.Cm vput
-and the error number
-.Va \&! .
+.Cm vput .
 The first argument must be one of
 .Ar [+[+[+]]]e[ncode] ,
 .Ar d[ecode] ,
@@ -4525,9 +4545,7 @@ or
 .Va sender ,
 and
 .Va reply-to .
-The former manages the error number
-.Va \&! ;
-Without arguments it shows the current list, then it supports
+The former shows the current list without arguments, then it supports
 .Cm vput .
 Otherwise the arguments are appended to the alternate list; in
 .Va posix
@@ -5316,11 +5334,7 @@ Mark each given message as (not) being a draft
 then a newline.
 .Cm vput
 .Pf ( Sx "Command modifiers" )
-is supported, the error number
-.Va \&!
-is managed: with
-.Cm vput
-the result length is returned on success,
+is supported; with it the result length is returned on success,
 .Ql -1
 on error.
 Remarks: in BSD Mail this command also performed
@@ -6871,6 +6885,8 @@ s
 command with
 .Fl \&r
 option used.)
+Also see
+.Ic readall , readsh .
 .Bd -literal -offset indent
 read a b c
 \*(OU   H  e  l  l  o
@@ -6914,10 +6930,6 @@ upon End-Of-File (with no more bytes to read).
 .Ic read , readsh
 and
 .Ic readall .
-Errors are reported via error number
-.Va \&!
-and exit status
-.Va \&? .
 Channel names are first checked for standard input hyphen-minus
 .Ql - ,
 which always exists, then for a numeric file descriptor number,
@@ -6980,7 +6992,8 @@ endif
 but splits on shell token boundaries
 .Pf ( Sx "Shell-style argument quoting" )
 rather than at
-.Va ifs .
+.Va ifs ,
+and performs quote removal.
 .
 .Mx
 .It Ic remove
@@ -7271,9 +7284,6 @@ as well as some program-internal use cases (look-ups) do this.
 Set the
 .Dq dot
 to the given message.
-Error number
-.Va \&!
-is supported.
 .
 .Mx
 .It Ic shcodec
@@ -7746,9 +7756,7 @@ are invalid in the current
 Supports
 .Cm vput
 (see
-.Sx "Command modifiers" ) ,
-and manages the error number
-.Va \&! .
+.Sx "Command modifiers" ) .
 If the operation fails
 .Va \&!
 is set to
@@ -7814,15 +7822,14 @@ The result in case of errors is
 .Ql -1
 for usage errors and numeric operations, the empty string otherwise;
 .Dq soft
-errors, like when a search operation failed, will also set the
+errors, like when a search operation failed, will also set
 .Va \&!
-error number to
+to
 .Va ^ERR Ns -NODATA .
 Except when otherwise noted numeric arguments are parsed as signed 64-bit
-numbers, and errors will be reported in the error number
-.Va \&!
-as the numeric error
-.Va ^ERR Ns -RANGE .
+numbers, errors cause a
+.Va ^ERR Ns -RANGE
+.Va \&! .
 .
 .Pp
 Numeric operations work on one or two signed 64-bit integers according to
@@ -7894,9 +7901,9 @@ longer reported via the return status, but the result will linger at the
 minimum or maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
-Any caught overflow will be reported via the error number
+Any caught overflow sets
 .Va \&!
-as
+to
 .Va ^ERR Ns -OVERFLOW .
 .
 .Bd -literal -offset indent
@@ -8284,7 +8291,7 @@ set var='bla bla bla'; reply .
 .
 .
 .Pp
-Unless otherwise documented escapes manage the error number
+Unless otherwise documented escapes also manage the error number
 .Va \&!
 and the exit/return status
 .Va \&? ;
@@ -9279,18 +9286,6 @@ value of the last
 ed
 .Mx -sx
 .Sx Macro .
-A non-0 value has a meaning in the state machine: a
-.Ic set
-.Va errexit
-will cause a program exit, just like any error while loading
-.Sx "Resource files"
-in
-.Va posix
-mode.
-.Cm ignerr ,
-one of the
-.Sx "Command modifiers" ,
-instructs the state machine to ignore errors.
 .
 .Mx
 .It Va \&!
@@ -9306,13 +9301,6 @@ and
 .Sx Macro Ns
 s may signal an error number via
 .Ic return .
-\*(ID Error numbers are
-.Dq real
-only for commands which state that they manage
-.Va \&! ,
-for others the umbrella value
-.Va ^ERR Ns -INVAL
-will likely be used.
 .
 .
 .Mx
@@ -15465,9 +15453,7 @@ Perform IMAP path transformations.
 Supports
 .Cm vput
 (see
-.Sx "Command modifiers" ) ,
-and manages the error number
-.Va \&! .
+.Sx "Command modifiers" ) .
 The first argument specifies the operation:
 .Ar e[ncode]
 normalizes hierarchy delimiters (see
