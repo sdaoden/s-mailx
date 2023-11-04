@@ -1,24 +1,35 @@
-0/NONE
-0/NONE <hey1.0,><'you    ",><world!:mars.><><>
-0/NONE <hey2.0,><'you    ",><world!:mars.:><><>
-0/NONE <hey3.0,><'you    ",><world!:mars.::><><>
-0/NONE <hey1.0,><'you    ",><world!:mars.	><><>
-0/NONE <hey2.0,><'you    ",><world!:mars.:	><><>
-0/NONE <hey3.0,><'you    ",><world!:mars.::	><><>
-0/NONE
-0/NONE
-0/NONE <hey1.0,><'you    ",><world!><mars.><>
-0/NONE <hey2.0,><'you    ",><world!><mars.><>
-0/NONE <hey3.0,><'you    ",><world!><mars.::><>
-0/NONE <hey1.0,><'you    ",><world!><mars.	><>
-0/NONE <hey2.0,><'you    ",><world!><mars.:	><>
-0/NONE <hey3.0,><'you    ",><world!><mars.::	><>
-0/NONE
-0/NONE
-0/NONE <hey1.0,><'you    ",><world!><mars.><>
-0/NONE <hey2.0,><'you    ",><world!><mars.><>
-0/NONE <hey3.0,><'you    ",><world!><mars.><>
-0/NONE <hey1.0,><'you    ",><world!><mars.	><>
-0/NONE <hey2.0,><'you    ",><world!><mars.><	>
-0/NONE <hey3.0,><'you    ",><world!><mars.><:	>
-0/NONE
+<hey1.0,:'you    ",:world!:mars.><><><><>
+<hey2.0,:'you    ",:world!:mars.:><><><><>
+<hey3.0,:'you    ",:world!:mars.::><><><><>
+<hey1.0,:'you    ",:world!:mars.	><><><><>
+<hey2.0,:'you    ",:world!:mars.:	><><><><>
+<hey3.0,:'you    ",:world!:mars.::	><><><><>
+
+<hey1.0,><'you    ",:world!:mars.><><><>
+<hey2.0,><'you    ",:world!:mars.:><><><>
+<hey3.0,><'you    ",:world!:mars.::><><><>
+<hey1.0,><'you    ",:world!:mars.	><><><>
+<hey2.0,><'you    ",:world!:mars.:	><><><>
+<hey3.0,><'you    ",:world!:mars.::	><><><>
+
+<hey1.0,><'you    ",><world!:mars.><><>
+<hey2.0,><'you    ",><world!:mars.:><><>
+<hey3.0,><'you    ",><world!:mars.::><><>
+<hey1.0,><'you    ",><world!:mars.	><><>
+<hey2.0,><'you    ",><world!:mars.:	><><>
+<hey3.0,><'you    ",><world!:mars.::	><><>
+
+<hey1.0,><'you    ",><world!><mars.><>
+<hey2.0,><'you    ",><world!><mars.><>
+<hey3.0,><'you    ",><world!><mars.::><>
+<hey1.0,><'you    ",><world!><mars.	><>
+<hey2.0,><'you    ",><world!><mars.:	><>
+<hey3.0,><'you    ",><world!><mars.::	><>
+
+<hey1.0,><'you    ",><world!><mars.><>
+<hey2.0,><'you    ",><world!><mars.><>
+<hey3.0,><'you    ",><world!><mars.><>
+<hey1.0,><'you    ",><world!><mars.	><>
+<hey2.0,><'you    ",><world!><mars.><	>
+<hey3.0,><'you    ",><world!><mars.><:	>
+

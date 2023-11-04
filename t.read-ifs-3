@@ -1,0 +1,4 @@
+23/NONE / <#212		 $SHELL du><><>
+23/NONE / <212><#$SHELL du><>
+23/NONE / <212><$SHELL><#du>
+readctl remove:0/NONE
