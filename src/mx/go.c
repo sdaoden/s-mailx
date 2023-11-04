@@ -469,7 +469,7 @@ jrestart:
          flags |= a_NOALIAS;
 
       if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NULL){
-         uz i;
+         uz i, j;
 
          if(s != NULL){
             s = n_string_push_cp(s, word);
@@ -478,10 +478,13 @@ jrestart:
          }
 
          /* And join arguments onto alias expansion */
-         alias_name = word;
          i = strlen(alias_exp);
+         j = su_cs_len(word);
          cp = line.s;
-         line.s = n_autorec_alloc(i + 1 + line.l +1);
+         alias_name = line.s = n_autorec_alloc(j +1 + i + 1 + line.l +1);
+         su_mem_copy(line.s, word, j);
+         line.s[j++] = '\0';
+         line.s += j;
          su_mem_copy(line.s, alias_exp, i);
          if(line.l > 0){
             line.s[i++] = ' ';
