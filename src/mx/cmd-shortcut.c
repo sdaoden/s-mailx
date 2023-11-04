@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of cmd-shortcut.h.
- *@ TODO Support vput, i.e.: vput shortcut x what-this-expands-to
+ *@ TODO Support >VAR, i.e.: >x shortcut what-this-expands-to
  *@ TODO _SCUT -> _CSCUT
  *
  * Copyright (c) 2017 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.

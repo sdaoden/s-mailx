@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of cmd-charsetalias.h.
- *@ TODO Support vput, i.e.: vput charsetalias x what-this-expands-to
+ *@ TODO Support >, i.e.: >x charsetalias what-this-expands-to
  *@ TODO _CSAL -> _CCSAL
  *
  * Copyright (c) 2017 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.

@@ -214,6 +214,8 @@ static void a_go_update_pstate(void);
 /* Evaluate a single command */
 static boole a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp);
 
+static char const *a_go_evaluate__vput(struct str *line, char **vput, u8 scope_pp,  boole v15_compat);
+
 /* Branch here on hangup signal and simulate "exit" */
 static void a_go_hangup(int s);
 
@@ -269,8 +271,8 @@ a_go_update_pstate(void){
 }
 
 static boole
-a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
-	/* TODO a_go_evaluate(): old style(9), but also old code  MONSTER! */
+a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* TODO MONSTER! {{{ */
+	/* TODO a_go_evaluate(): old style(9), also old code */
 	/* TODO a_go_evaluate(): should be split in multiple subfunctions!!
 	 * TODO All commands should take a_cmd_ctx argument, also to do a much
 	 * TODO better history handling, now below! etc (cmd_arg parser able to
@@ -287,9 +289,10 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 		a_IGNERR = 1u<<6,
 		a_U = 1u<<7, /* TODO UTF-8 modifier prefix */
 		a_VPUT = 1u<<8,
+		a_VPUT_VAR = 1u<<9, /* New >$var syntax */
 
 		/* (scopes) */
-		a__SCOPE_SHIFT = 9,
+		a__SCOPE_SHIFT = 10,
 		a_SCOPE_GLOBAL = mx_SCOPE_GLOBAL << a__SCOPE_SHIFT,
 		a_SCOPE_OUR = mx_SCOPE_OUR << a__SCOPE_SHIFT,
 		a_SCOPE_LOCAL = mx_SCOPE_LOCAL << a__SCOPE_SHIFT,
@@ -305,7 +308,7 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 
 	struct str line;
 	struct n_string s_b, *s;
-	char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
+	char _wordbuf[2+14/*>VAR*/], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
 	char const *alias_name, *ccp;
 	struct mx_cmd_desc const *cdp;
 	s32 nerrn, nexn; /* TODO n_pstate_ex_no -> s64! */
@@ -355,9 +358,21 @@ jrestart:
 		goto jrestart;
 	}
 
+	/* Special-treat redirection, too */
+	if(UNLIKELY(*cp == '>')){
+		if((ccp = a_go_evaluate__vput(&line, &vput, scope_pp, FAL0)) != NIL){
+			rv = -1;
+			goto jeopnotsupp;
+		}
+		scope_vput = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
+		flags &= ~a__SCOPE_MASK;
+		flags |= a_VPUT | a_VPUT_VAR;
+		goto jrestart;
+	}
+
 	/* Note: adding more special treatments must be reflected in the `help' etc. output in cmd.c! */
 	/* Ignore null commands (comments) directly, no shell stuff etc. */
-	if(*cp == '#'){
+	if(UNLIKELY(*cp == '#')){
 		gecp->gec_hist_flags = a_GO_HIST_NONE;
 		goto jret0;
 	}
@@ -380,8 +395,9 @@ jrestart:
 	default:
 		break;
 	case sizeof("u") -1:
+		/* > above */
 		if(*word == 'u' || *word == 'U'){
-			n_err(_("Ignoring yet unused `u' command modifier!"));
+			n_err(_("Ignoring yet unused `u' command modifier!\n"));
 			flags |= a_U;
 			goto jrestart;
 		}
@@ -408,13 +424,14 @@ jrestart:
 		}
 		break;
 	case sizeof("eval") -1:
-	/*case sizeof("vput") -1:*/
+	/*case sizeof("vput") -1: v15-compat*/
 	/*case sizeof("wysh") -1: v15-compat*/
 		if(!su_cs_cmp_case(word, "eval")){
 			++eval_cnt;
 			goto jrestart;
 		}
-		if(!su_cs_cmp_case(word, "vput")){
+		if(!su_cs_cmp_case(word, "vput")){ /* v15-compat */
+			n_OBSOLETE2(cdp->cd_name, _("`vput CMD VAR' modifier changed to `>VAR CMD'"));
 			flags |= a_VPUT;
 			scope_vput = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
 			flags &= ~a__SCOPE_MASK;
@@ -497,10 +514,12 @@ jrestart:
 			s = n_string_push_buf(s, "pp ", sizeof("pp ") -1);
 		}
 
-		if(flags & a_VPUT){
+		if(flags & a_VPUT_VAR){ /* TODO history entry has variable name expanded! */
 			if(*(ccp = a_mod[scope_vput]) != '\0')
 				s = n_string_push_cp(s, ccp);
-			s = n_string_push_buf(s, "vput ", sizeof("vput ") -1);
+			s = n_string_push_c(s, '>');
+			s = n_string_push_cp(s, vput);
+			s = n_string_push_c(s, ' ');
 		}
 
 		if(*(ccp = a_mod[scope_cmd]) != '\0')
@@ -554,8 +573,8 @@ jrestart:
 			}
 
 			/* And join arguments onto alias expansion */
-			alias_name = word;
 			i = su_cs_len(alias_exp);
+			j = su_cs_len(word);
 			cp = line.s;
 			alias_name = line.s = su_AUTO_ALLOC(j +1 + i + 1 + line.l +1);
 			su_mem_copy(line.s, word, j);
@@ -670,7 +689,8 @@ jwhite:
 	/* Process the arguments to the command, depending on the type it expects */
 	UNINIT(ccp, NIL);
 
-	/* Verify flag / state {{{ */
+	/* Verify flags <> state {{{ */
+	/* Verify I: misc {{{ */
 	if(UNLIKELY(!(n_psonce & n_PSO_STARTED))){
 		if((cdp->cd_caflags & mx_CMD_ARG_SC) && !(n_psonce & n_PSO_STARTED_CONFIG)){
 			ccp = N_("cannot be used during startup (pre -X)");
@@ -757,7 +777,7 @@ jwhite:
 	}
 	/* }}}*/
 
-	/* Check cmd scope support {{{ */
+	/* Verify II: check cmd scope support {{{ */
 	if(flags & a__SCOPE_MASK){
 		boole const notmac = ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO);
 
@@ -799,33 +819,21 @@ jwhite:
 	}
 	/* }}} */
 
-	if(flags & a_VPUT){ /* {{{ */
+	/* Verify III: vput {{{ */
+	if(flags & a_VPUT){
 		if(UNLIKELY(!(cdp->cd_caflags & mx_CMD_ARG_V))){
-			ccp = N_("vput: command modifier not supported");
+			ccp = N_("> (+ obsolete vput): command modifier not supported");/* v15-compat */
 			rv = -1;
 			goto jeopnotsupp;
+		}else if(!(flags & a_VPUT_VAR)){ /* TODO v15-compat: plain "vput" support */
+			if((ccp = a_go_evaluate__vput(&line, &vput, scope_pp, TRU1)) != NIL){
+				rv = -1;
+				goto jeopnotsupp;
+			}
 		}
-
-		ccp = line.s;
-		vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
-					n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
-					n_SHEXP_PARSE_META_KEEP), scope_pp, &ccp);
-		cp = UNCONST(char*,ccp);
-		if(ccp == NIL)
-			ccp = N_("vput: could not parse input token");
-		else if(!n_shexp_is_valid_varname(vput, FAL0))
-			ccp = N_("vput: not a valid variable name");
-		else if(!n_var_is_user_writable(vput))
-			ccp = N_("vput: either not a user writable, or a boolean variable");
-		else
-			ccp = NIL;
-		if(ccp != NIL){
-			rv = -1;
-			goto jeopnotsupp;
-		}
-		line.l -= P2UZ(cp - line.s);
-		line.s = cp;
-	} /* }}} */
+	}
+	/* }}} */
+	/* }}} */
 
 	if(n_poption & n_PO_D_VV)
 		n_err(_("COMMAND <%s> %s\n"), cdp->cd_name, line.s);
@@ -905,9 +913,8 @@ jmsglist_go:
 
 	case mx_CMD_ARG_TYPE_RAWDAT:
 		/* Just the straight string, placed in argv[] */
+		ASSERT(!(flags & a_VPUT));
 		argvp = argv_stack;
-		if(flags & a_VPUT)
-			*argvp++ = vput;
 		*argvp++ = line.s;
 		*argvp = NIL;
 
@@ -938,12 +945,11 @@ jmsglist_go:
 			}
 		}
 
+		ASSERT(!(flags & a_VPUT));
 		argvp = argv_base = su_AUTO_ALLOC(sizeof(*argv_base) * n_MAXARGC);
-		if(flags & a_VPUT)
-			*argvp++ = vput;
 
 		if((c = getrawlist(scope_pp, (c != 0), ((flags & a_IS_SKIP) != 0), argvp,
-				(n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
+				n_MAXARGC, line.s, line.l)) < 0){
 			n_err(_("%s: invalid argument list\n"), cdp->cd_name);
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
@@ -1098,6 +1104,44 @@ jeopnotsupp:
 	ASSERT(rv == 1 || rv == -1);
 	goto jleave;
 } /* }}} */
+
+static char const *
+a_go_evaluate__vput(struct str *line, char **vput, u8 scope_pp, boole v15_compat){
+	char const *ccp;
+	NYD2_IN;
+
+	/* Skip over > */
+	if(!v15_compat){
+		++line->s;
+		--line->l;
+	}
+
+	ccp = line->s;
+	*vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
+				n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
+				n_SHEXP_PARSE_META_KEEP), scope_pp, &ccp);
+	if(ccp == NIL){
+		ccp = N_("> (obsolete: vput): could not parse input token");/* v15-compat*/
+		goto jleave;
+	}
+
+	if(!n_shexp_is_valid_varname(*vput, FAL0)){
+		ccp = N_(">: not a valid variable name");
+		goto jleave;
+	}
+	if(!n_var_is_user_writable(*vput)){
+		ccp = N_(">: either not a user writable, or a boolean variable");
+		goto jleave;
+	}
+
+	line->s = UNCONST(char*,ccp);
+	line->l = su_cs_len(ccp);
+
+	ccp = NIL;
+jleave:
+	NYD2_OU;
+	return ccp;
+}
 
 static void
 a_go_hangup(int s){

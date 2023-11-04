@@ -4,7 +4,7 @@
  *@ TODO   add structure lookup with modifier bits and actual command: like
  *@ TODO   that "? CA" would print help for real command even with modifiers!
  *@ TODO   Also it would be nicer if modifier order would be normalized!
- *@ TODO - Support vput, i.e.: vput commandalias x what-this-expands-to
+ *@ TODO - Support >, i.e.: >x commandalias what-this-expands-to
  *@ TODO   _CMDAL -> _CCMDAL
  *
  * Copyright (c) 2017 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
