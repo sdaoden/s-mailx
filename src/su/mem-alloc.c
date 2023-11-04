@@ -306,6 +306,37 @@ a_mema_dump_chunk(boole how, char buf[a_MEMA_DUMP_SIZE],
 #endif /* su_MEM_ALLOC_DEBUG */
 
 #ifdef su_MEM_ALLOC_DEBUG
+void
+su__mem_touch(void *vp  su_DVL_LOC_ARGS_DECL){
+	boole isbad;
+	union a_mema_ptr p;
+	NYD2_IN;
+
+	if(vp == NIL){
+		su_log_write(su_LOG_DEBUG, "SU memory: touch(NIL) from %s, line %" PRIu32 su_DVL_LOC_ARGS_USE);
+		goto NYD_OU_LABEL;
+	}
+
+	p.map_vp = vp;
+	a_MEMA_HOPE_GET(map_hc, p, isbad);
+	--p.map_hc;
+
+	if(isbad == TRUM1){
+		su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
+			"SU memory: touch of corrupted pointer at %s, line %" PRIu32 "\n\tLast seen: %s, line %" PRIu32
+			su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+		goto NYD_OU_LABEL;
+	}else if(p.map_c->mac_isfree)
+		su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
+			"SU memory: touch of freed at %s, line %" PRIu32 "\n\tLast seen: %s, line %" PRIu32
+			su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+
+	p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+	p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
+
+	NYD2_OU;
+}
+
 boole
 su__mem_get_can_book(uz size, uz no){
 	boole rv;
@@ -627,7 +658,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf
 
 			if(origovp != NIL){
 				su_mem_copy(rv, origovp, MIN(orig_sz, size));
-				su_mem_free(origovp su_DVL_LOC_ARGS_USE);
+				su_mem_free(origovp  su_DVL_LOC_ARGS_USE);
 			}
 		}
 #endif /* su_MEM_ALLOC_DEBUG */
@@ -696,7 +727,7 @@ su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL){
 	}
 #ifdef su_MEM_ALLOC_DEBUG
 	else
-		su_log_write(su_LOG_DEBUG, "SU memory: free(NIL) from %s, line %" PRIu32 su_DVL_LOC_ARGS_USE);
+		su_log_write(su_LOG_DEBUG, "SU memory: free(NIL) from %s, line %" PRIu32  su_DVL_LOC_ARGS_USE);
 #endif
 
 	NYD_OU;

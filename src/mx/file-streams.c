@@ -1069,14 +1069,14 @@ mx_fs_close_all(void){
 }
 
 void
-mx_fs_linepool_aquire(char **dpp, uz *dsp){
+(mx_fs_linepool_aquire)(char **dpp, uz *dsp  su_DVL_LOC_ARGS_DECL){
 	struct a_fs_lpool_ent *lpep;
 	NYD2_IN;
 
 	if((lpep = a_fs_lpool_free) != NIL)
 		a_fs_lpool_free = lpep->fsle_last;
 	else
-		lpep = su_TCALLOC(struct a_fs_lpool_ent, 1);
+		lpep = su_TCALLOC_LOCOR(struct a_fs_lpool_ent, 1, su_DVL_LOC_ARGS_ORUSE);
 
 	lpep->fsle_last = a_fs_lpool_used;
 	a_fs_lpool_used = lpep;
@@ -1085,17 +1085,27 @@ mx_fs_linepool_aquire(char **dpp, uz *dsp){
 	*dsp = lpep->fsle_size;
 	lpep->fsle_size = 0;
 
+#ifdef su_HAVE_DVL_LOC_ARGS
+	if(*dpp != NIL)
+		su_MEM_TOUCH_LOCOR(*dpp, su_DVL_LOC_ARGS_USE_SOLE);
+#endif
+
 	NYD2_OU;
 }
 
 void
-mx_fs_linepool_release(char *dp, uz ds){
+(mx_fs_linepool_release)(char *dp, uz ds  su_DVL_LOC_ARGS_DECL){
 	struct a_fs_lpool_ent *lpep;
 	NYD2_IN;
 
 	ASSERT(a_fs_lpool_used != NIL);
 	lpep = a_fs_lpool_used;
 	a_fs_lpool_used = lpep->fsle_last;
+
+#ifdef su_HAVE_DVL_LOC_ARGS
+	if(dp != NIL)
+		su_MEM_TOUCH_LOCOR(dp,  su_DVL_LOC_ARGS_USE_SOLE);
+#endif
 
 	lpep->fsle_last = a_fs_lpool_free;
 	a_fs_lpool_free = lpep;

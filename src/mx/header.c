@@ -1780,7 +1780,7 @@ jleave:
 }
 
 FL char *
-hfield_mult(char const *field, struct message *mp, int mult)
+hfield_mult(char const *field, struct message *mp, int mult  su_DVL_LOC_ARGS_DECL)
 {
    FILE *ibuf;
    struct str hfs;
@@ -1804,7 +1804,8 @@ hfield_mult(char const *field, struct message *mp, int mult)
       goto jleave;
 
    if ((mp->m_flag & MNOFROM) == 0 &&
-         readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+         (readline_restart)(ibuf, &linebuf, &linesize, 0  su_DVL_LOC_ARGS_USE
+            ) < 0)
       goto jleave;
    while (lc > 0) {
       if ((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, &linebuf, &linesize,

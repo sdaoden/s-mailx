@@ -163,12 +163,14 @@ EXPORT void mx_fs_close_all(void);
  * (Possibly) Get a line buffer, and release one to the pool, respectively.
  * _book() returns false for integer overflow, or if reallocation survives su_STATE_ERR_NOMEM.
  * The last is driven by the main loop to perform cleanups */
-EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp);
-EXPORT void mx_fs_linepool_release(char *dp, uz ds);
+EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp  su_DVL_LOC_ARGS_DECL);
+EXPORT void mx_fs_linepool_release(char *dp, uz ds  su_DVL_LOC_ARGS_DECL);
 EXPORT boole mx_fs_linepool_book(char **dp, uz *dsp, uz len, uz toadd  su_DVL_LOC_ARGS_DECL);
 EXPORT void mx_fs_linepool_cleanup(boole completely);
 
 #ifdef su_HAVE_DVL_LOC_ARGS
+# define mx_fs_linepool_aquire(A,B) mx_fs_linepool_aquire(A, B  su_DVL_LOC_ARGS_INJ)
+# define mx_fs_linepool_release(A,B) mx_fs_linepool_release(A, B  su_DVL_LOC_ARGS_INJ)
 # define mx_fs_linepool_book(A,B,C,D) mx_fs_linepool_book(A, B, C, D  su_DVL_LOC_ARGS_INJ)
 #endif
 
