@@ -76,7 +76,7 @@ static int a_cmd_c_list(void *vp);
 /* `help' / `?' command */
 static int a_cmd_c_help(void *vp);
 
-static char const a_cmd_prefixes[][8] = {"eval", "global", "ignerr", "local", "our", "pp", "u", "vput", "wysh"};
+static char const a_cmd_prefixes[][8] = {">", "eval", "global", "ignerr", "local", "our", "pp", "u", "vput", "wysh"};
 
 /* List of all commands; but first their cmd_arg_desc instances */
 #include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
@@ -186,7 +186,7 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		rv = n_string_push_cp(rv, _(" | `u'"));
 
 	if(cdp->cd_caflags & mx_CMD_ARG_V)
-		rv = n_string_push_cp(rv, _(" | `vput'"));
+		rv = n_string_push_cp(rv, _(" | `>'"));
 	if(cdp->cd_caflags & mx_CMD_ARG_EM)
 		rv = n_string_push_cp(rv, _(" | *!*"));
 

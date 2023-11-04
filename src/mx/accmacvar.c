@@ -4390,7 +4390,7 @@ c_environ(void *vp){
 	}
 
 	if(cacp->cac_vput != NIL){
-		n_err(_("environ: `vput' only supported for `lookup' subcommand\n"));
+		n_err(_("environ: `>' modifier only supported for `lookup' subcommand\n"));
 		goto jeuse;
 	}
 
@@ -4554,7 +4554,7 @@ c_vpospar(void *vp){ /* {{{ */
 
 	if(f & (a_SET | a_CLEAR)){
 		if(cacp->cac_vput != NIL)/* XXX better argparse */
-			n_err(_("vpospar: `vput' only supported for `quote' subcommand\n"));
+			n_err(_("vpospar: `>' modifier only supported for `quote' subcommand\n"));
 
 		a_amv_pospar_clear(appp);
 

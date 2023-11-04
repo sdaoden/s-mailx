@@ -81,7 +81,7 @@ struct a_fop_ctx{
 	struct a_fop_subcmd const *fc_subcmd;
 	u32 fc_flags;
 	u8 fc_cmderr; /* On input, a_fop_cmd, on output (maybe) a_fop_err */
-	boole fc_vput; /* `vput' active? */
+	boole fc_vput; /* `>' modifier active? */
 	u8 fc__pad[2];
 	char const *fc_varres;
 	char const *fc_arg; /* The current arg (_ERR: which caused failure) */

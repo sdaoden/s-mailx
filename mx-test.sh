@@ -2730,23 +2730,23 @@ define x {
 t_commandalias() { #{{{
 	t_prolog "${@}"
 
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias echo echo hoho
-	echo stop.
-	commandalias X Xx
-	commandalias Xx XxX
-	commandalias XxX XxXx
-	commandalias XxXx XxXxX
-	commandalias XxXxX XxXxXx
-	commandalias XxXxXx echo huhu
-	commandalias XxXxXxX echo huhu
-	X
-	commandalias XxXxXx XxXxXxX
-	X
-	uncommandalias echo
-	commandalias XxXxXx echo huhu
-	X
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+commandalias echo echo hoho
+echo stop.
+commandalias X Xx
+commandalias Xx XxX
+commandalias XxX XxXx
+commandalias XxXx XxXxX
+commandalias XxXxX XxXxXx
+commandalias XxXxXx echo huhu
+commandalias XxXxXxX echo huhu
+X
+commandalias XxXxXx XxXxXxX
+X
+uncommandalias echo
+commandalias XxXxXx echo huhu
+X
+__EOT
 
 	cke0 1 0 ./t1 '1638809585 36'
 
@@ -2809,169 +2809,169 @@ t_shcodec() { #{{{
 	t_prolog "${@}"
 
 	#{{{ XXX the first needs to be checked, it is quite dumb as such
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME'
-	shcodec e abcd
-	x
-	shcodec d abcd
-	x
-	shcodec e a'b'c'd'
-	x
-	shcodec d a'b'c'd'
-	x
-	shcodec e a"b"c"d"
-	x
-	shcodec d a"b"c"d"
-	x
-	shcodec e a$'b'c$'d'
-	x
-	shcodec d a$'b'c$'d'
-	x
-	shcodec e 'abcd'
-	x
-	shcodec d 'abcd'
-	x
-	shcodec e "abcd"
-	x
-	shcodec d "abcd"
-	x
-	shcodec e $'abcd'
-	x
-	shcodec d $'abcd'
-	x
-	# same but with vput
-	commandalias y echo '$?/$^ERRNAME $res'
-	vput shcodec res e abcd
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d abcd
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e a'b'c'd'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a'b'c'd'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e a"b"c"d"
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a"b"c"d"
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e a$'b'c$'d'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a$'b'c$'d'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e 'abcd'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d 'abcd'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e "abcd"
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d "abcd"
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e $'abcd'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d $'abcd'
-	y
-	eval shcodec d $res
-	x
-	#
-	vput shcodec res e a b\ c d
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a b\ c d
-	y
-	vput shcodec res e ab cd
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d 'ab cd'
-	y
-	vput shcodec res e a 'b c' d
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a 'b c' d
-	y
-	vput shcodec res e a "b c" d
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a "b c" d
-	y
-	vput shcodec res e a $'b c' d
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d a $'b c' d
-	y
-	#
-	vput shcodec res e 'a$`"\'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d 'a$`"\'
-	y
-	vput shcodec res e "a\$\`'\"\\"
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d "a\$\`'\"\\"
-	y
-	vput shcodec res e $'a\$`\'\"\\'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d $'a\$`\'\"\\'
-	y
-	vput shcodec res e $'a\$`\'"\\'
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res d $'a\$`\'"\\'
-	y
-	#
-	set diet=curd
-	vput shcodec res e a${diet}c
-	y
-	eval shcodec d $res
-	x
-	eval vput shcodec res e a${diet}c
-	y
-	eval shcodec d $res
-	x
-	vput shcodec res e "a${diet}c"
-	y
-	eval shcodec d $res
-	x
-	eval vput shcodec res e "a${diet}c"
-	y
-	eval shcodec d $res
-	x
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+commandalias x ec '$?/$^ERRNAME'
+shcodec e abcd
+x
+shcodec d abcd
+x
+shcodec e a'b'c'd'
+x
+shcodec d a'b'c'd'
+x
+shcodec e a"b"c"d"
+x
+shcodec d a"b"c"d"
+x
+shcodec e a$'b'c$'d'
+x
+shcodec d a$'b'c$'d'
+x
+shcodec e 'abcd'
+x
+shcodec d 'abcd'
+x
+shcodec e "abcd"
+x
+shcodec d "abcd"
+x
+shcodec e $'abcd'
+x
+shcodec d $'abcd'
+x
+# same but with >
+commandalias y echo '$?/$^ERRNAME $res'
+>res shcodec e abcd
+y
+eval shcodec d $res
+x
+>res shcodec d abcd
+y
+eval shcodec d $res
+x
+>res shcodec e a'b'c'd'
+y
+eval shcodec d $res
+x
+>res shcodec d a'b'c'd'
+y
+eval shcodec d $res
+x
+>res shcodec e a"b"c"d"
+y
+eval shcodec d $res
+x
+>res shcodec d a"b"c"d"
+y
+eval shcodec d $res
+x
+>res shcodec e a$'b'c$'d'
+y
+eval shcodec d $res
+x
+>res shcodec d a$'b'c$'d'
+y
+eval shcodec d $res
+x
+>res shcodec e 'abcd'
+y
+eval shcodec d $res
+x
+>res shcodec d 'abcd'
+y
+eval shcodec d $res
+x
+>res shcodec e "abcd"
+y
+eval shcodec d $res
+x
+>res shcodec d "abcd"
+y
+eval shcodec d $res
+x
+>res shcodec e $'abcd'
+y
+eval shcodec d $res
+x
+>res shcodec d $'abcd'
+y
+eval shcodec d $res
+x
+#
+>res shcodec e a b\ c d
+y
+eval shcodec d $res
+x
+>res shcodec d a b\ c d
+y
+>res shcodec e ab cd
+y
+eval shcodec d $res
+x
+>res shcodec d 'ab cd'
+y
+>res shcodec e a 'b c' d
+y
+eval shcodec d $res
+x
+>res shcodec d a 'b c' d
+y
+>res shcodec e a "b c" d
+y
+eval shcodec d $res
+x
+>res shcodec d a "b c" d
+y
+>res shcodec e a $'b c' d
+y
+eval shcodec d $res
+x
+>res shcodec d a $'b c' d
+y
+#
+>res shcodec e 'a$`"\'
+y
+eval shcodec d $res
+x
+>res shcodec d 'a$`"\'
+y
+>res shcodec e "a\$\`'\"\\"
+y
+eval shcodec d $res
+x
+>res shcodec d "a\$\`'\"\\"
+y
+>res shcodec e $'a\$`\'\"\\'
+y
+eval shcodec d $res
+x
+>res shcodec d $'a\$`\'\"\\'
+y
+>res shcodec e $'a\$`\'"\\'
+y
+eval shcodec d $res
+x
+>res shcodec d $'a\$`\'"\\'
+y
+#
+set diet=curd
+>res shcodec e a${diet}c
+y
+eval shcodec d $res
+x
+eval >res shcodec e a${diet}c
+y
+eval shcodec d $res
+x
+>res shcodec e "a${diet}c"
+y
+eval shcodec d $res
+x
+eval >res shcodec e "a${diet}c"
+y
+eval shcodec d $res
+x
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '3316745312 1241'
 
@@ -2979,18 +2979,17 @@ t_shcodec() { #{{{
 		t_echoskip 'unicode:[no UTF-8 locale]'
 	elif have_feat multibyte-charsets; then
 		#{{{
-		<<- '__EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${E0}
-		#
-		shcodec e täst
-		shcodec +e täst
-		shcodec d $'t\u00E4st'
-		shcodec e aՍc
-		shcodec +e aՍc
-		shcodec d $'a\u054Dc'
-		shcodec e a𝕂c
-		shcodec +e a𝕂c
-		shcodec d $'a\U0001D542c'
-		__EOT
+		<< '__EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${E0}
+shcodec e täst
+shcodec +e täst
+shcodec d $'t\u00E4st'
+shcodec e aՍc
+shcodec +e aՍc
+shcodec d $'a\u054Dc'
+shcodec e a𝕂c
+shcodec +e a𝕂c
+shcodec d $'a\U0001D542c'
+__EOT
 		#}}}
 		cke0 unicode 0 ./tunicode '1175985867 77'
 	else
@@ -4599,7 +4598,7 @@ define du {
 	echon 2 only local (au) du=$du:; var du; !echo sh=$du
 	environ link du
 	echon 3 also env linked du=$du:; var du; !echo sh=$du
-	vput vexpr recu + $recu 1
+	>recu vexpr + $recu 1
 	if $recu -eq 1
 		echo ----------------RECURSION STARTS
 		call du
@@ -4607,7 +4606,7 @@ define du {
 	end
 	local unset du
 	echon 4 local ($recu) unset du=$du:; var du; !echo sh=$du
-	vput vexpr recu + $recu 1
+	>recu vexpr + $recu 1
 	set du=updated$recu
 	echon 5 updated ($recu) du=$du:; var du; !echo sh=$du
 }
@@ -4635,19 +4634,19 @@ __EOT
 commandalias x echon '$?/$^ERRNAME\; du=$du\; d1=$d1:;var du'
 environ lookup du
 x
-vput environ d1 lookup du
+>d1 environ lookup du
 x
 environ set du=1
 environ lookup du
 x
-vput environ d1 lookup du
+>d1 environ lookup du
 x
 echoerr pre
-vput environ d+ lookup du
+>{d+} environ lookup du
 x
 __EOT
 	#}}}
-	ck 6 0 ./t6 '1502695313 170' '2304864661 108'
+	ck 6 0 ./t6 '1502695313 170' '1393421074 106'
 
 	t_epilog "${@}"
 } #}}}
@@ -4789,67 +4788,67 @@ t_csop() { #{{{
 	fi
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME :$res:'
-	echo ' #-2'
-	vput csop res find you y;x
-	vput csop res find you o;x
-	vput csop res find you u;x
-	vput csop res find you yo;x
-	vput csop res find you ou;x
-	vput csop res find you you;x
-	echo ' #-1'
-	vput csop res find you Y;x
-	vput csop res find? you Y;x
-	vput csop res find?case you O;x
-	vput csop res find? you U;x
-	vput csop res find?ca you yO;x
-	vput csop res find? you oU;x
-	vput csop res find? you YoU;x
-	echo ' #0'
-	vput csop res find 'bananarama' 'nana';x
-	vput csop res find 'bananarama' 'bana';x
-	vput csop res find 'bananarama' 'Bana';x
-	vput csop res find 'bananarama' 'rama';x
-	echo ' #1'
-	vput csop res find? 'bananarama' 'nana';x
-	vput csop res find? 'bananarama' 'bana';x
-	vput csop res find? 'bananarama' 'Bana';x
-	vput csop res find? 'bananarama' 'rama';x
-	echo ' #2'
-	vput csop res substring 'bananarama' 1;x
-	vput csop res substring 'bananarama' 3;x
-	vput csop res substring 'bananarama' 5;x
-	vput csop res substring 'bananarama' 7;x
-	vput csop res substring 'bananarama' 9;x
-	vput csop res substring 'bananarama' 10;x
-	vput csop res substring 'bananarama' 1 3;x
-	vput csop res substring 'bananarama' 3 3;x
-	vput csop res substring 'bananarama' 5 3;x
-	vput csop res substring 'bananarama' 7 3;x
-	vput csop res substring 'bananarama' 9 3;x
-	vput csop res substring 'bananarama' 10 3;x
-	echo ' #3'
-	vput csop res substring 'bananarama' -1;x
-	vput csop res substring 'bananarama' -3;x
-	vput csop res substring 'bananarama' -5;x
-	vput csop res substring 'bananarama' -7;x
-	vput csop res substring 'bananarama' -9;x
-	vput csop res substring 'bananarama' -10;x
-	vput csop res substring 'bananarama' 1 -3;x
-	vput csop res substring 'bananarama' 3 -3;x
-	vput csop res substring 'bananarama' 5 -3;x
-	vput csop res substring 'bananarama' 7 -3;x
-	vput csop res substring 'bananarama' 9 -3;x
-	vput csop res substring 'bananarama' 10 -3;x
-	echo ' #4'
-	vput csop res trim 'Cocoon  Cocoon';x
-	vput csop res trim '  Cocoon  Cocoon 	  ';x
-	vput csop res trim-front 'Cocoon  Cocoon';x
-	vput csop res trim-front '  Cocoon  Cocoon 	  ';x
-	vput csop res trim-end 'Cocoon  Cocoon';x
-	vput csop res trim-end '  Cocoon  Cocoon 	  ';x
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+commandalias x echo '$?/$^ERRNAME :$res:'
+echo ' #-2'
+>res csop find you y;x
+>res csop find you o;x
+>res csop find you u;x
+>res csop find you yo;x
+>res csop find you ou;x
+>res csop find you you;x
+echo ' #-1'
+>res csop find you Y;x
+>res csop find? you Y;x
+>res csop find?case you O;x
+>res csop find? you U;x
+>res csop find?ca you yO;x
+>res csop find? you oU;x
+>res csop find? you YoU;x
+echo ' #0'
+>res csop find 'bananarama' 'nana';x
+>res csop find 'bananarama' 'bana';x
+>res csop find 'bananarama' 'Bana';x
+>res csop find 'bananarama' 'rama';x
+echo ' #1'
+>res csop find? 'bananarama' 'nana';x
+>res csop find? 'bananarama' 'bana';x
+>res csop find? 'bananarama' 'Bana';x
+>res csop find? 'bananarama' 'rama';x
+echo ' #2'
+>res csop substring 'bananarama' 1;x
+>res csop substring 'bananarama' 3;x
+>res csop substring 'bananarama' 5;x
+>res csop substring 'bananarama' 7;x
+>res csop substring 'bananarama' 9;x
+>res csop substring 'bananarama' 10;x
+>res csop substring 'bananarama' 1 3;x
+>res csop substring 'bananarama' 3 3;x
+>res csop substring 'bananarama' 5 3;x
+>res csop substring 'bananarama' 7 3;x
+>res csop substring 'bananarama' 9 3;x
+>res csop substring 'bananarama' 10 3;x
+echo ' #3'
+>res csop substring 'bananarama' -1;x
+>res csop substring 'bananarama' -3;x
+>res csop substring 'bananarama' -5;x
+>res csop substring 'bananarama' -7;x
+>res csop substring 'bananarama' -9;x
+>res csop substring 'bananarama' -10;x
+>res csop substring 'bananarama' 1 -3;x
+>res csop substring 'bananarama' 3 -3;x
+>res csop substring 'bananarama' 5 -3;x
+>res csop substring 'bananarama' 7 -3;x
+>res csop substring 'bananarama' 9 -3;x
+>res csop substring 'bananarama' 10 -3;x
+echo ' #4'
+>res csop trim 'Cocoon  Cocoon';x
+>res csop trim '  Cocoon  Cocoon 	  ';x
+>res csop trim-front 'Cocoon  Cocoon';x
+>res csop trim-front '  Cocoon  Cocoon 	  ';x
+>res csop trim-end 'Cocoon  Cocoon';x
+>res csop trim-end '  Cocoon  Cocoon 	  ';x
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '1892119538 755'
 
@@ -4866,260 +4865,260 @@ t_vexpr() { #{{{
 	fi
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tnumeric 2>${EX}
-	commandalias x \\echo '$?/$^ERRNAME $res'
-	commandalias X \\echoerr
-	echo ' #0.0'
-	vput vexpr res = 9223372036854775807;x
-	X 0.0.1>
-	vput vexpr res = 9223372036854775808;x
-	X 0.0.1<
-	vput vexpr res = u9223372036854775808;x
-	vput vexpr res =? 9223372036854775808;x
-	vput vexpr res = -9223372036854775808;x
-	X 0.0.2>
-	vput vexpr res = -9223372036854775809;x
-	X 0.0.2<
-	vput vexpr res =?saturated -9223372036854775809;x
-	vput vexpr res = U9223372036854775809;x
-	vput vexpr res = 64#7__________;x
-	vput vexpr res = 64#7@@@@@@@@@@;x
-	echo ' #0.1'
-	vput vexpr res = 0b0111111111111111111111111111111111111111111111111111111111111111;x
-	X 0.1.1>
-	vput vexpr res = s0b1000000000000000000000000000000000000000000000000000000000000000;x
-	X 0.1.1<
-	vput vexpr res =? S0b10000000000000000000000000000000000000000000000000000000000000000;x
-	vput vexpr res = U0b1000000000000000000000000000000000000000000000000000000000000000;x
-	vput vexpr res = 0b1000000000000000000000000000000000000000000000000000000000000000;x
-	vput vexpr res =? 0b1000000000000000000000000000000000000000000000000000000000000000;x
-	vput vexpr res = -0b1000000000000000000000000000000000000000000000000000000000000000;x
-	X 0.1.2>
-	vput vexpr res = S0b1000000000000000000000000000000000000000000000000000000000000001;x
-	X 0.1.2<
-	vput vexpr res =? S0b1000000000000000000000000000000000000000000000000000000000000001;x
-	vput vexpr res =? -0b1000000000000000000000000000000000000000000000000000000000000001;x
-	vput vexpr res = U0b1000000000000000000000000000000000000000000000000000000000000001;x
-	echo ' #0.2'
-	vput vexpr res = 0777777777777777777777;x
-	X 0.2.1>
-	vput vexpr res =  S01000000000000000000000;x
-	X 0.2.1<
-	vput vexpr res =? S01000000000000000000000;x
-	vput vexpr res =  U01000000000000000000000;x
-	vput vexpr res =  01000000000000000000000;x
-	vput vexpr res =?satur 01000000000000000000000;x
-	vput vexpr res = -01000000000000000000000;x
-	X 0.2.2>
-	vput vexpr res = S01000000000000000000001;x
-	X 0.2.2<
-	vput vexpr res =?sat S01000000000000000000001;x
-	vput vexpr res = -01000000000000000000001;x
-	vput vexpr res = U01000000000000000000001;x
-	echo ' #0.3'
-	vput vexpr res = 0x7FFFFFFFFFFFFFFF;x
-	X 0.3.1>
-	vput vexpr res = S0x8000000000000000;x
-	X 0.3.1<
-	vput vexpr res =? S0x8000000000000000;x
-	vput vexpr res = U0x8000000000000000;x
-	vput vexpr res = 0x8000000000000000;x
-	vput vexpr res =? 0x8000000000000000;x
-	vput vexpr res = -0x8000000000000000;x
-	X 0.3.2>
-	vput vexpr res = S0x8000000000000001;x
-	X 0.3.2<
-	vput vexpr res =? S0x8000000000000001;x
-	vput vexpr res = -0x8000000000000001;x
-	vput vexpr res = u0x8000000000000001;x
-	X 0.3.3>
-	vput vexpr res =  9223372036854775809;x
-	X 0.3.3<
-	vput vexpr res =? 9223372036854775809;x
-	vput vexpr res = u9223372036854775809;x
-	echo ' #1'
-	vput vexpr res ~ 0;x
-	vput vexpr res ~ 1;x
-	vput vexpr res ~ -1;x
-	echo ' #1.1'
-	vput vexpr res - 0;x
-	vput vexpr res - 1;x
-	vput vexpr res - -1;x
-	vput vexpr res - -0xAFFE;x
-	vput vexpr res - 0xAFFE;x
-	vput vexpr res - u0x8000000000000001;x
-	vput vexpr res - 0x8000000000000001;x
-	vput vexpr res - 0x8000000000000001;x
-	X 1.1.1>
-	vput vexpr res - 9223372036854775809;x
-	X 1.1.1<
-	vput vexpr res -? 9223372036854775809;x
-	echo ' #1.2'
-	vput vexpr res + 0;x
-	vput vexpr res + 1;x
-	vput vexpr res + -1;x
-	vput vexpr res + -0xAFFE;x
-	vput vexpr res + 0xAFFE;x
-	vput vexpr res + u0x8000000000000001;x
-	vput vexpr res + 0x8000000000000001;x
-	X 1.2.1>
-	vput vexpr res + 9223372036854775809;x
-	X 1.2.1<
-	vput vexpr res +? 9223372036854775809;x
-	echo ' #2'
-	vput vexpr res + 0 0;x
-	vput vexpr res + 0 1;x
-	vput vexpr res + 1 1;x
-	echo ' #3'
-	vput vexpr res + 9223372036854775807 0;x
-	X 3.1>
-	vput vexpr res + 9223372036854775807 1;x
-	X 3.1<
-	vput vexpr res +? 9223372036854775807 1;x
-	vput vexpr res + 0 9223372036854775807;x
-	X 3.2>
-	vput vexpr res + 1 9223372036854775807;x
-	X 3.2<
-	vput vexpr res +? 1 9223372036854775807;x
-	echo ' #4'
-	vput vexpr res + -9223372036854775808 0;x
-	X 4.1>
-	vput vexpr res + -9223372036854775808 -1;x
-	X 4.1<
-	vput vexpr res +? -9223372036854775808 -1;x
-	vput vexpr res + 0 -9223372036854775808;x
-	X 4.2>
-	vput vexpr res + -1 -9223372036854775808;x
-	X 4.2<
-	vput vexpr res +? -1 -9223372036854775808;x
-	echo ' #5'
-	vput vexpr res - 0 0;x
-	vput vexpr res - 0 1;x
-	vput vexpr res - 1 1;x
-	echo ' #6'
-	vput vexpr res - 9223372036854775807 0;x
-	X 6.1>
-	vput vexpr res - 9223372036854775807 -1;x
-	X 6.1<
-	vput vexpr res -? 9223372036854775807 -1;x
-	vput vexpr res - 0 9223372036854775807;x
-	vput vexpr res - -1 9223372036854775807;x
-	X 6.2>
-	vput vexpr res - -2 9223372036854775807;x
-	X 6.2<
-	vput vexpr res -? -2 9223372036854775807;x
-	echo ' #7'
-	vput vexpr res - -9223372036854775808 +0;x
-	X 7.1>
-	vput vexpr res - -9223372036854775808 +1;x
-	X 7.1<
-	vput vexpr res -? -9223372036854775808 +1;x
-	vput vexpr res - 0 -9223372036854775808;x
-	X 7.2>
-	vput vexpr res - +1 -9223372036854775808;x
-	X 7.2<
-	vput vexpr res -? +1 -9223372036854775808;x
-	echo ' #8'
-	vput vexpr res + -13 -2;x
-	vput vexpr res - 0 0;x
-	vput vexpr res - 0 1;x
-	vput vexpr res - 1 1;x
-	vput vexpr res - -13 -2;x
-	echo ' #9'
-	vput vexpr res * 0 0;x
-	vput vexpr res * 0 1;x
-	vput vexpr res * 1 1;x
-	vput vexpr res * -13 -2;x
-	echo ' #10'
-	X 10.1>
-	vput vexpr res / 0 0;x
-	X 10.1<
-	vput vexpr res / 0 1;x
-	vput vexpr res / 1 1;x
-	vput vexpr res / -13 -2;x
-	echo ' #11'
-	X 11.1>
-	vput vexpr res % 0 0;x
-	X 11.1<
-	vput vexpr res % 0 1;x
-	vput vexpr res % 1 1;x
-	vput vexpr res % -13 -2;x
-	echo ' #12'
-	vput vexpr res pbase 10 u0x8000000000000001;x
-	vput vexpr res pbase 16 0x8000000000000001;x
-	X 12.1>
-	vput vexpr res pbase 16 s0x8000000000000001;x
-	X 12.1<
-	vput vexpr res pbase 16 u0x8000000000000001;x
-	vput vexpr res pbase 36 0x8000000000000001;x
-	vput vexpr res pbase 36 u0x8000000000000001;x
-	vput vexpr res pbase 64 0xF64D7EFE7CBD;x
-	vput vexpr res pbase 64 0776767676767676767676;x
-	echo ' #13'
-	vput vexpr res << 0 1;x
-	vput vexpr res << 1 1;x
-	vput vexpr res << 0x80 55;x
-	vput vexpr res << 0x80 56;x
-	vput vexpr res >>> 0xE000000000000000 56;x
-	vput vexpr res >>> 0x8000000000000000 56;x
-	vput vexpr res >>> 0x7F00000000000000 56;x
-	vput vexpr res >> 0xE000000000000000 56;x
-	vput vexpr res >> 0x8000000000000000 56;x
-	vput vexpr res >> 0x7F00000000000000 56;x
-	X 13.1>
-	vput vexpr res << 1 -1;x
-	X 13.1<
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tnumeric 2>${EX}
+commandalias x \\echo '$?/$^ERRNAME $res'
+commandalias X \\echoerr
+echo ' #0.0'
+>res vexpr = 9223372036854775807;x
+X 0.0.1>
+>res vexpr = 9223372036854775808;x
+X 0.0.1<
+>res vexpr = u9223372036854775808;x
+>res vexpr =? 9223372036854775808;x
+>res vexpr = -9223372036854775808;x
+X 0.0.2>
+>res vexpr = -9223372036854775809;x
+X 0.0.2<
+>res vexpr =?saturated -9223372036854775809;x
+>res vexpr = U9223372036854775809;x
+>res vexpr = 64#7__________;x
+>res vexpr = 64#7@@@@@@@@@@;x
+echo ' #0.1'
+>res vexpr = 0b0111111111111111111111111111111111111111111111111111111111111111;x
+X 0.1.1>
+>res vexpr = s0b1000000000000000000000000000000000000000000000000000000000000000;x
+X 0.1.1<
+>res vexpr =? S0b10000000000000000000000000000000000000000000000000000000000000000;x
+>res vexpr = U0b1000000000000000000000000000000000000000000000000000000000000000;x
+>res vexpr = 0b1000000000000000000000000000000000000000000000000000000000000000;x
+>res vexpr =? 0b1000000000000000000000000000000000000000000000000000000000000000;x
+>res vexpr = -0b1000000000000000000000000000000000000000000000000000000000000000;x
+X 0.1.2>
+>res vexpr = S0b1000000000000000000000000000000000000000000000000000000000000001;x
+X 0.1.2<
+>res vexpr =? S0b1000000000000000000000000000000000000000000000000000000000000001;x
+>res vexpr =? -0b1000000000000000000000000000000000000000000000000000000000000001;x
+>res vexpr = U0b1000000000000000000000000000000000000000000000000000000000000001;x
+echo ' #0.2'
+>res vexpr = 0777777777777777777777;x
+X 0.2.1>
+>res vexpr =  S01000000000000000000000;x
+X 0.2.1<
+>res vexpr =? S01000000000000000000000;x
+>res vexpr =  U01000000000000000000000;x
+>res vexpr =  01000000000000000000000;x
+>res vexpr =?satur 01000000000000000000000;x
+>res vexpr = -01000000000000000000000;x
+X 0.2.2>
+>res vexpr = S01000000000000000000001;x
+X 0.2.2<
+>res vexpr =?sat S01000000000000000000001;x
+>res vexpr = -01000000000000000000001;x
+>res vexpr = U01000000000000000000001;x
+echo ' #0.3'
+>res vexpr = 0x7FFFFFFFFFFFFFFF;x
+X 0.3.1>
+>res vexpr = S0x8000000000000000;x
+X 0.3.1<
+>res vexpr =? S0x8000000000000000;x
+>res vexpr = U0x8000000000000000;x
+>res vexpr = 0x8000000000000000;x
+>res vexpr =? 0x8000000000000000;x
+>res vexpr = -0x8000000000000000;x
+X 0.3.2>
+>res vexpr = S0x8000000000000001;x
+X 0.3.2<
+>res vexpr =? S0x8000000000000001;x
+>res vexpr = -0x8000000000000001;x
+>res vexpr = u0x8000000000000001;x
+X 0.3.3>
+>res vexpr =  9223372036854775809;x
+X 0.3.3<
+>res vexpr =? 9223372036854775809;x
+>res vexpr = u9223372036854775809;x
+echo ' #1'
+>res vexpr ~ 0;x
+>res vexpr ~ 1;x
+>res vexpr ~ -1;x
+echo ' #1.1'
+>res vexpr - 0;x
+>res vexpr - 1;x
+>res vexpr - -1;x
+>res vexpr - -0xAFFE;x
+>res vexpr - 0xAFFE;x
+>res vexpr - u0x8000000000000001;x
+>res vexpr - 0x8000000000000001;x
+>res vexpr - 0x8000000000000001;x
+X 1.1.1>
+>res vexpr - 9223372036854775809;x
+X 1.1.1<
+>res vexpr -? 9223372036854775809;x
+echo ' #1.2'
+>res vexpr + 0;x
+>res vexpr + 1;x
+>res vexpr + -1;x
+>res vexpr + -0xAFFE;x
+>res vexpr + 0xAFFE;x
+>res vexpr + u0x8000000000000001;x
+>res vexpr + 0x8000000000000001;x
+X 1.2.1>
+>res vexpr + 9223372036854775809;x
+X 1.2.1<
+>res vexpr +? 9223372036854775809;x
+echo ' #2'
+>res vexpr + 0 0;x
+>res vexpr + 0 1;x
+>res vexpr + 1 1;x
+echo ' #3'
+>res vexpr + 9223372036854775807 0;x
+X 3.1>
+>res vexpr + 9223372036854775807 1;x
+X 3.1<
+>res vexpr +? 9223372036854775807 1;x
+>res vexpr + 0 9223372036854775807;x
+X 3.2>
+>res vexpr + 1 9223372036854775807;x
+X 3.2<
+>res vexpr +? 1 9223372036854775807;x
+echo ' #4'
+>res vexpr + -9223372036854775808 0;x
+X 4.1>
+>res vexpr + -9223372036854775808 -1;x
+X 4.1<
+>res vexpr +? -9223372036854775808 -1;x
+>res vexpr + 0 -9223372036854775808;x
+X 4.2>
+>res vexpr + -1 -9223372036854775808;x
+X 4.2<
+>res vexpr +? -1 -9223372036854775808;x
+echo ' #5'
+>res vexpr - 0 0;x
+>res vexpr - 0 1;x
+>res vexpr - 1 1;x
+echo ' #6'
+>res vexpr - 9223372036854775807 0;x
+X 6.1>
+>res vexpr - 9223372036854775807 -1;x
+X 6.1<
+>res vexpr -? 9223372036854775807 -1;x
+>res vexpr - 0 9223372036854775807;x
+>res vexpr - -1 9223372036854775807;x
+X 6.2>
+>res vexpr - -2 9223372036854775807;x
+X 6.2<
+>res vexpr -? -2 9223372036854775807;x
+echo ' #7'
+>res vexpr - -9223372036854775808 +0;x
+X 7.1>
+>res vexpr - -9223372036854775808 +1;x
+X 7.1<
+>res vexpr -? -9223372036854775808 +1;x
+>res vexpr - 0 -9223372036854775808;x
+X 7.2>
+>res vexpr - +1 -9223372036854775808;x
+X 7.2<
+>res vexpr -? +1 -9223372036854775808;x
+echo ' #8'
+>res vexpr + -13 -2;x
+>res vexpr - 0 0;x
+>res vexpr - 0 1;x
+>res vexpr - 1 1;x
+>res vexpr - -13 -2;x
+echo ' #9'
+>res vexpr * 0 0;x
+>res vexpr * 0 1;x
+>res vexpr * 1 1;x
+>res vexpr * -13 -2;x
+echo ' #10'
+X 10.1>
+>res vexpr / 0 0;x
+X 10.1<
+>res vexpr / 0 1;x
+>res vexpr / 1 1;x
+>res vexpr / -13 -2;x
+echo ' #11'
+X 11.1>
+>res vexpr % 0 0;x
+X 11.1<
+>res vexpr % 0 1;x
+>res vexpr % 1 1;x
+>res vexpr % -13 -2;x
+echo ' #12'
+>res vexpr pbase 10 u0x8000000000000001;x
+>res vexpr pbase 16 0x8000000000000001;x
+X 12.1>
+>res vexpr pbase 16 s0x8000000000000001;x
+X 12.1<
+>res vexpr pbase 16 u0x8000000000000001;x
+>res vexpr pbase 36 0x8000000000000001;x
+>res vexpr pbase 36 u0x8000000000000001;x
+>res vexpr pbase 64 0xF64D7EFE7CBD;x
+>res vexpr pbase 64 0776767676767676767676;x
+echo ' #13'
+>res vexpr << 0 1;x
+>res vexpr << 1 1;x
+>res vexpr << 0x80 55;x
+>res vexpr << 0x80 56;x
+>res vexpr >>> 0xE000000000000000 56;x
+>res vexpr >>> 0x8000000000000000 56;x
+>res vexpr >>> 0x7F00000000000000 56;x
+>res vexpr >> 0xE000000000000000 56;x
+>res vexpr >> 0x8000000000000000 56;x
+>res vexpr >> 0x7F00000000000000 56;x
+X 13.1>
+>res vexpr << 1 -1;x
+X 13.1<
+__EOT
 	#}}}
 	ck numeric 0 ./tnumeric '3600543675 2773' '2472071137 3247'
 
 	if have_feat regex; then
 		#{{{
-		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
-		commandalias x echo '$?/$^ERRNAME :$res:'
-		echo ' #-2'
-		vput vexpr res regex you y;x
-		vput vexpr res regex you o;x
-		vput vexpr res regex you u;x
-		vput vexpr res regex you yo;x
-		vput vexpr res regex you ou;x
-		vput vexpr res regex you you;x
-		echo ' #-1'
-		vput vexpr res regex you Y;x
-		vput vexpr res regex? you Y;x
-		vput vexpr res regex? you O;x
-		vput vexpr res regex? you U;x
-		vput vexpr res regex? you yO;x
-		vput vexpr res regex? you oU;x
-		vput vexpr res regex? you YoU;x
-		echo ' #0'
-		vput vexpr res regex 'bananarama' 'nana';x
-		vput vexpr res regex 'bananarama' 'bana';x
-		vput vexpr res regex 'bananarama' 'Bana';x
-		vput vexpr res regex 'bananarama' 'rama';x
-		echo ' #1'
-		vput vexpr res regex? 'bananarama' 'nana';x
-		vput vexpr res regex? 'bananarama' 'bana';x
-		vput vexpr res regex? 'bananarama' 'Bana';x
-		vput vexpr res regex? 'bananarama' 'rama';x
-		echo ' #2'
-		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${^1}a\${^0}u{\$^2}';x
-		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${^1}a\${^0}u\$^2';x
-		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$^1\$^0';x
-		vput vexpr res regex 'bananarama' '(.+)rama' '\$^1\$^0';x
-		echo ' #3'
-		vput vexpr res regex? 'bananarama' '(.*)nana(.*)' '\${^1}a\${^0}u{\$^2}';x
-		vput vexpr res regex? 'bananarama' '(.*)bana(.*)' '\${^1}a\${^0}u\$^2';x
-		vput vexpr res regex? 'bananarama' 'Bana(.+)' '\$^1\$^0';x
-		vput vexpr res regex? 'bananarama' '(.+)rama' '\$^1\$^0';x
-		echo ' #4'
-		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' '\$^1\${^2}\$^4\${^3}rama';x
-		vput vexpr res regex 'Banana' '(club )?(.*)(nana)(.*)' '\$^1\$^2\${^2}\$^2\$^4\${^3}rama';x
-		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' '\$^1\${^2}\$^4\${^3}rama';x
-		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' '\$^1:\${^2}:\$^4:\${^3}';x
-		vput vexpr res regex? 'Club banana' '(club )?(.*)(nana)(.*)' '\$^1:\${^2}:\$^4:\${^3}';x
-		echo ' #5'
-		__EOT
+		<< '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
+commandalias x echo '$?/$^ERRNAME :$res:'
+echo ' #-2'
+>res vexpr regex you y;x
+>res vexpr regex you o;x
+>res vexpr regex you u;x
+>res vexpr regex you yo;x
+>res vexpr regex you ou;x
+>res vexpr regex you you;x
+echo ' #-1'
+>res vexpr regex you Y;x
+>res vexpr regex? you Y;x
+>res vexpr regex? you O;x
+>res vexpr regex? you U;x
+>res vexpr regex? you yO;x
+>res vexpr regex? you oU;x
+>res vexpr regex? you YoU;x
+echo ' #0'
+>res vexpr regex 'bananarama' 'nana';x
+>res vexpr regex 'bananarama' 'bana';x
+>res vexpr regex 'bananarama' 'Bana';x
+>res vexpr regex 'bananarama' 'rama';x
+echo ' #1'
+>res vexpr regex? 'bananarama' 'nana';x
+>res vexpr regex? 'bananarama' 'bana';x
+>res vexpr regex? 'bananarama' 'Bana';x
+>res vexpr regex? 'bananarama' 'rama';x
+echo ' #2'
+>res vexpr regex 'bananarama' '(.*)nana(.*)' '\${^1}a\${^0}u{\$^2}';x
+>res vexpr regex 'bananarama' '(.*)bana(.*)' '\${^1}a\${^0}u\$^2';x
+>res vexpr regex 'bananarama' 'Bana(.+)' '\$^1\$^0';x
+>res vexpr regex 'bananarama' '(.+)rama' '\$^1\$^0';x
+echo ' #3'
+>res vexpr regex? 'bananarama' '(.*)nana(.*)' '\${^1}a\${^0}u{\$^2}';x
+>res vexpr regex? 'bananarama' '(.*)bana(.*)' '\${^1}a\${^0}u\$^2';x
+>res vexpr regex? 'bananarama' 'Bana(.+)' '\$^1\$^0';x
+>res vexpr regex? 'bananarama' '(.+)rama' '\$^1\$^0';x
+echo ' #4'
+>res vexpr regex 'banana' '(club )?(.*)(nana)(.*)' '\$^1\${^2}\$^4\${^3}rama';x
+>res vexpr regex 'Banana' '(club )?(.*)(nana)(.*)' '\$^1\$^2\${^2}\$^2\$^4\${^3}rama';x
+>res vexpr regex 'Club banana' '(club )?(.*)(nana)(.*)' '\$^1\${^2}\$^4\${^3}rama';x
+>res vexpr regex 'Club banana' '(club )?(.*)(nana)(.*)' '\$^1:\${^2}:\$^4:\${^3}';x
+>res vexpr regex? 'Club banana' '(club )?(.*)(nana)(.*)' '\$^1:\${^2}:\$^4:\${^3}';x
+echo ' #5'
+__EOT
 		#}}}
 		cke0 regex 0 ./tregex '1617405672 590'
 	else
@@ -5127,42 +5126,42 @@ t_vexpr() { #{{{
 	fi
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tagnostic 2>${E0}
-	commandalias x echo '$?/$^ERRNAME :$res:'
-	vput vexpr res date-utc 1620942446;x
-	eval set $res
-	if 2021-5-13T21:47:26:May != "${dutc_year}-${dutc_month}-${dutc_day}T"\
-		"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
-	vput vexpr res epoch 2021 05 13 21 47 26;x
-	eval set $res
-	if 16209424460 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
-	vput vexpr res seconds 2021 05 13 21 47 26;x
-	if 1620942446 != "$res"; echo ERROR; endif
-	#
-	vput vexpr res date-utc 0x1D30BE2E1FF;x
-	eval set $res
-	if 65535-12-31T23:59:59:Dec != "${dutc_year}-${dutc_month}-${dutc_day}T"\
-		"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
-	vput vexpr res epoch 65535 12 31 23 59 59;x
-	eval set $res
-	if 20059491455990 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
-	#
-	vput vexpr res date-utc 951786123;x
-	eval set $res
-	if 2000-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
-		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
-	vput vexpr res epoch 2000 02 29 01 02 03;x
-	eval set $res
-	if 9517861230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
-	#
-	vput vexpr res date-utc 1582938123;x
-	eval set $res
-	if 2020-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
-		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
-	vput vexpr res epoch 2020 02 29 01 02 03;x
-	eval set $res
-	if 15829381230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tagnostic 2>${E0}
+commandalias x echo '$?/$^ERRNAME :$res:'
+>res vexpr date-utc 1620942446;x
+eval set $res
+if 2021-5-13T21:47:26:May != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+	"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
+>res vexpr epoch 2021 05 13 21 47 26;x
+eval set $res
+if 16209424460 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+>res vexpr seconds 2021 05 13 21 47 26;x
+if 1620942446 != "$res"; echo ERROR; endif
+#
+>res vexpr date-utc 0x1D30BE2E1FF;x
+eval set $res
+if 65535-12-31T23:59:59:Dec != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+	"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
+>res vexpr epoch 65535 12 31 23 59 59;x
+eval set $res
+if 20059491455990 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+#
+>res vexpr date-utc 951786123;x
+eval set $res
+if 2000-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+	"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+>res vexpr epoch 2000 02 29 01 02 03;x
+eval set $res
+if 9517861230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+#
+>res vexpr date-utc 1582938123;x
+eval set $res
+if 2020-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+	"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+>res vexpr epoch 2020 02 29 01 02 03;x
+eval set $res
+if 15829381230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+__EOT
 	#}}}
 	cke0 agnostic 0 ./tagnostic '138745713 622'
 
@@ -5282,20 +5281,20 @@ t_local_x_call_environ() { #{{{
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 \commandalias show '\
-	\vput environ x lookup DEAD;\
-	\if "$DEAD" != dead.0 || "$x" != dead.0;\echo 1:$DEAD:$x;\end;\
-	\vput environ x lookup U;\
-	\if "$U" != u.0 || "$x" != u.0;\echo 2 env[U=$x] U=$U;\end;\
-	\vput environ x lookup N;\
-	\if $? -eq 0;\echo 3:$N;\end;\
-	\if "$N" != n.0;\echo 4:$N;\end'
+	\>x environ lookup DEAD;\
+	\if "$DEAD" != dead.0 || "$x" != dead.0;\ec 1:$DEAD:$x;\en;\
+	\>x environ lookup U;\
+	\if "$U" != u.0 || "$x" != u.0;\ec 2 env[U=$x] U=$U;\en;\
+	\>x env l N;\
+	\if $? -eq 0;\ec 3:$N;\end;\
+	\if "$N" != n.0;\ec 4:$N;\end'
 define l2 {
-	echo ----${1}l2
+	ec ----${1}l2
 	show
 }
 define l1 {
-	eval $1 set DEAD=dead.0 U=u.0 N=n.0 x
-	echo --l1
+	eval $1 se DEAD=dead.0 U=u.0 N=n.0 x
+	ec --l1
 	show
 	call l2
 	xcall l2 $1
@@ -5307,19 +5306,19 @@ define l0 {
 	local call l1 "$1"
 }
 define xi {
-	set DEAD=dead.$1 U=u.$1 N=n.$1
+	se DEAD=dead.$1 U=u.$1 N=n.$1
 }
 define xo {
-	echo -top-${1}
-	echo DEAD=$DEAD U=$U N=$N;varshow DEAD U N
+	ec -top-${1}
+	ec DEAD=$DEAD U=$U N=$N;varshow DEAD U N
 	!echo shell" DEAD<$DEAD> U<$U> N<$N>"
 }
 commandalias xi call xi
 commandalias xo call xo
 
-environ unset N
-set U=u.0
-environ link U
+environ uns N
+se U=u.0
+environ li U
 
 xi 1;call l1;xo 1
 xi 2;local call l1;xo 2
@@ -5344,32 +5343,29 @@ t_vpospar() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
-commandalias y echo 'infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>'
-vpospar set hey, "'you    ", world!
+commandalias x ec '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
+commandalias y ec 'infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>'
+vpospar se hey, "'you    ", world!
 x
-vput vpospar x quote; echo x<$x>
+>x vpospar quote; ec x<$x>
 vpospar clear;x
-vput vpospar y quote;echo y<$y>
-eval vpospar set ${x};x
-eval vpospar set ${y};x
-eval vpospar set ${x};x
-
+>y vpospar quote;ec y<$y>
+eval vposp se ${x};x
+eval vpos se ${y};x
+eval vpo s ${x};x
 define infun2 {
-	echo infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
-	vput vpospar z quote;echo infun2:z<$z>
+	ec infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+	>z vpospar quote;ec infun2:z<$z>
 }
-
 define infun {
 	y
-	vput vpospar y quote;echo infun:y<$y>
-	eval vpospar set ${x};y
-	vpospar clear;y
+	>y vpospar q;ec infun:y<$y>
+	eval vpospar s ${x};y
+	vpospar c;y
 	eval call infun2 $x
 	y
 	eval vpospar set ${y};y
 }
-
 call infun This "in a" fun
 x
 vpospar clear;x
@@ -5384,7 +5380,7 @@ set ifs=\'
 echo ifs<$ifs> ifs-ws<$ifs-ws>
 vpospar set hey, "'you    ", world!
 x
-vput vpospar x quote; echo x<$x>
+>x vpospar quote; echo x<$x>
 vpospar clear;x
 eval vpospar set ${x};x
 
@@ -5393,7 +5389,7 @@ echo ifs<$ifs> ifs-ws<$ifs-ws>
 vpospar set hey, "'you    ", world!
 unset ifs;x
 set ifs=,
-vput vpospar x quote; echo x<$x>
+>x vpospar quote; echo x<$x>
 vpospar clear;x
 eval vpospar set ${x};\
 	unset ifs;x
@@ -5403,7 +5399,7 @@ echo ifs<$ifs> ifs-ws<$ifs-ws>
 vpospar set hey, "'you    ", world!
 unset ifs; x
 set ifs=$',\t'
-vput vpospar x quote; echo x<$x>
+>x vpospar quote; echo x<$x>
 vpospar clear;x
 eval vpospar set ${x};\
 unset ifs;x
@@ -5423,7 +5419,7 @@ set ifs=$'"'"'\n'"'"'
 eval vpospar set $x
 x
 unset ifs
-vput vpospar i quote
+>i vpospar quote
 x
 vpospar clear
 x
@@ -5464,12 +5460,12 @@ define t1 {
 }
 define t2 {
 	x
-	local vput global vpospar x quote
+	local >x global vpospar quote
 	x
-	echo "x <$x>"
-	local vput vpospar x quote
+	ec "x <$x>"
+	local >x vpospar quote
 	x
-	echo "x <$x>"
+	ec "x <$x>"
 }
 x
 vpospar set a b c d
@@ -5487,7 +5483,7 @@ x' \
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
 define hi {
-	local pp our vput global vpospar i$((i = 1 + 1)) quote
+	local pp our >i$((i = 1 + 1)) global vpospar quote
 	xcall t "$@"
 }
 define t {
@@ -5906,43 +5902,43 @@ t_fop() { # XXX improve writes when we have redirection {{{
 
 	# touch,stat,rm,lock,create,rewind,pass,close,remove <-> reading {{{
 	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
-commandalias x echo '$?/$^ERRNAME :$res:'
-echo ===T1
-vput fop res touch ./t1.1;x
-unset res;vput fop res_noecho stat ./t1.1;x
-vput fop res rm ./t1.1;x
-vput fop res stat ./t1.1;x
-echo ===T2
-vput fop fd lock ./t1.2 w;x
+commandalias x ec '$?/$^ERRNAME :$res:'
+ec ===T1
+>res fop touch ./t1.1;x
+uns res;>res_noecho fop stat ./t1.1;x
+>res fop rm ./t1.1;x
+>res fop stat ./t1.1;x
+ec ===T2
+>fd fop lock ./t1.2 w;x
 #xxx write on our own
 ! (echo l1;echo l2;echo l3;) > ./t1.2
-echo ===readctl create 2.1
+ec ===readctl create 2.1
 readctl create $fd;x
 read res;x
 read res;x
 read res;x
 read res;x
-echo ===rewind 2.1.1
-vput fop xres rewind $fd;x
-if $xres -ne $fd;echo ERR;end
+ec ===rewind 2.1.1
+>xres fop rewind $fd;x
+if $xres -ne $fd;ec ERR;en
 read res;x
 read res;x
 read res;x
 read res;x
-echo ===rewind 2.1.2
-vput fop xres rewind $fd;x
-if $xres -ne $fd;echo ERR;end
-vput fop res pass $fd @ "${CAT} && exit 11";x
-vput fop res pass $fd - "${CAT} && exit 12";x
-echo ===rewind 2.1.3
-vput fop xres rewind $fd;x
-if $xres -ne $fd;echo ERR;end
-vput fop res pass $fd - "${CAT} && exit 13";x
-vput fop res pass $fd - "${CAT} && exit 14";x
-echo ===dtors 2.1
-vput fop xres close $fd;x
-if $xres -ne $fd;echo ERR;end
-vput fop res close $fd;x
+ec ===rewind 2.1.2
+>xres fop rewind $fd;x
+if $xres -ne $fd;ec ERR;en
+>res fop pass $fd @ "${CAT} && exit 11";x
+>res fop pass $fd - "${CAT} && exit 12";x
+ec ===rewind 2.1.3
+>xres fop rewind $fd;x
+if $xres -ne $fd;ec ERR;en
+>res fop pass $fd - "${CAT} && exit 13";x
+>res fop pass $fd - "${CAT} && exit 14";x
+ec ===dtors 2.1
+>xres fop close $fd;x
+if $xres -ne $fd;ec ERR;end
+>res fop close $fd;x
 readctl remove $fd;x
 	__EOT
 	#}}}
@@ -5950,33 +5946,33 @@ readctl remove $fd;x
 
 	if have_feat flock; then
 		#{{{
-		<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>${E0}
-commandalias x echo '$?/$^ERRNAME :$res:'
-echo ===T1
-vput fop res flock ./t2.1 a 'echo x1;echo x2;echo x3';x
-vput fop res flock ./t2.1 r;x
+		<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>${E0}
+commandalias x ec '$?/$^ERRNAME :$res:'
+ec ===T1
+>res fop flock ./t2.1 a 'echo x1;echo x2;echo x3';x
+>res fop flock ./t2.1 r;x
 set fd=$res
-echo ===readctl create 1.1
+ec ===readctl create 1.1
 readctl create $fd;x
-echo ===rewind 1.1.1
-vput fop res rewind $fd;x
+ec ===rewind 1.1.1
+>res fop rewind $fd;x
 read res;x
 read res;x
 read res;x
 read res;x
-echo ===rewind 1.1.2
-vput fop res rewind $fd;x
-vput fop res pass $fd @ "${CAT} && exit 21";x
-vput fop res pass $fd - "${CAT} && exit 22";x
-echo ===rewind 1.1.3
-vput fop res rewind $fd;x
-vput fop res pass $fd - "${CAT} && exit 23";x
-vput fop res pass $fd - "${CAT} && exit 24";x
-echo ===dtors 1.1
-vput fop res close $fd;x
-vput fop res close $fd;x
+ec ===rewind 1.1.2
+>res fop rewind $fd;x
+>res fop pass $fd @ "${CAT} && exit 21";x
+>res fop pass $fd - "${CAT} && exit 22";x
+ec ===rewind 1.1.3
+>res fop rewind $fd;x
+>res fop pass $fd - "${CAT} && exit 23";x
+>res fop pass $fd - "${CAT} && exit 24";x
+ec ===dtors 1.1
+>res fop close $fd;x
+>res fop close $fd;x
 readctl remove $fd;x
-		__EOT
+__EOT
 		#}}}
 		cke0 2 0 ./t2 '1544976144 297'
 	else
@@ -5984,34 +5980,34 @@ readctl remove $fd;x
 	fi
 
 	# open,rewind,create,close,remove,pass <-> reading {{{
-	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
-commandalias x echo '$?/$^ERRNAME :$res:'
-echo ===T1
-vput fop fd open ./t3.x w;x 1
-vput fop res open ./t3.x W;x 2
+	<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
+commandalias x ec '$?/$^ERRNAME :$res:'
+ec ===T1
+>fd fop open ./t3.x w;x 1
+>res fop open ./t3.x W;x 2
 fop pass - $fd "echo 1;echo .2;echo ._3";x 3 #xxx write on our own
-vput fop nil rewind $fd;x 4
+>nil fop rewind $fd;x 4
 readctl create $fd;x 5
 read res;x 6
 read res;x 7
 read res;x 8
 read res;x 9
-vput fop nil close $fd;x 10
+>nil fop close $fd;x 10
 readctl remove $fd;x 11
-echo ===T2
-vput fop fd open ./t3.x w;x 20
+ec ===T2
+>fd fop open ./t3.x w;x 20
 fop pass - $fd "echo X";x 21 #xxx write on our own
-vput fop nil rewind $fd;x 22
+>nil fop rewind $fd;x 22
 readctl create $fd;x 23
 read res;x 24
 read res;x 25
 read res;x 26
 read res;x 27
 readctl remove $fd;x 28
-vput fop nil close $fd;x 29
-echo ===T3
-vput fop fd open ./t3.x a^;x 30
-vput fop res open ./t3.x A;x 31
+>nil fop close $fd;x 29
+ec ===T3
+>fd fop open ./t3.x a^;x 30
+>res fop open ./t3.x A;x 31
 fop pass - $fd "echo ._,4";x 32 #xxx write on our own
 fop rewind $fd;x 23
 readctl create $fd;x 34
@@ -6022,8 +6018,8 @@ read res;x 38
 read res;x 39
 readctl remove $fd;x 40
 fop close $fd;x 41
-echo ===T4
-vput fop fd open ./t3.x a0^;x 50
+ec ===T4
+>fd fop open ./t3.x a0^;x 50
 fop pass - $fd "echo 123";x 51 #xxx write on our own
 fop rewind $fd;x 52
 readctl create $fd;x 53
@@ -6031,25 +6027,25 @@ read res;x 54
 read res;x 55
 readctl remove $fd;x 56
 fop close $fd;x 57
-	__EOT
+__EOT
 	#}}}
 	cke0 3 0 ./t3 '3318177702 649'
 
 	# mktemp,mkdir,rename,rmdir {{{
-	<<- '__EOT' TMPDIR=$(${pwd}) ${MAILX} ${ARGS} > ./t4 2>${E0}
-commandalias x echo '$?/$^ERRNAME:$res:'
-vput fop f1 mktemp;x
-vput fop f2 mktemp .xy;x
+	<< '__EOT' TMPDIR=$(${pwd}) ${MAILX} ${ARGS} > ./t4 2>${E0}
+commandalias x ec '$?/$^ERRNAME:$res:'
+>f1 fop mktemp;x
+>f2 fop mktemp .xy;x
 \if $features =% ,regex,;\if "$f2" =~ '(\.xy)$';\ec y=$^1;\en;\el;\ec y=.xy;\en
-vput fop res mkdir .ttt;x
-vput fop f3 mktemp .yz .ttt;x
+>res fop mkdir .ttt;x
+>f3 fop mktemp .yz .ttt;x
 \if $features =% ,regex,;\if "$f3" =~ '(\.xy)$';\ec y=$^1;\en;\el;\ec y=.xy;\en
 eval ! echo 1 > $f1\; echo 2 > $f2\; echo 3 > $f3 # XXX w/out sh!
-vput fop res rename ./t4.1 $f1;x
-vput fop res rename ./t4.2 $f2;x
-vput fop res rename ./t4.3 $f3;x
-vput fop res rmdir .ttt;x
-	__EOT
+>res fop rename ./t4.1 $f1;x
+>res fop rename ./t4.2 $f2;x
+>res fop rename ./t4.3 $f3;x
+>res fop rmdir .ttt;x
+__EOT
 	#}}}
 	cke0 4 0 ./t4 '2168300126 114'
 	ck 4.1 - ./t4.1 '4219530715 2'
@@ -6058,28 +6054,28 @@ vput fop res rmdir .ttt;x
 
 	# ftruncate,rewind ## position write<-read+truncate {{{
 	printf 'ab\ncd\nef\n' > ./t5-in
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t5 2>${E0}
-commandalias x echo '$?/$^ERRNAME:'
+	<< '__EOT' ${MAILX} ${ARGS} > ./t5 2>${E0}
+commandalias x ec '$?/$^ERRNAME:'
 commandalias y \if '$res -eq $fd;\ec ok;\el;\ec err;\en'
 ec r,bad
-vput fop fd open ./t5-inx r;x
-vput fop fd open ./t5-in r;x
+>fd fop open ./t5-inx r;x
+>fd fop open ./t5-in r;x
 readctl create $fd;x
 read res;x $res
-vput fop res ftruncate $fd;x <$res>
+>res fop ftruncate $fd;x <$res>
 eval !cp ./t5-in ./t5.1 # XXX our own
-vput fop res close $fd;x;y
+>res fop close $fd;x;y
 readctl remove $fd;x
 ec w,ok
-vput fop fd open ./t5-in w;x
+>fd fop open ./t5-in w;x
 readctl create $fd;x
 read res;x $res
-vput fop res rewind $fd;x;y
-vput fop res ftruncate $fd;x;y
+>res fop rewind $fd;x;y
+>res fop ftruncate $fd;x;y
 eval !cp ./t5-in ./t5.2 # XXX our own
-vput fop res close $fd;x;y
+>res fop close $fd;x;y
 readctl remove $fd;x
-	__EOT
+__EOT
 	#}}}
 	cke0 5 0 ./t5 '2784691844 146'
 	ck 5.1 - ./t5.1 '533590307 9'
@@ -6088,25 +6084,25 @@ readctl remove $fd;x
 
 	# glob {{{
 	touch .tz1 .tz2 .tz4 '.tx 3' .tx5
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tglob 2>${E0}
-commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^#/x=$x ^*<$^*> ^@<"$^@"> ^0<$^0> ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
-vput fop x glob .
+	<< '__EOT' ${MAILX} ${ARGS} > ./tglob 2>${E0}
+commandali x 'ec ?=$? !=$^ERRNAME ^?=$^? ^#=$^#/x=$x ^*<$^*> ^@<"$^@"> ^0<$^0> ^1=$^1 ^2=$^2 ^3=$^3; ec -----;'
+>x fop glob .
 if $? -ne 0 && $^ERR -eq $^ERR-NOSYS
 	xit 11
-end
-vput fop x glob .tz*
+en
+>x fop glob .tz*
 x
-vput fop x glob .tx*
+>x fop glob .tx*
 x
-vput fop x glob .t[xz]*
+>x fop glob .t[xz]*
 x
-vput fop x glob .t[xz]?
+>x fop glob .t[xz]?
 x
-vput fop x glob .tz* .tx*
+>x fop glob .tz* .tx*
 x
-vput fop x glob .tx* .tz*
+>x fop glob .tx* .tz*
 x
-	__EOT
+__EOT
 	#}}}
 	i=$?
 	if [ $i -eq 11 ]; then
@@ -6130,30 +6126,30 @@ t_msg_number_list() { #{{{
 	} > ./t.mbox
 
 	</dev/null ${MAILX} ${ARGS} -Rf -Y '#
-		commandalias x echo '"'"'$?/$^ERRNAME <$res>'"'"'
-		set res
-		=
-		x
-		= +
-		x
-		# (dot not moved)
-		= +
-		x
-		= $
-		x
-		= ^
-		x
-		vput = res
-		x
-		vput = res *
-		x
-		set ifs=","
-		vput = res *
-		x
-		set ifs=", "
-		vput = res *
-		x
-		' ./t.mbox > ./t1 2>${E0}
+commandalias x ec '"'"'$?/$^ERRNAME <$res>'"'"'
+se res
+=
+x
+= +
+x
+# (dot not moved)
+= +
+x
+= $
+x
+= ^
+x
+>res =
+x
+>res = *
+x
+se ifs=","
+>res = *
+x
+se ifs=", "
+>res = *
+x
+' ./t.mbox > ./t1 2>${E0}
 	#}}}
 	cke0 1 0 ./t1 '3152029378 118'
 
@@ -6166,179 +6162,177 @@ t_addrcodec() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME $res'
-	vput addrcodec res e 1 <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 2 . <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 3 Sauer Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 3.50 Sauer (Ma) Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 3.51 Sauer (Ma) "Dr." <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res +e 4 Sauer (Ma) Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 5 Sauer (Ma) Braten Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 8 \
-		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 10 (Ma)Braten Dr. (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 12 Dr.		Sauer  (Ma)   Braten		Dr.	(u) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 13(Ma)Braten	  Dr.		 (Heu)	  <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 15 \
-		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 16 \
-		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 17 \
-		"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 18 \
-		<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	vput addrcodec res ++e 21 Hey\,\""	<doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res \
-		+++e 22 Hey\\,\"	<doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res s \
-		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
-	x
-	#
-	# Fix for [f3852f88]
-	vput addrcodec res ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e <from2@exam.ple> 100 (comment) "Quot(e)d"
-	x
-	eval vput addrcodec res d $res
-	x
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+commandalias x ec '$?/$^ERRNAME $res'
+>res addrcodec e 1 <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e 2 . <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e 3 Sauer Dr. <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e 3.50 Sauer (Ma) Dr. <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e 3.51 Sauer (Ma) "Dr." <doog@def>
+x
+eval >res addrcodec d $res
+x
+#
+>res addrcodec +e 4 Sauer (Ma) Dr. <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 5 Sauer (Ma) Braten Dr. <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 8 \
+	Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 10 (Ma)Braten Dr. (Heu) <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 12 Dr.		Sauer  (Ma)   Braten		Dr.	(u) <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 13(Ma)Braten	  Dr.		 (Heu)	  <doog@def>
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 15 \
+	Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 16 \
+	"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 17 \
+	"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 18 \
+	<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
+x
+eval >res addrcodec d $res
+x
+>res addrcodec +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+x
+eval >res addrcodec d $res
+x
+#
+>res addrcodec ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+x
+>res addrcodec ++e 21 Hey\,\""	<doog@def> "Wie()" findet \" Dr. \" das?
+x
+eval >res addrcodec d $res
+x
+#
+>res addrcodec \
+	+++e 22 Hey\\,\"	<doog@def> "Wie()" findet \" Dr. \" das?
+x
+eval >res addrcodec d $res
+x
+#
+>res addrcodec s \
+	"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
+x
+#
+# Fix for [f3852f88]
+>res addrcodec ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e <from2@exam.ple> 100 (comment) "Quot(e)d"
+x
+eval >res addrcodec d $res
+x
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '1047317989 2612'
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
-	commandalias x echo '$?/$^ERRNAME $res'
-	mlist isa1@list
-	mlsubscribe isa2@list
-	#
-	vput addrcodec res skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-	x
-	vput addrcodec res skinlist \
-		Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-	x
-	vput addrcodec res skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-	x
-	vput addrcodec res skinlist \
-		Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-	x
-	vput addrcodec res skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-	x
-	vput addrcodec res skinlist \
-		Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-	x
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
+commandalias x ec '$?/$^ERRNAME $res'
+mlist isa1@list
+mlsubscribe isa2@list
+#
+>res addrcodec skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skinlist Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skinlist \
+	Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skinlist Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+x
+__EOT
 	#}}}
 	cke0 2 0 ./t2 '1391779299 104'
 
 	if have_feat idna; then
 		#{{{
-		<<- '__EOT' ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>${E0}
-		commandalias x echo '$?/$^ERRNAME $res'
-		vput addrcodec res e		(heu) <du@blödiän> "stroh" du	 
-		x
-		eval vput addrcodec res d $res
-		x
-		vput addrcodec res e			<du@blödiän>   du		
-		x
-		eval vput addrcodec res d $res
-		x
-		vput addrcodec res e		 du	 <du@blödiän>	
-		x
-		eval vput addrcodec res d $res
-		x
-		vput addrcodec res e			 <du@blödiän>	 
-		x
-		eval vput addrcodec res d $res
-		x
-		vput addrcodec res e			 du@blödiän	  
-		x
-		eval vput addrcodec res d $res
-		x
-		__EOT
+		<< '__EOT' ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>${E0}
+commandalias x ec '$?/$^ERRNAME $res'
+>res addrcodec e		(heu) <du@blödiän> "stroh" du	 
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e			<du@blödiän>   du		
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e		 du	 <du@blödiän>	
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e			 <du@blödiän>	 
+x
+eval >res addrcodec d $res
+x
+>res addrcodec e			 du@blödiän	  
+x
+eval >res addrcodec d $res
+x
+__EOT
 		#}}}
 		cke0 idna 0 ./tidna '498775983 326'
 	else
@@ -8806,11 +8800,11 @@ t_states_and_primary_secondary() { #{{{
 	> nix
 
 	#{{{
-	${cat} <<- '__EOT' > ./t.p
+	${cat} << '__EOT' > ./t.p
 commandalias x ec '$?/$^ERRNAME'
 \if ! [ -N hold && -N keep && -N keepsave ]; \xit 100; \end
 ! > ./t.rash
-vput cwd cwd # TODO v15-compat so that maildir:// can be tested <> MBOX relative path!
+>cwd cwd # TODO v15-compat so that maildir:// can be tested <> MBOX relative path!
 set MBOX=$p://$cwd/t-mbox.$p noinbox
 \if $f == %; \set inbox=$p://t.$p; \end
 Fi ./t.tpl;x
@@ -8905,7 +8899,7 @@ Fi &;fi
 h;x
 Fi nix
 eval i $o t.$p;ec n;el;ec y;en
-	__EOT
+__EOT
 	#}}}
 
 	< ./t.p ${MAILX} ${ARGS} -S p=mbox -S o=-f -S f=% > ./t1 2>${EX}
@@ -10299,46 +10293,46 @@ t_alternates() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
-commandalias x echo '$?/$^ERRNAME'
-commandalias y echo '$?/$^ERRNAME <$rv>'
+commandalias x ec '$?/$^ERRNAME'
+commandalias y ec '$?/$^ERRNAME <$rv>'
 ec --0
 alt;x
 alt a1@b1 a2@b2 a3@b3;x
 alt;x
-vput alt rv;y
+>rv alt;y
 
 ec --1
 unalt a2@b2
-vput alt rv;y
+>rv alt;y
 unalt a3@b3
-vput alt rv;y
+>rv alt;y
 unalt a1@b1
-vput alt rv;y
+>rv alt;y
 
 ec --2
 unalt *
 alt a1@b1 a2@b2 a3@b3
 unalt a3@b3
-vput alt rv;y
+>rv alt;y
 unalt a2@b2
-vput alt rv;y
+>rv alt;y
 unalt a1@b1
-vput alt rv;y
+>rv alt;y
 
 ec --3
 alt a1@b1 a2@b2 a3@b3
 unalt a1@b1
-vput alt rv;y
+>rv alt;y
 unalt a2@b2
-vput alt rv;y
+>rv alt;y
 unalt a3@b3
-vput alt rv;y
+>rv alt;y
 
 ec --4
 unalt *
 alt a1@b1 a2@b2 a3@b3
 unalt *
-vput alt rv;y
+>rv alt;y
 
 #> ali<>metoo<>alternates; (metoo now implied in bcc)
 a t a1@b1 a1@c1 a1@d1
@@ -10389,23 +10383,23 @@ una t c b
 ec --10
 unalt *
 alt a1@b1;x
-vput alt rv;y
+>rv alt;y
 alt a2@b2;x
-vput alt rv;y
+>rv alt;y
 alt a3@b3;x
-vput alt rv;y
+>rv alt;y
 alt a4@b4;x
-vput alt rv;y
+>rv alt;y
 
 unalt *
-vput alt rv;y
+>rv alt;y
 
 ec --11
 se posix
 alt a1@b1 a2@b2;x
-vput alt rv;y
+>rv alt;y
 alt a3@b3 a4@b4;x
-vput alt rv;y
+>rv alt;y
 __EOT
 	#}}}
 	ck 1 0 ./t1 '2006595054 504'
@@ -11772,7 +11766,7 @@ define t_ocm {
 }
 define t_ocl {
 	ec on-compose-leave
-	#vput alt al
+	#>al alt
 	#eval alt $al alter3@exam.ple alter4@exam.ple
 	alt alter3@exam.ple alter4@exam.ple
 	se autobcc=autobcc
@@ -11845,7 +11839,7 @@ define bail {
 	echoerr "Failed: $1.  Bailing out"; ec "~x"; xit
 }
 define xerr {
-	vput csop es substr "$1" 0 1
+	>es csop substr "$1" 0 1
 	if "$es" -ne 2; xcall bail "$2: $1"; en
 }
 define read_mline_res {
@@ -11868,11 +11862,11 @@ define ins_addr {
 	if "$t_remove" == ""; return; en
 
 	ec "~^h remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
-	ec "~^h r $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h r $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 2-2"; en
-	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 2-3"; en
-	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 2-4"; en
 
 	#
@@ -11886,13 +11880,13 @@ define ins_addr {
 	ec "~^h remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-6"
 	ec "~^h remove-a $xh 1"; read es; call xerr $es "ins_addr $xh 3-7"
 	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_addr $xh 3-8"
-	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 3-9"; en
-	ec "~^h remove- $xh T"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh T"; read es; >es csop substr $es 0 3
 	if $es != 505; xcall bail "ins_addr $xh 3-10"; en
-	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 3-11"; en
-	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 3-12"; en
 
 	#
@@ -11907,13 +11901,13 @@ define ins_addr {
 	ec "~^h remove- $xh 3"; read es; call xerr $es "ins_addr $xh 4-6"
 	ec "~^h remove- $xh 2"; read es; call xerr $es "ins_addr $xh 4-7"
 	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_addr $xh 4-8"
-	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 4-9"; en
-	ec "~^h remove- $xh T"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh T"; read es; >es csop substr $es 0 3
 	if $es != 505; xcall bail "ins_addr $xh 4-10"; en
-	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 4-11"; en
-	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_addr $xh 4-12"; en
 }
 define ins_ref {
@@ -11925,7 +11919,7 @@ define ins_ref {
 		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-2"
 		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-3"
 	el
-		ec "~^h i $xh <${xh}2@exam.ple>"; read es; vput csop es substr $es 0 3
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; >es csop substr $es 0 3
 		if $es != 506; xcall bail "ins_ref $xh 1-4"; en
 	en
 
@@ -11936,11 +11930,11 @@ define ins_ref {
 	if -z "$t_remove"; return; en
 
 	ec "~^h r $xh"; read es; call xerr $es "ins_ref $xh 2-1"
-	ec "~^h r $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h r $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_ref $xh 2-2"; en
-	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "$es ins_ref $xh 2-3"; en
-	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_ref $xh 2-4"; en
 
 	#
@@ -11958,11 +11952,11 @@ define ins_ref {
 		ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-7"
 		ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-8"
 	en
-	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
 	if $es != 501;;; xcall bail "ins_ref $xh 3-9"; en
-	ec "~^hea remove- $xh T"; read es; vput csop es substr $es 0 3
+	ec "~^hea remove- $xh T"; read es; >es csop substr $es 0 3
 	if $es != 505; xcall bail "ins_ref $xh 3-10"; en
-	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_ref $xh 3-11"; en
 
 	#
@@ -11980,11 +11974,11 @@ define ins_ref {
 		ec "~^h remove- $xh 2"; read es; call xerr $es "ins_ref $xh 4-7"
 	en
 	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 4-8"
-	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_ref $xh 4-9"; en
-	ec "~^h remove- $xh T"; read es; vput csop es substr $es 0 3
+	ec "~^h remove- $xh T"; read es; >es csop substr $es 0 3
 	if $es != 505; xcall bail "ins_ref $xh 4-10"; end
-	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr $es 0 3
 	if $es != 501; xcall bail "ins_ref $xh 4-11"; en
 }
 define t_hea {
@@ -12014,12 +12008,12 @@ define t_hea {
 define t_attach {
 	ec t_attach ENTER
 
-	ec "~^attachment"; read hl; ec $hl; vput csop es substr "$hl" 0 3
+	ec "~^attachment"; read hl; ec $hl; >es csop substr "$hl" 0 3
 	if "$es" != 501; xcall bail "attach 0-1"; en
 
-	ec "~^att a ./t.readctl"; read hl; ec $hl; vput csop es substr "$hl" 0 3
+	ec "~^att a ./t.readctl"; read hl; ec $hl; >es csop  substr "$hl" 0 3
 	if "$es" != 501; xcall bail "attach 0-2"; en
-	ec "~^a attribute- 1"; read hl; ec $hl; vput csop es substr "$hl" 0 3
+	ec "~^a attribute- 1"; read hl; ec $hl; >es csop  substr "$hl" 0 3
 	if "$es" != 501; xcall bail "attach 0-3"; en
 
 	ec "~^a i ./t.readctl=ascii"; read hl; ec $hl; call xerr "$hl" "attach 1-1"
@@ -12075,13 +12069,13 @@ define t_attach {
 
 	ec "~^a remove ./t.readctl"; read es; call xerr $es "attach 3-1"
 	ec "~^a r ./t.attach"; read es; call xerr $es "attach 3-2"
-	ec "~^   a	  r		 ./t.readctl"; read es;vput csop es substr $es 0 3
+	ec "~^   a	  r		 ./t.readctl"; read es;>es csop  substr $es 0 3
 	if $es != 501
 		xcall bail "attach 3-3"
 	en
-	ec "~^   a	  r		 ./t.attach"; read es;vput csop es substr $es 0 3
+	ec "~^   a	  r		 ./t.attach"; read es;>es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 3-4"; en
-	ec "~^a l"; read es; vput csop es substr $es 0 3
+	ec "~^a l"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 3-5"; en
 
 	#
@@ -12089,15 +12083,15 @@ define t_attach {
 	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-2"
 	ec "~^a"; read es; ec $es;call xerr "$es" "attach 4-3"
 	call read_mline_res
-	ec "~^   a	  r		 t.attach"; read es;vput csop es substr $es 0 3
+	ec "~^   a	  r		 t.attach"; read es;>es csop  substr $es 0 3
 	if $es != 506; xcall bail "attach 4-4 $es"; en
-	ec "~^a remove- T"; read es; vput csop es substr $es 0 3
+	ec "~^a remove- T"; read es; >es csop  substr $es 0 3
 	if $es != 505; xcall bail "attach 4-5"; en
 	ec "~^a r ./t.attach"; read es; call xerr $es "attach 4-6"
 	ec "~^a r ./t.attach"; read es; call xerr $es "attach 4-7"
-	ec "~^   a	  r		 ./t.attach"; read es;vput csop es substr $es 0 3
+	ec "~^   a	  r		 ./t.attach"; read es;>es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 4-8 $es"; end
-	ec "~^a"; read es; vput csop es substr $es 0 3
+	ec "~^a"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 4-9"; en
 
 	#
@@ -12108,17 +12102,17 @@ define t_attach {
 	call read_mline_res
 
 	ec "~^a remove- 3"; read es; call xerr $es "attach 5-5"
-	ec "~^a remove- 3"; read es; vput csop es substr $es 0 3
+	ec "~^a remove- 3"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 5-6"; en
 	ec "~^a remove- 2"; read es; call xerr $es "attach 5-7"
-	ec "~^a remove- 2"; read es; vput csop es substr $es 0 3
+	ec "~^a remove- 2"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 5-8"
 	en
 	ec "~^a remove- 1"; read es; call xerr $es "attach 5-9"
-	ec "~^a remove- 1"; read es; vput csop es substr $es 0 3
+	ec "~^a remove- 1"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 5-10"; en
 
-	ec "~^a"; read es; vput csop es substr $es 0 3
+	ec "~^a"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 5-11"; en
 
 	#
@@ -12131,10 +12125,10 @@ define t_attach {
 	ec "~^a remove- 1"; read es; call xerr $es "attach 6-5"
 	ec "~^a remove- 1"; read es; call xerr $es "attach 6-6"
 	ec "~^a remove- 1"; read es; call xerr $es "attach 6-7"
-	ec "~^a remove- 1"; read es; vput csop es substr $es 0 3
+	ec "~^a remove- 1"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 6-8"; en
 
-	ec "~^a"; read es; vput csop es substr $es 0 3
+	ec "~^a"; read es; >es csop  substr $es 0 3
 	if $es != 501; xcall bail "attach 6-9"; en
 
 	ec t_attach LEAVE
@@ -12173,7 +12167,7 @@ define t_oce {
 }
 define t_ocl {
 	ec on-compose-leave
-	#vput alternates al
+	#>al alternates
 	#eval alternates $al alter3@exam.ple alter4@exam.ple
 	alternates alter3@exam.ple alter4@exam.ple
 	set autobcc=autobcc
@@ -12255,8 +12249,8 @@ define bail {
 	echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
 }
 define xerr {
-	vput csop es substr "$1" 0 1
-	if "$es" != 2; xcall bail "$2"; end
+	>es csop substr "$1" 0 1
+	if "$es" != 2; xcall bail "$2"; en
 }
 define read_mline_res {
 	read hl; set len=$? es=$! en=$^ERRNAME;echo $len/$es/$^ERRNAME: $hl
@@ -12288,53 +12282,53 @@ define _read {
 define t_ocs {
 	read ver
 	echo t_ocs
-	echo "~^header list"; read hl; echo $hl; vput csop es substr "$hl" 0 1
+	echo "~^header list"; read hl; echo $hl; >es csop substr "$hl" 0 1
 	if "$es" != 2; xcall bail "header list"; endif
 	#
 	call _work 1; echo $?
   echo "~^header insert cc splicy\ diet\ <splice@exam.ple>\ spliced";\
-		read es; echo $es; vput csop es substr "$es" 0 1
+		read es; echo $es; >es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be diet"; endif
 	echo "~^header insert cc <splice2@exam.ple>";\
-		read es; echo $es; vput csop es substr "$es" 0 1
+		read es; echo $es; >es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be diet2"; endif
 	#
 	call _work 2; echo $?
   echo "~^header insert bcc juicy\ juice\ <juice@exam.ple>\ spliced";\
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy"; endif
 	echo "~^header insert bcc juice2@exam.ple";\
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy2";endif
 	echo "~^header insert bcc juice3\ <juice3@exam.ple>";\
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy3"; endif
 	echo "~^header insert bcc juice4@exam.ple";\
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy4"; endif
 	#
-	echo "~^header remove-at bcc 3"; read es; echo $es;vput csop es substr "$es" 0 1
+	echo "~^header remove-at bcc 3"; read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "remove juicy5"; endif
-	echo "~^header remove-at bcc 2"; read es; echo $es;vput csop es substr "$es" 0 1
+	echo "~^header remove-at bcc 2"; read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "remove juicy6"; endif
-	echo "~^header remove-at bcc 3"; read es; echo $es;vput csop es substr "$es" 0 3
+	echo "~^header remove-at bcc 3"; read es; echo $es;>es csop substr "$es" 0 3
 	if "$es" != 501; xcall bail "failed to remove-at"; endif
 	# Add duplicates which ought to be removed!
 	echo "~^header insert bcc juice4@exam.ple";
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy4-1"; endif
 	echo "~^header insert bcc juice4@exam.ple";\
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy4-2"; endif
 	echo "~^header insert bcc juice4@exam.ple";\
-		read es; echo $es;vput csop es substr "$es" 0 1
+		read es; echo $es;>es csop substr "$es" 0 1
 	if "$es" != 2; xcall bail "be juicy4-3"; endif
 	echo "~:set t_ocs"
 
 	#
 	call _work 3; echo $?
 	echo "~r - '__EOT'"
-	vput ! i echo just knock if you can hear me;\
+	>i ! echo just knock if you can hear me;\
 		i=0;\
 		while [ $i -lt 24 ]; do printf "%s " $i; i=$(expr $i + 1); done;\
 		echo relax
@@ -12348,7 +12342,7 @@ define t_ocs {
 
 	#
 	call _work 4; echo $?
-	vput cwd cwd;echo cwd:$?
+	>cwd cwd;echo cwd:$?
 	readctl create $cwd/t.readctl ;echo readctl:$?/$^ERRNAME; call _read
 
 	#
@@ -12494,7 +12488,7 @@ __EOT
 				echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
 			}
 			define xerr {
-				vput csop es substr "$1" 0 1
+				>es csop substr "$1" 0 1
 				if "$es" != 2; xcall bail "$2"; end
 			}
 			define read_mline_res {
@@ -12921,7 +12915,7 @@ t_pipe_handlers() { #{{{
 		t_echoskip '5:[ln(1) not found]'
 	else
 		# Let us fill in tmpfile, test auto-deletion
-		printf 'Fi ./t3_7\nmimeview\nvput fop v stat .t5.one-link\n'\
+		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t5.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \
 				-S 'pipe-text/plain=?' \
@@ -12939,7 +12933,7 @@ t_pipe_handlers() { #{{{
 		cke0 5 0 ./t5 '4260004050 661'
 
 		# Fill in ourselfs, test auto-deletion
-		printf 'Fi ./t3_7\nmimeview\nvput fop v stat .t6.one-link\n'\
+		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t6.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \
 				-S 'pipe-text/plain=?' \
@@ -12958,7 +12952,7 @@ t_pipe_handlers() { #{{{
 		cke0 6 0 ./t6 '4260004050 661'
 
 		# And the same, via copiousoutput (fake)
-		printf 'Fi ./t3_7\np\nvput fop v stat .t7.one-link\n'\
+		printf 'Fi ./t3_7\np\n>v fop stat .t7.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \
 				-S 'pipe-text/plain=?' \
