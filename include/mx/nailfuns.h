@@ -656,9 +656,10 @@ FL void n_header_extract(enum n_header_extract_flags hef, FILE *fp,
  * pointer (or NULL if the desired header field is not available).
  * If mult is zero, return the content of the first matching header
  * field only, the content of all matching header fields else */
-FL char *      hfield_mult(char const *field, struct message *mp, int mult);
-#define hfieldX(a, b)            hfield_mult(a, b, 1)
-#define hfield1(a, b)            hfield_mult(a, b, 0)
+FL char *hfield_mult(char const *field, struct message *mp, int mult
+      su_DVL_LOC_ARGS_DECL);
+#define hfieldX(a, b) hfield_mult(a, b, 1  su_DVL_LOC_ARGS_INJ)
+#define hfield1(a, b) hfield_mult(a, b, 0  su_DVL_LOC_ARGS_INJ)
 
 /* Check whether the passed line is a header line of the desired breed.
  * If qm_suffix_or_nil is set then the field?[MOD]: syntax is supported, the
