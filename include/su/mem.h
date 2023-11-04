@@ -76,12 +76,18 @@ INLINE void su_mem_zero(void *vp, uz len){
  * \ingroup MEM
  * \brief Allocating heap memory (\r{su/mem.h})
  *
- * It interacts with \r{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}, but also allows per-call failure ignorance.
- *
+ * \list{\li{
+ * Interacts with \r{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}, but also allows per-call failure ignorance.
+ * }\li{
+ * Allocation request for 0 bytes returns a chunk of minimum size.
+ * }\li{
+ * Freeing or touching a \NIL pointer \r{su_MEM_ALLOC_DEBUG}-logs with \r{su_LOG_DEBUG} priority.
+ * }\li{
  * The \r{su_MEM_ALLOC_DEBUG}-enabled cache surrounds served chunks with canaries that detect write bound violations.
  * Also, \r{su_mem_alloc_flags} allow flagging allocation requests with three (four including "0") different marks;
  * these will show up in error messages, like allocation check and cache dump output, which are available, then.
  * Finally served memory chunks will be initialized with a (non-0) pattern when debugging is enabled.
+ * }}
  * @{
  */
 
@@ -157,6 +163,7 @@ enum su_mem_conf_option{
 };
 
 #ifdef su_MEM_ALLOC_DEBUG
+EXPORT void su__mem_touch(void *vp  su_DVL_LOC_ARGS_DECL);
 EXPORT boole su__mem_get_can_book(uz size, uz no);
 EXPORT boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE);
 EXPORT boole su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL);
@@ -316,6 +323,16 @@ EXPORT void su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL);
  * @{
  */
 
+#if defined su_MEM_ALLOC_DEBUG || defined DOXYGEN
+	/*! Check \a{VP} and update its debug information. */
+# define su_MEM_TOUCH(A) su__mem_touch(A  su_DVL_LOC_ARGS_INJ)
+	/*! Check \a{VP} and update its debug information. */
+# define su_MEM_TOUCH_LOCOR(A,ORARGS) su__mem_touch(A,  ORARGS)
+#else
+# define su_MEM_TOUCH(VP) do{}while(0)
+# define su_MEM_TOUCH_LOCOR(VP,ORARGS) do{}while(0)
+#endif
+
 /*! In a chunk used to store objects of \a{size}, which currently contains \a{no} objects,
  * can \a{notoadd} objects be added?
  * \remarks{Always compares against \r{su_UZ_MAX}.}
@@ -339,8 +356,6 @@ INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
 /*! Of heap allocations */
 #define su_mem_get_usable_size(SZ) su_ALIGN_Z(SZ) /* XXX fake */
 
-/*! Of heap allocations */
-#define su_mem_get_usable_size_32(SZ) su_S(su_u32,su_ALIGN_Z(SZ)) /*XXX*/
 /* XXX get_usable_size_ptr(), get_memory_usage()  */
 
 /*! Configure aspects of the memory allocator.
@@ -358,7 +373,7 @@ EXPORT void su_mem_set_conf(BITENUM(u32,su_mem_conf_option) mco, uz val);
 
 /*! Check all existing allocations for bound violations etc.
  * Return \TRU1 on errors, \TRUM1 on fatal errors.
- * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined. */
+ * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined; is also a macro otherwise. */
 INLINE boole su_mem_check(void){
 #ifdef su_MEM_ALLOC_DEBUG
 	return su__mem_check(su_DVL_LOC_ARGS_INJ_SOLE);
@@ -366,6 +381,9 @@ INLINE boole su_mem_check(void){
 	return FAL0;
 #endif
 }
+#ifdef su_MEM_ALLOC_DEBUG
+# define su_mem_check() su__mem_check(su_DVL_LOC_ARGS_INJ_SOLE)
+#endif
 
 /* XXX mem_check_ptr() */
 /* XXX mem_[usage_]info(); opt: output channel, thread ptr */
@@ -374,15 +392,18 @@ INLINE boole su_mem_check(void){
  * Checks all existing allocations for bound violations etc. while doing so.
  * A positive \a{dumpmem} appends memory content to the allocation info line, a negative uses the follow line.
  * Return \TRU1 on errors, \TRUM1 on fatal errors.
- * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined. */
+ * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined; is also a macro otherwise. */
 INLINE boole su_mem_trace(boole dumpmem){ /* XXX ochannel, thrptr */
 	UNUSED(dumpmem);
 #ifdef su_MEM_ALLOC_DEBUG
-	return su__mem_trace(dumpmem su_DVL_LOC_ARGS_INJ);
+	return su__mem_trace(dumpmem  su_DVL_LOC_ARGS_INJ);
 #else
 	return FAL0;
 #endif
 }
+#ifdef su_MEM_ALLOC_DEBUG
+# define su_mem_trace(A) su__mem_trace(A  su_DVL_LOC_ARGS_INJ)
+#endif
 /*! @} *//* }}} */
 
 C_DECL_END
@@ -576,22 +597,21 @@ public:
 	 * \defgroup CXX_MEM_CACHE_SUP C++ heap "support"
 	 * \ingroup MEM_CACHE_SUP
 	 * \brief \r{CXX_MEM_CACHE_ALLOC} support (\r{su/mem.h})
+	 *
+	 * Please use \r{su_MEM_TOUCH()} and \r{su_MEM_TOUCH_LOCOR()} from the C interface directly.
 	 * @{
 	 */
 
 	/*! \copydoc{su_mem_get_usable_size()} */
 	static uz get_usable_size(uz size) {return su_mem_get_usable_size(size);}
 
-	/*! \copydoc{su_mem_get_usable_size_32()} */
-	static u32 get_usable_size_32(uz size) {return su_mem_get_usable_size_32(size);}
-
 	/*! \copydoc{su_mem_conf_option()} */
 	static void set_conf(BITENUM(u32,conf_option) co, uz val) {su_mem_set_conf(co, val);}
 
-	/*! \r{su_mem_check()} */
+	/*! \copydoc{su_mem_check()} */
 	static void check(void) {su_mem_check();}
 
-	/*! \r{su_mem_trace()} */
+	/*! \copydoc{su_mem_trace()} */
 	static void trace(boole dumpmem=FAL0) {su_mem_trace(dumpmem);}
 
 	template<class T>
