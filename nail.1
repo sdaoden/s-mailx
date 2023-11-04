@@ -3389,14 +3389,14 @@ or
 for positional parameter processing (and during
 .Cm eval Ns
 uation),
-.Cm vput
+.Cm >
 for result storage, and finally for the command and its side-effects
 as such; commands with the sole purpose of creating result storage, like
 .Ic read
 or
 .Ic readall ,
 may have no
-.Cm vput ,
+.Cm > ,
 but only command-scope.
 .Dq Scope
 may mean different things, please see
@@ -3417,7 +3417,7 @@ temporary variable during argument option processing:
 .
 .Bd -literal -offset indent
 define hi {
-  local pp our vput global vpospar i$((i = 1 + 1)) quote
+  local pp our >i$((i = 1 + 1)) global vpospar quote
   xcall t "$@"
 }
 define t {
@@ -3443,6 +3443,44 @@ always evaluates the
 .Ic echo
 command, even if such an alias exists.
 Need not be whitespace-separated from other modifiers or command names.
+.
+.Mx
+.It Cm > Ns Ar name
+Redirect command output to variable
+.Ar name
+instead of the default location (usually written to standard output).
+The name expansion is
+.Cm pp
+scoped, the name must comply to
+.Ev SHELL
+.Mx -ix "variable name rules"
+variable name rules and consist only of upper- and lowercase characters,
+digits, and the underscore; hyphen-minus may be used as a non-portable
+extension.
+Leading digits and hyphen-minus, as well as a trailing
+hyphen-minus are not allowed.
+Variables linked to the
+.Sx ENVIRONMENT
+may not use extensions.
+.Sx "INTERNAL VARIABLES"
+other than writable (non-boolean) value variables may not be used;
+a failure may occur nonetheless for unsatisfied content constraints.
+Any test or storage error causes failure, with
+.Va \&!
+set to
+.Va ^ERR Ns -NOTSUP
+and
+.Va \&?
+set to
+.Ql -1 ,
+but some commands deviate, then documented.
+.Bd -literal -offset indent
+>msgno =; echo $msgno
+\*(OU1
+>i$((i = 1 + 1)) echon some output; ec i2<$i2>, i<$i>.
+\*(OUi2<some output>, i<2>.
+.Ed
+.Pp
 .
 .Mx
 .It Cm eval
@@ -3567,40 +3605,6 @@ data, regardless of
 .Va ttycharset
 (aka
 .Ev LC_ALL ) .
-.
-.Mx
-.It Cm vput
-When supported a (shell-expanded) variable name is expected as the first
-command argument: the computation result will be stored in that variable
-instead of the default location (usually written to standard output).
-The name expansion is
-.Cm pp
-scoped; Uses (and resets) a previous scope modifier for the variable.
-.Ql ? vput = msgno; echo $msgno .
-.Pp
-The name must comply to
-.Ev SHELL
-.Mx -ix "variable name rules"
-variable name rules and consist only of upper- and lowercase characters,
-digits, and the underscore; hyphen-minus may be used as a non-portable
-extension, leading digits and hyphen-minus, as well as a trailing
-hyphen-minus are not allowed.
-Variables which are linked to the
-.Sx ENVIRONMENT
-may not use extensions.
-.Sx "INTERNAL VARIABLES"
-other than writable (non-boolean) value variables may not be used;
-also storage may fail in that case nonetheless if content constraints
-are not satisfied.
-Any test or storage error causes failure, with
-.Va \&!
-set to
-.Va ^ERR Ns -NOTSUP
-and
-.Va \&?
-set to
-.Ql -1 ,
-but some commands deviate, then documented.
 .
 .Mx
 .It Cm wysh
@@ -4082,7 +4086,7 @@ To gain a level of expansion, the entire command line can be
 uated first, for example
 .
 .Bd -literal -offset indent
-vput shcodec res encode /usr/Sch\[:o]nes Wetter/heute.txt
+>res shcodec encode /usr/Sch\[:o]nes Wetter/heute.txt
 echo $res
 \*(OU$'/usr/Sch\eu00F6nes Wetter/heute.txt'
 shcodec d $res
@@ -4228,7 +4232,7 @@ escaped exclamation mark
 when
 .Va bang
 is set (see there); reverse solidus has no other special meaning.
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" )
 is supported.
 A 0 or positive exit status
@@ -4239,7 +4243,7 @@ an error during execution setup, or an unclean program exit:
 is the error number then.
 .Pp
 Special cases with negative exit status exist in conjunction with
-.Cm vput :
+.Cm > :
 if storing the collected data in the variable fails
 .Va ^ERR Ns -NOTSUP
 occurs, whereas a temporary data collection file creation failure causes
@@ -4277,7 +4281,7 @@ moved (see
 nor are
 .Sx "Message states"
 updated.
-.Cm vput
+.Cm >
 is supported.
 .
 .Mx
@@ -4390,7 +4394,7 @@ account myisp {
 Perform email address codec transformations on raw-data argument, rather
 according to email standards (RFC 5322; \*(ID will furtherly improve).
 Supports
-.Cm vput .
+.Cm > .
 The first argument must be one of
 .Ar [+[+[+]]]e[ncode] ,
 .Ar d[ecode] ,
@@ -4546,7 +4550,7 @@ or
 and
 .Va reply-to .
 The former shows the current list without arguments, then it supports
-.Cm vput .
+.Cm > .
 Otherwise the arguments are appended to the alternate list; in
 .Va posix
 mode they instead replace that list.
@@ -5082,7 +5086,7 @@ For file operations refer to
 .Ic fop ,
 for numeric and other operations to
 .Ic vexpr .
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" )
 is supported.
 The error result is
@@ -5149,7 +5153,7 @@ Trim away whitespace from the end of the argument.
 Show the current working directory name as reported by
 .Xr getcwd 3 .
 Supports
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" ) .
 The return status is tracked via
 .Va \&? .
@@ -5276,7 +5280,7 @@ and remaining arguments are interpreted as for
 .Ic ~^
 .Pf ( Sx "COMMAND ESCAPES" ) :
 .Bd -literal -offset indent
-vput = msgno
+>msgno =
 digmsg create $msgno
 digmsg $msgno header list;   readall x;   echon $x
 \*(OU210 Subject From To Message-ID References In-Reply-To
@@ -5286,7 +5290,7 @@ digmsg $msgno header show Subject;readall x;echon $x
 \*(OU
 digmsg remove $msgno
 
-vput = mn
+>mn =
 digmsg crea $mn ^
 digmsg $mn he sh Subject; ec $^0: $^#: $^1: $^2
 \*(OU212: 2: Subject: Hello, world
@@ -5332,7 +5336,7 @@ Mark each given message as (not) being a draft
 \*(NQ(ec) Print arguments after expanding their
 .Sx "Shell-style argument quoting" ,
 then a newline.
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" )
 is supported; with it the result length is returned on success,
 .Ql -1
@@ -5353,7 +5357,7 @@ expands pathnames.
 but write to standard error and prefix lines by
 .Va log-prefix .
 Does not support
-.Cm vput .
+.Cm > .
 Also see
 .Ic echoerrn .
 \*(OP In interactive sessions messages are duplicated into the queue of
@@ -5466,7 +5470,7 @@ All given variables are worked, errors are remembered and cause
 The subcommand
 .Cm lookup
 looks up the given variable in the process environment only; it supports
-.Cm vput
+.Cm >
 and sets
 .Va \&!
 to
@@ -5486,7 +5490,7 @@ if $? -ne 0
   environ set PERL5LIB=~/.perl5
 endif
 set PERL5LIB=$PERL5LIB:/home/shared/perl5
-vput environ storvar lookup PERL5LIB; echo $storvar
+>storvar environ lookup PERL5LIB; echo $storvar
 .Ed
 .
 .
@@ -5778,7 +5782,7 @@ and echo success as documented there;
 standard input and output are accepted,
 regardless of their validity for the operation.
 Supports
-.Cm vput
+.Cm >
 (see
 .Sx "Command modifiers" ) .
 Except when otherwise noted errors will be reported via
@@ -5839,7 +5843,7 @@ that inherits the descriptor as standard input for shared locks,
 as standard input and output otherwise;
 If the shell could be started its exit status code is returned,
 and the normal result is suppressed but for
-.Cm vput ;
+.Cm > ;
 the descriptor will be closed automatically.
 .
 .It Cm glob
@@ -5899,7 +5903,7 @@ for
 passing standard descriptors via number is not supported.
 If the shell could be started its exit status code is returned,
 the normal result is suppressed but for
-.Cm vput.
+.Cm > .
 .
 .It Cm rename
 .Xr rename 2 .
@@ -5919,7 +5923,7 @@ the file descriptor with the given number.
 .It Cm stat , lstat
 .Xr stat 2
 the given file and output values such that
-.Ql vput fop x stat FILE; eval set $x
+.Ql >x fop stat FILE; eval set $x
 creates accessible variables.
 .Cm lstat
 differs by not following symbolic links when opening a file.
@@ -6451,9 +6455,9 @@ supports
 .It Ql "`our'"
 supports
 .Cm our .
-.It Ql "`vput'"
+.It Ql "`>'"
 supports
-.Cm vput .
+.Cm > .
 .It Ql "*!*"
 the error number is tracked in
 .Va \&! .
@@ -7317,7 +7321,7 @@ is set to
 and the unmodified input is the result.
 (Error may change again due to output or result storage errors.)
 Supports
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" ) .
 .
 .Mx
@@ -7546,7 +7550,7 @@ The port of the URL's
 defaults to HTTPS (443); only protocols which establish TLS directly are
 supported, not those which upgrade an insecure channel.
 Subcommands support
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" ) .
 The error result is the empty string, the error itself is stored in
 .Va \&! .
@@ -7560,7 +7564,7 @@ and
 .Va tls-config-pairs .
 .
 .Bd -literal -offset indent
-vput tls result fingerprint pop3s://ex.am.ple
+>result tls fingerprint pop3s://ex.am.ple
 echo $?/$!/$^ERRNAME: $result
 .Ed
 .
@@ -7776,7 +7780,7 @@ are invalid in the current
 .Va ttycharset .
 .Pp
 Supports
-.Cm vput
+.Cm >
 (see
 .Sx "Command modifiers" ) .
 If the operation fails
@@ -7822,7 +7826,7 @@ optionally in a more
 .Va verbose
 form that includes build and running system environment informations.
 Supports
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" ) .
 .
 .
@@ -7838,7 +7842,7 @@ The first argument defines number, type, and meaning of the
 remaining arguments.
 An empty number argument is treated as 0.
 Supports
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" ) .
 The result in case of errors is
 .Ql -1
@@ -7929,7 +7933,7 @@ to
 .Va ^ERR Ns -OVERFLOW .
 .
 .Bd -literal -offset indent
-vput vexpr res -? +1 -9223372036854775808
+>res vexpr -? +1 -9223372036854775808
 echo $?/$!/$^ERRNAME:$res
 \*(OU0/75/OVERFLOW:-9223372036854775808
 .Ed
@@ -7942,7 +7946,7 @@ settings and character sets.
 .It Cm date-utc
 Outputs the current date and time in UTC (Coordinated Universal
 Time) with values named such that
-.Ql vput vexpr x date-utc; eval set $x
+.Ql >x vexpr date-utc; eval set $x
 creates accessible variables.
 An optional argument denotes the UNIX seconds-since-the-epoch
 to be used instead of the current time.
@@ -7957,7 +7961,7 @@ named
 and
 .Ql epoch_nsec
 such that
-.Ql vput vexpr x epoch; eval set $x
+.Ql >x vexpr epoch; eval set $x
 creates accessible variables.
 May be given one to six optional arguments naming (in order) year,
 month, day (of month), hour, minute and second to be used instead of the
@@ -8014,11 +8018,11 @@ are set for successful matches, and the argument is interpreted
 as if specified within dollar-single-quote
 .Pf ( Sx "Shell-style argument quoting" ) :
 .Bd -literal -offset indent
-vput vexpr res regex bananarama \e
+>res vexpr regex bananarama \e
     (.*)NanA(.*) '\e${^1}au\e$^2'
 echo $?/$!/$^ERRNAME:$res:
 \*(OU1/61/NODATA::
-vput vexpr res regex?case bananarama \e
+>res vexpr regex?case bananarama \e
     (.*)NanA(.*) '\e${^1}uauf\e$^2'
 echo $?/$!/$^ERRNAME:$res:
 \*(OU0/0/NONE:bauauframa:
@@ -8067,7 +8071,7 @@ If that results in no separation at all a
 .Cm space
 character is used.
 This mode supports
-.Cm vput
+.Cm >
 .Pf ( Sx "Command modifiers" ) .
 The subcommands
 .Ql set
@@ -8082,7 +8086,7 @@ vpospar set hey, "'you    ", world!
 echo $#: <$1><$2><$3>
 \*(OU3: <hey,><'you    ,><world!>
 
-vput vpospar x quote
+>x vpospar x quote
 
 vpospar clear
 echo $#: <$1><$2><$3>
@@ -11478,7 +11482,7 @@ define ocl {
   if $? -eq 0
     local readall i
     if $? -gt 0
-      our vput csop message-inject-tail trim-end $i
+      our >message-inject-tail csop trim-end $i
     en
     readctl remove ~/.mysig
   en
@@ -15226,15 +15230,15 @@ define o-c-e {
 set access_token_=0
 define update_access_token {
   local set i epoch_sec epoch_nsec
-  vput vexpr i epoch
+  >i vexpr epoch
   eval set $i # set epoch_sec/_nsec of vexpr epoch
-  vput vexpr i + $access_token_ 2100
+  >i vexpr + $access_token_ 2100
   if $epoch_sec -ge $i
-    vput ! password python oauth2.py --user=EMAIL \e
+    >password ! python oauth2.py --user=EMAIL \e
         --client-id=THE-ID --client-secret=THE-SECRET \e
         --refresh-token=THE-REFRESH-TOKEN |\e
       sed '1b PASS;d; :PASS s/^.\e{1,\e}:\e(.\e{1,\e}\e)$/\e1/'
-    vput csop password trim "$password"
+    >password csop trim "$password"
     if -n "$verbose"
       echo password is <$password>
     endif
@@ -15481,7 +15485,7 @@ Not all IMAP servers support this command.
 .It Ic imapcodec
 Perform IMAP path transformations.
 Supports
-.Cm vput
+.Cm >
 (see
 .Sx "Command modifiers" ) .
 The first argument specifies the operation:
@@ -15832,7 +15836,7 @@ output of the command
 may be helpful:
 .
 .Bd -literal -offset indent
-set escape=! verbose; vput version xy; unset verbose;\e
+set escape=! verbose; >xy version; unset verbose;\e
   eval mail $contact-mail
 Bug subject
 !I xy

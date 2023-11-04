@@ -580,7 +580,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"endif", &c_endif, (HG | F | M | X | EM | TWYSH), 0, 0, NIL,
 	 N_("(en) Part of the if/elif/else/endif conditional expression")},
 	{"environ", &c_environ, (HG | M | O | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_environ),
-	 N_("<link|unlink|set|unset> (environment) :<variable>:, or [vput] lookup <var>")},
+	 N_("<link|unlink|set|unset> (environment) :<variable>:, or [>VAR] lookup <var>")},
 	{"errors",
 #ifdef mx_HAVE_ERRORS
 	 &c_errors,

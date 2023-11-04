@@ -58,7 +58,7 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 	mx_CMD_ARG_S = 1u<<16, /* Forbidden pre-n_PSO_STARTED (POSIX) */
 	mx_CMD_ARG_T = 1u<<17, /* Transparent command (<> PS_SAW_COMMAND) */
 	mx_CMD_ARG_U = 1u<<18, /* Supports `u' prefix */
-	mx_CMD_ARG_V = 1u<<19, /* Supports `vput' prefix */
+	mx_CMD_ARG_V = 1u<<19, /* Supports `>' prefix */
 	mx_CMD_ARG_W = 1u<<20, /* Invalid when read only bit */
 	mx_CMD_ARG_X = 1u<<21, /* TODO v15-compat: remove SPLICE: Valid command in n_PS_COMPOSE_FORKHOOK mode */
 	mx_CMD_ARG_NO_HOOK = 1u<<22, /* Not within PS_HOOK_MASK */
@@ -170,7 +170,7 @@ struct mx_cmd_arg_ctx{
 	BITENUM(u8,mx_scope) cac_scope_pp; /* positional parameter scope */
 	u8 cac__pad[1];
 	/* TODO mx_cmd_arg_ctx should carry around per-cmd pstate_err_no! */
-	char const *cac_vput; /* `vput' command modifier used: varname */
+	char const *cac_vput; /* `>' command modifier used: varname */
 };
 
 struct mx_cmd_arg{
