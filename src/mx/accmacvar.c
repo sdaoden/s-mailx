@@ -196,7 +196,7 @@ enum a_amv_var_setclr_flags{
 enum a_amv_var_special_category{
 	a_AMV_VSC_NONE, /* Normal variable, no special treatment */
 	a_AMV_VSC_GLOBAL, /* ${[?!]} are specially mapped, but global */
-	a_AMV_VSC_MULTIPLEX, /* ${^.+} caret (circumflex accent) multiplexer */
+	a_AMV_VSC_MULTIPLEX, /* ${^.+} circumflex accent multiplexer */
 	a_AMV_VSC_POSPAR, /* ${[1-9][0-9]*} positional parameters */
 	a_AMV_VSC_POSPAR_ENV /* ${[*@#]} positional parameter support variables */
 };
@@ -207,7 +207,7 @@ enum a_amv_var_special_type{
 	a_AMV_VST_EM, /* ! */
 	/* _VSC_MULTIPLEX */
 	/* This is special in that it is a multiplex indicator, the ^ is followed by a normal variable */
-	a_AMV_VST_CARET, /* ^ caret (circumflex accent) */
+	a_AMV_VST_CFLEX, /* ^ circumflex accent */
 	/* _VSC_POSPAR_ENV */
 	a_AMV_VST_STAR, /* * */
 	a_AMV_VST_AT, /* @ */
@@ -1631,7 +1631,7 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name, boole try_
 	}else if(c == '^'){
 jmultiplex:
 		avcp->avc_special_cat = a_AMV_VSC_MULTIPLEX;
-		j = a_AMV_VST_CARET;
+		j = a_AMV_VST_CFLEX;
 		goto jspecial_param;
 	}
 
@@ -4158,7 +4158,7 @@ n_var_vlook(char const *vokey, boole try_getenv){
 }
 
 FL boole
-n_var_vexplode(void const **cookie, boole caret){
+n_var_vexplode(void const **cookie, boole rset){
 	struct a_amv_pospar *appp;
 	NYD2_IN;
 
@@ -4166,9 +4166,9 @@ n_var_vexplode(void const **cookie, boole caret){
 		struct a_amv_mac_call_args *amcap;
 
 		amcap = a_amv_lopts->as_amcap;
-		appp = !caret ? amcap->amca_pospar : amcap->amca_rem_rval;
+		appp = !rset ? amcap->amca_pospar : amcap->amca_rem_rval;
 	}else
-		appp = !caret ? &a_amv_pospar : &a_amv_rem_rval;
+		appp = !rset ? &a_amv_pospar : &a_amv_rem_rval;
 
 	if(appp->app_count == 0)
 		*cookie = NIL;

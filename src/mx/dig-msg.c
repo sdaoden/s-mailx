@@ -240,7 +240,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 	}
 
 	/* Create output */
-	if(dmcp->dmc_flags & mx__DIG_MSG_MODE_CARET){
+	if(dmcp->dmc_flags & mx__DIG_MSG_MODE_RSET){
 		char const **cpp;
 		struct a_dmsg_sl *x;
 		u32 i;
@@ -1912,7 +1912,7 @@ c_digmsg(void * volatile vp){
 				goto jesynopsis;
 			switch(cap->ca_arg.ca_str.s[0]){
 			case '^':
-				dmcp->dmc_flags |= mx__DIG_MSG_MODE_CARET;
+				dmcp->dmc_flags |= mx__DIG_MSG_MODE_RSET;
 				break;
 			case '-':
 				dmcp->dmc_flags |= mx__DIG_MSG_MODE_FP;
@@ -2063,9 +2063,9 @@ jeinval:
 }
 /* }}} */
 
-/* mx_dig_msg_caret {{{ */
+/* mx_dig_msg_cflex {{{ */
 boole
-mx_dig_msg_caret(enum mx_scope scope, boole force_mode_caret, char const *cmd){
+mx_dig_msg_cflex(enum mx_scope scope, boole rset, char const *cmd){
 	/* Identical to (subset of) c_digmsg() cmd-tab */
 	mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(dm, "digmsg", 5, pseudo_cad){
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
@@ -2107,7 +2107,7 @@ mx_dig_msg_caret(enum mx_scope scope, boole force_mode_caret, char const *cmd){
 
 		f = dmcp->dmc_flags;
 		dmcp->dmc_flags = ((f & ~mx__DIG_MSG_MODE_MASK) |
-				(force_mode_caret ? mx__DIG_MSG_MODE_CARET : mx__DIG_MSG_MODE_FP));
+				(rset ? mx__DIG_MSG_MODE_RSET : mx__DIG_MSG_MODE_FP));
 		rv = a_dmsg_cmd(n_stdout, dmcp, cac.cac_arg, cac.cac_arg->ca_next);
 		dmcp->dmc_flags = f;
 

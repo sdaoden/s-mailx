@@ -101,7 +101,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(decrypt, 1, a_cmd_cad_decrypt){
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-/* Superset of the one in mx_dig_msg_caret() */
+/* Superset of the one in mx_dig_msg_cflex() */
 mx_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 6, a_cmd_cad_digmsg){ /* XXX 4 OR 5 */
 	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE}, /* subcommand (/ msgno/-) */

@@ -1946,11 +1946,11 @@ jearg:
 				n_pstate_ex_no = 0; /* XXX */
 			}break;
 		case '^':{
-				boole force_mode_caret;
+				boole rset;
 
-				if((force_mode_caret = (*cp == '^')))
+				if((rset = (*cp == '^')))
 					++cp;
-				if(!mx_dig_msg_caret(a_coll->cc_scope, force_mode_caret, cp)){
+				if(!mx_dig_msg_cflex(a_coll->cc_scope, rset, cp)){
 					if(ferror(n_stdout)){/* xxx */
 						clearerr(n_stdout);
 						goto jleave;
