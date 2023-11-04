@@ -5438,7 +5438,7 @@ x
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
 commandalias x echo '"'"'$#: <$1><$2><$3>'"'"'
-set x=$'"'"'a b\n#c d\ne f\n'"'"'
+set e=e x=$'"'"'a b\n#c d\n$e f\n'"'"'
 set ifs=$'"'"'\n'"'"'; vpospar set $x; unset ifs
 x
 set ifs=$'"'"'\n'"'"'; eval vpospar set $x; unset ifs
@@ -5452,7 +5452,7 @@ x
 ' \
 	> ./tevalset 2>${E0}
 	#}}}
-	cke0 evalset 0 ./tevalset '2054446552 79'
+	cke0 evalset 0 ./tevalset '1525239982 81'
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
