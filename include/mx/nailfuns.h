@@ -232,7 +232,7 @@ FL boole n_var_okclear(enum okeys okey);
  * it returns whether there are any elements in argv (*cookie).
  * Calling vset with val==NIL is a clear request */
 FL char const *n_var_vlook(char const *vokey, boole try_getenv);
-FL boole n_var_vexplode(void const **cookie, boole caret);
+FL boole n_var_vexplode(void const **cookie, boole rset);
 FL boole n_var_vset(char const *vokey, up val, enum mx_scope scope);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy

@@ -1772,7 +1772,7 @@ jearith:
 
 				/* Scan variable name */
 				if(!(state & a_BRACE) || il > 1){ /* {{{ */
-					boole caret;
+					boole rset;
 
 					ib_save = ib - 1;
 					if(state & a_BRACE)
@@ -1780,8 +1780,8 @@ jearith:
 					vp = ib;
 					state &= ~a_EXPLODE;
 
-					/* In order to support $^# we need to treat caret especially */
-					for(caret = FAL0, i = 0; il > 0; --il, ++ib){
+					/* In order to support $^# we need to treat circumflex especially */
+					for(rset = FAL0, i = 0; il > 0; --il, ++ib){
 						/* We have some special cases regarding special parameters, so ensure
 						 * these do not cause failure.  This code has counterparts in code
 						 * that manages internal variables! */
@@ -1790,7 +1790,7 @@ jearith:
 							if(i == 0){
 								/* Skip over multiplexer, do not count it for now */
 								if(c == '^'){
-									caret = TRU1;
+									rset = TRU1;
 									continue;
 								}
 								if(c == '*' || c == '@' || c == '#' || c == '?' ||
@@ -1811,7 +1811,7 @@ jearith:
 							state |= a_NONDIGIT;
 						++i;
 					}
-					if(caret)
+					if(rset)
 						++i;
 
 					/* In skip mode, be easy and.. skip over */
@@ -1880,7 +1880,7 @@ jebracesubst:
 						 * the current token */
 						if(UNLIKELY(state & a_EXPLODE) && !(flags & n_SHEXP_PARSE_DRYRUN) &&
 								cookie != NIL){
-							if(n_var_vexplode(cookie, caret))
+							if(n_var_vexplode(cookie, rset))
 								state |= a_COOKIE;
 							/* On the other hand, if $@ expands to nothing and is the
 							 * sole content of this quote then act like the shell does

@@ -33,12 +33,12 @@ enum mx_dig_msg_flags{
 	mx__DIG_MSG_COMPOSE = 1u<<0, /* Compose mode object.. */
 	mx__DIG_MSG_COMPOSE_DIGGED = 1u<<1, /* ..with `digmsg' handle also! */
 	mx__DIG_MSG_RDONLY = 1u<<2, /* Message is read-only */
-	mx__DIG_MSG_MODE_CARET = 1u<<3, /* Store results in $^[01..*] */
+	mx__DIG_MSG_MODE_RSET = 1u<<3, /* Store results in result set $^[01..*] */
 	mx__DIG_MSG_MODE_FP = 1u<<4, /* file-descriptor output */
 	mx__DIG_MSG_OWN_MEMBAG = 1u<<5, /* .dmc_membag==&.dmc__membag_buf[0] */
 	mx__DIG_MSG_OWN_FD = 1u<<6, /* _MODE_FP: needs fclose() */
 
-	mx__DIG_MSG_MODE_MASK = mx__DIG_MSG_MODE_CARET | mx__DIG_MSG_MODE_FP
+	mx__DIG_MSG_MODE_MASK = mx__DIG_MSG_MODE_RSET | mx__DIG_MSG_MODE_FP
 };
 
 struct mx_dig_msg_ctx{
@@ -59,7 +59,7 @@ struct mx_dig_msg_ctx{
 
 /* Compose mode uses a "pseudo object" <> mx_dig_msg_compose_ctx TODO
  * Hacky (requires mx/go.h + su/mem.h that are NOT included) */
-#define mx__DIG_MSG_COMPOSE_FLAGS (mx__DIG_MSG_COMPOSE | mx__DIG_MSG_MODE_CARET)
+#define mx__DIG_MSG_COMPOSE_FLAGS (mx__DIG_MSG_COMPOSE | mx__DIG_MSG_MODE_RSET)
 
 #define mx_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
 do{\
@@ -89,7 +89,7 @@ EXPORT void mx_dig_msg_on_mailbox_close(struct mailbox *mbox);
 EXPORT int c_digmsg(void *vp);
 
 /* `~^' within mx_DIG_MSG_COMPOSE_CREATE()..mx_DIG_MSG_COMPOSE_GUT() */
-EXPORT boole mx_dig_msg_caret(enum mx_scope scope, boole force_mode_caret, char const *cmd);
+EXPORT boole mx_dig_msg_cflex(enum mx_scope scope, boole rset, char const *cmd);
 
 #include <su/code-ou.h>
 #endif /* mx_DIG_MSG_H */
