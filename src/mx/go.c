@@ -531,7 +531,8 @@ jrestart:
 
 	if(eval_cnt > 0 && !(flags & a_IS_SKIP)){
 		/* $(()) may set variables, check and set now! */
-		if(scope_pp != mx_SCOPE_NONE && (a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
+		if(scope_pp != mx_SCOPE_NONE && (a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO &&
+				!(n_pstate & n_PS_COMPOSE_MODE)){
 			ccp = N_("cannot use scope modifier in this context");
 			goto jeopnotsupp;
 		}
@@ -779,7 +780,8 @@ jwhite:
 
 	/* Verify II: check cmd scope support {{{ */
 	if(flags & a__SCOPE_MASK){
-		boole const notmac = ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO);
+		boole const notmac = ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO &&
+				!(n_pstate & n_PS_COMPOSE_MODE));
 
 		flags |= a_WYSH; /* Imply this XXX v15-compat */
 		if(scope_cmd == mx_SCOPE_LOCAL){
@@ -1095,6 +1097,7 @@ jret:
 	return (rv == 0);
 
 jeopnotsupp:
+	gecp->gec_hist_flags = a_GO_HIST_NONE;
 	n_err("%s%s%s: %s%s%s\n", n_ERROR, (cdp != NIL ? ": " : su_empty), (cdp != NIL ? cdp->cd_name : su_empty),
 		V_(ccp), (*line.s != '\0' ? ": " : su_empty),
 		(*line.s != '\0' ? n_shexp_quote_cp(line.s, FAL0) : su_empty));
@@ -1121,7 +1124,7 @@ a_go_evaluate__vput(struct str *line, char **vput, u8 scope_pp, boole v15_compat
 				n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
 				n_SHEXP_PARSE_META_KEEP), scope_pp, &ccp);
 	if(ccp == NIL){
-		ccp = N_("> (obsolete: vput): could not parse input token");/* v15-compat*/
+		ccp = N_(">: scope error, or could not parse input token");/* v15-compat*/
 		goto jleave;
 	}
 
