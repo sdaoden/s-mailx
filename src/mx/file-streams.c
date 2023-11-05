@@ -1159,7 +1159,7 @@ jredo:
 		lpep = tmp->fsle_last;
 
 		if((vp = tmp->fsle_dat) != NIL){
-			if(completely > 0 && tmp->fsle_size <= su_PAGE_SIZE){
+			if(completely > 0 && tmp->fsle_size <= MAX(mx_BUFFER_SIZE, mx_LINESIZE)){
 				--completely;
 				tmp->fsle_last = a_fs_lpool_free;
 				a_fs_lpool_free = tmp;
