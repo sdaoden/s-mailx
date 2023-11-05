@@ -1172,7 +1172,10 @@ jquick:
 
 		if(!ign){
 			bp = su_ienc_s64(buf, val, 10);
-			n_var_vset(nums_top->sav_var, S(up,bp), self->sac_cookie);
+			if(!n_var_vset(nums_top->sav_var, S(up,bp), self->sac_cookie)){
+				self->sac_error = a_SHEXP_ARITH_ERR_SYNTAX; /* scope error? */
+				goto jleave;
+			}
 		}
 
 		/* And restore the stack value again for postfix operators */

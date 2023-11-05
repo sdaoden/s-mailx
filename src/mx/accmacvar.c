@@ -4188,14 +4188,19 @@ FL boole
 n_var_vset(char const *vokey, up val, enum mx_scope scope){
 	struct a_amv_var_carrier avc;
 	boole ok;
-	BITENUM(u32,a_amv_var_setclr_flags) avscf;
 	NYD_IN;
 
-	a_amv_var_revlookup(&avc, vokey, TRU1);
-	avc.avc_scope = S(u8,scope);
-	avscf = (scope == mx_SCOPE_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE;
+	if(UNLIKELY(scope > mx_SCOPE_GLOBAL && !a_AMV_HAVE_LOPTS_AKA_LOCAL()))
+		ok = FAL0;
+	else{
+		BITENUM(u32,a_amv_var_setclr_flags) avscf;
 
-	ok = a_amv_var_set(&avc, (val == 0x1 ? su_empty : R(char const*,val)), avscf);
+		a_amv_var_revlookup(&avc, vokey, TRU1);
+		avc.avc_scope = S(u8,scope);
+		avscf = (scope == mx_SCOPE_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE;
+
+		ok = a_amv_var_set(&avc, (val == 0x1 ? su_empty : R(char const*,val)), avscf);
+	}
 
 	NYD_OU;
 	return ok;
@@ -4352,7 +4357,7 @@ c_varshow(void *vp){
 }
 
 FL int
-c_environ(void *vp){
+c_environ(void *vp){ /* {{{ */
 	struct a_amv_var_carrier avc;
 	boole islnk;
 	int rv;
@@ -4498,7 +4503,7 @@ jeuse:
 jleave:
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 FL int
 c_vpospar(void *vp){ /* {{{ */
