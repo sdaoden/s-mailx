@@ -712,7 +712,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_LINES, /* {notempty=1,posnum=1,env=1} */
    ok_v_LISTER, /* {env=1,notempty=1,defval=VAL_LISTER} */
    ok_v_LOGNAME, /* {rdonly=1,import=1} */
-   ok_v_line_editor_config, /* {notempty=1} */
+   ok_v_line_editor_config, /* {notempty=1,i3val=VAL_MLE_CONFIG} */
    ok_v_line_editor_cpl_word_breaks, /* {\ } */
       /* {defval=n_LINE_EDITOR_CPL_WORD_BREAKS} */
    ok_b_line_editor_disable,

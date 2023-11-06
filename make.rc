@@ -337,8 +337,10 @@ OPT_MAILDIR=yes
 # If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
 # system then our built-in MLE (Mailx-Line-Editor) version can be used.
 # An enabled & available OPT_TERMCAP may affect and improve the MLE.
+# VAL_MLE_CONFIG is used as the default *line-editor-config*.
 # Can be "require"d.
 OPT_MLE=yes
+	VAL_MLE_CONFIG=srch-case,srch-pos0,srch-regex
 
 	# Add support for `history' management.
 	OPT_HISTORY=yes
