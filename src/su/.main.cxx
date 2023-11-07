@@ -148,6 +148,22 @@ a_abc(void){
 	FIELD_RANGE_ZERO(bla, &a, i1, i5);
 	if(a.i1 != 0 || a.i2 != 0 || a.i3 != 0 || a.i4 != 0 || a.i5 != 0)
 		a_ERR();
+
+	//
+	mem::set(&a, 0xFF, sizeof a);
+	STRUCT_ZERO_UNTIL(struct bla, &a, i3);
+	if(a.i1 != 0 || a.i2 != 0 || a.i3 != max::u64 || a.i4 != max::u32 || a.i5 != max::u32)
+		a_ERR();
+
+	mem::set(&a, 0xFF, sizeof a);
+	STRUCT_ZERO_FROM(struct bla, &a, i4);
+	if(a.i1 != max::u32 || a.i2 != max::u32 || a.i3 != max::u64 || a.i4 != 0 || a.i5 != 0)
+		a_ERR();
+
+	mem::set(&a, 0xFF, sizeof a);
+	STRUCT_ZERO_FROM_UNTIL(struct bla, &a, i2, i4);
+	if(a.i1 != max::u32 || a.i2 != 0 || a.i3 != 0 || a.i4 != max::u32 || a.i5 != max::u32)
+		a_ERR();
 }
 // }}}
 

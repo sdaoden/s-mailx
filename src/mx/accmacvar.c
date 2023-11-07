@@ -333,7 +333,7 @@ struct a_amv_var_carrier{
 	struct a_amv_var *avc_var;
 	struct a_amv_var_map const *avc_map;
 	BITENUM(u16,okeys) avc_okey;
-	BITENUM(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
+	ZIPENUM(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
 #undef a_AMV_OKEY
 #define a_AMV_OKEY(X) S(u16,X)
 	boole avc_is_chain_variant; /* Base is a chain, this a variant thereof */

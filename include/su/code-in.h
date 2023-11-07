@@ -153,10 +153,8 @@
 
 #define ATOMIC su_ATOMIC
 
-#define BITENUM su_BITENUM /* FIXME DROP THIS */
 #define BITENUM su_BITENUM
 #define BITENUM_MASK su_BITENUM_MASK
-#define PADENUM su_PADENUM
 
 #define DBG su_DBG
 #define NDGB su_NDBG
@@ -267,6 +265,9 @@
 #define CONCAT su_CONCAT
 
 #define STRUCT_ZERO su_STRUCT_ZERO
+#define STRUCT_ZERO_UNTIL su_STRUCT_ZERO_UNTIL
+#define STRUCT_ZERO_FROM su_STRUCT_ZERO_FROM
+#define STRUCT_ZERO_FROM_UNTIL su_STRUCT_ZERO_FROM_UNTIL
 
 #define UCMP su_UCMP
 
@@ -281,6 +282,8 @@
 
 #define VFIELD_SIZE su_VFIELD_SIZE
 #define VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
+
+#define ZIPENUM su_ZIPENUM
 
 /* POD TYPE SUPPORT (only if !C++) */
 #if defined su_HEADER || (defined su_FILE && su_C_LANG)

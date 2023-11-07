@@ -761,16 +761,13 @@ do if(!(X)){\
  * flags that are, effectively, part of a bit enumeration.
  * This macro awaits a future ISO C bit-enumeration: \a{X} is the pod used until then, \a{Y} the name of the
  * enumeration that is really meant.
- * \remarks{Also (mis)used to ensure a certain integer type(-size) is actually used for \c{enum} storage.} */
+ * Also see \r{su_ZIPENUM}. */
 #define su_BITENUM(X,Y) X /* enum Y */
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
  * \remarks{Identical to \r{su_BITS_RANGE_MASK()}.} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
-
-/*! It is not possible to enforce a type size for enumerations, thus enforce \a{X}, but mean \a{Y}. */
-#define su_PADENUM(X,Y) X /* enum Y */
 
 /*! For injection macros like \r{su_DBG()}, NDBG, DBGOR, 64, 32, 6432. */
 #define su_COMMA ,
@@ -939,6 +936,21 @@ do{\
  * \remarks{Introduces a block scope.} */
 #define su_STRUCT_ZERO(T,P) su_CC_MEM_ZERO(P, sizeof(T))
 
+/*! Zero an partial \a{T}ype instance until, but not including, \a{F}ield at the given memory \a{P}ointer.
+ * \remarks{Introduces a block scope.} */
+#define su_STRUCT_ZERO_UNTIL(T,P,F) su_CC_MEM_ZERO(P, su_FIELD_OFFSETOF(T, F))
+
+/*! Zero an partial \a{T}ype instance starting at, and including, \a{F}ield at the given memory \a{P}ointer.
+ * \remarks{Introduces a block scope.} */
+#define su_STRUCT_ZERO_FROM(T,P,F) \
+	su_CC_MEM_ZERO(&su_S(char*,su_S(void*,P))[su_FIELD_OFFSETOF(T, F)], sizeof(T) - su_FIELD_OFFSETOF(T, F))
+
+/*! Combination of \r{su_STRUCT_ZERO_UNTIL()} and \r{su_STRUCT_ZERO_FROM()}.
+ * \remarks{Introduces a block scope.} */
+#define su_STRUCT_ZERO_FROM_UNTIL(T,P,F1,FN) \
+	su_CC_MEM_ZERO(&su_S(char*,su_S(void*,P))[su_FIELD_OFFSETOF(T, F1)],\
+		su_FIELD_OFFSETOF(T, FN) - su_FIELD_OFFSETOF(T, F1))
+
 #if su_C_LANG || defined DOXYGEN
  /*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned, \a{T} is one of our homebrew integers,
   * for example, \c{UCMP(32, su_ABS(n), >, wleft)}.
@@ -977,6 +989,10 @@ do{\
 # define su_VFIELD_SIZE(X) ((X) == 0 ? sizeof(su_uz) : (su_S(su_sz,X) < 0 ? sizeof(su_uz) - su_ABS(X) : su_S(su_uz,X)))
 # define su_VSTRUCT_SIZEOF(T,F) (sizeof(T) - su_FIELD_SIZEOF(T, F))
 #endif
+
+/*! It is not possible to enforce a type size for enumerations, thus enforce \a{X}, but mean \a{Y}.
+ * Also see \r{su_BITENUM}. */
+#define su_ZIPENUM(X,Y) X /* enum Y */
 
 /* SUPPORT MACROS+ }}} */
 

@@ -165,9 +165,9 @@ struct mx_cmd_arg_ctx{
 	struct mx_cmd_arg *cac_arg; /* Output: parsed arguments */
 	u32 cac_no; /* Output: number of parsed arguments (LT U32_MAX!) */
 	/* go related for command consumation */
-	BITENUM(u8,mx_scope) cac_scope; /* Desired scope, ... */
-	BITENUM(u8,mx_scope) cac_scope_vput; /* .cac_vput scope, ... */
-	BITENUM(u8,mx_scope) cac_scope_pp; /* positional parameter scope */
+	ZIPENUM(u8,mx_scope) cac_scope; /* Desired scope, ... */
+	ZIPENUM(u8,mx_scope) cac_scope_vput; /* .cac_vput scope, ... */
+	ZIPENUM(u8,mx_scope) cac_scope_pp; /* positional parameter scope */
 	u8 cac__pad[1];
 	/* TODO mx_cmd_arg_ctx should carry around per-cmd pstate_err_no! */
 	char const *cac_vput; /* `>' command modifier used: varname */

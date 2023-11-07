@@ -113,10 +113,8 @@
 
 #undef ATOMIC
 
-#undef BITENUM /* FIXME DROP THIS */
 #undef BITENUM
 #undef BITENUM_MASK
-#undef PADENUM
 
 #undef DBG
 #undef NDGB
@@ -183,6 +181,9 @@
 #undef CONCAT
 
 #undef STRUCT_ZERO
+#undef STRUCT_ZERO_UNTIL
+#undef STRUCT_ZERO_FROM
+#undef STRUCT_ZERO_FROM_UNTIL
 
 #undef UCMP
 
@@ -197,6 +198,8 @@
 
 #undef VFIELD_SIZE
 #undef VSTRUCT_SIZEOF
+
+#undef ZIPENUM
 
 /* POD TYPE SUPPORT (only if !C++) */
 
