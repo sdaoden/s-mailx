@@ -110,7 +110,7 @@ struct a_coll_quote_ctx{
 struct a_coll_ctx{
 	u32 cc_flags;
 	s32 ATOMIC cc_sig_int; /* Have seen one SIGINT so far (or presume we did) */
-	BITENUM(u8,mx_scope) cc_scope;
+	ZIPENUM(u8,mx_scope) cc_scope;
 	u8 cc_eof_cnt;
 	char cc_escape;
 	char cc_exit_cmd; /* Tested by .cc_ocembed after return */
