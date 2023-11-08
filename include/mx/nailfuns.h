@@ -1322,9 +1322,6 @@ FL struct message *mx_smime_decrypt_assemble(struct message *mp, FILE *hp,
 /* `certsave' */
 FL int c_certsave(void *vp);
 
-/* */
-FL boole n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
-
 /* `tls' */
 FL int c_tls(void *vp);
 #endif /* mx_HAVE_TLS */
