@@ -14537,150 +14537,151 @@ t__tls__create() ( #{{{
 	cd ../t.tls.db
 	echo >&2 '[>>> Test SSL/TLS keys/certificates setup]'
 
-	${cat} <<-_EOT > ./t-root-ca.cnf
-		extensions = ext_v3_ca
-		[req]
-		x509_extensions = ext_v3_ca
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		[req_distinguished_name]
-		C = IT
-		ST = ROOT-CA-ST
-		L = ROOT-CA-L
-		O = ROOT-CA-O
-		OU = ROOT-CA-OU
-		CN = ROOT-CA-CN
-		emailAddress = test@root-ca.example
-		# At one time AlpineLinux OpenSSL required that:
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-		# Extensions for a typical CA
-		[ext_v3_ca]
-		# PKIX recommendation
-		subjectKeyIdentifier = hash
-		authorityKeyIdentifier = keyid:always,issuer
-		basicConstraints = critical,CA:true
-	_EOT
+	${cat} <<_EOT > ./t-root-ca.cnf
+extensions = ext_v3_ca
+[req]
+x509_extensions = ext_v3_ca
+distinguished_name = req_distinguished_name
+attributes = req_attributes
+prompt = no
+[req_distinguished_name]
+C = IT
+ST = ROOT-CA-ST
+L = ROOT-CA-L
+O = ROOT-CA-O
+OU = ROOT-CA-OU
+CN = ROOT-CA-CN
+emailAddress = test@root-ca.example
+# At one time AlpineLinux OpenSSL required that:
+[req_attributes]
+challengePassword = hi ca it is me me me
+# Extensions for a typical CA
+[ext_v3_ca]
+# PKIX recommendation
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical,CA:true
+_EOT
 
-	${cat} <<-_EOT > ./t-root2-ca.cnf
-		extensions = ext_v3_ca
-		[req]
-		x509_extensions = ext_v3_ca
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		[req_distinguished_name]
-		C = IT
-		ST = ROOT2-CA-ST
-		L = ROOT2-CA-L
-		O = ROOT2-CA-O
-		OU = ROOT2-CA-OU
-		CN = ROOT2-CA-CN
-		emailAddress = test@root2-ca.example
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-		# Extensions for a typical CA
-		[ext_v3_ca]
-		# PKIX recommendation
-		subjectKeyIdentifier = hash
-		authorityKeyIdentifier = keyid:always,issuer
-		basicConstraints = critical,CA:true
-	_EOT
+	${cat} <<_EOT > ./t-root2-ca.cnf
+extensions = ext_v3_ca
+[req]
+x509_extensions = ext_v3_ca
+distinguished_name = req_distinguished_name
+attributes = req_attributes
+prompt = no
+[req_distinguished_name]
+C = IT
+ST = ROOT2-CA-ST
+L = ROOT2-CA-L
+O = ROOT2-CA-O
+OU = ROOT2-CA-OU
+CN = ROOT2-CA-CN
+emailAddress = test@root2-ca.example
+[req_attributes]
+challengePassword = hi ca it is me me me
+# Extensions for a typical CA
+[ext_v3_ca]
+# PKIX recommendation
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical,CA:true
+_EOT
 
-	${cat} <<-_EOT > ./t-ca.cnf
-		extensions = ext_v3_ca
-		[req]
-		x509_extensions = ext_v3_ca
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		[req_distinguished_name]
-		C = IT
-		ST = CA-ST
-		L = CA-L
-		O = CA-O
-		OU = CA-OU
-		CN = CA-CN
-		emailAddress = test@ca.example
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-		# Extensions for a typical CA
-		[ext_v3_ca]
-		subjectKeyIdentifier = hash
-		authorityKeyIdentifier = keyid:always,issuer
-		basicConstraints = critical,CA:true
-	_EOT
+	${cat} <<_EOT > ./t-ca.cnf
+extensions = ext_v3_ca
+[req]
+x509_extensions = ext_v3_ca
+distinguished_name = req_distinguished_name
+attributes = req_attributes
+prompt = no
+[req_distinguished_name]
+C = IT
+ST = CA-ST
+L = CA-L
+O = CA-O
+OU = CA-OU
+CN = CA-CN
+emailAddress = test@ca.example
+[req_attributes]
+challengePassword = hi ca it is me me me
+# Extensions for a typical CA
+[ext_v3_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical,CA:true
+_EOT
 
-	${cat} <<-_EOT > ./t-srv.cnf
-		extensions = ext_srv_cert
-		[req]
-		x509_extensions = ext_srv_cert
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		[req_distinguished_name]
-		C = IT
-		ST = SERV-ST
-		L = SERV-L
-		O = SERV-O
-		OU = SERV-OU
-		CN = localhost
-		emailAddress = test@srv.example
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-		[ext_srv_cert]
-		basicConstraints = CA:FALSE
-		extendedKeyUsage = critical,serverAuth,emailProtection
-		subjectKeyIdentifier = hash
-		authorityKeyIdentifier = keyid,issuer
-	_EOT
+	${cat} <<_EOT > ./t-srv.cnf
+extensions = ext_srv_cert
+[req]
+x509_extensions = ext_srv_cert
+distinguished_name = req_distinguished_name
+attributes = req_attributes
+prompt = no
+[req_distinguished_name]
+C = IT
+ST = SERV-ST
+L = SERV-L
+O = SERV-O
+OU = SERV-OU
+CN = localhost
+emailAddress = test@srv.example
+[req_attributes]
+challengePassword = hi ca it is me me me
+[ext_srv_cert]
+basicConstraints = CA:FALSE
+extendedKeyUsage = critical,serverAuth,emailProtection
+subjectAltName = DNS:localhost
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+_EOT
 
-	${cat} <<-_EOT > ./t.cnf
-		extensions = ext_usr_cert
-		[req]
-		x509_extensions = ext_usr_cert
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		[req_distinguished_name]
-		C = IT
-		ST = Over the
-		L = rainbow
-		O = S-mailx
-		OU = S-mailx.tls
-		CN = S-mailx.test3
-		emailAddress = test@localhost
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-		[ext_usr_cert]
-		basicConstraints = CA:FALSE
-		extendedKeyUsage = critical,clientAuth,emailProtection
-		subjectKeyIdentifier = hash
-	_EOT
+	${cat} <<_EOT > ./t.cnf
+extensions = ext_usr_cert
+[req]
+x509_extensions = ext_usr_cert
+distinguished_name = req_distinguished_name
+attributes = req_attributes
+prompt = no
+[req_distinguished_name]
+C = IT
+ST = Over the
+L = rainbow
+O = S-mailx
+OU = S-mailx.tls
+CN = S-mailx.test3
+emailAddress = test@localhost
+[req_attributes]
+challengePassword = hi ca it is me me me
+[ext_usr_cert]
+basicConstraints = CA:FALSE
+extendedKeyUsage = critical,clientAuth,emailProtection
+subjectKeyIdentifier = hash
+_EOT
 
-	${cat} <<-_EOT > ./t2.cnf
-		extensions = ext_usr_cert
-		[req]
-		x509_extensions = ext_usr_cert
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		[req_distinguished_name]
-		C = IT
-		ST = Over the
-		L = rainbow
-		O = S-mailx2
-		OU = S-mailx2.tls
-		CN = S-mailx2.test3
-		emailAddress = test2@localhost
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-		[ext_usr_cert]
-		basicConstraints = CA:FALSE
-		extendedKeyUsage = critical,clientAuth,emailProtection
-		subjectKeyIdentifier = hash
-	_EOT
+	${cat} <<_EOT > ./t2.cnf
+extensions = ext_usr_cert
+[req]
+x509_extensions = ext_usr_cert
+distinguished_name = req_distinguished_name
+attributes = req_attributes
+prompt = no
+[req_distinguished_name]
+C = IT
+ST = Over the
+L = rainbow
+O = S-mailx2
+OU = S-mailx2.tls
+CN = S-mailx2.test3
+emailAddress = test2@localhost
+[req_attributes]
+challengePassword = hi ca it is me me me
+[ext_usr_cert]
+basicConstraints = CA:FALSE
+extendedKeyUsage = critical,clientAuth,emailProtection
+subjectKeyIdentifier = hash
+_EOT
 
 	## Root CA
 	openssl req -newkey rsa:1024 \

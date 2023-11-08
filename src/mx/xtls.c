@@ -1399,44 +1399,74 @@ jleave:
 }
 
 static boole
-a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
+a_xtls_check_host(struct mx_socket *sop, X509 *peercert,/* TODO GEN_IPADD */
       struct mx_url const *urlp){
-   char data[256];
    a_XTLS_STACKOF(GENERAL_NAME) *gens;
-   GENERAL_NAME *gen;
-   X509_NAME *subj;
+   uz altno, i;
    boole rv;
    NYD_IN;
    UNUSED(sop);
 
    rv = FAL0;
 
-   if((gens = X509_get_ext_d2i(peercert, NID_subject_alt_name, NULL, NULL)
-         ) != NULL){
-      int i;
+   /* RFC 2818, 3.1.  Server Identity
+    *    If a subjectAltName extension of type dNSName is present, that MUST
+    *    be used as the identity. Otherwise, the (most specific) Common Name
+    *    field in the Subject field of the certificate MUST be used. Although
+    *    the use of the Common Name is existing practice, it is deprecated and
+    *    Certification Authorities are encouraged to use the dNSName instead.
+    *
+    * RFC 9525:
+    *    The server identity can only be expressed in the subjectAltNames
+    *    extension; it is no longer valid to use the commonName RDN, known
+    *    as CN-ID in [VERIFY=RFC 6125=predecessor]. */
+   gens = X509_get_ext_d2i(peercert, NID_subject_alt_name, NIL, NIL);
+   if(gens == NIL)
+      goto jleave;
 
-      for(i = 0; i < sk_GENERAL_NAME_num(gens); ++i){
-         gen = sk_GENERAL_NAME_value(gens, i);
-         if(gen->type == GEN_DNS){
-            if(n_poption & n_PO_D_V)
-               n_err(_("Comparing subject_alt_name: need<%s> is<%s>\n"),
-                  urlp->url_host.s, (char*)gen->d.ia5->data);
-            if((rv = n_tls_rfc2595_hostname_match(urlp->url_host.s,
-                  (char*)gen->d.ia5->data)))
-               goto jleave;
+   altno = sk_GENERAL_NAME_num(gens);
+
+   for(i = 0; i < altno; ++i){
+      GENERAL_NAME const *gen;
+
+      gen = sk_GENERAL_NAME_value(gens, i);
+
+      if(gen->type == GEN_DNS){
+         uz l;
+         char const *ccp, *host;
+
+         /* Is a DNS name and thus should be a valid ASCIZ one */
+         ccp = R(char const*,gen->d.ia5->data);
+         l = gen->d.ia5->length;
+         if(l == 0 || ccp[l] != '\0' || su_cs_len(ccp) != l)
+            continue;
+
+         host = urlp->url_host.s;
+
+         if(n_poption & n_PO_D_V)
+            n_err(_("Comparing subject_alt_name: need<%s> is<%s>\n"),
+               urlp->url_host.s, ccp);
+
+         if(ccp[0] == '*' && ccp[1] == '.'){
+            ccp += 2;
+            l -= 2;
+
+            /* Do not allow *.TOP-LEVEL, but *.a.b XXX not trailing dot proof */
+            if(l < 3 || su_mem_find(&ccp[1], '.', l - 1) == NIL){
+               n_err(_("Skipping top-level subject_alt_name wildcard: %s\n"),
+                  &ccp[-2]);
+            }
+
+            while(*host != '\0' && *host++ != '.'){
+            }
          }
+
+         rv = (l > 0 && !su_cs_cmp_case_n(host, ccp, l));
+         if(rv)
+            break;
       }
    }
 
-   if((subj = X509_get_subject_name(peercert)) != NULL &&
-         X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data
-            ) > 0){
-      data[sizeof data - 1] = '\0';
-      if(n_poption & n_PO_D_V)
-         n_err(_("Comparing commonName: need<%s> is<%s>\n"),
-            urlp->url_host.s, data);
-      rv = n_tls_rfc2595_hostname_match(urlp->url_host.s, data);
-   }
 jleave:
    NYD_OU;
    return rv;
@@ -2500,6 +2530,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    NYD_IN;
 
    bail = free_cipher = FAL0;
+   UNINIT(cipher, NIL);
    rv = yp = fp = bp = hp = NULL;
 
    if((certfile = fexpand(xcertfile, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)

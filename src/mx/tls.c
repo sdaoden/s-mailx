@@ -494,21 +494,6 @@ jleave:
    return (vp != NULL);
 }
 
-FL boole
-n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
-   boole rv;
-   NYD_IN;
-
-   if(pattern[0] == '*' && pattern[1] == '.'){
-      ++pattern;
-      while(*host && *host != '.')
-         ++host;
-   }
-   rv = (su_cs_cmp_case(host, pattern) == 0);
-   NYD_OU;
-   return rv;
-}
-
 FL int
 c_tls(void *vp){
 #ifdef mx_HAVE_NET
