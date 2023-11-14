@@ -1023,7 +1023,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 		"locale-aware: makeprint, regex; "
 		"numeric: unary: =, ~, +, -; binary: +, -, *, /, %, |, &, ^, <<, >>, >>>, pbase")},
 	{"vpospar", &c_vpospar, (HG | G | M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar),
-	 N_("Positional parameters: <clear>, <quote>, or <set> from [:<arg>:]")},
+	 N_("Positional parameters (result set with [^]) <clear>, <quote>, or <set> from [:<arg>:]")},
 
 	{"write", &c_write, (A | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_write),
 	 N_("(w) Write (append) [[<msglist>] to <file>]")},

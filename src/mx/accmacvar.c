@@ -260,12 +260,12 @@ struct a_amv_mac_call_args{
 	boole amca_compose_redirect;
 	u8 amca__pad[2];
 	struct a_amv_pospar *amca_pospar; /* Positional parameters: $#, $1.. */
-	struct a_amv_pospar *amca_rem_rval; /* Regular expression matches, or return values [$^?]: $^#, $^0.. */
+	struct a_amv_pospar *amca_resset; /* Regular expression matches, or return values [$^?]: $^#, $^0.. */
 	struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NIL */
 	/* v15: we only need the pointers above for temporary_compose_mode_hook_control() and
 	 * temporary_pospar_access_hook() */
 	struct a_amv_pospar amca__pospar;
-	struct a_amv_pospar amca__rem_rval;
+	struct a_amv_pospar amca__resset;
 };
 
 struct a_amv_lostack{
@@ -377,7 +377,7 @@ static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
 static struct a_amv_pospar a_amv_pospar;
 
 /* Ditto, $^[*@#?0-9].. */
-static struct a_amv_pospar a_amv_rem_rval;
+static struct a_amv_pospar a_amv_resset;
 
 /* TODO We really deserve localopts support for *on-mailbox-*, so hack in today via a static lostack, it should be
  * TODO be a field in mailbox, once that is a real multi-instance object */
@@ -530,7 +530,8 @@ a_amv_pospar_clear(struct a_amv_pospar *appp){
 
 	if(!appp->app_not_heap && appp->app_dat != NIL){
 		for(i = appp->app_max_count; i-- != 0;)
-			su_FREE(UNCONST(char*,appp->app_dat[i]));
+			if(appp->app_dat[i][0] != '\0')
+				su_FREE(UNCONST(char*,appp->app_dat[i]));
 
 		su_FREE(appp->app_dat);
 	}
@@ -641,13 +642,13 @@ a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 		olof = U8_MAX;
 		if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
 			/* `return' is optional, ensure $^? gives correct result */
-			a_amv_lopts->as_amcap->amca_rem_rval->app_is_ret = FAL0;
+			a_amv_lopts->as_amcap->amca_resset->app_is_ret = FAL0;
 			amcap->amca_loflags = (a_amv_lopts->as_loflags & a_AMV_LF_CALL_MASK
 					) >> a_AMV_LF_CALL_TO_SCOPE_SHIFT;
 			amcap->amca_any_scoped_init = (a_amv_lopts->as_any_scoped ||
 					((amcap->amca_loflags & a_AMV_LF_SCOPE_MASK) != 0));
 		}else
-			a_amv_rem_rval.app_is_ret = FAL0;
+			a_amv_resset.app_is_ret = FAL0;
 
 		if(cacp->cac_scope > mx_SCOPE_GLOBAL){
 			/* xcall on first macro level and no a_amv_lopts we have */
@@ -668,7 +669,7 @@ a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 			amcap->amca__pospar.app_not_heap = TRU1;
 			amcap->amca__pospar.app_dat = argv;
 		}
-		amcap->amca_rem_rval = &amcap->amca__rem_rval;
+		amcap->amca_resset = &amcap->amca__resset;
 
 		(void)a_amv_mac_exec(amcap, lospopts_or_nil);
 		rv = n_pstate_ex_no;
@@ -737,8 +738,8 @@ a_amv_mac__finalize(void *vp){
 	/* Delete positional parameter stack */
 	if(amcap->amca_pospar == &amcap->amca__pospar)
 		a_amv_pospar_clear(&amcap->amca__pospar);
-	if(amcap->amca_rem_rval == &amcap->amca__rem_rval)
-		a_amv_pospar_clear(&amcap->amca__rem_rval);
+	if(amcap->amca_resset == &amcap->amca__resset)
+		a_amv_pospar_clear(&amcap->amca__resset);
 
 	/* `local' variable hashmap.  These have no environment map, never */
 	if(amcap->amca_local_vars != NIL){
@@ -2084,7 +2085,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 	if(rv[0] == '*' || rv[0] == '@' || rv[0] == '#' || rv[0] == '?' || su_cs_is_digit(rv[0])){
 		struct a_amv_pospar *appp;
 
-		appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval;
+		appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_resset : &a_amv_resset;
 
 		if(i == 1){
 			switch(rv[0]){
@@ -3216,7 +3217,7 @@ mx_account_enter(char const *name){
 		amcap->amca_any_scoped_init = TRU1;
 		amcap->amca_no_xcall = TRU1;
 		amcap->amca_pospar = &amcap->amca__pospar;
-		amcap->amca_rem_rval = &amcap->amca__rem_rval;
+		amcap->amca_resset = &amcap->amca__resset;
 		++amp->am_refcnt; /* We may not run 0 to avoid being deleted! */
 		if(!a_amv_mac_exec(amcap, NIL) || n_pstate_ex_no != 0){
 			/* XXX account switch incomplete, unroll? */
@@ -3276,7 +3277,7 @@ mx_account_leave(void){
 			amcap->amca_any_scoped_init = TRU1;
 			amcap->amca_no_xcall = TRU1;
 			amcap->amca_pospar = &amcap->amca__pospar;
-			amcap->amca_rem_rval = &amcap->amca__rem_rval;
+			amcap->amca_resset = &amcap->amca__resset;
 			n_pstate |= n_PS_HOOK;
 			(void)a_amv_mac_exec(amcap, NIL);
 			n_pstate &= ~n_PS_HOOK_MASK;
@@ -3434,9 +3435,9 @@ jearg:
 
 			ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
 			amcap = a_amv_lopts->as_amcap;
-			appp = ispp ? amcap->amca_pospar : amcap->amca_rem_rval;
+			appp = ispp ? amcap->amca_pospar : amcap->amca_resset;
 		}else
-			appp = ispp ? &a_amv_pospar : &a_amv_rem_rval;
+			appp = ispp ? &a_amv_pospar : &a_amv_resset;
 
 		ca = ABS(c);
 		if(UCMP(64, ca, >, appp->app_count)){
@@ -3508,7 +3509,7 @@ jeover:
 		s32 xrv;
 		struct a_amv_pospar *appp;
 
-		appp = (a_amv_lopts->as_up != NIL) ? a_amv_lopts->as_up->as_amcap->amca_rem_rval : &a_amv_rem_rval;
+		appp = (a_amv_lopts->as_up != NIL) ? a_amv_lopts->as_up->as_amcap->amca_resset : &a_amv_resset;
 
 		ASSERT(cacp->cac_no > 0);
 		xrv = mx_var_result_set_set(appp, a_amv_lopts->as_amcap->amca_name, --cacp->cac_no, cap_save->ca_next, NIL);
@@ -3544,7 +3545,7 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac, boole sigs_held)
 			amcap->amca_ps_hook_mask = TRU1;
 			amcap->amca_no_xcall = TRU1;
 			amcap->amca_pospar = &amcap->amca__pospar;
-			amcap->amca_rem_rval = &amcap->amca__rem_rval;
+			amcap->amca_resset = &amcap->amca__resset;
 			n_pstate &= ~n_PS_HOOK_MASK;
 			n_pstate |= n_PS_HOOK;
 			a_amv_mac_exec(amcap, NIL);
@@ -3666,7 +3667,7 @@ jmac:
 		amcap->amca__pospar.app_not_heap = TRU1;
 		amcap->amca__pospar.app_dat = argv;
 	}
-	amcap->amca_rem_rval = &amcap->amca__rem_rval;
+	amcap->amca_resset = &amcap->amca__resset;
 	rv = a_amv_mac_exec(amcap, NIL);
 	n_pstate &= ~n_PS_HOOK_MASK;
 
@@ -3709,10 +3710,10 @@ temporary_compose_mode_hook_control(boole enable, enum mx_scope scope){ /* XXX h
 		amcap->amca_no_xcall = TRU1;
 		if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
 			amcap->amca_pospar = a_amv_lopts->as_amcap->amca_pospar;
-			amcap->amca_rem_rval = a_amv_lopts->as_amcap->amca_rem_rval;
+			amcap->amca_resset = a_amv_lopts->as_amcap->amca_resset;
 		}else{
 			amcap->amca_pospar = &a_amv_pospar;
-			amcap->amca_rem_rval = &a_amv_rem_rval;
+			amcap->amca_resset = &a_amv_resset;
 		}
 
 		cmh_losp->as_amcap = amcap;
@@ -3764,7 +3765,7 @@ temporary_compose_mode_hook_call(char const *macname, boole compose_redirect){
 		amcap->amca_no_xcall = TRU1;
 		amcap->amca_compose_redirect = compose_redirect;
 		amcap->amca_pospar = &amcap->amca__pospar;
-		amcap->amca_rem_rval = &amcap->amca__rem_rval;
+		amcap->amca_resset = &amcap->amca__resset;
 		n_pstate &= ~n_PS_HOOK_MASK;
 		n_pstate |= n_PS_HOOK;
 		if(macname != NIL)
@@ -3816,7 +3817,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *hist
 		amcap->amca__pospar.app_count = 3;
 		amcap->amca__pospar.app_not_heap = TRU1;
 		amcap->amca__pospar.app_dat = argv;
-		amcap->amca_rem_rval = &amcap->amca__rem_rval;
+		amcap->amca_resset = &amcap->amca__resset;
 
 		rv = a_amv_mac_exec(amcap, NIL) ? n_pstate_ex_no : -1;
 
@@ -3849,7 +3850,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc, char
 	amca.amca__pospar.app_count = argc;
 	amca.amca__pospar.app_not_heap = TRU1;
 	amca.amca__pospar.app_dat = argv;
-	amca.amca_rem_rval = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval);
+	amca.amca_resset = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_resset : &a_amv_resset);
 
 	STRUCT_ZERO(struct a_amv_lostack, &los);
 
@@ -3880,7 +3881,7 @@ mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *
 	NYD_IN;
 
 	/* If in a macro, we need to overwrite the local instead of global argv */
-	appp = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval);
+	appp = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_resset : &a_amv_resset);
 
 	a_amv_pospar_clear(appp);
 
@@ -3924,14 +3925,14 @@ jleave:
 FL s32
 mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
 		struct mx_cmd_arg const *cap_or_nil, char const * const *argv_or_nil){
-	char **cpp;
+	char const **cpp;
 	s32 rv;
 	struct a_amv_pospar *appp;
 	NYD_IN;
 
 	/* If in a macro, we need to overwrite the local instead of global argv */
 	appp = ((appp_or_nil != NIL) ? appp_or_nil
-		: (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval));
+		: (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_resset : &a_amv_resset));
 
 	a_amv_pospar_clear(appp);
 
@@ -3944,10 +3945,10 @@ mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
 	appp->app_count = argc;
 	appp->app_max_count = ++argc;
 	appp->app_idx = 1;
-	appp->app_dat = C(char const**,cpp = su_TALLOC(char*, argc));
+	appp->app_dat = cpp = su_TALLOC(char const*, argc);
 
 	/* xxx catch enomem? */
-	*cpp++ = su_cs_dup(name, 0);
+	*cpp++ = (*name != '\0') ? su_cs_dup(name, 0) : su_empty;
 	while(--argc > 0){
 		char const *cp;
 
@@ -3956,9 +3957,9 @@ mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
 			cap_or_nil = cap_or_nil->ca_next;
 		}else
 			cp = *argv_or_nil++;
-		*cpp++ = su_cs_dup(cp, 0);
+		*cpp++ = (*cp != '\0') ? su_cs_dup(cp, 0) : su_empty;
 	}
-	ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == appp->app_max_count);
+	ASSERT(P2UZ(cpp - appp->app_dat) == appp->app_max_count);
 
 	rv = su_ERR_NONE;
 jleave:
@@ -4166,9 +4167,9 @@ n_var_vexplode(void const **cookie, boole rset){
 		struct a_amv_mac_call_args *amcap;
 
 		amcap = a_amv_lopts->as_amcap;
-		appp = !rset ? amcap->amca_pospar : amcap->amca_rem_rval;
+		appp = !rset ? amcap->amca_pospar : amcap->amca_resset;
 	}else
-		appp = !rset ? &a_amv_pospar : &a_amv_rem_rval;
+		appp = !rset ? &a_amv_pospar : &a_amv_resset;
 
 	if(appp->app_count == 0)
 		*cookie = NIL;
@@ -4510,10 +4511,11 @@ c_vpospar(void *vp){ /* {{{ */
 	enum a_flags{
 		a_NONE = 0,
 		a_ERR = 1u<<0,
-		a_SET = 1u<<1,
-		a_EVALSET = 1u<<2,
-		a_CLEAR = 1u<<3,
-		a_QUOTE = 1u<<4
+		a_RESSET = 1u<<1,
+		a_SET = 1u<<2,
+		a_EVALSET = 1u<<3,
+		a_CLEAR = 1u<<4,
+		a_QUOTE = 1u<<5
 	};
 
 	struct mx_cmd_arg *cap;
@@ -4529,14 +4531,34 @@ c_vpospar(void *vp){ /* {{{ */
 	cacp = vp;
 	cap = cacp->cac_arg;
 
+	/* Result set mode? */
+	if(cap->ca_arg.ca_str.l == 1 && *cap->ca_arg.ca_str.s == '^'){
+		cap = cap->ca_next;
+		if(--cacp->cac_no == 0){
+			n_err(_("vpospar: ^: misses subcommand\n"));
+			n_pstate_err_no = su_ERR_INVAL;
+			f = a_ERR;
+			goto jleave;
+		}
+
+		appp = ((cacp->cac_scope != mx_SCOPE_GLOBAL && a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
+				? a_amv_lopts->as_amcap->amca_resset : &a_amv_resset);
+		f = a_RESSET;
+	}else{
+		/* If in a macro, we need to overwrite the local instead of global argv */
+		appp = ((cacp->cac_scope != mx_SCOPE_GLOBAL && a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
+				? a_amv_lopts->as_amcap->amca_pospar : &a_amv_pospar);
+		f = a_NONE;
+	}
+
 	if(su_cs_starts_with_case("set", cap->ca_arg.ca_str.s))
-		f = a_SET;
+		f |= a_SET;
 	else if(su_cs_starts_with_case("evalset", cap->ca_arg.ca_str.s))
-		f = a_SET | a_EVALSET;
+		f |= a_SET | a_EVALSET;
 	else if(su_cs_starts_with_case("clear", cap->ca_arg.ca_str.s))
-		f = a_CLEAR;
+		f |= a_CLEAR;
 	else if(su_cs_starts_with_case("quote", cap->ca_arg.ca_str.s))
-		f = a_QUOTE;
+		f |= a_QUOTE;
 	else{
 		n_err(_("vpospar: invalid subcommand: %s\n"), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
 		mx_cmd_print_synopsis(mx_cmd_by_arg_desc(cacp->cac_desc), NIL);
@@ -4552,10 +4574,6 @@ c_vpospar(void *vp){ /* {{{ */
 		goto jleave;
 	}
 	cap = cap->ca_next;
-
-	/* If in a macro, we need to overwrite the local instead of global argv */
-	appp = ((cacp->cac_scope != mx_SCOPE_GLOBAL && a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
-			? a_amv_lopts->as_amcap->amca_pospar : &a_amv_pospar);
 
 	if(f & (a_SET | a_CLEAR)){
 		if(cacp->cac_vput != NIL)/* XXX better argparse */
@@ -4588,7 +4606,7 @@ c_vpospar(void *vp){ /* {{{ */
 				goto jleave;
 			}
 
-			su_STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
+			STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
 			cac.cac_desc = a_pseudo_evalset.cd_cadp;
 			cac.cac_indat = cap->ca_arg.ca_str.s;
 			cac.cac_inlen = cap->ca_arg.ca_str.l;
@@ -4603,21 +4621,35 @@ c_vpospar(void *vp){ /* {{{ */
 				goto jleave;
 		}
 
-		if(i > S32_MAX){
+		if(i >= S32_MAX){
 			n_err(_("vpospar: overflow: %" PRIuZ " arguments!\n"), i);
 			n_pstate_err_no = su_ERR_OVERFLOW;
 			f = a_ERR;
 			goto jleave;
 		}
 
-		appp->app_max_count = appp->app_count = S(u32,i);
+		appp->app_count = S(u32,i);
+		if(f & a_RESSET){
+			appp->app_idx = 1;
+			++i;
+		}
+		appp->app_max_count = S(u32,i);
+
 		/* XXX Optimize: store it all in one chunk! */
 		appp->app_dat = su_TALLOC(char const*, i);
-		for(i = 0; cap != NIL; ++i, cap = cap->ca_next){
+		for(i = 0; cap != NIL; ++i){
+			if(UNLIKELY(f & a_RESSET)){
+				ASSERT(i == 0);
+				f ^= a_RESSET;
+				appp->app_dat[0] = su_empty;
+				continue;
+			}
 			appp->app_dat[i] = su_ALLOC(cap->ca_arg.ca_str.l +1);
 			su_mem_copy(UNCONST(char*,appp->app_dat[i]), cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
+			cap = cap->ca_next;
 		}
 	}else{
+		ASSERT(f & a_QUOTE);
 		if(appp->app_count == 0)
 			varres = su_empty;
 		else{

@@ -7155,9 +7155,11 @@ and a 32-bit error number
 both defaulting to 0; as documented for
 .Va \&?
 a non-0 exit status may cause a program exit.
-After a separating
+After a separating circumflex
 .Ql ^
-any number of arguments can be made accessible to the callee,
+any number of arguments can be made accessible to the callee's
+.Mx -sx
+.Sx "result set" ,
 then announced via
 .Va ^? :
 .Va ^0
@@ -7358,11 +7360,10 @@ The stack as such can be managed via
 .Ic vpospar .
 If the first argument is a circumflex
 .Ql ^
-the
-.Va ^
-multiplexer sub-variable
-.Va ^# , ^0 , ^1
-array is shifted instead.
+the scope's
+.Mx -sx
+.Sx "result set"
+is instead addressed.
 .
 .
 .Mx
@@ -8035,8 +8036,16 @@ echo $?/$!/$^ERRNAME:$res:
 \*(NQ Manage the scope's positional parameters (see
 .Va 1 , # , * , @
 as well as
-.Ic shift ) .
-The global scope can be enforced with the modifier
+.Ic shift ) ;
+if the first argument is a circumflex
+.Ql ^
+the scope's
+.Mx -sx
+.Sx "result set"
+is instead addressed;
+.Va ^0
+is unused (empty).
+The global scope's stack(s) can be chosen with
 .Cm global .
 The argument
 .Ql clear
@@ -8065,8 +8074,8 @@ with each quoted parameter separated from each other with the first
 character of
 .Va ifs ,
 and followed by the first character of
-.Va if-ws ,
-if that is not empty and not identical to the first.
+.Va ifs-ws ,
+if non-empty and not equal to the first.
 If that results in no separation at all a
 .Cm space
 character is used.
@@ -8086,14 +8095,14 @@ vpospar set hey, "'you    ", world!
 echo $#: <$1><$2><$3>
 \*(OU3: <hey,><'you    ,><world!>
 
->x vpospar x quote
+>x vpospar quote
 
 vpospar clear
 echo $#: <$1><$2><$3>
 \*(OU0: <><><>
 
-eval vpospar set $x
-echo $#: <$1><$2><$3>
+eval vpospar ^ set $x
+echo $^#: <$^1><$^2><$^3>
 \*(OU3: <hey,><'you    ,><world!>
 
 set x=$'a b\en#c d\ene f\en'
