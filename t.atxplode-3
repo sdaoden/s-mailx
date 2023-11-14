@@ -1,0 +1,10 @@
+1 1<a b c d e f> 2<> 3<> *<a b c d e f> @<a b c d e f>
+1 1<a b c d e f> 2<> 3<> *<a b c d e f> @<a b c d e f>
+1 1<a b c d e f> 2<> 3<> *<a b c d e f> @<a b c d e f>
+3 1<a b> 2<c d> 3<e f> *<a b c d e f> @<a b c d e f>
+1 1<a b:c d:e f> 2<> 3<> *<a b:c d:e f> @<a b:c d:e f>
+3 1<a b> 2<c d> 3<e f> *<a b:c d:e f> @<a b c d e f>
+1 1<<a bc de f>> 2<> 3<> *<<a bc de f>> @<<a bc de f>>
+3 1<<a b> 2<c d> 3<e f>> *<<a bc de f>> @<<a b c d e f>>
+1 1<<>> 2<> 3<> *<<>> @<<>>
+1 1<<>> 2<> 3<> *<<>> @<<>>
