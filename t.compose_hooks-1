@@ -48,12 +48,12 @@ t_hea ENTER
 44/0/NONE: from@exam.ple diet spliced <from@exam.ple>
 33/0/NONE: from2@exam.ple <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From To Mailx-Raw-To Mailx-Command'
 210 Sender 1
 210 Sender
 35/0/NONE: sender@exam.ple <sender@exam.ple>
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Mailx-Raw-To Mailx-Command'
 210 To 2
 210 To 3
@@ -63,7 +63,7 @@ t_hea ENTER
 40/0/NONE: To@exam.ple diet spliced <To@exam.ple>
 29/0/NONE: To2@exam.ple <To2@exam.ple>
 25/0/NONE: To3@exam.ple To3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Mailx-Raw-To Mailx-Command'
 210 Cc 1
 210 Cc 2
@@ -72,7 +72,7 @@ t_hea ENTER
 40/0/NONE: cC@exam.ple diet spliced <cC@exam.ple>
 29/0/NONE: cC2@exam.ple <cC2@exam.ple>
 25/0/NONE: cC3@exam.ple cC3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Mailx-Raw-To Mailx-Command'
 210 Bcc 1
 210 Bcc 2
@@ -81,7 +81,7 @@ t_hea ENTER
 42/0/NONE: bCc@exam.ple diet spliced <bCc@exam.ple>
 31/0/NONE: bCc2@exam.ple <bCc2@exam.ple>
 27/0/NONE: bCc3@exam.ple bCc3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Bcc Mailx-Raw-To Mailx-Command'
 210 Reply-To 1
 210 Reply-To 2
@@ -90,7 +90,7 @@ t_hea ENTER
 52/0/NONE: reply-To@exam.ple diet spliced <reply-To@exam.ple>
 41/0/NONE: reply-To2@exam.ple <reply-To2@exam.ple>
 37/0/NONE: reply-To3@exam.ple reply-To3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Bcc Reply-To Mailx-Raw-To Mailx-Command'
 210 Mail-Followup-To 1
 210 Mail-Followup-To 2
@@ -99,12 +99,12 @@ t_hea ENTER
 68/0/NONE: mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple>
 57/0/NONE: mail-Followup-to2@exam.ple <mail-Followup-to2@exam.ple>
 53/0/NONE: mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Bcc Reply-To Mail-Followup-To Mailx-Raw-To Mailx-Command'
 210 Message-ID 1
 210 Message-ID
 39/0/NONE: messAge-id@exam.ple messAge-id@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID Mailx-Raw-To Mailx-Command'
 210 References 1
 210 References 2
@@ -113,7 +113,7 @@ t_hea ENTER
 39/0/NONE: rEfErEncEs@exam.ple rEfErEncEs@exam.ple
 41/0/NONE: rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple
 41/0/NONE: rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References Mailx-Raw-To Mailx-Command'
 210 In-Reply-To 1
 210 In-Reply-To 2
@@ -122,14 +122,14 @@ t_hea ENTER
 41/0/NONE: in-Reply-to@exam.ple in-Reply-to@exam.ple
 43/0/NONE: in-Reply-to2@exam.ple in-Reply-to2@exam.ple
 43/0/NONE: in-Reply-to3@exam.ple in-Reply-to3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command'
 210 Subject 1
 210 Subject 1
 210 Subject 1
 210 Subject
 58/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command'
 210 freeForm1 1
 210 freeForm1 2
@@ -138,7 +138,7 @@ t_hea ENTER
 35/0/NONE: diet <freeForm1@exam.ple> spliced
 23/0/NONE: <freeForm12@exam.ple>
 19/0/NONE: freeForm13@exam.ple
-0/0/NONE: 
+0/0/NONE:
 210 'Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Raw-To Mailx-Command freeForm1'
 210 freeform2 4
 210 freeform2 5
@@ -147,11 +147,11 @@ t_hea ENTER
 35/0/NONE: diet <freeform2@exam.ple> spliced
 23/0/NONE: <freeform22@exam.ple>
 19/0/NONE: freeform23@exam.ple
-0/0/NONE: 
+0/0/NONE:
 4/0/NONE: mail
-0/0/NONE: 
+0/0/NONE:
 35/0/NONE: this-goes@nowhere this-goes@nowhere
-0/0/NONE: 
+0/0/NONE:
 t_hea LEAVE
 t_attach ENTER
 501
@@ -160,25 +160,25 @@ t_attach ENTER
 210 1
 212
 17/0/NONE: ./t.readctl=ascii
-0/0/NONE: 
+0/0/NONE:
 212 ./t.readctl
 31/0/NONE: creation-name ./t.readctl=ascii
 21/0/NONE: open-path ./t.readctl
 18/0/NONE: filename t.readctl
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 t.readctl
 31/0/NONE: creation-name ./t.readctl=ascii
 21/0/NONE: open-path ./t.readctl
 18/0/NONE: filename t.readctl
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 1
 31/0/NONE: creation-name ./t.readctl=ascii
 21/0/NONE: open-path ./t.readctl
 18/0/NONE: filename t.readctl
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 210 1
 210 1
 210 1
@@ -189,7 +189,7 @@ t_attach ENTER
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 t.readctl
 31/0/NONE: creation-name ./t.readctl=ascii
 21/0/NONE: open-path ./t.readctl
@@ -197,7 +197,7 @@ t_attach ENTER
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 rctl
 31/0/NONE: creation-name ./t.readctl=ascii
 21/0/NONE: open-path ./t.readctl
@@ -205,7 +205,7 @@ t_attach ENTER
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 1
 31/0/NONE: creation-name ./t.readctl=ascii
 21/0/NONE: open-path ./t.readctl
@@ -213,30 +213,30 @@ t_attach ENTER
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 210 2
 212
 17/0/NONE: ./t.readctl=ascii
 17/0/NONE: ./t.attach=latin1
-0/0/NONE: 
+0/0/NONE:
 212 ./t.attach
 31/0/NONE: creation-name ./t.attach=latin1
 20/0/NONE: open-path ./t.attach
 17/0/NONE: filename t.attach
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 t.attach
 31/0/NONE: creation-name ./t.attach=latin1
 20/0/NONE: open-path ./t.attach
 17/0/NONE: filename t.attach
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 2
 31/0/NONE: creation-name ./t.attach=latin1
 20/0/NONE: open-path ./t.attach
 17/0/NONE: filename t.attach
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 210 2
 210 2
 210 2
@@ -249,7 +249,7 @@ t_attach ENTER
 20/0/NONE: content-id 20.du@wir
 29/0/NONE: content-type application/x-sh
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 t.attach
 31/0/NONE: creation-name ./t.attach=latin1
 20/0/NONE: open-path ./t.attach
@@ -258,7 +258,7 @@ t_attach ENTER
 20/0/NONE: content-id 20.du@wir
 29/0/NONE: content-type application/x-sh
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 tat
 31/0/NONE: creation-name ./t.attach=latin1
 20/0/NONE: open-path ./t.attach
@@ -267,7 +267,7 @@ t_attach ENTER
 20/0/NONE: content-id 20.du@wir
 29/0/NONE: content-type application/x-sh
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 212 2
 31/0/NONE: creation-name ./t.attach=latin1
 20/0/NONE: open-path ./t.attach
@@ -276,7 +276,7 @@ t_attach ENTER
 20/0/NONE: content-id 20.du@wir
 29/0/NONE: content-type application/x-sh
 30/0/NONE: content-disposition attachment
-0/0/NONE: 
+0/0/NONE:
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Disposition: attachment; filename="rctl"

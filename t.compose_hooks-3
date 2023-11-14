@@ -35,13 +35,13 @@ readctl:0/NONE
 read:8/NONE: line one
 read:8/NONE: line two
 read:10/NONE: line three
-read:-1/NONE: 
+read:-1/NONE:
 readctl remove:0/NONE
 10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 116
 4/0/NONE: mail
-0/0/NONE: 
+0/0/NONE:
 19/0/NONE: ex@am.ple ex@am.ple
-0/0/NONE: 
+0/0/NONE:
 
 on-compose-enter
 alternates alter1@exam.ple alter2@exam.ple

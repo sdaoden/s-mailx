@@ -1,15 +1,30 @@
-ifs<'> ifs-ws<>
-0/NONE/1: hey, 'you    , world! / hey, 'you    , world! / <hey, 'you    , world!><><><>
-x<$'hey, \'you    , world!'>
-0/NONE/0:  /  / <><><><>
-0/NONE/1: hey, 'you    , world! / hey, 'you    , world! / <hey, 'you    , world!><><><>
-ifs<,> ifs-ws<>
-0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
-x<hey,$'\'you    ',world!>
-0/NONE/0:  /  / <><><><>
-0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
-ifs<,	> ifs-ws<	>
-0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
-x<hey,	$'\'you    ',	world!>
-0/NONE/0:  /  / <><><><>
-0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
+x<hey,=$'\'you    ,'=world!>
+0:  /  / <><><><>
+2: hey,=$'\'you ,'=world! / hey,=$'\'you ,'=world! / <hey,=$'\'you><,'=world!><><>
+0:  /  / <><><><>
+1: hey,='you    ,=world! / hey,='you    ,=world! / <hey,='you    ,=world!><><><>
+0:  /  / <><><><>
+3: hey, $'\'you    ,' world! / hey, $'\'you    ,' world! / <hey,><$'\'you    ,'><world!><>
+0:  /  / <><><><>
+1: hey,='you    ,=world! / hey,='you    ,=world! / <hey,='you    ,=world!><><><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
+x<hey, $'\'you    ,' world!>
+0:  /  / <><><><>
+4: hey, $'\'you ,' world! / hey, $'\'you ,' world! / <hey,><$'\'you><,'><world!>
+0:  /  / <><><><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
+0:  /  / <><><><>
+3: hey  $'\'you     ' world! / hey  $'\'you     ' world! / <hey>< $'\'you    ><' world!><>
+0:  /  / <><><><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
+x<hey, $'\'you    ,' world!>
+0:  /  / <><><><>
+4: hey, $'\'you ,' world! / hey, $'\'you ,' world! / <hey,><$'\'you><,'><world!>
+0:  /  / <><><><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
+0:  /  / <><><><>
+3: hey  $'\'you     ' world! / hey  $'\'you     ' world! / <hey>< $'\'you    ><' world!><>
+0:  /  / <><><><>
+3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
