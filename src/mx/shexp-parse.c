@@ -79,9 +79,10 @@ enum a_shexp_parse_flags{
 
 	a_SHEXP_PARSE_ROUND_MASK = a_SHEXP_PARSE_SKIPT | S(s32,~su_BITENUM_MASK(0, 7)),
 	a_SHEXP_PARSE_COOKIE = 1u<<8,
-	a_SHEXP_PARSE_EXPLODE = 1u<<9,
+	a_SHEXP_PARSE_EXPLODE = 1u<<9, /* "$@" / "$*" explosion */
+	a_SHEXP_PARSE_EXPLODE_STAR = 1u<<10, /* Indeed $* */
 	/* Remove one more byte from the input after pushing data to output */
-	a_SHEXP_PARSE_CHOP_ONE = 1u<<10,
+	a_SHEXP_PARSE_CHOP_ONE = 1u<<11,
 	a_SHEXP_PARSE_TMP = 1u<<30
 };
 
@@ -809,7 +810,7 @@ jearith:
 		if(state & a_SHEXP_PARSE_BRACE)
 			--spcp->spc_il, ++spcp->spc_ib;
 		vp = spcp->spc_ib;
-		state &= ~a_SHEXP_PARSE_EXPLODE;
+		state &= ~(a_SHEXP_PARSE_EXPLODE | a_SHEXP_PARSE_EXPLODE_STAR);
 
 		/* In order to support $^# we need to treat circumflex especially */
 		for(rset = FAL0, i = 0; spcp->spc_il > 0; --spcp->spc_il, ++spcp->spc_ib){
@@ -825,8 +826,11 @@ jearith:
 						continue;
 					}
 					if(c == '*' || c == '@' || c == '#' || c == '?' || c == '!'){
-						if(c == '@'){
-							if(spcp->spc_quotec == '"')
+						if(spcp->spc_quotec == '"'){
+							if(c == '*')
+								state |= a_SHEXP_PARSE_EXPLODE |
+										a_SHEXP_PARSE_EXPLODE_STAR;
+							else if(c == '@')
 								state |= a_SHEXP_PARSE_EXPLODE;
 						}
 						--spcp->spc_il, ++spcp->spc_ib;
@@ -1042,16 +1046,20 @@ jrestart_empty:
 		char const * const *xcookie, *cp;
 
 		ASSERT(spc.spc_store != NIL);
+jcookie_redo:
 		i = spc.spc_store->s_len;
 		xcookie = *cookie;
 		if(n_string_push_cp(spc.spc_store, *xcookie)->s_len > 0)
 			spc.spc_res_state |= n_SHEXP_STATE_OUTPUT;
 		if(*++xcookie == NIL){
 			*cookie = NIL;
-			state &= ~a_SHEXP_PARSE_COOKIE;
-			flags |= n_SHEXP_PARSE_QUOTE_AUTO_DQ; /* ..why we are here! */
-		}else
+			state &= ~(a_SHEXP_PARSE_COOKIE | a_SHEXP_PARSE_EXPLODE | a_SHEXP_PARSE_EXPLODE_STAR);
+			flags |= n_SHEXP_PARSE_QUOTE_AUTO_DQ; /* *ARE* within "" quotes, ensure we restore this state! */
+		}else{
 			*cookie = UNCONST(void*,xcookie);
+			if((state & a_SHEXP_PARSE_EXPLODE_STAR) && *spc.spc_ifs != '\0')
+				n_string_push_c(spc.spc_store, *spc.spc_ifs);
+		}
 
 		for(cp = &n_string_cp(spc.spc_store)[i]; (c = *cp++) != '\0';)
 			if(su_cs_is_cntrl(c)){
@@ -1060,8 +1068,12 @@ jrestart_empty:
 			}
 
 		/* The last exploded cookie will join with the yielded input token, so simply fall through then */
-		if(state & a_SHEXP_PARSE_COOKIE)
+		if(state & a_SHEXP_PARSE_COOKIE){
+			/* However, "$*" places all output in one result */
+			if(state & a_SHEXP_PARSE_EXPLODE_STAR)
+				goto jcookie_redo;
 			goto jleave_quick;
+		}
 	}else{
 jrestart:
 		if(flags & n_SHEXP_PARSE_TRIM_SPACE){
@@ -1100,6 +1112,7 @@ jrestart:
 	case n_SHEXP_PARSE_QUOTE_AUTO_DQ:
 		spc.spc_quotec = '"';
 		if(0){
+		FALLTHRU
 	case n_SHEXP_PARSE_QUOTE_AUTO_DSQ:
 			spc.spc_quotec = '\'';
 		}

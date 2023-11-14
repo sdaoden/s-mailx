@@ -5409,7 +5409,7 @@ __EOT
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x echo '"'"'$?: $#: <$*>: <$1><$2><$3><$4><$5><$6>'"'"'
+commandalias x echo '"'"'$?: $#: <"$*">: <$1><$2><$3><$4><$5><$6>'"'"'
 set x=$'"'"'a b\nc d\ne f\n'"'"'
 vpospar set $x
 x
@@ -5586,6 +5586,84 @@ echon xxx;call xxx arg ,ball.
 _EOT
 	#}}}
 	cke0 2 0 ./t2 '41566293 164'
+
+#	# disproofer -- we differ for first 2/8
+#	#{{{
+#	${cat} > ./t.sh << '_EOT'
+#c() { echo "$# 1<$1> 2<$2> 3<$3> *<$*> @<$@>"; }
+#set -- a\ b c\ d e\ f
+#c $*
+#c $@
+#c "$*"
+#c "$@"
+#IFS=:
+#c "${*}"
+#c "${@}"
+#IFS=
+#c "<$*>"
+#c "<$@>"
+#unset IFS
+#set --
+#c "<$*>"
+#c "<$@>"
+#_EOT
+#	#}}}
+#	${SHELL} ./t.sh > ./t3disproof 2>${E0}
+#	cke0 3disproof 0 ./t3disproof '1457492088 478'
+
+	#{{{
+	</dev/null ${MAILX} ${ARGS} -X '
+define c {
+	echo "$# 1<$1> 2<$2> 3<$3> *<$*> @<$@>"
+}
+vpospar set a\ b c\ d e\ f
+call c $*
+call c $@
+call c "$*"
+call c "$@"
+set ifs=:
+call c "${*}"
+call c "${@}"
+set ifs=
+call c "<$*>"
+call c "<$@>"
+unset ifs
+vpospar set
+call c "<$*>"
+call c "<$@>"' \
+	> ./t3 2>${E0}
+	#}}}
+	cke0 3 0 ./t3 '1377173839 494'
+
+	# Dup 3 in meaning for ^.. result sets {{{
+	</dev/null ${MAILX} ${ARGS} -X '
+define c {
+	echo "$# 1<$1> 2<$2> 3<$3> *<$*> @<$@>"
+}
+define z {
+	return ^ a\ b c\ d e\ f
+}
+call z
+call c $^*
+call c $^@
+call c "$^*"
+call c "$^@"
+set ifs=:
+call c "${^*}"
+call c "${^@}"
+set ifs=
+call c "<$^*>"
+call c "<$^@>"
+unset ifs
+define z {
+	return ^
+}
+call z
+call c "<$^*>"
+call c "<$^@>"' \
+	> ./t4 2>${E0}
+	#}}}
+	cke0 4 0 ./t4 '1377173839 494'
 
 	t_epilog "${@}"
 } #}}}
