@@ -1,15 +1,15 @@
 ifs<'> ifs-ws<>
 0/NONE/1: hey, 'you    , world! / hey, 'you    , world! / <hey, 'you    , world!><><><>
 x<$'hey, \'you    , world!'>
-0/NONE/0:  /  / <><><><>
+0/NONE/0: / / <><><><>
 0/NONE/1: hey, 'you    , world! / hey, 'you    , world! / <hey, 'you    , world!><><><>
 ifs<,> ifs-ws<>
 0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
 x<hey,$'\'you    ',world!>
-0/NONE/0:  /  / <><><><>
+0/NONE/0: / / <><><><>
 0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
 ifs<,	> ifs-ws<	>
 0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>
 x<hey,	$'\'you    ',	world!>
-0/NONE/0:  /  / <><><><>
+0/NONE/0: / / <><><><>
 0/NONE/3: hey 'you     world! / hey 'you     world! / <hey><'you    ><world!><>

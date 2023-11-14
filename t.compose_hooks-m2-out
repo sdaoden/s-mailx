@@ -1019,7 +1019,7 @@ attach 6-8: ok
 attach 6-9: ok
 t_attach LEAVE
 210: Mailx-Raw-To Mailx-Command
-501: 
+501:
 -------
 Message contains:
 body

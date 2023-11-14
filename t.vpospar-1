@@ -1,9 +1,9 @@
 0/NONE/3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
 x<hey, $'\'you    ,' world!>
-0/NONE/0:  /  / <><><><>
+0/NONE/0:  / / <><><><>
 y<>
 0/NONE/3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
-0/NONE/0:  /  / <><><><>
+0/NONE/0:  / / <><><><>
 0/NONE/3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
 infun:0/NONE/3:This in a fun/This in a fun/<This><in a><fun><>
 infun:y<This 'in a' fun>
@@ -14,4 +14,4 @@ infun2:z<hey, $'\'you    ,' world!>
 infun:0/NONE/0://<><><><>
 infun:0/NONE/3:This in a fun/This in a fun/<This><in a><fun><>
 0/NONE/3: hey, 'you    , world! / hey, 'you    , world! / <hey,><'you    ,><world!><>
-0/NONE/0:  /  / <><><><>
+0/NONE/0:  / / <><><><>
