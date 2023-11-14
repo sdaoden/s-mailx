@@ -2253,15 +2253,12 @@ a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, BITENUM(u8,a_amv_var_spec
 
 	switch(avst){
 	default:
-	case a_AMV_VST_STAR:{
+	case a_AMV_VST_STAR:
+	case a_AMV_VST_AT:{
 		uz i, j;
 		char sep;
 
-		sep = *ok_vlook(ifs);
-		if(0){
-	case a_AMV_VST_AT:
-			sep = ' ';
-		}
+		sep = ' ';
 
 		for(i = j = 0; i < argc; ++i)
 			j += su_cs_len(argv[i]) + 1;

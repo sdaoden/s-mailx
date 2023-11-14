@@ -3761,6 +3761,23 @@ double-quotes and dollar-single-quotes:
 The literal value of any character can be preserved by preceding it
 with the escape character reverse solidus
 .Ql \e .
+.Pp
+.Sy Remarks:
+this mode diverges the most from the
+.Ev SHELL
+because no further word expansion takes place:
+.Bd -literal -offset indent
+define x {                x() { echo $#; }
+  echo $#
+}
+vpospar set a\e b c\e d     set -- a\e b c\e d
+ec $#                     echo $#
+\*(OU2                     \*(OU2
+call x $@                 x $@
+\*(OU1                     \*(OU4
+call x "$@"               x "$@"
+\*(OU2                     \*(OU2
+.Ed
 .
 .It
 Arguments which are enclosed in
@@ -9441,11 +9458,10 @@ includes
 .It Va *
 \*(RO Expands all positional parameters (see
 .Va 1 ) ,
-separated by the first character of
+separated by a space character.
+If placed in double quotation marks, all positional parameters are
+separated by the first character (if any) of
 .Va ifs .
-\*(ID The special semantics of the corresponding
-.Ev SHELL
-parameter are not yet supported.
 .
 .Mx
 .It Va @
