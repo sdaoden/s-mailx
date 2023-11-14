@@ -5421,6 +5421,9 @@ x
 unset ifs
 >i vpospar quote
 x
+shift
+>i vpospar quote
+x
 vpospar clear
 x
 echo i<$i>
@@ -5429,7 +5432,7 @@ x
 ' \
 	> ./tifs-2 2>${E0}
 	#}}}
-	cke0 ifs-2 0 ./tifs-2 '1412306707 260'
+	cke0 ifs-2 0 ./tifs-2 '4228963670 283'
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
@@ -5495,6 +5498,25 @@ var i2 i' \
 	> ./tmulsco 2>${E0}
 	#}}}
 	cke0 mulsco 0 ./tmulsco '1683530866 54'
+
+	#{{{
+	</dev/null ${MAILX} ${ARGS} -X '
+define hi {
+	local pp our >i$((i = 1 + 1)) global vpospar ^ quote
+	xcall t "$@"
+}
+define t {
+	ec "args<$*> i2<$i2> i<$i>"
+}
+vpospar ^ se three four
+call hi one two
+var i2 i
+shift ^ -1
+call hi one two
+var i2 i' \
+	> ./trsetmulsco 2>${E0}
+	#}}}
+	cke0 rsetmulsco 0 ./trsetmulsco '3750188388 103'
 
 	t_epilog "${@}"
 } #}}}
@@ -5635,15 +5657,13 @@ call c "<$@>"' \
 	#}}}
 	cke0 3 0 ./t3 '1377173839 494'
 
-	# Dup 3 in meaning for ^.. result sets {{{
+	# Dup 3 in meaning for ^.. result sets, ++ {{{
 	</dev/null ${MAILX} ${ARGS} -X '
 define c {
 	echo "$# 1<$1> 2<$2> 3<$3> *<$*> @<$@>"
 }
-define z {
-	return ^ a\ b c\ d e\ f
-}
-call z
+vpospar ^ set a\ b c\ d e\ f
+ec 0 is <$^0>
 call c $^*
 call c $^@
 call c "$^*"
@@ -5651,19 +5671,19 @@ call c "$^@"
 set ifs=:
 call c "${^*}"
 call c "${^@}"
+shift ^
+ec 0 is <$^0>
 set ifs=
 call c "<$^*>"
 call c "<$^@>"
 unset ifs
-define z {
-	return ^
-}
-call z
+vpospar ^ set
+ec 0 is <$^0>
 call c "<$^*>"
 call c "<$^@>"' \
 	> ./t4 2>${E0}
 	#}}}
-	cke0 4 0 ./t4 '1377173839 494'
+	cke0 4 0 ./t4 '4769731 499'
 
 	t_epilog "${@}"
 } #}}}
