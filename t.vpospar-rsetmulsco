@@ -1,0 +1,6 @@
+args<one two> i2<three four> i<>
+#unset: i2
+#unset: i
+args<one two> i2<three> i<>
+#unset: i2
+#unset: i
