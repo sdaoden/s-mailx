@@ -2434,6 +2434,11 @@ If so, the MLE will itself use
 .Ic bind
 to install the built-in set from above, plus, unless prevented via
 .Va line-editor-no-defaults .
+If supported by the
+.Ev TERM Ns
+inal
+.Cd mle-be-bd-ps
+(see there) is enabled regardless of this setting.
 .
 .Pp
 In the following list keys are shown via
@@ -2673,6 +2678,23 @@ move the cursor forward one screen width.
 .Cd mle-raise-quit:
 .Xr raise 3
 .Ql SIGQUIT .
+.
+.It \(en
+\*(OP
+.Mx
+.Cd mle-be-bd-ps :
+if
+.Dq bracketed-paste
+is supported by the
+.Ev TERM Ns
+inal (see
+.Va termcap )
+enabled regardless of
+.Va line-editor-no-defaults
+to prevent undesired interpretation of pasted (clipboard) content.
+Though documented and shown by
+.Ic bind
+an implementation detail.
 .El
 .\" }}}
 .
@@ -13168,9 +13190,8 @@ pairs and are expected unless noted otherwise.
 Numerics have to be notated as
 .Ql cap#number
 where the number is expected in normal decimal notation.
-Finally, booleans do not have any value but indicate a true or false
-state simply by being defined or not; this indeed means that \*(Xx
-does not support undefining an existing boolean.
+Finally, booleans have no value but are defined or not:
+undefining booleans is not supported.
 String capability values will undergo some expansions before use:
 for one notations like
 .Ql ^LETTER
@@ -13187,8 +13208,7 @@ the standard CSI sequence);
 finally three letter octal sequences, as in
 .Ql \e061 ,
 are supported.
-To specify that a terminal supports 256-colours, and to define sequences
-that home the cursor and produce an audible bell, one might write:
+Here a terminal with 256-colour support, home key and audible bell:
 .
 .Bd -literal -offset indent
 set termcap='Co#256,home=\eE[H,bel=^G'
@@ -13196,7 +13216,7 @@ set termcap='Co#256,home=\eE[H,bel=^G'
 .
 .Pp
 The following terminal capabilities are or may be meaningful for the
-operation of the built-in line editor or \*(Xx in general:
+operation of the built-in line editor MLE, and terminal usage in general:
 .
 .Pp
 .Bl -tag -compact -width ".It Cd yay"
@@ -13276,8 +13296,8 @@ plus
 .Cd exit_ca_mode
 and
 .Cd enter_ca_mode ,
-respectively: exit and enter the alternative screen ca-mode,
-effectively turning \*(Xx into a fullscreen application.
+respectively: exit and enter the alternative screen ca-mode
+(cursor-addressing; fullscreen mode).
 This must be enabled explicitly by setting
 .Va termcap-ca-mode .
 .
@@ -13302,6 +13322,27 @@ This will be inspected even without
 .El
 .
 .Pp
+.Bl -tag -compact -width ".It Cd yay"
+.It Cd BE , BD , PS , PE
+These capabilities yet specific to the
+.Lb libterminfo
+define and control bracketed paste: the former two
+request the
+.Ev TERM Ns
+inal to enable and disable this mode, causing it to embed any pasted
+clipboard (paste buffer) data in between the latter two.
+The MLE will use this mode automatically, and
+.Ic bind
+.Cd mle-be-bd-ps
+to
+.Cd PS
+in order to prevent undesired interpretation of pasted clipboard content.
+The
+.Ev TERM Ns
+inal needs to support this extension.
+.El
+.
+.Pp
 Many more capabilities which describe key-sequences are documented for
 .Ic bind .
 .
@@ -13312,9 +13353,10 @@ Many more capabilities which describe key-sequences are documented for
 .Cd exit_ca_mode
 and
 .Cd enter_ca_mode
+(cursor-addressing; fullscreen mode)
 .Va termcap Ns
-abilities in order to enter an alternative exclusive screen, the
-so-called ca-mode; this usually requires special configuration of the
+abilities in order to enter an alternative exclusive screen;
+this usually requires special configuration of the
 .Ev PAGER ,
 also dependent on the value of
 .Va crt .

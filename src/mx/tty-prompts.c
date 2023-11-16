@@ -93,6 +93,7 @@ mx_tty_getpass(char const *query){
 		if(query == NIL)
 			query = _("Password: ");
 
+		/* Because of this we cannot use go_input(), thus possibly MLE with termcap stuff */
 		mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_PASSWORD);
 
 		fputs(query, mx_tty_fp);
