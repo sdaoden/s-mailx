@@ -42,6 +42,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/icodec.h>
 #include <su/mem.h>
 #include <su/time.h>
 
@@ -1864,18 +1865,21 @@ jefo:
 }
 
 static char const *
-a_sendout_random_id(struct header *hp, boole msgid)
-{
+a_sendout_random_id(struct header *hp, boole msgid){ /* {{{ */
    static u32 reprocnt;
+
+   char ibuf[su_IENC_BUFFER_SIZE];
+   struct n_string s_b, *s;
+   s32 ti;
    struct tm *tmp;
-   char const *h;
+   char const *sender, *host, *fmt, *h;
    uz rl, i;
-   char *rv, sep;
+   char *rv, c, have_r;
    NYD_IN;
 
-   rv = NULL;
+   rv = NIL;
 
-   if(msgid && hp != NULL && hp->h_message_id != NULL){
+   if(msgid && hp != NIL && hp->h_message_id != NIL){
       rv = hp->h_message_id->n_name;
       goto jleave;
    }
@@ -1883,34 +1887,113 @@ a_sendout_random_id(struct header *hp, boole msgid)
    if(ok_blook(message_id_disable))
       goto jleave;
 
-   sep = '%';
-   rl = 5;
-   if((h = __sendout_ident) != NULL)
-      goto jgen;
-   if(ok_vlook(hostname) != NULL){
-      h = n_nodename(TRU1);
-      sep = '@';
-      rl = 8;
-      goto jgen;
-   }
-   if(hp != NULL && (h = skin(myorigin(hp))) != NULL &&
-         su_cs_find_c(h, '@') != NULL)
-      goto jgen;
-   goto jleave;
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, 80);
+   sender = NIL;
 
-jgen:
+   /* v15compat: manual: IDs are generated with either *hostname* or *from*.
+    * v15compat: later: ONLY when *message-id* is set (even empty) */
+
+   host = ok_vlook(hostname);
+   c = (host != NIL);
+   if(!c || *host == '\0')
+      host = n_nodename(TRU1);
+
+   sender = __sendout_ident;
+   c |= (sender != NIL);
+   if(sender == NIL && hp != NIL){
+      sender = skin(myorigin(hp));
+      c = (sender != NIL && su_cs_find_c(sender, '@') != NIL); /* v15compat */
+   }
+
+   fmt = ok_vlook(message_id);
+   if(fmt == NIL || *fmt == '\0'){
+      if(!c && fmt == NIL)
+         goto jleave;
+jfmt:
+      fmt = "%Y%m%d%H%M%S.%r%r@%a";
+   }
+
    tmp = &mx_time_current.tc_gm;
-   i = sizeof("%04d%02d%02d%02d%02d%02d.%s%c%s") -1 + rl + su_cs_len(h);
-   rv = n_autorec_alloc(i +1);
-   snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
-      tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
-      tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      mx_random_create_cp(rl, &reprocnt), sep, h);
-   rv[i] = '\0'; /* Because we don't test snprintf(3) return */
+
+   for(have_r = 0; (c = *fmt++) != '\0';){
+      if(c != '%' || *fmt == '\0' || (c = *fmt++) == '%'){
+jc:
+         if(c == '<' || c == '>')
+            c = '%';
+         s = n_string_push_c(s, c);
+      }else switch(c){
+      default:
+         n_err(_("*message-id*: invalid conversion: %s\n"), &fmt[-2]);
+         goto jc;
+      case 'a':
+         h = sender;
+         if(h == NIL)
+            goto jh;
+         rl = s->s_len;
+         s = n_string_push_cp(s, h);
+         if((rv = su_cs_find_c(h, '@')) != NIL){
+            i = P2UZ(rv - h);
+            s->s_dat[rl + i] = '%';
+         }
+         break;
+      case 'd':
+         ti = tmp->tm_mday;
+         goto jti2;
+      case 'H':
+         ti = tmp->tm_hour;
+         goto jti2;
+      case 'h':
+jh:      h = host;
+         if(h == NIL)
+            goto jr;
+         s = n_string_push_cp(s, h);
+         break;
+      case 'M':
+         ti = tmp->tm_min;
+         goto jti2;
+      case 'm':
+         ti = tmp->tm_mon + 1;
+         goto jti2;
+      case 'r':{
+jr:      i = s->s_len;
+         rl = 4 * (1 + (c != 'r'));
+         s = n_string_resize(s, i + rl);
+         mx_random_create_buf(&s->s_dat[i], rl, &reprocnt);
+         have_r = 1;
+         }break;
+      case 'S':
+         ti = tmp->tm_sec;
+jti2:    h = su_ienc_s32(ibuf, ti, 10);
+         if(h[1] == '\0')
+            *UNCONST(char*,--h) = '0';
+         s = n_string_push_buf(s, h, 2);
+         break;
+      case 'Y':
+         ti = tmp->tm_year + 1900;
+         h = su_ienc_s32(ibuf, ti, 10);
+         ASSERT(h[0] != '\0' && h[1] != '\0' && h[2] != '\0' && h[3] != 0 &&
+            h[4] == '\0'); /* In the year 10000 this software is obsolete */
+         s = n_string_push_buf(s, h, 4);
+         break;
+      }
+   }
+
+   rv = n_string_cp(s);
+
+   if(!su_state_has(su_STATE_REPRODUCIBLE) &&
+         (!have_r || s->s_len < 10)){ /* manual! */
+      n_err(_("*message-id*: too short or without randoms: %s\n"), rv);
+      s = n_string_trunc(s, 0);
+      goto jfmt;
+   }
+
+   /* n_string_gut(s); */
+
 jleave:
    NYD_OU;
    return rv;
-}
+} /* }}} */
 
 static boole
 a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,

@@ -618,7 +618,7 @@ More optional headers are
 and / or option
 .Fl r ) .
 Normally created automatically, but used if specified are
-.Ql Message-ID: ,
+.Ql Message-ID:
 .Ql In-Reply-To: ,
 .Ql References:
 and
@@ -10328,7 +10328,9 @@ and MIME part
 headers are created (unless disallowed by
 .Va message-id-disable
 or
-.Va stealthmua ) .
+.Va stealthmua ,
+and see
+.Va message-id ) .
 .
 .
 .Mx
@@ -10567,7 +10569,9 @@ headers are created (unless disallowed by
 or
 .Va stealthmua ) ;
 also see
-.Va from .
+.Va from
+and
+.Va message-id .
 \*(OP If IDNA conversion is necessary but fails assignment is aborted
 .Pf ( Va idna-disable ) .
 One should produce some test messages with the desired combination of
@@ -10866,6 +10870,58 @@ call mboxfix /tmp/bad.mbox /tmp/good.mbox
 \*(BO Internal, development related, auto-enabled with
 .Va debug .
 .
+.
+.Mx
+.It Va message-id
+When set
+.Ql Message-ID:
+and
+.Ql Content-ID:
+MIME (part) will be generated (but also see
+.Va from , hostname , message-id-disable , stealthmua ) .
+If non-empty generation honours the given format string, which consists
+of normal text and expandable conversions of a percent sign
+.Ql %
+and a conversion specifier.
+If unset or empty, or if results are shorter 10 bytes or without randoms
+.Ql %Y%m%d%H%M%S.%r%r@%a
+is used.
+Date and time are in UTC (Coordinated Universal Time).
+.
+.Pp
+.Bl -tag -compact -width ".It Ql _%%_"
+.It Ql %%
+Doubling avoids expansion.
+.It Ql %a
+Sender address, with
+.Ql @
+replaced by
+.Ql %
+because some spam detectors trigger otherwise for unknown reasons.
+If unavailable equals
+.Ql %h .
+.It Ql %d
+Two-digit day.
+.It Ql %H
+Two-digit hour (24-hour notation).
+.It Ql %h
+Either
+.Va hostname
+or the real hostname; if unavailable equals
+.Ql %r%r .
+.It Ql %M
+Two-digit minute.
+.It Ql %m
+Two-digit month.
+.It Ql %r
+A base64-URL (RFC 4648) encoded random string of size four (4).
+.It Ql %S
+Two-digit second.
+.It Ql %Y
+Four-digit year.
+.El
+.
+.
 .Mx
 .It Va message-id-disable
 \*(BO Suppress generation of
@@ -10875,6 +10931,7 @@ and
 MIME (part) headers, leaving this up to the
 .Va mta
 (according to RFC 5321 a SMTP server is not required to do so).
+Manually created such headers are never stripped.
 .
 .Mx
 .Mx

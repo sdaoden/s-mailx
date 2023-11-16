@@ -7336,6 +7336,86 @@ t_resend() { #{{{
 
 	t_epilog "${@}"
 } #}}}
+
+t_message_id() { #{{{
+	t_prolog "${@}"
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
+uns stealthmua
+m a1@a
+~.
+se hostname
+m a2@a
+~.
+se hostname=ex
+m a3@a
+~.
+se nohostname from=e@x
+m a4@a
+~.
+se stealthmua
+m a5@a
+~.
+se stealthmua=noagent
+m a6@a
+~.
+se nostealthmua message-id-disable
+m a7@a
+~.
+uns from message-id-disable
+ec ===
+se stealthmua=noagent from=e@x hostname=y
+m b1@a
+~.
+se message-id=%
+m b1@a
+~.
+se message-id=<%
+m b2@a
+~.
+se message-id=<%>
+m b3@a
+~.
+se message-id=%a
+m b4@a
+~.
+se message-id=%d
+m b5@d
+~.
+se message-id=%H
+m b6@H
+~.
+se message-id=%h
+m b7@h
+~.
+se message-id=%M
+m b8@M
+~.
+se message-id=%m
+m b9@m
+~.
+se message-id=%r
+m b10@r
+~.
+se message-id=%r%r
+m b11@rr
+~.
+se message-id=%S
+m b12@S
+~.
+se message-id=%Y
+m b13@Y
+~.
+se message-id=%%.%a.%d.%H.%h.%M.%m.%r.%S.%Y.%r
+m b14@Y
+~.
+__EOT
+	#}}}
+	ck 1 0 ./t1 '1018284836 3466' '62756984 1355'
+
+	t_epilog "${@}"
+} #}}}
 #}}}
 
 # VFS {{{
@@ -10101,7 +10181,7 @@ reply 1 2
 		-a ./txa3 -a './tx a4' \
 		-s Y \
 		ex@am.ple > ./t7 2>${E0}
-	cke0 7 0 ./t7 '2357640864 1313'
+	cke0 7 0 ./t7 '3543778186 1408'
 
 	# input charset
 	</dev/null ${MAILX} ${ARGS} -Smta=test -Sttycharset=utf8 \
@@ -10128,7 +10208,7 @@ reply 1 2
 				--attach ./txa10=utf8#iso-8859-1 \
 				--subject Y \
 				ex@am.ple > ./t10 2>${E0}
-			cke0 10 0 ./t10 '3768148 927'
+			cke0 10 0 ./t10 '3301907455 984'
 		else
 			t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
 		fi
@@ -11951,7 +12031,7 @@ __EOT
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://tm1 > ./tm1.out 2>${E0}
-	cke0 m1 0 ./tm1 '1586614654 2075'
+	cke0 m1 0 ./tm1 '196756037 2078'
 	ck m1-out - ./tm1.out '1099505374 10256'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -12356,7 +12436,7 @@ __EOT__
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://t1 > ./t1-x 2>${E0}
 	ck_ex0 1-estat
 	${cat} ./t1-x >> ./t1
-	cke0 1 - ./t1 '559131876 10388'
+	cke0 1 - ./t1 '2493529550 10391'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -St_remove=1 -X'source ./t.rc' -Smta=test://t2 > ./t2-x 2>${E0}
@@ -12718,7 +12798,7 @@ __EOT
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
-	ck 4 - ./t4 '2446950910 10033' '1312459649 605'
+	ck 4 - ./t4 '3350979868 10060' '1312459649 605'
 
 	t_epilog "${@}"
 } #}}}
@@ -12974,24 +13054,24 @@ t_lreply_futh_rth_etc() { #{{{
 	printf 'reply 1\nthread\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
 			${argadd} -Rf ./t.mbox > ${E0} 2>&1
-	cke0 2 0 ./t2_11 '2966409435 480'
+	cke0 2 0 ./t2_11 '2353938658 499'
 
 	printf 'reply 1\nnew <- thread!\n!||%s -e "%s"\n!.\n' \
 			"${sed}" '/^In-Reply-To:/d' |
 		${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
 			${argadd} -Rf ./t2_11 > ${E0} 2>&1
-	cke0 3 0 ./t2_11 '3870393639 865'
+	cke0 3 0 ./t2_11 '2699379722 903'
 
 	printf 'reply 2\nold <- new <- thread!\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
 			${argadd} -Rf ./t2_11 > ${E0} 2>&1
-	cke0 4 0 ./t2_11 '219545266 1372'
+	cke0 4 0 ./t2_11 '2796872866 1467'
 
 	printf 'reply 3\nnew <- old <- new <- thread!\n!|| %s -e "%s"\n!.\n' \
 			"${sed}" '/^In-Reply-To:/d' |
 		${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
 			${argadd} -Rf ./t2_11 > ${E0} 2>&1
-	cke0 5 0 ./t2_11 '529088127 1771'
+	cke0 5 0 ./t2_11 '2994852735 1885'
 
 	# And follow-up testing whether changing In-Reply-To: to - starts a new
 	# thread with only the message being replied-to.
@@ -13000,7 +13080,7 @@ t_lreply_futh_rth_etc() { #{{{
 			"${sed}" 's/^In-Reply-To:.*$/In-Reply-To:-/' |
 		${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
 			${argadd} -Rf ./t2_11 > ${E0} 2>&1
-	cke0 6 0 ./t2_11 '968429240 2282'
+	cke0 6 0 ./t2_11 '4176287335 2453'
 
 	t_epilog "${@}"
 } #}}}
@@ -13874,7 +13954,7 @@ t_net_smtp() { #{{{ TODO v15: drop smtp-hostname tests
 		mail_from=reproducible_build@${helo}
 		from=${mail_from}
 		msgid='
-Message-ID: <19961002015007.AQACA%reproducible_build@reproducible_build>'
+Message-ID: <19961002015007.AQAAAgAA@reproducible_build%reproducible_build>'
 		smtp__script ${file} "$@"
 	}
 
@@ -13887,7 +13967,7 @@ Message-ID: <19961002015007.AQACA%reproducible_build@reproducible_build>'
 		mail_from=reproducible_build@${helo}
 		from=${mail_from}
 		msgid='
-Message-ID: <19961002015007.AQACAAAA@am.ple>'
+Message-ID: <19961002015007.AQAAAgAA@reproducible_build%am.ple>'
 		smtp__script /dev/null "$@" -Shostname=am.ple
 	}
 
@@ -13896,7 +13976,7 @@ Message-ID: <19961002015007.AQACAAAA@am.ple>'
 		mail_from=steffen@am2.ple2
 		from=reproducible_build@${helo}
 		msgid='
-Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
+Message-ID: <19961002015007.AQAAAgAA@steffen%am2.ple2>'
 		smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=am2.ple2
 	}
 
@@ -13905,7 +13985,7 @@ Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
 		mail_from=steffen@am.ple
 		from=reproducible_build@${helo}
 		msgid='
-Message-ID: <19961002015007.AQACA%steffen@am.ple>'
+Message-ID: <19961002015007.AQAAAgAA@steffen%am.ple>'
 		smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=
 	}
 
@@ -13914,7 +13994,7 @@ Message-ID: <19961002015007.AQACA%steffen@am.ple>'
 		mail_from=steffen.ex@am.ple
 		from=${mail_from}
 		msgid='
-Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
+Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
 		smtp__script /dev/null "$@" -Sfrom=${from}
 	}
 
@@ -13923,7 +14003,7 @@ Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
 		mail_from=steffen.ex@am.ple
 		from=${mail_from}
 		msgid='
-Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
+Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
 		smtp__script /dev/null "$@" \
 			-Sfrom=${mail_from} -Shostname=am2.ple2
 	}
@@ -13933,7 +14013,7 @@ Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
 		mail_from=steffen@am3.ple3
 		from=steffen.ex@am.ple
 		msgid='
-Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
+Message-ID: <19961002015007.AQAAAgAA@steffen%am3.ple3>'
 		smtp__script /dev/null "$@" -Sfrom=${from} \
 			-Shostname=am2.ple2 -Ssmtp-hostname=am3.ple3
 	}
@@ -13943,7 +14023,7 @@ Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
 		mail_from=steffen@am2.ple2
 		from=steffen.ex@am.ple
 		msgid='
-Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
+Message-ID: <19961002015007.AQAAAgAA@steffen%am2.ple2>'
 		smtp__script /dev/null "$@" -Sfrom=${from} \
 			-Shostname=am2.ple2 -Ssmtp-hostname=
 	}
@@ -13953,7 +14033,7 @@ Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
 		mail_from=steffen2@am2.ple2
 		from=steffen.ex@am.ple
 		msgid='
-Message-ID: <19961002015007.AQACAAAA@am.ple>'
+Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
 		smtp__script /dev/null "$@" -Shostname=am.ple \
 			-Sfrom=${from} -Ssmtp-from=steffen2@am2.ple2
 	}
@@ -15150,6 +15230,7 @@ t_all() { #{{{
 	jspawn reply
 	jspawn forward
 	jspawn resend
+	jspawn message_id
 	jsync
 
 	# VFS
