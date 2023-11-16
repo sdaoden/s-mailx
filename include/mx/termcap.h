@@ -30,11 +30,25 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
-#endif
 
 struct mx_termcap_value;
 
-#ifdef mx_HAVE_TCAP
+/* termcap_resume() / termcap_suspend(): flags */
+enum mx_termcap_mode{
+	/* Base modes */
+	mx_TERMCAP_MODE_BASE, /* keypad */
+	mx_TERMCAP_MODE_CA = 1u<<0, /* BASE + *termcap-ca-mode* IFF applicable */
+
+	/* Additional flags */
+
+	/* Consumer knows how to handle whatever the terminal throws at her:
+	 * - bracketed paste mode is enabled if available, thus _PS[data]_PE may occur */
+	mx_TERMCAP_MODE_SMART = 1u<<7,
+
+	/* When destroying we want to turn off anything */
+	mx_TERMCAP_MODE_TEARDOWN_MASK = 0xFFu
+};
+
 enum mx_termcap_captype{
 	mx_TERMCAP_CAPTYPE_NONE,
 	/* Internally we share the bitspace, so ensure no value ends up as 0 */
@@ -45,22 +59,26 @@ enum mx_termcap_captype{
 };
 
 /* Termcap commands; different to queries commands perform actions.
- * Commands are resolved upon init time, and are all termcap(5)-compatible, therefore use the short termcap(5) names.
+ * Commands are resolved upon init time.
  *
  * Note this is parsed by make-tcap-map.pl, which expects the syntax "CONSTANT, COMMENT" where COMMENT is
  * "Capname/TCap-Code, TYPE[, FLAGS]", and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
  * a | vertical bar or end-of-comment ends processing; see termcap.c.
  * We may use the free-form part after | for the "Variable String" and notes on necessary termcap_cmd() arguments;
- * if those are in [] brackets they are not regular but are only used when the command, i.e., it's effect, is somehow
+ * if those are in [] brackets they are not regular but are only used when the command, i.e., its effect, is somehow
  * simulated / faked by a built-in fallback implementation.
  * Availability of built-in fallback indicated by leading @ (at-sign) */
 enum mx_termcap_cmd{
-# ifdef mx_HAVE_TERMCAP
-	mx_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
-	mx_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
-
+	/* _MODE_BASE: */
 	mx_TERMCAP_CMD_ks, /* smkx/ks, STRING | keypad_xmit: -,- */
 	mx_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
+	/* _MODE_CA: */
+	mx_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
+	mx_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
+	/* _MODE_SMART: */
+# ifdef mx_HAVE_KEY_BINDINGS /* for now */
+	mx_TERMCAP_CMD_BE, /* BE/-, STRING | enable bracketed paste */
+	mx_TERMCAP_CMD_BD, /* BD/-, STRING | disable bracketed paste */
 # endif
 
 # ifdef mx_HAVE_MLE
@@ -70,24 +88,22 @@ enum mx_termcap_cmd{
 	mx_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
 	mx_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
 
-#  ifdef mx_HAVE_TERMCAP
+	mx_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
+	/* [cl == ho+cd; even though without TERMCAP user could do that, always provide them] */
 	mx_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
 	mx_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
-#  endif
-	mx_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
 # endif
 
 	mx__TERMCAP_CMD_MAX1,
 	mx__TERMCAP_CMD_MASK = (1u<<24) - 1,
 
-	/* Only perform command if ca-mode is used */
-	mx_TERMCAP_CMD_FLAG_CA_MODE = 1u<<29,
-	/* I/O should be flushed after command completed */
-	mx_TERMCAP_CMD_FLAG_FLUSH = 1u<<30
+	mx_TERMCAP_CMD_FLAG_CA_MODE = 1u<<29, /* Only perform command when ca-mode is used */
+	mx_TERMCAP_CMD_FLAG_FLUSH = 1u<<30 /* I/O should be flushed after command completed */
 };
 
 /* Termcap queries; a query is a command that returns a struct n_termcap_value.
- * Queries are resolved once used first, and may not be termcap(5)-compatible, therefore we use terminfo(5) names.
+ * Queries are resolved once used first, and more often than commands have no termcap(5) equivalence,
+ * therefore let us use terminfo(5) names.
  *
  * Note this is parsed by make-tcap-map.pl, which expects the syntax "CONSTANT, COMMENT" where COMMENT is
  * "Capname/TCap-Code, TYPE[, FLAGS]", and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
@@ -98,12 +114,19 @@ enum mx_termcap_query{
 	mx_TERMCAP_QUERY_am, /* am/am, BOOL | auto_right_margin */
 	mx_TERMCAP_QUERY_sam, /* sam/YE, BOOL | semi_auto_right_margin */
 	mx_TERMCAP_QUERY_xenl, /* xenl/xn, BOOL | eat_newline_glitch */
+	/* _MODE_SMART: */
+# ifdef mx_HAVE_KEY_BINDINGS /* for now */
+	mx_TERMCAP_QUERY_PS, /* PS/-, STRING | begin bracketed paste */
+	mx_TERMCAP_QUERY_PE, /* PE/-, STRING | end bracketed paste */
+# endif
 
 # ifdef mx_HAVE_COLOUR
 	mx_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
 # endif
 
-	/* --make-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
+	/* --make-tcap-map--: only KEY_BINDINGS follow.  DO NOT CHANGE THIS LINE!
+	 * (Names must be indexable no matter what mx_HAVE_ options: can have only a single contiguous option part) */
+
 	/* Update the `bind' manual on change! */
 # ifdef mx_HAVE_KEY_BINDINGS
 	mx_TERMCAP_QUERY_key_backspace, /* kbs/kb, STRING */
@@ -162,7 +185,7 @@ enum mx_termcap_query{
 
 struct mx_termcap_value{
 	enum mx_termcap_captype tv_captype;
-	u8 tv__dummy[4];
+	su_64(u8 tv__dummy[4];)
 	union mx_termcap_value_data{
 		boole tvd_bool;
 		u32 tvd_numeric;
@@ -174,46 +197,35 @@ struct mx_termcap_value{
 EXPORT void mx_termcap_init(void);
 EXPORT void mx_termcap_destroy(void);
 
-/* enter_ca_mode / enable keypad (both if possible).
- * TODO When complete is not set we will not enter_ca_mode, for example: we do not want a complete screen clearance
- * TODO after $PAGER returned after displaying a mail, because otherwise the screen would look differently for normal
- * TODO stdout display messages.  Etc. */
-# ifdef mx_HAVE_TERMCAP
-EXPORT void mx_termcap_resume(boole complete);
-EXPORT void mx_termcap_suspend(boole complete);
-
-#  define mx_TERMCAP_RESUME(CPL) do{ mx_termcap_resume(CPL); }while(0)
-#  define mx_TERMCAP_SUSPEND(CPL) do{ mx_termcap_suspend(CPL); }while(0)
-# endif
+/* enter_ca_mode / enable keypad / enable bracketed paste mode (all: if possible) */
+EXPORT void mx_termcap_resume(BITENUM(u32,mx_termcap_mode) mode);
+EXPORT void mx_termcap_suspend(BITENUM(u32,mx_termcap_mode) mode);
 
 /* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1 for commands which are not available and
  * have no built-in fallback.
- * For query options the return represents a true value and -1 error.
- * Will return FAL0 directly unless we have been initialized.
+ * \a{cmd} may have \c{_CMD_FLAG_} bits ORd to the command.
+ * Will return FAL0 directly unless we have been initialized; returns \TRUM1 if \a{cmd} is not supported and not even
+ * an alternative exists.
  * By convention unused argument slots are given as -1 */
-EXPORT sz mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2);
+EXPORT boole mx_termcap_cmd(BITENUM(u32,mx_termcap_cmd) cmd, sz a1, sz a2);
 # define mx_termcap_cmdx(CMD) mx_termcap_cmd(CMD, -1, -1)
 
 /* Query multiplexer.
- * If query is mx__TERMCAP_QUERY_MAX1 then tvp->tv_data.tvd_string must contain the name of the query to look up; this
- * is used to lookup just about *any* (string) capability.
+ * If query is mx__TERMCAP_QUERY_MAX1 then tvp->tv_data.tvd_string must contain the name of the query to look up:
+ * this is used to lookup just about *any* (string) capability.
  * Returns TRU1 on success and TRUM1 for queries for which a built-in default is returned; FAL0 is returned on
  * non-availability; for boolean the return value equals the result as such (still tvp is mandatory argument) */
 EXPORT boole mx_termcap_query(enum mx_termcap_query query, struct mx_termcap_value *tvp);
 
-/* Get a mx_termcap_query for name or -1 if it is not known, and -2 if type was not _NONE and type does not match. */
 # ifdef mx_HAVE_KEY_BINDINGS
+/* Get a mx_termcap_query for name or -1 if it is not known, and -2 if type was not _NONE and type does not match. */
 EXPORT s32 mx_termcap_query_for_name(char const *name, enum mx_termcap_captype type);
+
+/* Get terminfo name of query */
 EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # endif
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_TCAP */
-
-#ifndef mx_TERMCAP_RESUME
-# define mx_TERMCAP_RESUME(CPL) do{;}while(0)
-# define mx_TERMCAP_SUSPEND(CPL) do{;}while(0);
-#endif
-
 #endif /* mx_TERMCAP_H */
 /* s-itt-mode */

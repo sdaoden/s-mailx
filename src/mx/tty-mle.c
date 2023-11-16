@@ -49,7 +49,6 @@
 
 #ifdef mx_HAVE_MLE
 # include "mx/cmd.h"
-# include "mx/colour.h"
 # include "mx/fexpand.h"
 # include "mx/file-locks.h"
 # include "mx/go.h"
@@ -57,6 +56,10 @@
 # include "mx/termcap.h"
 # include "mx/termios.h"
 # include "mx/ui-str.h"
+
+# ifdef mx_HAVE_COLOUR
+#  include "mx/colour.h"
+# endif
 #endif
 
 #include "mx/tty.h"
@@ -72,7 +75,7 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
  *
  * Only used in interactive mode.
  * TODO . This code should be splitted in funs/raw input/bind modules.
- * TODO . Multiline visual via CUPS.
+ * TODO . Multiline visual via CUPS.  (Then: search MULTILINE.)
  * TODO . We work with wide characters, but not for buffer takeovers and
  * TODO   cell2save()ings.  This should be changed.  For the former the buffer
  * TODO   thus needs to be converted to wide first, and then simply be fed in.
@@ -90,9 +93,10 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 #ifdef mx_HAVE_MLE
 /* To avoid memory leaks etc. with the current codebase that simply longjmp(3)s we are forced to use the very same
  * buffer--the one that is passed through to us from the outside--to store anything we need, i.e., a "struct cell[]",
- * and convert that on-the-fly back to the plain char* result once we are done.  To simplify our live, use savestr()
- * buffers for all other needed memory */
+ * and convert that on-the-fly back to the plain char* result once we are done.
+ * TODO v15-compat: Note: half-assed signal safety; AUTO_ALLOC memory not protected: later no more jumps, SA_RESTART */
 
+/* macros, enums {{{ */
 # ifdef mx_HAVE_KEY_BINDINGS
 	/* We have a chicken-and-egg problem with `bind' and our termcap layer, because we may not initialize the
 	 * latter automatically to allow users to specify *termcap-disable*, and let it mean exactly that.  On the
@@ -137,20 +141,39 @@ CTA(a_TTY_LINE_MAX <= S32_MAX, "a_TTY_LINE_MAX larger than S32_MAX, but the MLE 
  * sufficient space) */
 # define a_TTY_WIDTH_RIPOFF 4
 
+enum a_tty_flags{
+	a_TTY_FLAGS_NONE,
+	a_TTY_FLAGS_INIT = 1u<<0,
+# ifdef mx_HAVE_HISTORY
+	a_TTY_FLAGS_HIST_INIT = 1u<<1,
+# endif
+# ifdef mx_HAVE_KEY_BINDINGS
+	a_TTY_FLAGS_BIND_INIT_NEEDS_RESOLVE = 1u<<2,
+	a_TTY_FLAGS_BIND_DIRTY = 1u<<3,
+	a_TTY_FLAGS_BIND_BUILT = 1u<<4,
+	a_TTY_FLAGS_BIND_BE_BD = 1u<<5,
+# else
+	a_TTY_FLAGS_BIND_BE_BD = a_TTY_FLAGS_NONE, /* (easier below) */
+# endif
+	a_TTY_FLAGS__MAX
+};
+
 /* The implementation of the MLE functions always exists, and is based upon
  * the a_TTY_BIND_FUN_* constants, so most of this enum is always necessary */
 enum a_tty_bind_flags{
 # ifdef mx_HAVE_KEY_BINDINGS
 	a_TTY_BIND_RESOLVE = 1u<<8, /* Term cap. yet needs to be resolved */
-	a_TTY_BIND_DEFUNCT = 1u<<9, /* Unicode/term cap. used but not avail. */
-	a_TTY__BIND_MASK = a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT,
+	a_TTY_BIND_SHADOW = 1u<<9, /* Setting cannot be modified/removed by user */
+	a_TTY_BIND_DEFUNCT = 1u<<10, /* Unicode/term cap. used but not avail. */
+
+	a_TTY__BIND_MASK = a_TTY_BIND_RESOLVE | a_TTY_BIND_SHADOW | a_TTY_BIND_DEFUNCT,
 	/* MLE fun assigned to a one-byte-sequence: this may be used for special
 	 * key-sequence bypass processing */
-	a_TTY_BIND_MLE1CNTRL = 1u<<10,
-	a_TTY_BIND_NOCOMMIT = 1u<<11, /* Expansion shall be editable */
+	a_TTY_BIND_MLE1CNTRL = 1u<<11,
+	a_TTY_BIND_NOCOMMIT = 1u<<12, /* Expansion shall be editable */
 # endif
 
-	/* MLE internal commands */
+	/* MLE internal commands (max 255) */
 	a_TTY_BIND_FUN_INTERNAL = 1u<<15,
 	a_TTY__BIND_FUN_SHIFT = 16u,
 	a_TTY__BIND_FUN_SHIFTMAX = 24u,
@@ -185,7 +208,11 @@ enum a_tty_bind_flags{
 	a_X(RESET, 29)
 	a_X(FULLRESET, 30)
 
-	a_X(COMMIT, 31) /* Must be last one (else adjust CTAs)! */
+# ifdef mx_HAVE_KEY_BINDINGS
+	a_X(BE_BD_PS, 31)
+# endif
+
+	a_X(COMMIT, 32) /* Must be last one (else adjust CTAs)! */
 # undef a_X
 
 	a_TTY__BIND_LAST = 1u<<28
@@ -255,7 +282,9 @@ enum a_tty_visual_flags{
 	a_TTY__VF_LAST = a_TTY_VF_SYNC
 };
 CTA(a_TTY__VF_LAST <= U16_MAX, "Flag bits excess storage datatype");
+/* }}} */
 
+/* types {{{ */
 # ifdef mx_HAVE_KEY_BINDINGS
 struct a_tty_bind_ctx{
 	struct a_tty_bind_ctx *tbc_next;
@@ -271,7 +300,7 @@ struct a_tty_bind_ctx{
 	u32 tbc_flags;
 	char tbc__buf[VFIELD_SIZE(0)];
 };
-# endif /* mx_HAVE_KEY_BINDINGS */
+# endif
 
 struct a_tty_bind_builtin_tuple{
 	boole tbbt_iskey; /* Whether this is a control key; else termcap query */
@@ -286,7 +315,7 @@ struct a_tty_bind_parse_ctx{
 	char const *tbpc_cmd; /* Command which parses */
 	char const *tbpc_in_seq; /* In: key sequence */
 	struct str tbpc_exp; /* In/Out: expansion (or NIL) */
-	struct a_tty_bind_ctx *tbpc_tbcp; /* Out: if yet existent */
+	struct a_tty_bind_ctx *tbpc_tbcp; /* Out: if yet existent (and no-replace) old, else new one */
 	struct a_tty_bind_ctx *tbpc_ltbcp; /* Out: the one before .tbpc_tbcp */
 	char *tbpc_seq; /* Out: normalized sequence */
 	char *tbpc_cnv; /* Out: sequence when read(2)ing it */
@@ -318,14 +347,12 @@ struct a_tty_cell{
 
 struct a_tty_global{
 	struct a_tty_line *tg_line; /* To be able to access it from signal hdl */
-	boole tg_is_init;
-	boole tg_hist_is_init;
+	u32 tg_flags;
 # ifndef mx_HAVE_KEY_BINDINGS
-	u8 tg__pad0[su_6432(6,2)];
+	u8 tg__pad0[4];
 # else
-	boole tg_bind_isdirty;
-	boole tg_bind_isbuild;
 	u32 tg_bind_cnt; /* Overall number of bindings */
+	char tg_bind_be_bd_pe[8]; /* mx_TERMCAP_QUERY_PE resolved (should be \E[201~) */
 #  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
 	char tg_bind_shcut_cancel[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
 	char tg_bind_shcut_prompt_char[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
@@ -365,7 +392,7 @@ struct a_tty_input_ctx_map{
 };
 #endif
 
-struct a_tty_line{
+struct a_tty_line{ /* {{{ */
 	/* Caller pointers */
 	char **tl_x_buf;
 	uz *tl_x_bufsize;
@@ -415,7 +442,8 @@ struct a_tty_line{
 	struct a_tty_bind_tree *(*tl_bind_tree_hmap)[a_TTY_PRIME]; /* Lookup tree */
 	struct a_tty_bind_tree *tl_bind_tree;
 # endif
-};
+}; /* }}} */
+/* }}} */
 
 # if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 /* C99: use [INDEX]={} */
@@ -430,9 +458,8 @@ static struct a_tty_input_ctx_map const a_tty_input_ctx_maps[mx__GO_INPUT_CTX_MA
 #endif
 
 # ifdef mx_HAVE_KEY_BINDINGS
-/* Special functions which our MLE provides internally.
- * Update the manual upon change! */
-static char const a_tty_bind_fun_names[][24] = {
+/* Special functions which our MLE provides internally.  Update the manual upon change! */
+static char const a_tty_bind_fun_names[][24] = { /* {{{ */
 #  undef a_X
 #  define a_X(I,N) FIELD_INITI(a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## I)) "mle-" N "\0",
 
@@ -460,16 +487,21 @@ static char const a_tty_bind_fun_names[][24] = {
 	a_X(CANCEL, "cancel")
 	a_X(RESET, "reset")
 	a_X(FULLRESET, "fullreset")
+
+# ifdef mx_HAVE_KEY_BINDINGS
+	a_X(BE_BD_PS, "be-bd-ps")
+# endif
+
 	a_X(COMMIT, "commit")
 
 #  undef a_X
-};
+}; /* }}} */
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 /* The default key bindings (except for *line-editor-no-defaults*).  Update manual upon change!
  * A logical subset of this table is also used if !mx_HAVE_KEY_BINDINGS (more expensive than a switch() on control
  * codes directly, but less redundant).  The table for the "base" context */
-static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
+static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = { /* {{{ */
 # undef a_X
 # define a_X(K,S) {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
 
@@ -524,11 +556,13 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 	a_X(xkey_cleft, GO_SCREEN_BWD) a_X(xkey_cright, GO_SCREEN_FWD)
 	a_X(key_sleft, GO_HOME) a_X(key_sright, GO_END)
 	a_X(key_up, HIST_BWD) a_X(key_down, HIST_FWD)
+
+	a_X(PS, BE_BD_PS) /* MUST be the last!  (Init even with *line-editor-no-defaults*) */
 # endif /* mx_HAVE_KEY_BINDINGS */
-};
+}; /* }}} */
 
 /* The table for the "default" context */
-static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
+static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = { /* {{{ */
 # undef a_X
 # define a_X(K,S) {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
 
@@ -551,11 +585,13 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 	a_X(key_ppage, "z-") a_X(key_npage, "z+")
 	a_X(xkey_cup, "dotmove-") a_X(xkey_cdown, "dotmove+")
 # endif /* mx_HAVE_KEY_BINDINGS */
-};
+
 # undef a_X
+}; /* }}} */
 
 static struct a_tty_global a_tty;
 
+/* protos {{{ */
 /* */
 static boole a_tty_on_state_change(up cookie, u32 tiossc, s32 sig);
 
@@ -633,6 +669,10 @@ static u32 a_tty_khist_search(struct a_tty_line *tlp, boole fwd);
 static u32 a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp);
 # endif
 
+# ifdef mx_HAVE_KEY_BINDINGS
+static u32 a_tty_be_bd_ps(struct a_tty_line *tlp, uz *len);
+# endif
+
 /* Handle a function */
 static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len);
 
@@ -643,8 +683,8 @@ static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil  s
 /* Find context or -1 */
 static BITENUM(u32,mx_go_input_flags) a_tty_bind_ctx_find(char const *name);
 
-/* Create (or replace, if allowed) a binding */
-static boole a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace);
+/* Create (or replace, if allowed) a binding.  shadow_ok: TTY_BIND_SHADOW ok */
+static boole a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace, boole shadow_ok);
 
 /* Shared implementation to parse `bind' and `unbind' "key-sequence" and "expansion" command line arguments into
  * something that we can work with.  If isbindcmd==TRUM1 we allow empty sequences, if and only if a binding yet exists
@@ -670,6 +710,7 @@ static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(struct a_tty_bind_tree **
 static void a_tty__bind_tree_dump(struct a_tty_bind_tree const *tbtp, char const *indent);
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
+/* }}} */
 
 static boole
 a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
@@ -681,14 +722,21 @@ a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
 	rv = FAL0;
 
 	if(tiossc & mx_TERMIOS_STATE_SUSPEND){
-		mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSP POSSIBLE.. */
-		mx_TERMCAP_SUSPEND(!(tiossc & mx_TERMIOS_STATE_POP) && !(tiossc & mx_TERMIOS_STATE_SIGNAL));
+# ifdef mx_HAVE_COLOUR
+		mx_colour_env_gut(); /* TODO NO SIMPLE SUSP POSSIBLE.. */
+# endif
+		mx_termcap_suspend(((!(tiossc & mx_TERMIOS_STATE_POP) && !(tiossc & mx_TERMIOS_STATE_SIGNAL))
+				? mx_TERMCAP_MODE_CA : mx_TERMCAP_MODE_BASE) |
+			((a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD) ? mx_TERMCAP_MODE_SMART : 0));
 		if((tiossc & (mx_TERMIOS_STATE_SIGNAL | mx_TERMIOS_STATE_JOB_SIGNAL)) == mx_TERMIOS_STATE_SIGNAL)
 			rv = TRU1;
 	}else if(tiossc & mx_TERMIOS_STATE_RESUME){
 		/* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-		mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp); )
-		mx_TERMCAP_RESUME(TRU1);
+# ifdef mx_HAVE_COLOUR
+		mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp);
+# endif
+		mx_termcap_resume(mx_TERMCAP_MODE_CA |
+			((a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD) ? mx_TERMCAP_MODE_SMART : 0));
 		a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
 		/* TODO Due to SA_RESTART we need to refresh the line in here! */
 		a_tty_vi_refresh(a_tty.tg_line);
@@ -697,9 +745,9 @@ a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
 	return rv;
 }
 
-# ifdef mx_HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY /* {{{ */
 static boole
-a_tty_hist_load(boole feedback){
+a_tty_hist_load(boole feedback){ /* {{{ */
 	u8 version;
 	uz lsize, cnt, llen, ents;
 	char *lbuf, *cp;
@@ -814,10 +862,10 @@ jerr:
 	n_err(_("Cannot read/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
 	rv = FAL0;
 	goto jleave;
-}
+} /* }}} */
 
 static boole
-a_tty_hist_save(boole feedback){
+a_tty_hist_save(boole feedback){ /* {{{ */
 	uz i, ents;
 	struct a_tty_hist *thp;
 	FILE *fp;
@@ -827,7 +875,8 @@ a_tty_hist_save(boole feedback){
 
 	rv = TRU1;
 
-	if((v = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0 || !a_tty.tg_hist_is_init)
+	if((v = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0 ||
+			!(a_tty.tg_flags & a_TTY_FLAGS_HIST_INIT))
 		goto j_leave;
 
 	dogabby = ok_blook(history_gabby_persist);
@@ -896,7 +945,7 @@ jerr:
 	n_err(V_(emsg), n_shexp_quote_cp(v, FAL0), su_err_doc(-1));
 	rv = FAL0;
 	goto jleave;
-}
+} /* }}} */
 
 static char const *
 a_tty_hist__query_config(void){
@@ -927,7 +976,7 @@ static boole
 a_tty_hist_clear(void){
 	NYD_IN;
 
-	if(a_tty.tg_hist_is_init){
+	if(a_tty.tg_flags & a_TTY_FLAGS_HIST_INIT){
 		su_cs_dict_clear(&a_tty.tg_hist_dict);
 		a_tty.tg_hist = a_tty.tg_hist_tail = NIL;
 	}
@@ -937,7 +986,7 @@ a_tty_hist_clear(void){
 }
 
 static boole
-a_tty_hist_list(void){
+a_tty_hist_list(void){ /* {{{ */
 	struct a_tty_hist *thp;
 	uz no, l, b;
 	FILE *fp;
@@ -986,10 +1035,10 @@ a_tty_hist_list(void){
 jleave:
 	NYD_OU;
 	return TRU1;
-}
+} /* }}} */
 
 static boole
-a_tty_hist_sel_or_del(char const **vec, boole dele){
+a_tty_hist_sel_or_del(char const **vec, boole dele){ /* {{{ */
 	struct a_tty_hist *thp;
 	boole rv;
 	sz *lp_base, *lp, entry, delcnt, ep;
@@ -1033,7 +1082,8 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
 		ep = (entry < 0) ? -entry : entry;
 		ep -= delcnt++;
 
-		if(ep == 0 || !a_tty.tg_hist_is_init || UCMP(z, ep, >, su_cs_dict_count(&a_tty.tg_hist_dict))){
+		if(ep == 0 || !(a_tty.tg_flags & a_TTY_FLAGS_HIST_INIT) ||
+				UCMP(z, ep, >, su_cs_dict_count(&a_tty.tg_hist_dict))){
 			n_err(_("history: not a number, or no such entry: %" PRIdZ "\n"), *lp);
 			rv = FAL0;
 			continue;
@@ -1086,7 +1136,7 @@ jleave:
 j_leave:
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 static boole
 a_tty_hist_is_gabby_ok(BITENUM(u32,mx_go_input_flags) gif, char const **gt){
@@ -1137,7 +1187,7 @@ jouter:
 }
 
 static boole
-a_tty_hist_add(char const *s, BITENUM(u32,mx_go_input_flags) gif){
+a_tty_hist_add(char const *s, BITENUM(u32,mx_go_input_flags) gif){ /* {{{ */
 	struct su_cs_dict_view dv;
 	struct a_tty_hist *thp, *othp, *ythp;
 	boole rv;
@@ -1149,13 +1199,13 @@ a_tty_hist_add(char const *s, BITENUM(u32,mx_go_input_flags) gif){
 		goto jleave;
 	}
 
-	if(!a_tty.tg_hist_is_init){
+	if(!(a_tty.tg_flags & a_TTY_FLAGS_HIST_INIT)){
 		struct su_cs_dict *dp;
 
 		dp = su_cs_dict_create(&a_tty.tg_hist_dict, a_TTY_HIST_DICT_FLAGS, NIL);
 		dp = su_cs_dict_set_threshold(dp, a_TTY_HIST_DICT_THRESHOLD);
 		dp = su_cs_dict_set_data_space(dp, sizeof(struct a_tty_hist));
-		a_tty.tg_hist_is_init = TRU1;
+		a_tty.tg_flags |= a_TTY_FLAGS_HIST_INIT;
 	}
 
 	su_cs_dict_view_setup(&dv, &a_tty.tg_hist_dict);
@@ -1212,11 +1262,11 @@ jlink:
 jleave:
 	NYD2_OU;
 	return rv;
-}
-# endif /* mx_HAVE_HISTORY */
+} /* }}} */
+# endif /* mx_HAVE_HISTORY }}} */
 
 static void
-a_tty_line_config(struct a_tty_line *tlp, boole isfirst){
+a_tty_line_config(struct a_tty_line *tlp, boole isfirst){ /* {{{ */
 	NYD2_IN;
 
 	/* *line-editor-config* */
@@ -1341,9 +1391,9 @@ jbind_timeout_redo:
 			goto jbind_timeout_redo;
 		}
 
-		if(a_tty.tg_bind_isdirty)
+		if(a_tty.tg_flags & a_TTY_FLAGS_BIND_DIRTY)
 			a_tty_bind_tree_teardown();
-		if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
+		if(a_tty.tg_bind_cnt > 0 && !(a_tty.tg_flags & a_TTY_FLAGS_BIND_BUILT))
 			a_tty_bind_tree_build();
 		tlp->tl_bind_tree_hmap = &a_tty.tg_bind_tree[tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK];
 		tlp->tl_bind_shcut_cancel = &a_tty.tg_bind_shcut_cancel[tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK];
@@ -1352,7 +1402,7 @@ jbind_timeout_redo:
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 	NYD2_OU;
-}
+} /* }}} */
 
 # ifdef mx_HAVE_KEY_BINDINGS
 static void
@@ -1403,6 +1453,7 @@ a_tty_wcwidth(wchar_t wc){
 	return rv;
 }
 
+/* cell and dat memory {{{ */
 static void
 a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DVL_LOC_ARGS_DECL){
 	u32 cmax;
@@ -1495,9 +1546,10 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin, struct a_tty
 
 	NYD2_OU;
 }
+/* }}} */
 
 static wchar_t
-a_tty_vinuni(struct a_tty_line *tlp){
+a_tty_vinuni(struct a_tty_line *tlp){ /* {{{ */
 	char buf[16];
 	uz i;
 	wchar_t wc;
@@ -1563,10 +1615,10 @@ jleave:
 
 	NYD2_OU;
 	return wc;
-}
+} /* }}} */
 
 static boole
-a_tty_vi_refresh(struct a_tty_line *tlp){
+a_tty_vi_refresh(struct a_tty_line *tlp){ /* {{{ */
 	boole rv;
 	NYD2_IN;
 
@@ -1617,10 +1669,10 @@ jerr:
 	ok_bset(line_editor_disable);
 	rv = FAL0;
 	goto jleave;
-}
+} /* }}} */
 
 static boole
-a_tty_vi__paint(struct a_tty_line *tlp){
+a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 	enum{
 		a_TRUE_RV = a_TTY__VF_LAST<<1, /* Return value bit */
 		a_HAVE_PROMPT = a_TTY__VF_LAST<<2, /* Have a prompt */
@@ -1975,10 +2027,10 @@ jleave:
 jerr:
 	f &= ~a_TRUE_RV;
 	goto jleave;
-}
+} /* }}} */
 
 static s32
-a_tty_wboundary(struct a_tty_line *tlp, s32 dir){/* TODO shell token-wise */
+a_tty_wboundary(struct a_tty_line *tlp, s32 dir){/* TODO shell token-wise {{{ */
 	boole anynon;
 	struct a_tty_cell *tcap;
 	u32 cur, cnt;
@@ -2023,8 +2075,9 @@ a_tty_wboundary(struct a_tty_line *tlp, s32 dir){/* TODO shell token-wise */
 jleave:
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
+/* keys (movement) {{{ */
 static void
 a_tty_khome(struct a_tty_line *tlp, boole dobell){
 	u32 f;
@@ -2268,9 +2321,10 @@ a_tty_kgoscr(struct a_tty_line *tlp, s32 dir){
 
 	NYD2_OU;
 }
+/* }}} */
 
 static boole
-a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
+a_tty_kother(struct a_tty_line *tlp, wchar_t wc){ /* {{{ */
 	/* Append if at EOL, insert otherwise; since we may move around character-wise, always use a fresh ps */
 	mbstate_t ps;
 	struct a_tty_cell tc, *tcap;
@@ -2288,7 +2342,7 @@ a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
 	}
 
 	/* First init a cell and see whether we'll really handle this wc */
-	su_mem_set(&ps, 0, sizeof ps);
+	STRUCT_ZERO(mbstate_t, &ps);
 	/* C99 */{
 		uz l;
 
@@ -2335,7 +2389,7 @@ jleave:
 
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
 static u32
 a_tty_kht(struct a_tty_line *tlp){ /* xxx huge: monster: split {{{ */
@@ -2623,7 +2677,7 @@ jmulti:{ /* xxx huge: own function */
 			}
 
 			/* We want case-insensitive sort-order */
-			su_mem_set(&vic, 0, sizeof vic);
+			STRUCT_ZERO(struct mx_visual_info_ctx, &vic);
 			vic.vic_indat = sub.s;
 			vic.vic_inlen = sub.l;
 			c2 = mx_visual_info(&vic, mx_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu : S(u8,*sub.s);
@@ -2653,7 +2707,7 @@ jmulti:{ /* xxx huge: own function */
 			input = sub;
 			shoup = n_shexp_quote(n_string_trunc(shoup, 0), &input,
 					((tlp->tl_conf_flags & a_TTY_CONF_QUOTE_RNDTRIP) != 0));
-			su_mem_set(&vic, 0, sizeof vic);
+			STRUCT_ZERO(struct mx_visual_info_ctx, &vic);
 			vic.vic_indat = shoup->s_dat;
 			vic.vic_inlen = shoup->s_len;
 			if(!mx_visual_info(&vic, mx_VISUAL_INFO_SKIP_ERRORS | mx_VISUAL_INFO_WIDTH_QUERY))
@@ -2730,7 +2784,7 @@ jnope:
 	goto jleave;
 } /* }}} */
 
-# ifdef mx_HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY /* {{{ */
 static u32
 a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
 	u32 f, rv;
@@ -2811,7 +2865,7 @@ jleave:
 }
 
 static u32
-a_tty_khist_search(struct a_tty_line *tlp, boole fwd){
+a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
 # ifdef mx_HAVE_REGEX
 	struct su_re re;
 # endif
@@ -2924,11 +2978,104 @@ jleave:
 
 	NYD2_OU;
 	return rv;
-}
-# endif /* mx_HAVE_HISTORY */
+} /* }}} */
+# endif /* mx_HAVE_HISTORY }}} */
+
+# ifdef mx_HAVE_KEY_BINDINGS
+static u32
+a_tty_be_bd_ps(struct a_tty_line *tlp, uz *len){ /* {{{ */
+	u32 rv;
+	char *bp;
+	uz pelen, size, i, x;
+	NYD2_IN;
+
+	pelen = su_cs_len(a_tty.tg_bind_be_bd_pe);
+	UNINIT(bp, NIL);
+
+	for(x = i = size = 0;;){
+		sz r;
+
+		r = pelen - x;
+		if(size <= i + S(uz,r) +1){
+			size += su_PAGE_SIZE / 8;
+			tlp->tl_defc.s = su_AUTO_ALLOC(size);
+			if(i > 0)
+				su_mem_copy(tlp->tl_defc.s, bp, i);
+			bp = tlp->tl_defc.s;
+		}
+
+		r = read(STDIN_FILENO, &bp[i], r);
+		if(r <= 0){
+			if(r == -1 && su_err_by_errno() == su_ERR_INTR)
+				continue;
+			/* Treat premature end as a hard error (XXX really?) */
+			rv = a_TTY_FUN_STATUS_END;
+			goto jleave;
+		}
+
+		do if(bp[i] != a_tty.tg_bind_be_bd_pe[x]){
+			char c;
+			uz j;
+
+			j = i - x;
+			c = bp[j];
+			do if(!su_cs_is_graph(c) && c != '\n')
+				bp[j] = ' ';
+			while(++j <= i);
+
+			++i;
+			x = 0;
+		}else{
+			++i;
+			if(a_tty.tg_bind_be_bd_pe[++x] == '\0'){
+				ASSERT(r == 1 && x == pelen);
+				i -= pelen;
+				goto jdone;
+			}
+		}while(--r > 0);
+	}
+
+jdone:
+	tlp->tl_defc.s[i] = '\0';
+
+	/* MULTILINE Finally SPACEify \n, but care for follow-line WS on escaped such */
+	for(bp = tlp->tl_defc.s; *bp != '\0'; ++bp){
+		if(*bp == '\\'){
+			if(bp[1] == '\0')
+				break;
+			if(bp[1] != '\n')
+				bp += (bp[1] == '\\'); /* escapes itself in this respect */
+			else{
+				char *cpx, c;
+
+				cpx = bp;
+				for(bp += 2; su_cs_is_space((c = *bp)) && c != '\n'; ++bp){
+				}
+				i -= P2UZ(bp - cpx);
+				su_cs_pcopy(cpx, bp);
+				bp = --cpx;
+			}
+		}else if(*bp == '\n'){
+			if(bp[1] == '\0'){
+				*bp = '\0';
+				--i;
+				break;
+			}else
+				*bp = ';';
+		}
+	}
+
+	*len = tlp->tl_defc.l = i;
+	rv = a_TTY_FUN_STATUS_RESTART;
+
+jleave:
+	NYD2_OU;
+	return rv;
+} /* }}} */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 static enum a_tty_fun_status
-a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
+a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){ /* {{{ */
 	enum a_tty_fun_status rv;
 	NYD2_IN;
 
@@ -3090,6 +3237,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
 			tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY | a_TTY_VF_BELL;
 			break;
 		}else if(0){
+		FALLTHRU
 	case a_X(FULLRESET):
 			tlp->tl_savec.s = tlp->tl_defc.s = NIL;
 			tlp->tl_savec.l = tlp->tl_defc.l = 0;
@@ -3114,6 +3262,12 @@ jreset:
 		rv = a_TTY_FUN_STATUS_RESTART;
 		break;
 
+# ifdef mx_HAVE_KEY_BINDINGS
+	case a_X(BE_BD_PS):
+		rv = a_tty_be_bd_ps(tlp, len);
+		break;
+# endif
+
 	default:
 	case a_X(COMMIT):
 		rv = a_TTY_FUN_STATUS_COMMIT;
@@ -3123,10 +3277,10 @@ jreset:
 
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
 static sz
-a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil  su_DVL_LOC_ARGS_DECL){
+a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil  su_DVL_LOC_ARGS_DECL){ /* {{{ */
 	/* We want to save code, yet we may have to incorporate a lines' default content and / or default input to
 	 * switch back to after some history movement; let "len > 0" mean "have to display some data buffer", and only
 	 * otherwise read(2) it */
@@ -3363,8 +3517,7 @@ jread_again:
 					/* If this one cannot continue we are likely finished! */
 					if(tbtp->tbt_children == NIL){
 						ASSERT(tbtp->tbt_bind != NIL);
-						tbf = tbtp->tbt_bind->tbc_flags;
-						goto jmle_fun;
+						goto jhave_bind;
 					}
 
 					/* Defer decision, try to read more characters */
@@ -3402,8 +3555,8 @@ jread_again:
 				if((tbtp = isp->tbtp)->tbt_bind != NIL){
 jhave_bind:
 					tbf = tbtp->tbt_bind->tbc_flags;
-jmle_fun:
 					if(tbf & a_TTY_BIND_FUN_INTERNAL){
+jmle_fun:
 						switch(a_tty_fun(tlp, tbf, &len)){
 						case a_TTY_FUN_STATUS_OK:
 							goto jinput_loop;
@@ -3433,8 +3586,8 @@ jmle_fun:
 
 			/* We need to take over all the sequence "as is" */
 jtake_over:
-			for(rv = 0, isp = isp_head; isp != NIL; ++rv, isp = isp->next)
-				;
+			for(rv = 0, isp = isp_head; isp != NIL; ++rv, isp = isp->next){
+			}
 			a_tty_check_grow(tlp, rv  su_DVL_LOC_ARGS_USE);
 			for(isp = isp_head; isp != NIL; isp = isp->next)
 				if(a_tty_kother(tlp, isp->tbtp->tbt_char)){
@@ -3527,9 +3680,9 @@ jinject_input:{
 	rv = S(sz,--i);
 	}
 	goto jleave;
-}
+} /* }}} */
 
-# ifdef mx_HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS /* {{{ */
 static BITENUM(u32,mx_go_input_flags)
 a_tty_bind_ctx_find(char const *name){
 	BITENUM(u32,mx_go_input_flags) rv;
@@ -3547,9 +3700,8 @@ jleave:
 	NYD2_OU;
 	return rv;
 }
-
 static boole
-a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
+a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace, boole shadow_ok){ /* {{{ */
 	struct a_tty_bind_ctx *tbcp;
 	boole rv;
 	NYD2_IN;
@@ -3560,14 +3712,20 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
 		goto jleave;
 
 	/* Since we use a single buffer for it all, need to replace as such */
-	if(tbpcp->tbpc_tbcp != NIL){
+	if((tbcp = tbpcp->tbpc_tbcp) != NIL){
 		if(!replace)
 			goto jleave;
+		if(!shadow_ok && (tbcp->tbc_flags & a_TTY_BIND_SHADOW)){
+jshadow:
+			n_err(_("%s: all the world is green: %s\n"), tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
+			goto jleave;
+		}
 		a_tty_bind_del(tbpcp);
 	}else if(a_tty.tg_bind_cnt == U32_MAX){
-		n_err(_("bind: maximum number of bindings already established\n"));
+		n_err(_("%s: binding limit exceeded\n"), tbpcp->tbpc_cmd);
 		goto jleave;
-	}
+	}else if(!shadow_ok && (tbpcp->tbpc_flags & a_TTY_BIND_SHADOW))
+		goto jshadow;
 
 	/* C99 */{
 		uz i, j;
@@ -3575,6 +3733,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
 		tbcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_bind_ctx,tbc__buf) +
 				tbpcp->tbpc_seq_len +1 + tbpcp->tbpc_exp.l +1 +
 				tbpcp->tbpc_cnv_align_mask + 1 + tbpcp->tbpc_cnv_len);
+		tbpcp->tbpc_tbcp = tbcp;
 		if(tbpcp->tbpc_ltbcp != NIL){
 			tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
 			tbpcp->tbpc_ltbcp->tbc_next = tbcp;
@@ -3598,22 +3757,26 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
 	}
 
 	/* Directly resolve any termcap(5) symbol if we are already setup */
-	if(a_tty.tg_is_init && (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) == a_TTY_BIND_RESOLVE)
-		a_tty_bind_resolve(tbcp);
+	if((tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) == a_TTY_BIND_RESOLVE){
+		if(a_tty.tg_flags & a_TTY_FLAGS_INIT)
+			a_tty_bind_resolve(tbcp);
+		else
+			a_tty.tg_flags |= a_TTY_FLAGS_BIND_INIT_NEEDS_RESOLVE;
+	}
 
 	++a_tty.tg_bind_cnt;
 	/* If this binding is usable invalidate the key input lookup trees */
 	if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
-		a_tty.tg_bind_isdirty = TRU1;
-	rv = TRU1;
+		a_tty.tg_flags |= a_TTY_FLAGS_BIND_DIRTY;
 
+	rv = TRU1;
 jleave:
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
 static boole
-a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
+a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){ /* {{{ */
 	enum{a_TRUE_RV = a_TTY__BIND_LAST<<1};
 
 	struct mx_visual_info_ctx vic;
@@ -3680,7 +3843,7 @@ a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
 			ep->seq_dat = savestrbuf(shin_save.s, i);
 		}
 
-		su_mem_set(&vic, 0, sizeof vic);
+		STRUCT_ZERO(struct mx_visual_info_ctx, &vic);
 		vic.vic_inlen = shoup->s_len;
 		vic.vic_indat = shoup->s_dat;
 		if(!mx_visual_info(&vic, mx_VISUAL_INFO_WOUT_CREATE | mx_VISUAL_INFO_WOUT_AUTO_ALLOC)){
@@ -3697,10 +3860,12 @@ jelen:
 		}
 		ep->cnv_dat = vic.vic_woudat;
 		ep->cnv_len = S(u32,vic.vic_woulen);
+		ASSERT(ep->cnv_len == 0 || ep->cnv_dat[ep->cnv_len] == '\0');
 
 		/* A termcap(5)/terminfo(5) identifier? */
 		if(ep->cnv_len > 1 && ep->cnv_dat[0] == ':'){
-			i = --ep->cnv_len, ++ep->cnv_dat;
+			i = --ep->cnv_len;
+			++ep->cnv_dat;
 #  if 0 /* ndef mx_HAVE_TERMCAP xxx User can, via *termcap*! */
 			if(n_poption & n_PO_D_V)
 				n_err(_("%s: no termcap(5)/terminfo(5) support: %s: %s\n"),
@@ -3712,16 +3877,20 @@ jelen:
 					tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
 				f |= a_TTY_BIND_DEFUNCT;
 			}
+
+			/* (We store it as char[]) */
 			while(i > 0)
-				/* (We store it as char[]) */
 				if(S(u32,ep->cnv_dat[--i]) & ~0x7Fu){
 					n_err(_("%s: invalid termcap(5)/terminfo(5) name content: %s: %s\n"),
 						tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
 					f |= a_TTY_BIND_DEFUNCT;
 					break;
 				}
-			ep->cnv_len |= S32_MIN; /* Needs resolve */
+
+			if(ep->cnv_len == 2 && ep->cnv_dat[0] == 'P' && ep->cnv_dat[1] == 'S')
+				f |= a_TTY_BIND_SHADOW; /* XXX generalize special treatment */
 			f |= a_TTY_BIND_RESOLVE;
+			ep->cnv_len |= S32_MIN; /* Needs resolve */
 		}
 
 		if(shs & n_SHEXP_STATE_STOP)
@@ -3773,7 +3942,7 @@ jeempty:
 				tail->cnv_len &= S32_MAX;
 				i |= S32_MIN;
 			}
-			tail->calc_cnv_len = (u32)i;
+			tail->calc_cnv_len = S(u32,i);
 		}
 		--seql;
 
@@ -3840,6 +4009,7 @@ jeempty:
 	if(isbindcmd){
 		char *exp;
 
+		/* However: this may be "bind show" request, in which case we are done */
 		if(isbindcmd == TRUM1){
 			if(tbpcp->tbpc_tbcp != NIL)
 				f |= a_TRUE_RV;
@@ -3868,16 +4038,13 @@ jeempty:
 		}
 
 		/* Reverse solidus cannot be placed last in expansion to avoid (at the time of this writing) possible
-		 * problems with newline escaping.  Do not care about (un)even number thereof */
+		 * problems with newline escaping.  xxx too simple: Do not care about (un)even number thereof */
 		if(i > 0 && exp[i - 1] == '\\'){
 			n_err(_("%s: reverse solidus cannot be last in expansion: %s\n"),
 				tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
 			goto jleave;
 		}
 
-		/* TODO `bind': since empty expansions are forbidden it would be nice to
-		 * TODO be able to say "bind base a,b,c" and see the expansion of only
-		 * TODO that (just like we do for `alias', `commandalias' etc.!) */
 		if(i == 0)
 			goto jeempty;
 
@@ -3894,16 +4061,16 @@ jeempty:
 			}
 	}
 
-  f |= a_TRUE_RV; /* TODO because we only now true and false; DEFUNCT.. */
+	f |= a_TRUE_RV; /* TODO because we only now true and false; DEFUNCT.. */
 jleave:
 	n_string_gut(shoup);
 
 	NYD2_OU;
 	return (f & a_TRUE_RV) != 0;
-}
+} /* }}} */
 
 static void
-a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
+a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){ /* {{{ */
 	char capname[a_TTY_BIND_CAPNAME_MAX +1];
 	struct mx_termcap_value tv;
 	uz len;
@@ -3981,10 +4148,10 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
 	}
 
 	NYD2_OU;
-}
+} /* }}} */
 
 static u32
-a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp){
+a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp){ /* {{{ */
 	u32 rv, flags;
 	NYD2_IN;
 
@@ -4034,12 +4201,12 @@ a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp){
 	}
 
 	flags = tbcp->tbc_flags;
-	fprintf(fp, "%sbind %s %s %s%s%s\n",
-		((flags & a_TTY_BIND_DEFUNCT)
+	fprintf(fp, "%s%sbind %s %s %s%s%s\n",
+		((flags & a_TTY_BIND_SHADOW) ? _("# <Internal> ") : su_empty),
 		/* I18N: `bind' sequence not working, either because it is
 		 * I18N: using Unicode and that is not available in the locale,
 		 * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
-			? _("# <Defunctional> ") : su_empty),
+		((flags & a_TTY_BIND_DEFUNCT) ? _("# <Defunctional> ") : su_empty),
 		a_tty_input_ctx_maps[flags & mx__GO_INPUT_CTX_MASK].ticm_name,
 		tbcp->tbc_seq, n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
 		(flags & a_TTY_BIND_NOCOMMIT ? n_at : su_empty),
@@ -4048,7 +4215,7 @@ a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp){
 
 	NYD2_OU;
 	return ++rv;
-}
+} /* }}} */
 
 static void
 a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
@@ -4064,7 +4231,7 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
 	su_FREE(tbcp);
 
 	--a_tty.tg_bind_cnt;
-	a_tty.tg_bind_isdirty = TRU1;
+	a_tty.tg_flags |= a_TTY_FLAGS_BIND_DIRTY;
 
 	NYD2_OU;
 }
@@ -4091,7 +4258,7 @@ a_tty_bind_tree_build(void){
 	}
 
 	if(n_poption & n_PO_D_VVV){
-		n_err(_("`bind': key binding tree:\n"));
+		n_err(_("bind: key binding tree:\n"));
 
 		for(i = 0; i < mx__GO_INPUT_CTX_MAX1; ++i){
 			uz j;
@@ -4103,7 +4270,7 @@ a_tty_bind_tree_build(void){
 		}
 	}
 
-	a_tty.tg_bind_isbuild = TRU1;
+	a_tty.tg_flags |= a_TTY_FLAGS_BIND_BUILT;
 
 	NYD2_OU;
 }
@@ -4119,15 +4286,15 @@ a_tty_bind_tree_teardown(void){
 	for(i = 0; i < mx__GO_INPUT_CTX_MAX1; ++i)
 		for(j = 0; j < a_TTY_PRIME; ++j)
 			a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
-	su_mem_set(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
+	su_mem_set(a_tty.tg_bind_tree, 0, sizeof(a_tty.tg_bind_tree));
 
-	a_tty.tg_bind_isdirty = a_tty.tg_bind_isbuild = FAL0;
+	a_tty.tg_flags &= ~(a_TTY_FLAGS_BIND_DIRTY | a_TTY_FLAGS_BIND_BUILT);
 
 	NYD2_OU;
 }
 
 static void
-a_tty__bind_tree_add(u32 hmap_idx, struct a_tty_bind_tree *store[a_TTY_PRIME], struct a_tty_bind_ctx *tbcp){
+a_tty__bind_tree_add(u32 hmap_idx, struct a_tty_bind_tree *store[a_TTY_PRIME], struct a_tty_bind_ctx *tbcp){ /* {{{ */
 	u32 cnvlen;
 	char const *cnvdat;
 	struct a_tty_bind_tree *ntbtp;
@@ -4200,7 +4367,7 @@ a_tty__bind_tree_add(u32 hmap_idx, struct a_tty_bind_tree *store[a_TTY_PRIME], s
 	ntbtp->tbt_bind = tbcp;
 
 	NYD2_OU;
-}
+} /* }}} */
 
 static struct a_tty_bind_tree *
 a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep, struct a_tty_bind_tree *parentp, wchar_t wc, boole ismbseq){
@@ -4297,29 +4464,29 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
 
 	NYD2_OU;
 }
-# endif /* mx_HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS }}} */
 
 void
-mx_tty_init(boole ismain){
+mx_tty_init(boole ismain){ /* {{{ */
 	NYD_IN;
 	UNUSED(ismain);
-	ASSERT(!a_tty.tg_is_init);
+	ASSERT(!(a_tty.tg_flags & a_TTY_FLAGS_INIT));
 	ASSERT(ismain || (n_psonce & n_PSO_STARTED_CONFIG_FILES));
 
 	if(ok_blook(line_editor_disable))
 		goto jleave;
 
-	a_tty.tg_is_init = TRU1;
+	a_tty.tg_flags |= a_TTY_FLAGS_INIT;
 
 	/* Load the history file */
 # ifdef mx_HAVE_HISTORY
 	a_tty_hist_load(FAL0);
 # endif
 
-# ifdef mx_HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS /* TODO outsource block into own file */
 	/* `bind's (and `unbind's) done from within resource files could not be performed for real since our termcap
 	 * driver wasn't yet loaded, and we cannot perform automatic init since the user may have disallowed so */
-	/* C99 */{ /* TODO outsource into own file */
+	if(a_tty.tg_flags & a_TTY_FLAGS_BIND_INIT_NEEDS_RESOLVE){
 		struct a_tty_bind_ctx *tbcp;
 		BITENUM(u32,mx_go_input_flags) gif;
 
@@ -4330,36 +4497,63 @@ mx_tty_init(boole ismain){
 	}
 
 	/* And we want to (try to) install some default key bindings */
-	if(!ok_blook(line_editor_no_defaults)){
+	/* C99 */{
 		char buf[8];
+		boole doit;
+		u32 flags;
 		struct a_tty_bind_parse_ctx tbpc;
 		struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
-		u32 flags;
 
 		buf[0] = '$', buf[1] = '\'', buf[2] = '\\', buf[3] = 'c',
 			buf[5] = '\'', buf[6] = '\0';
-
 		tbbtp = a_tty_bind_base_tuples;
 		tbbtp_max = &tbbtp[NELEM(a_tty_bind_base_tuples)];
 		flags = mx_GO_INPUT_CTX_BASE;
+		doit = !ok_blook(line_editor_no_defaults);
+
+		/* We always want BE_BD bracketed paste mode! */
+		if(!doit){
+			tbbtp = &tbbtp_max[-1]; /* Last one by definition */
+			ASSERT(tbbtp->tbbt_query == mx_TERMCAP_QUERY_PS);
+			goto Jbuiltin;
+		}
+
 jbuiltin_redo:
-		for(; tbbtp < tbbtp_max; ++tbbtp){
-			su_mem_set(&tbpc, 0, sizeof tbpc);
+		for(; tbbtp < tbbtp_max; ++tbbtp) Jbuiltin:{
+			boole shadow_ok;
+
+			STRUCT_ZERO(struct a_tty_bind_parse_ctx, &tbpc);
 			tbpc.tbpc_cmd = "bind";
 			if(tbbtp->tbbt_iskey){
 				buf[4] = tbbtp->tbbt_ckey;
 				tbpc.tbpc_in_seq = buf;
 			}else
-				tbpc.tbpc_in_seq = savecatsep(":", '\0', mx_termcap_name_of_query(tbbtp->tbbt_query));
+				tbpc.tbpc_in_seq = savecatsep(":", '\0',
+						mx_termcap_name_of_query(tbbtp->tbbt_query));
 			tbpc.tbpc_exp.s = UNCONST(char*,tbbtp->tbbt_exp[0] == '\0'
 					? a_tty_bind_fun_names[S(u8,tbbtp->tbbt_exp[1])]
 					: tbbtp->tbbt_exp);
 			tbpc.tbpc_exp.l = su_cs_len(tbpc.tbpc_exp.s);
 			tbpc.tbpc_flags = flags;
-			/* ..but do not want to overwrite any user settings */
-			a_tty_bind_create(&tbpc, FAL0);
+
+			/* ..but do not want to overwrite any user settings.
+			 * BE_BD Bracketed paste mode is special as we need both, PS and PE. */
+			shadow_ok = (tbbtp->tbbt_query == mx_TERMCAP_QUERY_PS);
+			if(a_tty_bind_create(&tbpc, FAL0, shadow_ok) && shadow_ok){
+				struct mx_termcap_value tv;
+				uz i;
+
+				tbpc.tbpc_tbcp->tbc_flags |= a_TTY_BIND_SHADOW;
+				if(mx_termcap_query(mx_TERMCAP_QUERY_PE, &tv) &&
+						tv.tv_captype == mx_TERMCAP_CAPTYPE_STRING &&
+						(i = su_cs_len(tv.tv_data.tvd_string)) < sizeof(a_tty.tg_bind_be_bd_pe)){
+					su_mem_copy(a_tty.tg_bind_be_bd_pe, tv.tv_data.tvd_string, ++i);
+					a_tty.tg_flags |= a_TTY_FLAGS_BIND_BE_BD;
+				}else
+					tbpc.tbpc_tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
+			}
 		}
-		if(flags == mx_GO_INPUT_CTX_BASE){
+		if(doit && flags == mx_GO_INPUT_CTX_BASE){
 			tbbtp = a_tty_bind_default_tuples;
 			tbbtp_max = &tbbtp[NELEM(a_tty_bind_default_tuples)];
 			flags = mx_GO_INPUT_CTX_DEFAULT;
@@ -4370,34 +4564,46 @@ jbuiltin_redo:
 
 jleave:
 	NYD_OU;
-}
+} /* }}} */
 
 void
 mx_tty_destroy(boole xit_fastpath){
 	NYD_IN;
 
-	if(!a_tty.tg_is_init)
+	if(!(a_tty.tg_flags & a_TTY_FLAGS_INIT))
 		goto jleave;
 
 # if defined mx_HAVE_KEY_BINDINGS && DVLOR(1, 0)
 	if(!xit_fastpath){
-		mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
+		struct a_tty_bind_parse_ctx tbpc;
+		struct a_tty_bind_ctx *tbcp;
+		BITENUM(u32,mx_go_input_flags) gif;
+
 		a_tty_bind_tree_teardown();
+
+		for(gif = mx_GO_INPUT_CTX_BASE; gif < mx__GO_INPUT_CTX_MAX1; ++gif){
+			while((tbcp = a_tty.tg_bind[gif]) != NIL){
+				STRUCT_ZERO(struct a_tty_bind_parse_ctx, &tbpc);
+				tbpc.tbpc_tbcp = tbcp;
+				tbpc.tbpc_flags = gif;
+				a_tty_bind_del(&tbpc);
+			}
+		}
 	}
 # endif
 
 	/* Write the history file */
 # ifdef mx_HAVE_HISTORY
-	if(!xit_fastpath && a_tty.tg_hist_is_init){
+	if(!xit_fastpath && (a_tty.tg_flags & a_TTY_FLAGS_HIST_INIT)){
 		a_tty_hist_save(FAL0);
 		DVL(a_tty_hist_clear();)
 		su_cs_dict_gut(&a_tty.tg_hist_dict);
-		DVL(a_tty.tg_hist_is_init = FAL0;)
+		DVL(a_tty.tg_flags ^= a_TTY_FLAGS_HIST_INIT);
 	}
 # endif
 
 # if DVLOR(1, 0)
-	su_mem_set(&a_tty, 0, sizeof a_tty);
+	STRUCT_ZERO(struct a_tty_global, &a_tty);
 # endif
 
 jleave:
@@ -4413,10 +4619,12 @@ int
 	NYD_IN;
 	ASSERT(!ok_blook(line_editor_disable));
 
-	if(!a_tty.tg_is_init)
+	if(!(a_tty.tg_flags & a_TTY_FLAGS_INIT))
 		mx_tty_init(FAL0);
 
-	su_mem_set(&tl, 0, sizeof tl);
+	su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+
+	STRUCT_ZERO(struct a_tty_line, &tl);
 	tl.tl_goinflags = gif;
 	if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
 		tl.tl_prompt = n_string_creat_auto(&xprompt);
@@ -4435,12 +4643,17 @@ int
 	a_tty.tg_line = &tl;
 	mx_termios_cmd(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_RAW, 1);
 	mx_termios_on_state_change_set(&a_tty_on_state_change, S(up,NIL));
-	mx_TERMCAP_RESUME(FAL0);
+	mx_termcap_resume(mx_TERMCAP_MODE_BASE |
+		((a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD) ? mx_TERMCAP_MODE_SMART : 0));
 	nn = a_tty_readline(&tl, n, histok_or_nil  su_DVL_LOC_ARGS_USE);
-	/*mx_COLOUR( mx_colour_env_gut(); )
-	 *mx_TERMCAP_SUSPEND(FAL0);*/
+	/* Via on_state_change (mem bag then via normal go machinery):
+	 *mx_COLOUR( mx_colour_env_gut(); )
+	 *mx_termcap_suspend(mx_TERMCAP_MODE_BASE |
+	 *	((a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD) ? mx_TERMCAP_MODE_SMART : 0));*/
 	mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
 	a_tty.tg_line = NIL;
+
+	su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
 	NYD_OU;
 	return S(int,nn);
@@ -4460,7 +4673,8 @@ mx_tty_addhist(char const *s, BITENUM(u32,mx_go_input_flags) gif){
 
 	gt = su_empty;
 
-	if(*s != '\0' && a_tty.tg_is_init && a_tty.tg_hist_size_max > 0 && !ok_blook(line_editor_disable) &&
+	if(*s != '\0' && (a_tty.tg_flags & a_TTY_FLAGS_INIT) &&
+			a_tty.tg_hist_size_max > 0 && !ok_blook(line_editor_disable) &&
 			(!(gif & mx_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif, &gt))){
 		/* TODO *on-history-addition*: a future version will give the expanded
 		 * TODO command name as the third argument, followed by the tokenized
@@ -4502,7 +4716,7 @@ c_history(void *vp){
 		n_err(_("history: *line-editor-disable* is set\n"));
 		x = FAL0;
 		goto jleave;
-	}else if(!a_tty.tg_is_init)
+	}else if(!(a_tty.tg_flags & a_TTY_FLAGS_INIT))
 		mx_tty_init(FAL0);
 
 	x = TRUM1;
@@ -4534,7 +4748,7 @@ jleave:
 
 # ifdef mx_HAVE_KEY_BINDINGS
 int
-c_bind(void *vp){
+c_bind(void *vp){ /* {{{ */
 	struct a_tty_bind_ctx *tbcp;
 	union {char const *cp; char *p; char c;} c;
 	boole show, aster;
@@ -4587,7 +4801,7 @@ c_bind(void *vp){
 		struct a_tty_bind_parse_ctx tbpc;
 		struct mx_cmd_arg *cap;
 
-		su_mem_set(&tbpc, 0, sizeof tbpc);
+		STRUCT_ZERO(struct a_tty_bind_parse_ctx, &tbpc);
 		tbpc.tbpc_flags = gif;
 		tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
 		tbpc.tbpc_in_seq = (cap = cacp->cac_arg->ca_next)->ca_arg.ca_str.s;
@@ -4596,12 +4810,12 @@ c_bind(void *vp){
 			tbpc.tbpc_exp.s = cap->ca_arg.ca_str.s;
 			tbpc.tbpc_exp.l = cap->ca_arg.ca_str.l;
 
-			if(!a_tty_bind_create(&tbpc, TRU1))
+			if(!a_tty_bind_create(&tbpc, TRU1, FAL0))
 				vp = NIL;
 		}else{
 			if(!a_tty_bind_parse(&tbpc, TRUM1) || tbpc.tbpc_tbcp == NIL){
 				ASSERT(gif != R(BITENUM(u32,mx_go_input_flags),-1));
-				n_err(_("bind: no such `bind'ing to show: %s %s\n"),
+				n_err(_("bind: no such binding to show: %s %s\n"),
 					a_tty_input_ctx_maps[gif].ticm_name,
 					n_shexp_quote_cp(tbpc.tbpc_in_seq, FAL0));
 				vp = NIL;
@@ -4615,10 +4829,10 @@ c_bind(void *vp){
 jleave:
 	NYD_OU;
 	return (vp != NIL) ? su_EX_OK : su_EX_ERR;
-}
+} /* }}} */
 
 int
-c_unbind(void *vp){
+c_unbind(void *vp){ /* {{{ */
 	struct a_tty_bind_parse_ctx tbpc;
 	struct a_tty_bind_ctx *tbcp;
 	BITENUM(u32,mx_go_input_flags) gif;
@@ -4643,14 +4857,24 @@ c_unbind(void *vp){
 	c.cp = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
 jredo:
 	if(n_is_all_or_aster(c.cp)){
+		struct a_tty_bind_ctx *head;
+
+		head = NIL;
 		while((tbcp = a_tty.tg_bind[gif]) != NIL){
-			su_mem_set(&tbpc, 0, sizeof tbpc);
-			tbpc.tbpc_tbcp = tbcp;
-			tbpc.tbpc_flags = gif;
-			a_tty_bind_del(&tbpc);
+			if(UNLIKELY(tbcp->tbc_flags & a_TTY_BIND_SHADOW)){
+				a_tty.tg_bind[gif] = tbcp->tbc_next;
+				tbcp->tbc_next = head;
+				head = tbcp;
+			}else{
+				STRUCT_ZERO(struct a_tty_bind_parse_ctx, &tbpc);
+				tbpc.tbpc_tbcp = tbcp;
+				tbpc.tbpc_flags = gif;
+				a_tty_bind_del(&tbpc);
+			}
 		}
+		a_tty.tg_bind[gif] = head;
 	}else{
-		su_mem_set(&tbpc, 0, sizeof tbpc);
+		STRUCT_ZERO(struct a_tty_bind_parse_ctx, &tbpc);
 		tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
 		tbpc.tbpc_in_seq = c.cp;
 		tbpc.tbpc_flags = gif;
@@ -4658,7 +4882,10 @@ jredo:
 		if(UNLIKELY(!a_tty_bind_parse(&tbpc, FAL0)))
 			vp = NIL;
 		else if(UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NIL)){
-			n_err(_("unbind: no such `bind'ing: %s  %s\n"), a_tty_input_ctx_maps[gif].ticm_name, c.cp);
+			n_err(_("unbind: no such binding: %s: %s\n"), a_tty_input_ctx_maps[gif].ticm_name, c.cp);
+			vp = NIL;
+		}else if(UNLIKELY(tbcp->tbc_flags & a_TTY_BIND_SHADOW)){
+			n_err(_("unbind: all the world is green: %s: %s\n"), a_tty_input_ctx_maps[gif].ticm_name, c.cp);
 			vp = NIL;
 		}else
 			a_tty_bind_del(&tbpc);
@@ -4670,7 +4897,7 @@ jredo:
 jleave:
 	NYD_OU;
 	return (vp != NIL) ? su_EX_OK : su_EX_ERR;
-}
+} /* }}} */
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 #else /* mx_HAVE_MLE */
