@@ -35,7 +35,7 @@ This is a multi-part message in MIME format.
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-ID: <19961002015007.AQACA%from@exam.ple>
+Content-ID: <19961002015007.AQAAAgAA@from%exam.ple>
 
 body
 oce>

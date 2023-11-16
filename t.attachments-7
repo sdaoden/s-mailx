@@ -4,7 +4,7 @@ Author: reproducible_build@reproducible_build
 From: reproducible_build@reproducible_build
 To: ex@am.ple
 Subject: Y
-Message-ID: <19961002015007.AQACAAAA@reproducible_build>
+Message-ID: <19961002015007.AQAAAgAA@reproducible_build%reproducible_build>
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
  boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
@@ -14,14 +14,14 @@ This is a multi-part message in MIME format.
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx.a1"
-Content-ID: <19961002015007.AwAEAAAA@reproducible_build>
+Content-ID: <19961002015007.AwAABAAA@reproducible_build%reproducible_build>
 
 att1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx a2"
-Content-ID: <19961002015007.BQAGAAAA@reproducible_build>
+Content-ID: <19961002015007.BQAABgAA@reproducible_build%reproducible_build>
 
 att2-1
 att2-2
@@ -30,7 +30,7 @@ att2-4
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="txa3"
-Content-ID: <19961002015007.BwAIAAAA@reproducible_build>
+Content-ID: <19961002015007.BwAACAAA@reproducible_build%reproducible_build>
 
 att3-1
 att3-2
@@ -39,7 +39,7 @@ att3-4
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx a4"
-Content-ID: <19961002015007.CQAKAAAA@reproducible_build>
+Content-ID: <19961002015007.CQAACgAA@reproducible_build%reproducible_build>
 
 att4-1
 att4-2

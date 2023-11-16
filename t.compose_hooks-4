@@ -11,7 +11,7 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
-Message-ID: <19961002015007.AQACA%f2@z>
+Message-ID: <19961002015007.AQAAAgAA@f2%z>
 
 b2
 
@@ -118,17 +118,17 @@ To: fwdex@am.ple
 Cc: ocl@exam.ple
 Bcc: oce@exam.ple
 
--- forward (f2@z)(1996-10-02 01:50)(du <f2@z>)(19961002015007.AQACA%f2@z)(f2@z)(du) --
+-- forward (f2@z)(1996-10-02 01:50)(du <f2@z>)(19961002015007.AQAAAgAA@f2%z)(f2@z)(du) --
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
-Message-ID: <19961002015007.AQACA%f2@z>
+Message-ID: <19961002015007.AQAAAgAA@f2%z>
 Status: R
 
 b2
 
--- end of forward (19961002015007.AQACA%f2@z) --
+-- end of forward (19961002015007.AQAAAgAA@f2%z) --
 this is content of forward 2
 t_ocs version 0 0 3
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
@@ -157,17 +157,17 @@ To: fwdex2@am.ple
 Cc: ocl@exam.ple
 Bcc: oce@exam.ple
 
--- forward (f2@z)(1996-10-02 01:50)(du <f2@z>)(19961002015007.AQACA%f2@z)(du)(du) --
+-- forward (f2@z)(1996-10-02 01:50)(du <f2@z>)(19961002015007.AQAAAgAA@f2%z)(du)(du) --
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
-Message-ID: <19961002015007.AQACA%f2@z>
+Message-ID: <19961002015007.AQAAAgAA@f2%z>
 Status: R
 
 b2
 
--- end of forward (19961002015007.AQACA%f2@z) --
+-- end of forward (19961002015007.AQAAAgAA@f2%z) --
 this is content of forward 2, 2nd, with showname set
 t_ocs version 0 0 3
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
@@ -207,7 +207,7 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
-Message-ID: <19961002015007.AQACA%f2@z>
+Message-ID: <19961002015007.AQAAAgAA@f2%z>
 
 b2
 
@@ -224,7 +224,7 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
-Message-ID: <19961002015007.AQACA%f2@z>
+Message-ID: <19961002015007.AQAAAgAA@f2%z>
 
 b2
 
