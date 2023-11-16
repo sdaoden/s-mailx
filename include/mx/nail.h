@@ -717,6 +717,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_mbox_fcc_and_pcc, /* {i3val=1} */
    ok_b_mbox_rfc4155,
    ok_b_memdebug, /* {vip=1} */
+   ok_v_message_id,
    ok_b_message_id_disable,
    ok_v_message_inject_head,
    ok_v_message_inject_tail,
