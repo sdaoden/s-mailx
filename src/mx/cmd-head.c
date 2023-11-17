@@ -552,9 +552,9 @@ a_chead__subject(struct message *mp, boole threaded,
       char *os;
 
       if(visible(mp) && (os = hfield1("subject", mp)) != NIL){
-         if(!su_cs_cmp_case(ms, mx_header_subject_edit(os,
-               mx_HEADER_SUBJECT_EDIT_DECODE_MIME |
-               mx_HEADER_SUBJECT_EDIT_TRIM_ALL))){
+         os = mx_header_subject_edit(os, (mx_HEADER_SUBJECT_EDIT_DECODE_MIME |
+                  mx_HEADER_SUBJECT_EDIT_TRIM_ALL));
+         if(!su_cs_cmp_case(ms, os)){
             su_FREE(out.s);
             rv = R(char*,-1);
          }
