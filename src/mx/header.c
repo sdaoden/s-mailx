@@ -2787,7 +2787,7 @@ jleave:
 
 FL char *
 mx_header_subject_edit(char const *subp,
-      BITENUM(u32,mx_header_subject_edit_flags) hsef){
+      BITENUM(u32,mx_header_subject_edit_flags) hsef){ /* {{{ */
    struct{
       u8 len;
       char dat[7];
@@ -2803,37 +2803,49 @@ mx_header_subject_edit(char const *subp,
       {0, ""}
    };
 
-   struct str in, out;
+   struct str ltag, in, out;
    char *re_st_base, *re_st, *re_st_x;
    uz re_l;
-   boole any;
+   boole any, any_real;
    BITENUM(u32,mx_header_subject_edit_flags) hsef_any;
+   void *lofi_snap;
    NYD_IN;
+
+   lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
+   hsef_any = mx_HEADER_SUBJECT_EDIT_NONE;
+   any = any_real = FAL0;
+   UNINIT(re_l, 0);
+   re_st_base = re_st = NIL;
+   ltag.l = 0;
 
    if(subp == NIL){
       subp = su_empty;
       hsef &= ~mx_HEADER_SUBJECT_EDIT_DECODE_MIME;
-      goto jprepend;
+      goto jleave;
    }
 
    if(hsef & mx_HEADER_SUBJECT_EDIT_DECODE_MIME){
+      hsef ^= mx_HEADER_SUBJECT_EDIT_DECODE_MIME;
+      hsef |= mx_HEADER_SUBJECT_EDIT_DUP;
+
       in.l = su_cs_len(in.s = UNCONST(char*,subp));
       if(!mx_mime_display_from_header(&in, &out,
             mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
          subp = su_empty;
-         goto jprepend;
+         goto jleave;
       }
-      subp = re_st = su_AUTO_ALLOC(out.l +1);
-      su_mem_copy(re_st, out.s, out.l +1);
+
+      subp = su_LOFI_ALLOC(out.l +1);
+      su_mem_copy(UNCONST(char*,subp), out.s, out.l +1);
       su_FREE(out.s);
    }
 
-   if(!(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_ALL))
-      goto jprepend;
+   /* Skip leading WS once and for all no matter what */
+   while(su_cs_is_space(*subp))
+      ++subp;
 
-   hsef_any = mx_HEADER_SUBJECT_EDIT_NONE;
-   re_st_base = re_st = NIL;
-   UNINIT(re_l, 0);
+   if(!(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_ALL))
+      goto jleave;
 
    if(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_RE){
       hsef ^= mx_HEADER_SUBJECT_EDIT_TRIM_RE;
@@ -2844,7 +2856,7 @@ mx_header_subject_edit(char const *subp,
             (re_l = su_cs_len(re_st_x)) > 0){
          /* To avoid too much noise on buffers, just allocate a buffer twice
           * as large and use the tail as a cs_sep_c() buffer */
-         re_st = re_st_base = n_lofi_alloc(++re_l * 2); /* XXX overflow */
+         re_st = re_st_base = su_LOFI_ALLOC(++re_l * 2); /* XXX overflow */
          su_mem_copy(re_st, re_st_x, re_l);
       }
    }else /*if(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_FWD)*/{
@@ -2853,17 +2865,48 @@ mx_header_subject_edit(char const *subp,
       base = fwd_ign;
    }
 
-   any = FAL0;
-jouter:
+jagain:
    while(*subp != '\0'){
       while(su_cs_is_space(*subp))
          ++subp;
 
+      /* Newer mailman (i think) edit subjects and place the tag first anyhow.
+       * To be able to deal with "X: X: [TAG]" and "[TAG] X: X:" do both.
+       * This may be wrong, but when the hierarchy is broken it is kaputt.
+       * Restrict "tag" to non-WS and least of size 1 */
+      if(*subp == '['){
+         if(any_real < FAL0)
+            goto jleave;
+         any_real = TRUM1;
+
+         for(ltag.s = UNCONST(char*,subp);;){
+            char c;
+
+            c = *++ltag.s;
+
+            if(c == ']'){
+               c = *++ltag.s;
+               if(c == '\0')
+                  break;
+               ltag.l = P2UZ(ltag.s - subp);
+               if(ltag.l == 2){
+                  ltag.l = 0;
+                  break;
+               }
+               ltag.s = UNCONST(char*,subp);
+               subp += ltag.l;
+               goto jagain;
+            }else if(c == '\0' || su_cs_is_space(c))
+               break;
+         }
+      }
+
       for(pp = base; pp->len > 0; ++pp)
-         if(su_cs_starts_with_case(subp, pp->dat)){
+         if(su_cs_starts_with_case(subp, pp->dat) &&
+               su_cs_is_space(subp[pp->len])){
             subp += pp->len;
-            any = TRU1;
-            goto jouter;
+            any = any_real |= TRU1;
+            goto jagain;
          }
 
       if(re_st != NIL){
@@ -2872,9 +2915,14 @@ jouter:
          su_mem_copy(re_st_x = &re_st[re_l], re_st, re_l);
          while((cp = su_cs_sep_c(&re_st_x, ',', TRU1)) != NIL)
             if(su_cs_starts_with_case(subp, cp)){
-               subp += su_cs_len(cp);
-               any = TRU1;
-               goto jouter;
+               uz i;
+
+               i = su_cs_len(cp);
+               if(su_cs_is_space(subp[i])){
+                  subp += i;
+                  any = any_real |= TRU1;
+                  goto jagain;
+               }
             }
       }
 
@@ -2887,10 +2935,10 @@ jouter:
       base = fwd_ign;
       re_st = NIL;
       any = FAL0;
-      goto jouter;
+      goto jagain;
    }
 
-   /* May have seen "Re: Fwd: Re:" with _ALL -- this was trimmed to "Re:"! */
+   /* May have had "Re: Fwd: Re:" with _ALL -- trimmed to "Re:"!  Restart! */
    if(any && (hsef_any & (mx_HEADER_SUBJECT_EDIT_TRIM_FWD |
             mx_HEADER_SUBJECT_EDIT_TRIM_RE)
          ) == (mx_HEADER_SUBJECT_EDIT_TRIM_FWD |
@@ -2900,24 +2948,46 @@ jouter:
       base = re_ign;
       re_st = re_st_base;
       any = FAL0;
-      goto jouter;
+      goto jagain;
    }
 
-   if(re_st_base != NIL)
-      n_lofi_free(re_st_base);
+jleave:
+   re_l = su_cs_len(subp);
+   out.s = su_LOFI_ALLOC(ltag.l + 1 + sizeof("Fwd: ") -1 + re_l +1);
+   out.l = 0;
 
-jprepend:
    /* Anything trimmed, we may need to prepend, too */
-   if(*subp != '\0' && (hsef & mx_HEADER_SUBJECT_EDIT__PREPEND_MASK))
-      subp = savecatsep(((hsef & mx_HEADER_SUBJECT_EDIT_PREPEND_RE)
-            ? "Re:" : "Fwd:"), ' ', subp);
-   else if((hsef & mx_HEADER_SUBJECT_EDIT_DUP) &&
+   any = FAL0;
+   if(re_l > 0 && (hsef & mx_HEADER_SUBJECT_EDIT__PREPEND_MASK)){
+      any = TRU1;
+      if(hsef & mx_HEADER_SUBJECT_EDIT_PREPEND_RE)
+         in.s = UNCONST(char*,"Re: "), in.l = sizeof("Re: ") -1;
+      else
+         in.s = UNCONST(char*,"Fwd: "), in.l = sizeof("Fwd: ") -1;
+      su_mem_copy(out.s, in.s, in.l);
+      out.l = in.l;
+   }else if((hsef & mx_HEADER_SUBJECT_EDIT_DUP) &&
          !(hsef & mx_HEADER_SUBJECT_EDIT_DECODE_MIME))
-      subp = savestr(subp);
+      any = TRU1;
+
+   if(ltag.l > 0){
+      any = TRU1;
+      su_mem_copy(&out.s[out.l], ltag.s, ltag.l);
+      out.l += ltag.l;
+      out.s[out.l++] = ' ';
+   }
+
+   if(any || re_l == 0){
+      su_mem_copy(&out.s[out.l], subp, re_l);
+      out.l += re_l;
+      subp = savestrbuf(out.s, out.l);
+   }
+
+   su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, lofi_snap);
 
    NYD_OU;
    return UNCONST(char*,subp);
-}
+} /* }}} */
 
 FL int
 msgidcmp(char const *s1, char const *s2)
