@@ -45,11 +45,14 @@
 #include <su/icodec.h>
 
 #include "mx/cmd.h"
-#include "mx/colour.h"
 #include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
 #include "mx/termios.h"
+
+#ifdef mx_HAVE_COLOUR
+# include "mx/colour.h"
+#endif
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/
@@ -162,15 +165,15 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          if((obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }
-      mx_COLOUR(
+#ifdef mx_HAVE_COLOUR
          if(action == SEND_TODISP || action == SEND_TODISP_ALL)
             mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf);
-      )
+#endif
    }
-   mx_COLOUR(
-      else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-         mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout);
-   )
+#ifdef mx_HAVE_COLOUR
+   else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
+      mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout);
+#endif
 
    rv = 0;
    n_autorec_relax_create();
@@ -203,10 +206,10 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          tstats[0] += mstats[0];
    }
    n_autorec_relax_gut();
-   mx_COLOUR(
-      if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
-         mx_colour_env_gut();
-   )
+#ifdef mx_HAVE_COLOUR
+   if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
+      mx_colour_env_gut();
+#endif
 
 jleave:
    if(obuf != n_stdout)
@@ -278,7 +281,9 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
 
    plines = 0;
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf);
+#endif
    n_string_creat_auto(&s);
    /* C99 */{
       sz l;
@@ -414,7 +419,9 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
    }
 
    n_string_gut(&s);
-   mx_COLOUR( mx_colour_env_gut(); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_gut();
+#endif
 
    if(pbuf != n_stdout){
       page_or_print(pbuf, plines);
@@ -533,7 +540,9 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    setdot(mp, TRU1);
    uncollapse1(mp, 1);
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout);
+#endif
 
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
       n_pstate_err_no = su_ERR_IO;
@@ -543,7 +552,9 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    else
       n_pstate_err_no = su_ERR_NONE;
 
-   mx_COLOUR( mx_colour_env_gut(); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_gut();
+#endif
 
    rv = (n_pstate_err_no != su_ERR_NONE);
 jleave:

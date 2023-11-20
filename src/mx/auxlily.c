@@ -52,13 +52,15 @@
 
 #include "mx/child.h"
 #include "mx/cmd.h"
-#include "mx/colour.h"
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 
+#ifdef mx_HAVE_COLOUR
+# include "mx/colour.h"
+#endif
 #ifdef mx_HAVE_ERRORS
 # include "mx/cmd.h"
 #endif
@@ -535,7 +537,9 @@ FL void
 n_verrx(boole allow_multiple, char const *format, void *vlp){/*XXX sigcondom TODO MONSTER! */
 	/* Unhappy: too complicated, too slow; should possibly print repitition
 	 * count more often, but be aware of n_PS_ERRORS_NEED_PRINT_ONCE docu */
-	mx_COLOUR( static uz c5recur; ) /* *termcap* recursion */
+#ifdef mx_HAVE_COLOUR
+	static uz c5recur; /* *termcap* recursion */
+#endif
 #ifdef mx_HAVE_ERRORS
 	u32 errlim;
 #endif
@@ -548,7 +552,9 @@ n_verrx(boole allow_multiple, char const *format, void *vlp){/*XXX sigcondom TOD
 	NYD2_IN;
 
 	vap = S(va_list*,vlp);
-	mx_COLOUR( ++c5recur; )
+#ifdef mx_HAVE_COLOUR
+	++c5recur;
+#endif
 	lpref = NIL;
 	c5pref = c5suff = su_empty;
 
@@ -770,7 +776,9 @@ n_verrx(boole allow_multiple, char const *format, void *vlp){/*XXX sigcondom TOD
 
 jleave:
 	mx_fs_linepool_release(s_b.s, s_b.l);
-	mx_COLOUR( --c5recur; )
+#ifdef mx_HAVE_COLOUR
+	--c5recur;
+#endif
 
 	NYD2_OU;
 }
