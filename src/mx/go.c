@@ -42,7 +42,6 @@
 #include "mx/cmd.h"
 #include "mx/cmd-cnd.h"
 #include "mx/cmd-commandalias.h"
-#include "mx/colour.h"
 #include "mx/dig-msg.h"
 #include "mx/fexpand.h"
 #include "mx/file-locks.h"
@@ -51,6 +50,10 @@
 #include "mx/termios.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
+
+#ifdef mx_HAVE_COLOUR
+# include "mx/colour.h"
+#endif
 
 #include "mx/go.h"
 /*#define NYDPROF_ENABLE*/
@@ -1210,10 +1213,10 @@ jrestart:
 	}
 
 	/* Cleanup non-crucial external stuff */
-	mx_COLOUR(
-		if(gcp->gc_data.gdc_colour != NIL)
-			mx_colour_stack_del(&gcp->gc_data);
-	)
+#ifdef mx_HAVE_COLOUR
+	if(gcp->gc_data.gdc_colour != NIL)
+		mx_colour_stack_del(&gcp->gc_data);
+#endif
 
 	/* Cleanup crucial external stuff as necessary */
 	if(gcp->gc_data.gdc_ifcond != NIL &&
@@ -1248,7 +1251,9 @@ jrestart:
 		n_pstate &= ~n_PS_ROBOT;
 		ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK & ~a_GO_XCALL_SEEN));
 		ASSERT(gcp->gc_on_finalize == NIL);
-		mx_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NIL); )
+#ifdef mx_HAVE_COLOUR
+		ASSERT(gcp->gc_data.gdc_colour == NIL);
+#endif
 
 		if(gcm & a_GO_CLEANUP_ERROR)
 			goto jerr;

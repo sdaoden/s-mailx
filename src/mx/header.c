@@ -53,7 +53,6 @@
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/compat.h"
-#include "mx/colour.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/mime.h"
@@ -63,6 +62,10 @@
 #include "mx/time.h"
 #include "mx/ui-str.h"
 #include "mx/url.h"
+
+#ifdef mx_HAVE_COLOUR
+# include "mx/colour.h"
+#endif
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/
@@ -3294,10 +3297,10 @@ jredo_localtime:
             x[4 + 7 + 1 + 4] = '\0';
             rv = x;
          }
-         mx_COLOUR(
-            if(color_tag_or_null != NULL)
-               *color_tag_or_null = mx_COLOUR_TAG_SUM_OLDER;
-         )
+#ifdef mx_HAVE_COLOUR
+         if(color_tag_or_null != NULL)
+            *color_tag_or_null = mx_COLOUR_TAG_SUM_OLDER;
+#endif
       }else if((i & 1) == 0)
          fmt = NULL;
 
