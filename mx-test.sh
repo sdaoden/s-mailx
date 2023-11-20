@@ -15170,18 +15170,16 @@ cc_all_configs() { #{{{
 			${SHELL} -c "cd ../ && ${MAKE} distclean"
 			continue
 		fi
-		[ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
 		printf "\n\n##########\n${MAKE} ${JOBNO} config $c\n"
 		printf "\n\n##########\n${MAKE} ${JOBNO} config $c\n" >&2
 		${SHELL} -c "cd .. && ${MAKE} ${JOBNO} config ${c}"
-		if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
+		if [ $? -eq 69 ]; then
 			printf 'Skipping after config, nothing changed\n'
 			printf 'Skipping after config, nothing changed\n' >&2
 			continue
 		fi
 		${SHELL} -c "cd ../ && ${MAKE} ${JOBNO} build test"
 	done
-	${rm} -f .ccac.h
 	cd .. && ${MAKE} distclean
 } #}}}
 
