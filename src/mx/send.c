@@ -47,7 +47,6 @@
 
 #include "mx/child.h"
 #include "mx/compat.h"
-#include "mx/colour.h"
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/filter-html.h"
@@ -65,6 +64,10 @@
 #include "mx/time.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
+
+#ifdef mx_HAVE_COLOUR
+# include "mx/colour.h"
+#endif
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/
@@ -668,16 +671,16 @@ jhdrput:
       /* Dump it */
       if(!hany && (dostat & 4) && level > 0)
          a_send_out_nl(obuf, NIL, stats);
-      mx_COLOUR(
-         if(mx_COLOUR_IS_ACTIVE())
-            mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
-      )
+#ifdef mx_HAVE_COLOUR
+      if(mx_COLOUR_IS_ACTIVE())
+         mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
+#endif
       *cp = ':';
       _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NIL,NIL);
-      mx_COLOUR(
-         if(mx_COLOUR_IS_ACTIVE())
-            mx_colour_reset();
-      )
+#ifdef mx_HAVE_COLOUR
+      if(mx_COLOUR_IS_ACTIVE())
+         mx_colour_reset();
+#endif
       if(dostat & 4)
          a_send_out_nl(obuf, qf, stats);
       hany = TRU1;
@@ -1704,15 +1707,15 @@ put_from_(FILE *fp, struct mimepart *ip, u64 *stats)
       nl = n_empty;
    }
 
-   mx_COLOUR(
-      if(mx_COLOUR_IS_ACTIVE())
-         mx_colour_put(mx_COLOUR_ID_VIEW_FROM_, NULL);
-   )
+#ifdef mx_HAVE_COLOUR
+   if(mx_COLOUR_IS_ACTIVE())
+      mx_colour_put(mx_COLOUR_ID_VIEW_FROM_, NULL);
+#endif
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
-   mx_COLOUR(
-      if(mx_COLOUR_IS_ACTIVE())
-         mx_colour_reset();
-   )
+#ifdef mx_HAVE_COLOUR
+   if(mx_COLOUR_IS_ACTIVE())
+      mx_colour_reset();
+#endif
    if (i > 0 && stats != NULL)
       *stats += i;
    NYD_OU;

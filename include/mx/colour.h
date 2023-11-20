@@ -29,9 +29,6 @@
 
 struct mx_colour_env;
 
-/* Injection, if mx_HAVE_COLOUR */
-#define mx_COLOUR(X) X
-
 /* We do have several contexts of colour IDs; since only one of them can be
  * active at any given time let's share the value range */
 enum mx_colour_ctx{
@@ -128,8 +125,6 @@ EXPORT struct mx_colour_pen *mx_colour_get_pen(u32 get_flags, enum mx_colour_ctx
 EXPORT struct str const *mx_colour_pen_get_cseq( struct mx_colour_pen const *self);
 
 #include <su/code-ou.h>
-#else
-# define mx_COLOUR(X)
 #endif /* mx_HAVE_COLOUR */
 #endif /* mx_COLOUR_H */
 /* s-itt-mode */
