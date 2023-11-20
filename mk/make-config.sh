@@ -3986,7 +3986,7 @@ if [ -f ${oldh} ]; then
 	if ${cmp} ${h} ${oldh} >/dev/null 2>&1; then
 		${mv} -f ${oldh} ${h}
 		msg 'Effective configuration is up-to-date'
-		exit 0
+		exit 69 # EX_UNAVAILABLE
 	fi
 	config_updated=1
 	${rm} -f ${oldh}
