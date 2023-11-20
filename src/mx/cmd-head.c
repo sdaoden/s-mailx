@@ -48,13 +48,16 @@
 
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
-#include "mx/colour.h"
 #include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/termios.h"
 #include "mx/time.h"
 #include "mx/ui-str.h"
+
+#ifdef mx_HAVE_COLOUR
+# include "mx/colour.h"
+#endif
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/
@@ -141,9 +144,10 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
    char const *date, *name, *fp, *color_tag;
    int i, n, s, wleft, subjlen;
    struct message *mp;
-   mx_COLOUR( struct mx_colour_pen *cpen_new su_COMMA
-      *cpen_cur su_COMMA *cpen_bas; )
-   enum {
+#ifdef mx_HAVE_COLOUR
+   struct mx_colour_pen *cpen_new, *cpen_cur, *cpen_bas;
+#endif
+   enum{
       a_NONE = 0,
       a_ISDOT = 1u<<0,
       a_ISTO = 1u<<1,
@@ -226,14 +230,14 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
       cpen_new = cpen_bas = cpen_cur = NULL;
 #endif
 
-   for (fp = fmt; *fp != '\0'; ++fp) {
+   for(fp = fmt; *fp != '\0'; ++fp){
       char c;
 
-      if ((c = *fp & 0xFF) != '%') {
-         mx_COLOUR(
-            if(mx_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
-               mx_colour_pen_put(cpen_cur = cpen_new);
-         );
+      if((c = *fp & 0xFF) != '%'){
+#ifdef mx_HAVE_COLOUR
+         if(mx_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
+            mx_colour_pen_put(cpen_cur = cpen_new);
+#endif
          putc(c, f);
          continue;
       }
@@ -262,12 +266,12 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
          goto jputcb;
       case '>':
       case '<':
-         if (flags & a_ISDOT) {
-            mx_COLOUR(
-               if(mx_COLOUR_IS_ACTIVE())
-                  cpen_new = mx_colour_pen_create(mx_COLOUR_ID_SUM_DOTMARK,
-                        color_tag);
-            );
+         if(flags & a_ISDOT){
+#ifdef mx_HAVE_COLOUR
+            if(mx_COLOUR_IS_ACTIVE())
+               cpen_new = mx_colour_pen_create(mx_COLOUR_ID_SUM_DOTMARK,
+                     color_tag);
+#endif
             if((n_psonce & n_PSO_UNICODE) && !ok_blook(headline_plain)){
                if (c == '>')
                   /* 25B8;BLACK RIGHT-POINTING SMALL TRIANGLE */
@@ -512,7 +516,9 @@ jmlist: /* v15compat */
          break;
    }
 
-   mx_COLOUR( mx_colour_reset(); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_reset();
+#endif
    putc('\n', f);
 
    if(subjline != NIL && subjline != R(char*,-1))
@@ -873,7 +879,9 @@ a_chead_headers(int msgspec) /* TODO rework v15 */
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(mesg + 1, mesg + size);
 #endif
-      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
+#ifdef mx_HAVE_COLOUR
+      mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
+#endif
       n_autorec_relax_create();
       for(lastmq = NULL, mq = &message[msgCount]; mp < mq; lastmq = mp, ++mp){
          ++mesg;
@@ -898,7 +906,9 @@ jdot_unsort:
       if(needdot && ok_blook(showlast)) /* xxx will not show */
          setdot(lastmq, FAL0);
       n_autorec_relax_gut();
-      mx_COLOUR( mx_colour_env_gut(); )
+#ifdef mx_HAVE_COLOUR
+      mx_colour_env_gut();
+#endif
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -929,7 +939,9 @@ jdot_unsort:
       a_chead_screen = g / size;
       mp = mq;
 
-      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
+#ifdef mx_HAVE_COLOUR
+      mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
+#endif
       n_autorec_relax_create();
       for(lastmq = NULL; mp != NULL; lastmq = mp, mp = mq){
          mq = next_in_thread(mp);
@@ -956,7 +968,9 @@ jdot_sort:
       if(needdot && ok_blook(showlast)) /* xxx will not show */
          setdot(lastmq, FAL0);
       n_autorec_relax_gut();
-      mx_COLOUR( mx_colour_env_gut(); )
+#ifdef mx_HAVE_COLOUR
+      mx_colour_env_gut();
+#endif
    }
 
    if (flag == 0) {
@@ -1068,14 +1082,18 @@ c_from(void *vp){
 
    mx_time_current_update(NIL, FAL0);
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf);
+#endif
    su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    for(n = 0, ip = msgvec; *ip != 0; ++ip){ /* TODO join into _print_head() */
       a_chead_print_head(S(uz,n++), S(uz,*ip), obuf, mb.mb_threaded, FAL0);
       su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
    }
    su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
-   mx_COLOUR( mx_colour_env_gut(); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_gut();
+#endif
 
    if(obuf != n_stdout){
       page_or_print(obuf, n);
@@ -1098,7 +1116,9 @@ print_headers(int const *msgvec, boole only_marked,
 
    mx_time_current_update(NIL, FAL0);
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
+#endif
    n_autorec_relax_create();
    for(printed = 0; *msgvec != 0; ++msgvec) {
       struct message *mp = message + *msgvec - 1;
@@ -1112,7 +1132,9 @@ print_headers(int const *msgvec, boole only_marked,
       n_autorec_relax_unroll();
    }
    n_autorec_relax_gut();
-   mx_COLOUR( mx_colour_env_gut(); )
+#ifdef mx_HAVE_COLOUR
+   mx_colour_env_gut();
+#endif
    NYD_OU;
 }
 
