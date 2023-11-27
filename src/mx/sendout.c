@@ -2980,9 +2980,13 @@ mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
       else
          tzsign = "+";
    }else{
-      if(n_poption & n_PO_D_VV)
+      static boole a_noted;
+
+      if(!a_noted){
+         a_noted = TRU1;
          n_err(_("The difference of UTC to local timezone $TZ requires second precision.\n"
-               "  Unsupported by RFC 5321, switching to TZ=UTC to not loose precision!\n"));
+            "  Unsupported by RFC 5321, henceforth using TZ=UTC to not loose precision!\n"));
+      }
       tmptr = &mx_time_current.tc_gm;
       tzdiff_hour = 0;
    }
