@@ -558,7 +558,7 @@ n_verrx(boole allow_multiple, char const *format, void *vlp){/*XXX sigcondom TOD
 	lpref = NIL;
 	c5pref = c5suff = su_empty;
 
-	dosave = ((n_poption & n_PO_D_V) || !(n_pstate & n_PS_ROBOT) || mx_go_may_yield_control());
+	dosave = (/*(n_poption & n_PO_D_V) || !(n_pstate & n_PS_ROBOT) ||*/ mx_go_may_yield_control());
 	/* Test output wants error messages */
 	/*dolog = (dosave || su_state_has(su_STATE_REPRODUCIBLE) ||
 			!(n_psonce & n_PSO_STARTED_CONFIG))*/;
