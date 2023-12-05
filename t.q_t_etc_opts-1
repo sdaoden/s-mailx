@@ -18,9 +18,9 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 
 Ich bin eine D=C3=96S-Dat=C3=A4i mit sehr langen Zeilen und auch sonst bin =
 ich ganz sch=C3=B6n am Schleudern, da kannste denke wasde willst, gelle, ge=
@@ -85,9 +85,9 @@ Die letzte Zeile war ein Leerschritt.
 =20=
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 Content-Disposition: attachment; filename="t.in"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 
 Ich bin eine D=C3=96S-Dat=C3=A4i mit sehr langen Zeilen und auch sonst bin =
 ich ganz sch=C3=B6n am Schleudern, da kannste denke wasde willst, gelle, ge=

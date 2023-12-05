@@ -15,16 +15,16 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 L2
 Hy2
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="snailmail.jpg"
 Content-Type: image/jpeg
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="snailmail.jpg"
 
 /9j/4AAQSkZJRgABAQEAJQAlAAD/2wBDAAUEBAQEAwUEBAQGBQUGCA0ICAcHCBALDAkNExAUExIQ
 EhIUFx0ZFBYcFhISGiMaHB4fISEhFBkkJyQgJh0gISD/wAALCACoANcBAREA/8QAHQAAAgIDAQEB

@@ -15,7 +15,7 @@ Content-Transfer-Encoding: 7bit
 
 bar
 
-[-- Message  2 -- 20 lines, 459 bytes --]:
+[-- Message  2 -- 20 lines, 446 bytes --]:
 From a@b.invalid Wed May 15 12:43:00 2018
 MIME-Version: 1.0
 Status: R
@@ -26,13 +26,13 @@ Content-Transfer-Encoding: quoted-printable
 
 foo
 
-[-- #1.2 7/204 text/plain, 7bit --]
+[-- #1.2 7/191 text/plain, 7bit --]
 [-- name-c-t --]
 Content-Transfer-Encoding: 7bit
 
 bar
 
-[-- Message  3 -- 18 lines, 423 bytes --]:
+[-- Message  3 -- 18 lines, 416 bytes --]:
 From a@b.invalid Wed May 15 12:43:00 2018
 MIME-Version: 1.0
 Status: R
@@ -43,7 +43,7 @@ Content-Transfer-Encoding: quoted-printable
 
 foo
 
-[-- #1.2 6/169 text/plain, 7bit --]
+[-- #1.2 6/162 text/plain, 7bit --]
 [-- name-c-d --]
 Content-Transfer-Encoding: 7bit
 

@@ -1,10 +1,10 @@
 =1
-[-- Message  1 -- 9 lines, 228 bytes --]:
+[-- Message  1 -- 9 lines, 230 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: sub1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
 p-2-1
@@ -12,21 +12,21 @@ From me with love
 
 p-2-2
 =2
-[-- Message  1 -- 9 lines, 228 bytes --]:
+[-- Message  1 -- 9 lines, 230 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: sub1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 
 =3
-[-- Message  1 -- 9 lines, 228 bytes --]:
+[-- Message  1 -- 9 lines, 230 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: sub1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: quoted-printable
 Status: R
 

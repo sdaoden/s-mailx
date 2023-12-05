@@ -1,5 +1,5 @@
->N  1 reproducible_build 1996-10-02 01:50   42/1233                            
-[-- Message  1 -- 42 lines, 1233 bytes --]:
+>N  1 reproducible_build 1996-10-02 01:50   42/1199                            
+[-- Message  1 -- 42 lines, 1199 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 MIME-Version: 1.0
@@ -7,35 +7,35 @@ Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA
 Status: R
 
 
-[-- #1.1 5/93 7bit --]
-Content-Type: text/plain; charset=us-ascii
+[-- #1.1 5/95 7bit --]
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
          Schub-di-du
 
-[-- #1.2 5/142 7bit --]
-Content-Type: application/mathml+xml; charset=us-ascii
+[-- #1.2 5/124 7bit --]
 Content-Disposition: attachment; filename="t.mts1.mathml"
+Content-Type: application/mathml+xml
 
    <head>nonsense ML</head>
 
-[-- #1.3 5/130 7bit --]
-Content-Type: x-conference/x-cooltalk; charset=us-ascii
+[-- #1.3 5/112 7bit --]
 Content-Disposition: attachment; filename="t.mts2.ice"
+Content-Type: x-conference/x-cooltalk
 
    Icy, icy road.
 
 [-- #1.4 6/179 --]
+Content-Disposition: attachment; filename="t.mtsx.doom"
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="t.mtsx.doom"
 
 [-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.5 6/173 --]
+Content-Disposition: attachment; filename="t.mtsx.aga"
 Content-Type: application/aga-aga
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="t.mtsx.aga"
 
 of which the c?rack is coming soon
 From reproducible_build Wed Oct  2 01:50:07 1996
@@ -47,34 +47,34 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
          Schub-di-du
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/mathml+xml; charset=us-ascii
 Content-Disposition: attachment; filename="t.mts1.mathml"
+Content-Type: application/mathml+xml
 
    <head>nonsense ML</head>
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: x-conference/x-cooltalk; charset=us-ascii
 Content-Disposition: attachment; filename="t.mts2.ice"
+Content-Type: x-conference/x-cooltalk
 
    Icy, icy road.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="t.mtsx.doom"
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="t.mtsx.doom"
 
 b2Ygd2hpY2ggdGhlIGMBcmFjayBpcyBjb21pbmcgc29vbg==
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="t.mtsx.aga"
 Content-Type: application/aga-aga
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="t.mtsx.aga"
 
 b2Ygd2hpY2ggdGhlIGMBcmFjayBpcyBjb21pbmcgc29vbg==
 

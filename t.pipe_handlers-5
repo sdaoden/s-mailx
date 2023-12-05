@@ -1,4 +1,4 @@
-[-- Message  1 -- 190 lines, 13435 bytes --]:
+[-- Message  1 -- 190 lines, 13437 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: subject2
@@ -6,15 +6,15 @@ MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
 
-[-- #1.1 5/78 7bit --]
-Content-Type: text/plain; charset=us-ascii
+[-- #1.1 5/80 7bit --]
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 
 [-- #1.2 172/12961 --]
+Content-Disposition: attachment; filename="snailmail.jpg"
 Content-Type: image/jpeg
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="snailmail.jpg"
 
 C=image/jpeg
 C-E=image/jpeg

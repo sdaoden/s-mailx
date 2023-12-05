@@ -33,9 +33,9 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-ID: <19961002015007.AQAAAgAA@from%exam.ple>
+Content-Type: text/plain; charset="us-ascii"
 
 body
 t_ocs
@@ -279,20 +279,20 @@ t_attach ENTER
 0/0/NONE: 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=ascii
 Content-Disposition: attachment; filename="rctl"
-Content-ID: <10.du@ich>
+Content-Type: text/plain; charset="us-ascii"
 Content-Description: Au
+Content-ID: <10.du@ich>
 
 line one
 line two
 line three
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-sh; charset=latin1
 Content-Disposition: attachment; filename="tat"
-Content-ID: <20.du@wir>
+Content-Type: application/x-sh
 Content-Description: Au2
+Content-ID: <20.du@wir>
 
 echo four
 echo five

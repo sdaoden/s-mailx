@@ -1,0 +1,47 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: x@y
+Subject: =?cp1252?Q?d=F6deld=FC?=
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: inline
+Content-Type: text/plain; charset="cp1252"
+Content-Transfer-Encoding: quoted-printable
+
+d=F6deld=FC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="l.txt"
+Content-Type: text/plain; charset="cp1252"
+Content-Transfer-Encoding: quoted-printable
+
+=E2=98=BA, =E2=98=BA, =F6tzi=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="u.txt"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+=E2=98=BA=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="l2.txt"
+Content-Type: text/plain; charset="cp1252"
+Content-Transfer-Encoding: quoted-printable
+
+d=F6deld=FC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="l2.txt"
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+d=F6deld=FC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+

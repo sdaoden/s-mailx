@@ -14,23 +14,23 @@ To: over-the@rain.bow
 Subject: go
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-="
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
 This is a multi-part message in MIME format.
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
 ha=
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".tmba"
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename=".tmba"
 
 aMO8
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=--
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 

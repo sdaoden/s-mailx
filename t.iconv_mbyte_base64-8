@@ -5,7 +5,7 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: t1@exam.ple
 Subject: Japanese from UTF-8 to EUC-JP
 MIME-Version: 1.0
-Content-Type: text/plain; charset=euc-jp
+Content-Type: text/plain; charset="euc-jp"
 Content-Transfer-Encoding: base64
 Status: R
 
@@ -22,7 +22,7 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: t2@exam.ple
 Subject: Japanese from EUC-JP to UTF-8
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: base64
 Status: R
 

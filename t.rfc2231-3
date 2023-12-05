@@ -8,56 +8,55 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 bla
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="ma'ger.txt"
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename*=utf-8''m%C3%A4%27ger.txt
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="diet\\ is \\curd.txt"
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; 
  filename*=utf-8''diet%C2%A0%22is%22%C2%A0curd.txt
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename*=utf-8''h%C3%B6de-tr%C3%B6ge.txt
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; 
  filename*0*=utf-8''h%C3%B6de__tr%C3%B6ge__m%C3%BCde__d%C3%A4tte__h%C3%A4t;
  filename*1*=te__v%C3%BClle__g%C3%BClle__%C3%A4se__%C3%A4%C3%9Fe__s;
  filename*2*=%C3%A4uerliche__kr%C3%A4uter__%C3%B6sterliche__gr;
  filename*3*=%C3%BC%C3%9Fe__m%C3%A4h.txt
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; 
  filename*0*=utf-8''h%C3%B6de__tr%C3%B6ge__m%C3%BCde__d%C3%A4tte__h%C3%A4t;
  filename*1="te__vuelle__guelle__aese__aesse__sauerliche__kr";
  filename*2*=%C3%A4uter__%C3%B6sterliche__gr%C3%BC%C3%9Fe__m%C3%A4h.txt
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; 
  filename*0*=utf-8''h%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6;
  filename*1*=%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6%C3%B6_n;
@@ -68,15 +67,24 @@ Content-Disposition: attachment;
  filename*6*=%C3%BC%C3%BC_b%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4;
  filename*7*=%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4;
  filename*8*=%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4%C3%A4h.txt
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; 
  filename*0*=utf-8''%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86;
  filename*1*=%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86;
  filename*2*=%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86;
  filename*3*=%E2%9C%86%E2%9C%86%E2%9C%86%E2%9C%86.txt
+Content-Type: text/plain; charset="us-ascii"
+
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; 
+ filename*0="Averte faciem tuam a peccatis meis: et omnes iniquitates me";
+ filename*1="as dele. Cor mundum crea in me, Deus: et spiritum rectum in";
+ filename*2="nova in visceribus meis.txt"
+Content-Type: text/plain; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--

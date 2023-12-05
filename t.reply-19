@@ -12,14 +12,14 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 yb1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: message/rfc822
 Content-Disposition: inline
+Content-Type: message/rfc822
 Content-Description: Original message content
 
 Subject: Bugstop: five miles out 2
@@ -61,14 +61,14 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 yb3
 
 --=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: message/rfc822
 Content-Disposition: inline
+Content-Type: message/rfc822
 Content-Description: Original message content
 
 Subject: Bugstop: five miles out 2

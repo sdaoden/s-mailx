@@ -9,8 +9,8 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/yeye; charset=us-ascii
 Content-Disposition: attachment; filename="txa3"
+Content-Type: application/yeye
 
 att3-1
 att3-2

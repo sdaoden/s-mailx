@@ -12,15 +12,15 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx.a1"
+Content-Type: text/plain; charset="us-ascii"
 Content-ID: <19961002015007.AwAABAAA@reproducible_build%reproducible_build>
 
 att1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx a2"
+Content-Type: text/plain; charset="us-ascii"
 Content-ID: <19961002015007.BQAABgAA@reproducible_build%reproducible_build>
 
 att2-1
@@ -28,8 +28,8 @@ att2-2
 att2-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="txa3"
+Content-Type: text/plain; charset="us-ascii"
 Content-ID: <19961002015007.BwAACAAA@reproducible_build%reproducible_build>
 
 att3-1
@@ -37,8 +37,8 @@ att3-2
 att3-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx a4"
+Content-Type: text/plain; charset="us-ascii"
 Content-ID: <19961002015007.CQAACgAA@reproducible_build%reproducible_build>
 
 att4-1
