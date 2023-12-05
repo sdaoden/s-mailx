@@ -1,2 +1,2 @@
-reproducible_build: Cannot find a usable character set to encode message: NOENT
+reproducible_build: Cannot convert message via *sendcharsets*: INVAL
 reproducible_build: ... message not sent

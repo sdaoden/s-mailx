@@ -7,69 +7,69 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 Line1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/x-unix-readme; charset=us-ascii
 Content-Disposition: attachment; filename="README"
+Content-Type: text/x-unix-readme; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/gzip; charset=us-ascii
 Content-Disposition: attachment; filename="x.gz"
+Content-Type: application/gzip
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-ma-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="x.ma.tar.gz"
+Content-Type: application/x-ma-tar-gz
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-tar; charset=us-ascii
 Content-Disposition: attachment; filename="x.tar"
+Content-Type: application/x-tar
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="x.tar.gz"
+Content-Type: application/x-tar-gz
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-x-ma-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="y.x.ma.tar.gz"
+Content-Type: application/x-x-ma-tar-gz
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-xfun; charset=us-ascii
 Content-Disposition: attachment; filename=".x"
+Content-Type: application/x-xfun
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-ma-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename=".x.ma.tar.gz"
+Content-Type: application/x-ma-tar-gz
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-tar; charset=us-ascii
 Content-Disposition: attachment; filename=".x.tar"
+Content-Type: application/x-tar
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-fun; charset=us-ascii
 Content-Disposition: attachment; filename="y.x.tar"
+Content-Type: application/x-fun
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-xfun; charset=us-ascii
 Content-Disposition: attachment; filename="x.x"
+Content-Type: application/x-xfun
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/x-unix-readme; charset=us-ascii
 Content-Disposition: attachment; filename="NEWS"
+Content-Type: text/x-unix-readme; charset="us-ascii"
 
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--

@@ -3,12 +3,16 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: t1@exam.ple
 Subject: Japanese from UTF-8 to ISO-2022-JP
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
+Content-Type: text/plain; charset="iso-2022-jp"
 Content-Transfer-Encoding: base64
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: t2@exam.ple
-Subject: Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
+Subject: =?iso-2022-jp?B?SmFwYW5lc2U=?= =?iso-2022-jp?B?IGZyb20=?=
+ =?iso-2022-jp?B?IElTTy0yMDIyLUpQ?= =?iso-2022-jp?B?IHRv?=
+ =?iso-2022-jp?B?IFVURi04LA==?= =?iso-2022-jp?B?IGVoLA==?=
+ =?iso-2022-jp?B?IG5vLA==?= =?iso-2022-jp?B?IGFsc28=?=
+ =?iso-2022-jp?B?IElTTy0yMDIyLUpQ?=
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
+Content-Type: text/plain; charset="iso-2022-jp"
 Content-Transfer-Encoding: base64

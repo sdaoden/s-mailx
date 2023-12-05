@@ -8,14 +8,14 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="t14 x 2"
+Content-Type: text/plain; charset="us-ascii"
 
 b 2
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="private  eyes"
+Content-Type: text/plain; charset="us-ascii"
 Content-Description: private c-desc
 
 b 1

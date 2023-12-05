@@ -9,16 +9,16 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 
 =C3=A2=C2=98=C2=BA, =C3=A2=C2=98=C2=BA, =C3=B6tzi=
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 Content-Disposition: attachment; filename="l.txt"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 
 =C3=A2=C2=98=C2=BA, =C3=A2=C2=98=C2=BA, =C3=B6tzi=
 
