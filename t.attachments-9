@@ -9,30 +9,30 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx.a1"
+Content-Type: text/plain; charset="us-ascii"
 
 att1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx a2"
+Content-Type: text/plain; charset="us-ascii"
 
 att2-1
 att2-2
 att2-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="txa3"
+Content-Type: text/plain; charset="us-ascii"
 
 att3-1
 att3-2
 att3-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: attachment; filename="tx a4"
+Content-Type: text/plain; charset="us-ascii"
 
 att4-1
 att4-2

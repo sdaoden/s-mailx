@@ -14,25 +14,25 @@ To: over-the@rain.bow
 Subject: go
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-="
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
 This is a multi-part message in MIME format.
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
 ha=
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".tmba"
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename=".tmba"
 
 aMO8
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=--
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -40,32 +40,32 @@ To: over-the@rain.bow
 Subject: go
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-="
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
 This is a multi-part message in MIME format.
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
 ha=
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Disposition: attachment; filename=".tsba"
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
 ha=
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".tmba"
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename=".tmba"
 
 aMO8
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=--
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -73,30 +73,30 @@ To: over-the@rain.bow
 Subject: go
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-="
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
 This is a multi-part message in MIME format.
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: inline
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: inline
 
 aMOk
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Disposition: attachment; filename=".tsba"
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
 ha=
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".tmba"
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename=".tmba"
 
 aMO8
 
---=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=--
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 
