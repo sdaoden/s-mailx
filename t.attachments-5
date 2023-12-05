@@ -9,14 +9,14 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 Body one.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: message/rfc822
 Content-Disposition: inline
+Content-Type: message/rfc822
 
 Date: Sun, 18 Feb 2018 02:48:40 +0100
 To:
@@ -39,14 +39,14 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
 
 Body two.
 
 --=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
-Content-Type: message/rfc822
 Content-Disposition: inline
+Content-Type: message/rfc822
 
 Date: Sun, 18 Feb 2018 02:48:42 +0100
 To:
@@ -69,8 +69,8 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-=
-Content-Type: message/rfc822
 Content-Disposition: inline
+Content-Type: message/rfc822
 
 Date: Sun, 18 Feb 2018 02:48:40 +0100
 To:
@@ -93,8 +93,8 @@ Content-Type: multipart/mixed;
 This is a multi-part message in MIME format.
 
 --=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-=
-Content-Type: message/rfc822
 Content-Disposition: inline
+Content-Type: message/rfc822
 
 Date: Sun, 18 Feb 2018 02:48:42 +0100
 To:
