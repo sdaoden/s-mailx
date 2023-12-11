@@ -295,6 +295,10 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp, /* TODO split*/ s
 				goto jleave;
 			n_err(_("*smtp-config*: cannot use \"ehlo\" extension!\n"));
 
+/*
+ * FIXME should be doing an RSET here??  smtp/submisison, check
+ */
+
 			at = nscp->nsc_config;
 			nscp->nsc_server_config = nscp->nsc_config = a_NETSMTP_EXT_NONE;
 
