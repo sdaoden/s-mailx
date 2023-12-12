@@ -104,7 +104,8 @@ EXPORT boole mx_mime_type_is_valid(char const *name, boole t_a_subt, boole subt_
 /* Return a Content-Type matching a path(name), or NIL if none could be found */
 EXPORT char *mx_mime_type_classify_path(char const *path);
 
-/* See struct def. for setup() args; fp must be ftell()==0, su_err() on error, mtcfcp then invalid */
+/* See struct def. for setup() args; su_err() on error, mtcfcp then invalid.
+ * Upon success this function repositions the file pointer to where it was on entry, and clears err */
 INLINE struct mx_mime_type_classify_fp_ctx *mx_mime_type_classify_fp_setup(struct mx_mime_type_classify_fp_ctx *mtcfcp,
 		boole mtcfc_cte_not_for_from_, char const *mtcfc_content_type,
 		struct mx_mime_probe_charset_ctx *mtcfc_mpccp_or_nil){

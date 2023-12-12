@@ -978,13 +978,12 @@ mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp){
 	 * TODO binary according to RFC 2046, 5.2.1
 	 * TODO The handling of which is a hack */
 	struct mx_mime_probe_ctx mpc;
-	off_t fpsz;
+	off_t start_off, fpsz;
 	enum mx_mime_enc menc;
 	enum mx_mime_probe_flags mpf;
 	boole rfc822;
 	struct mx_mime_probe_charset_ctx mpcc, *mpccp;
 	NYD_IN;
-	ASSERT(ftell(fp) == 0x0l);
 
 	if((mpccp = mtcfcp->mtcfc_mpccp_or_nil) == NIL)
 		mpccp = mx_mime_probe_charset_ctx_setup(&mpcc);
@@ -1011,7 +1010,13 @@ mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp){
 
 	mpf = mx_mime_probe_setup(&mpc, mpf)->mpc_mpf;
 
-	if((fpsz = fsize(fp)) == 0){
+	start_off = ftell(fp);
+	fpsz = fsize(fp);
+	if(start_off == -1 || fpsz == -1){
+		su_err_set(su_ERR_IO);
+		mtcfcp = NIL;
+		goto jerr;
+	}else if(fpsz == 0 || start_off == fpsz){
 		menc = mx_MIME_ENC_7B;
 		goto jleave;
 	}else{
@@ -1023,6 +1028,7 @@ mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp){
 
 			i = fread(buf, sizeof(buf[0]), mx_BUFFER_SIZE, fp);
 			if(i == 0 && !feof(fp)){
+jioerr:
 				if(su_err_by_errno() == su_ERR_INTR)
 					continue;
 				if(su_err() == su_ERR_NONE)
@@ -1040,7 +1046,9 @@ mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp){
 		if(mtcfcp == NIL)
 			goto jerr;
 
-		rewind(fp);
+		clearerr(fp);
+		if(fseek(fp, start_off, SEEK_SET) == -1)
+			goto jioerr;
 	}
 
 	if(mpf & mx_MIME_PROBE_HASNUL){
@@ -1259,7 +1267,8 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *m
 	xrv = rv = mx_MIME_TYPE_HDL_NIL;
 
 	if(action != SEND_QUOTE && action != SEND_QUOTE_ALL &&
-			action != SEND_TODISP && action != SEND_TODISP_ALL && action != SEND_TODISP_PARTS)
+			action != SEND_TODISP && action != SEND_TODISP_ALL && action != SEND_TODISP_PARTS &&
+			action != SEND_TOFILE)
 		goto jleave;
 
 	el = ((es = mpp->m_filename) != NIL) ? su_cs_len(es) : 0;
@@ -1335,15 +1344,18 @@ jc_t:
 
 	/* III. RFC 1524 / Mailcap lookup */
 #ifdef mx_HAVE_MAILCAP
-	switch(mx_mailcap_handler(mthp, cs, action, mpp)){
-	case TRU1:
-		rv = mthp->mth_flags;
-		goto jleave;
-	case TRUM1:
-		xrv = mthp->mth_flags; /* "Use at last-resort" handler */
-		break;
-	default:
-		break;
+	if(action != SEND_TOFILE){ /* xxx use "print" slot?  no.. */
+		xrv = rv = mx_MIME_TYPE_HDL_NIL;
+		switch(mx_mailcap_handler(mthp, cs, action, mpp)){
+		case TRU1:
+			rv = mthp->mth_flags;
+			goto jleave;
+		case TRUM1:
+			xrv = mthp->mth_flags; /* "Use at last-resort" handler */
+			break;
+		default:
+			break;
+		}
 	}
 #endif
 
@@ -1394,6 +1406,7 @@ jleave:
 		xrv &= ~mx_MIME_TYPE_HDL_TYPE_MASK;
 		xrv |= (rv = mx_MIME_TYPE_HDL_MSG);
 	}
+
 	mthp->mth_flags = xrv;
 
 	NYD_OU;

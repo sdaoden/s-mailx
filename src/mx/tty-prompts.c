@@ -49,7 +49,7 @@ mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
 	boole rv;
 	NYD_IN;
 
-	if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT))
+	if(!mx_tty_yesorno_would_prompt())
 		rv = noninteract_default;
 	else{
 		uz lsize;
