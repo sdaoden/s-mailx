@@ -502,7 +502,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct mx_mime_type_handler mth_stack, * volatile mthp;
    struct str outrest, inrest;
    boole hany, hign;
-   enum sendaction oaction;
+   enum sendaction volatile oaction;
    char *cp;
    char const * volatile tmpname = NULL;
    uz linelen, cnt;
@@ -517,7 +517,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    UNINIT(term_infd, 0);
    UNINIT(cnt, 0);
-   oaction = action;
    hany = hign = FAL0;
 
    quoteflt_reset(qf, obuf);
@@ -709,9 +708,9 @@ jhdrtrunc:
       hany = TRU1;
    }
    if((hany /*&& doitp != IGNORE_ALL*/) ||
-         (oaction == SEND_DECRYPT && ip->m_parent != NIL &&
+         (action == SEND_DECRYPT && ip->m_parent != NIL &&
           ip != ip->m_multipart) ||
-         ((oaction == SEND_QUOTE || oaction == SEND_QUOTE_ALL) &&
+         ((action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
           level != 0 && *anyoutput &&
            (ip->m_mime_type != mx_MIME_TYPE_DISCARD &&
             ip->m_mime_type != mx_MIME_TYPE_PKCS7 &&
@@ -722,11 +721,11 @@ jhdrtrunc:
             ip->m_mime_type != mx_MIME_TYPE_MULTI &&
             ip->m_mime_type != mx_MIME_TYPE_SIGNED &&
             ip->m_mime_type != mx_MIME_TYPE_ENCRYPTED))){
-         if(ip->m_mime_type != mx_MIME_TYPE_822 || (dostat & 16)){
-            /*XXX (void)*/a_send_out_nl(obuf, NIL, stats);
-            hany = TRU1;
-         }
+      if(ip->m_mime_type != mx_MIME_TYPE_822 || (dostat & 16)){
+         /*XXX (void)*/a_send_out_nl(obuf, NIL, stats);
+         hany = TRU1;
       }
+   }
    } /* C99 */
 
    quoteflt_flush(qf);
@@ -740,7 +739,7 @@ jhdrtrunc:
 jheaders_skip:
    su_mem_set(mthp = &mth_stack, 0, sizeof mth_stack);
 
-   if(oaction == SEND_MBOX){
+   if(action == SEND_MBOX){
       convert = CONV_NONE;
       goto jsend;
    }
@@ -795,10 +794,10 @@ jheaders_skip:
       case SEND_QUOTE_ALL:
          if((mthp = ip->m_handler) == NIL)
             mx_mime_type_handler(mthp =
-               ip->m_handler = su_AUTO_ALLOC(sizeof(*mthp)), ip, oaction);
+                  ip->m_handler = su_AUTO_ALLOC(sizeof(*mthp)), ip, action);
          switch(mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK){
          case mx_MIME_TYPE_HDL_NIL:
-            if(oaction != SEND_TODISP_PARTS)
+            if(action != SEND_TODISP_PARTS)
                break;
             /* FALLTHRU */
          case mx_MIME_TYPE_HDL_MSG:/* TODO these should be part of partinfo! */
@@ -808,7 +807,7 @@ jheaders_skip:
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case mx_MIME_TYPE_HDL_CMD:
-            if(oaction == SEND_TODISP_PARTS){
+            if(action == SEND_TODISP_PARTS){
                if(mthp->mth_flags & mx_MIME_TYPE_HDL_COPIOUSOUTPUT)
                   goto jleave;
                else{
@@ -821,7 +820,7 @@ jheaders_skip:
             break;
          case mx_MIME_TYPE_HDL_TEXT:
          case mx_MIME_TYPE_HDL_HTML:
-            if(oaction == SEND_TODISP_PARTS)
+            if(action == SEND_TODISP_PARTS)
                goto jleave;
             break;
          default:
@@ -833,11 +832,11 @@ jheaders_skip:
       }
       break;
    case mx_MIME_TYPE_DISCARD:
-      if(oaction != SEND_DECRYPT)
+      if(action != SEND_DECRYPT)
          goto jleave;
       break;
    case mx_MIME_TYPE_PKCS7:
-      if(oaction != SEND_RFC822 && oaction != SEND_SHOW &&
+      if(action != SEND_RFC822 && action != SEND_SHOW &&
             ip->m_multipart != NIL)
          goto jmulti;
       /* FALLTHRU */
@@ -848,24 +847,39 @@ jheaders_skip:
       case SEND_TODISP_PARTS:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
+      case SEND_TOFILE:
          if((mthp = ip->m_handler) == NIL)
             mx_mime_type_handler(mthp = ip->m_handler =
-               su_AUTO_ALLOC(sizeof(*mthp)), ip, oaction);
+                  su_AUTO_ALLOC(sizeof(*mthp)), ip, action);
          switch(mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK){
          default:
          case mx_MIME_TYPE_HDL_NIL:
-            if (oaction != SEND_TODISP && oaction != SEND_TODISP_ALL &&
+            if(action == SEND_TOFILE)
+               break;
+            if(action != SEND_TODISP && action != SEND_TODISP_ALL &&
                   (level != 0 || cnt))
                goto jleave;
             /* FALLTHRU */
          case mx_MIME_TYPE_HDL_MSG:/* TODO these should be part of partinfo! */
+            if(action == SEND_TOFILE){
+               mthp->mth_flags = (
+                     (mthp->mth_flags & ~mx_MIME_TYPE_HDL_TYPE_MASK) |
+                        mx_MIME_TYPE_HDL_NIL);
+               break;
+            }
             if(mthp->mth_msg.l > 0)
                _out(mthp->mth_msg.s, mthp->mth_msg.l, obuf, CONV_NONE,
                   SEND_MBOX, qf, stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case mx_MIME_TYPE_HDL_CMD:
-            if(oaction == SEND_TODISP_PARTS){
+            if(action == SEND_TOFILE){
+               mthp->mth_flags = (
+                     (mthp->mth_flags & ~mx_MIME_TYPE_HDL_TYPE_MASK) |
+                        mx_MIME_TYPE_HDL_NIL);
+               break;
+            }
+            if(action == SEND_TODISP_PARTS){
                if(mthp->mth_flags & mx_MIME_TYPE_HDL_COPIOUSOUTPUT)
                   goto jleave;
                else{
@@ -878,7 +892,7 @@ jheaders_skip:
             break;
          case mx_MIME_TYPE_HDL_TEXT:
          case mx_MIME_TYPE_HDL_HTML:
-            if(oaction == SEND_TODISP_PARTS)
+            if(action == SEND_TODISP_PARTS)
                goto jleave;
             break;
          }
@@ -888,7 +902,7 @@ jheaders_skip:
       }
       break;
    case mx_MIME_TYPE_ALTERNATIVE:
-      if ((oaction == SEND_TODISP || oaction == SEND_QUOTE) &&
+      if ((action == SEND_TODISP || action == SEND_QUOTE) &&
             !ok_blook(print_alternatives)) {
          /* XXX This (a) should not remain (b) should be own fun
           * TODO (despite the fact that v15 will do this completely differently
@@ -964,7 +978,7 @@ jalter_redo:
                      level = -level;
                      rv = -rv;
                   }
-                  rv = sendpart(zmp, np, obuf, doitp, qf, oaction,
+                  rv = sendpart(zmp, np, obuf, doitp, qf, action,
                         linedat, linesize, stats, rv, anyoutput,
                         store_prefix_or_nil);
                   quoteflt_reset(qf, origobuf);
@@ -1001,7 +1015,7 @@ jalter_leave:
       case SEND_TOSRCH:
       case SEND_DECRYPT:
 jmulti:
-         if((oaction == SEND_TODISP || oaction == SEND_TODISP_ALL) &&
+         if((action == SEND_TODISP || action == SEND_TODISP_ALL) &&
              ip->m_multipart != NIL &&
              ip->m_multipart->m_mime_type == mx_MIME_TYPE_DISCARD &&
              ip->m_multipart->m_nextpart == NULL) {
@@ -1016,11 +1030,11 @@ jmulti:
             boole volatile ispipe;
 
             if(np->m_mime_type == mx_MIME_TYPE_DISCARD &&
-                  oaction != SEND_DECRYPT)
+                  action != SEND_DECRYPT)
                continue;
 
             ispipe = FAL0;
-            switch(oaction){
+            switch(action){
             case SEND_TOFILE:
                if (np->m_partstring &&
                      np->m_partstring[0] == '1' && np->m_partstring[1] == '\0')
@@ -1058,18 +1072,18 @@ jmulti:
                   level = -level;
                   nlvl = -nlvl;
                }
-               if(sendpart(zmp, np, obuf, doitp, qf, oaction, linedat,
+               if(sendpart(zmp, np, obuf, doitp, qf, action, linedat,
                      linesize, stats, nlvl, anyoutput, store_prefix_or_nil
                      ) < 0)
                   rv = -1;
             }
             quoteflt_reset(qf, origobuf);
 
-            if(oaction == SEND_QUOTE){
+            if(action == SEND_QUOTE){
                if(ip->m_mime_type != mx_MIME_TYPE_RELATED)
                   break;
             }
-            if(oaction == SEND_TOFILE && obuf != origobuf){
+            if(action == SEND_TOFILE && obuf != origobuf){
                if(!ispipe)
                   mx_fs_close(obuf);
                else {
@@ -1132,14 +1146,14 @@ jpipe_close:
    }
 #endif
 
-   if(oaction == SEND_DECRYPT || oaction == SEND_MBOX ||
-         oaction == SEND_RFC822 || oaction == SEND_SHOW)
+   if(action == SEND_DECRYPT || action == SEND_MBOX ||
+         action == SEND_RFC822 || action == SEND_SHOW)
       convert = CONV_NONE;
 #ifdef mx_HAVE_ICONV
-   else if((oaction == SEND_TODISP || oaction == SEND_TODISP_ALL ||
-            oaction == SEND_TODISP_PARTS ||
-            oaction == SEND_QUOTE || oaction == SEND_QUOTE_ALL ||
-            oaction == SEND_TOSRCH || oaction == SEND_TOFILE) &&
+   else if((action == SEND_TODISP || action == SEND_TODISP_ALL ||
+            action == SEND_TODISP_PARTS ||
+            action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+            action == SEND_TOSRCH || action == SEND_TOFILE) &&
          (ip->m_mime_type == mx_MIME_TYPE_TEXT_PLAIN ||
             ip->m_mime_type == mx_MIME_TYPE_TEXT_HTML ||
             ip->m_mime_type == mx_MIME_TYPE_TEXT ||
@@ -1147,24 +1161,63 @@ jpipe_close:
                ) == mx_MIME_TYPE_HDL_TEXT ||
             (mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK
                ) == mx_MIME_TYPE_HDL_HTML) && !ok_blook(iconv_disable)){
-      char const *pcs, *tcs;
+      char const *pcs, *tcs, *p;
 
-      pcs = ip->m_charset_or_nil;
-      if(pcs != NIL)
-         pcs = n_iconv_norm_name(pcs, TRU1);
-      else
-         pcs = ok_vlook(charset_7bit); /* TODO actually US-ASCII!?! */
-      tcs = ok_vlook(ttycharset);
+      do{ /* for break; */
+         pcs = ip->m_charset_or_nil;
+         if(pcs != NIL)
+            pcs = n_iconv_norm_name(pcs, TRU1);
+         else if(ip->m_mime_type == mx_MIME_TYPE_TEXT_PLAIN ||
+               ip->m_mime_type == mx_MIME_TYPE_TEXT_HTML ||
+               ip->m_mime_type == mx_MIME_TYPE_TEXT){
+            /* TODO the MIME part does not specify a character set.
+             * TODO However, classifying character set now does not work out,
+             * TODO because we do test the plain MIME part content, not the
+             * TODO actually decoded variant :-(.  This has to wait! */
+#if 0
+            struct mx_mime_type_classify_fp_ctx mtcfc;
+            long fo;
 
-      if(su_cs_cmp_case(tcs, pcs)){
-         iconvd = n_iconv_open(tcs, pcs);
-         if(iconvd == R(iconv_t,-1) && su_err() == su_ERR_INVAL){
-            n_err(_("Cannot convert from %s to %s\n"), pcs, tcs);
-            /*rv = 1; goto jleave;*/
+            fo = ftell(ibuf);
+            if(fo == -1)
+               break;
+
+            mx_mime_type_classify_fp_setup(&mtcfc, TRU1, "text/plain", NIL);
+            mx_mime_type_classify_fp(&mtcfc, ibuf);
+            if(fseek(ibuf, fo, SEEK_SET) == -1){
+               rv = -1;
+               goto jleave;
+            }
+            pcs = mtcfc.mtcfc_input_charset;
+#endif
+            break;
+         }else
+            break;
+
+         tcs = ok_vlook(ttycharset);
+
+         if(action != SEND_TOFILE || !mx_tty_yesorno_would_prompt())
+            p = NIL;
+         else{
+            p = savecatsep(_("Convert character set from=to: "), ' ', pcs);
+            p = savecatsep(p, '=', tcs);
+            if(!su_cs_cmp_case(tcs, pcs))
+               p = savecatsep(p, ' ', _("may reveal encoding errors"));
          }
-      }
+
+         if(p == NIL || mx_tty_yesorno(p, FAL0)){
+            iconvd = n_iconv_open(tcs, pcs);
+            if(iconvd == R(iconv_t,-1) && su_err() == su_ERR_INVAL){
+               n_err(_("Dumping raw data: cannot convert from %s to %s\n"),
+                  pcs, tcs);
+               /*rv = 1; goto jleave;*/
+            }
+         }
+      }while(0);
    }
 #endif /* mx_HAVE_ICONV */
+
+   oaction = action;
 
    switch (mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK) {
    case mx_MIME_TYPE_HDL_CMD:
@@ -1548,8 +1601,13 @@ jgetname:
       else if((f3 = mx_fexpand(f2, mx_FEXP_DEF_LOCAL_FILE)) == NIL)
          /* (Error message written by fexpand()) */
          goto jgetname;
-      else
+      else{
+         if(su_path_access(f3, su_IOPF_EXIST)){
+            if(!mx_tty_yesorno(_("This file exists! Overwrite it?"), TRU1))
+               goto jgetname;
+         }
          f = f3;
+      }
 
       n_string_gut(shoup);
    }

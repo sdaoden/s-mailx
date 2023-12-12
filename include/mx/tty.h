@@ -33,6 +33,7 @@ EXPORT_DATA FILE *mx_tty_fp; /* Our terminal output TODO input channel */
  * yes/no string to append to prompt accordingly.
  * If prompt is NIL "Continue" is used instead.
  * Handles+reraises SIGINT */
+INLINE boole mx_tty_yesorno_would_prompt(void) {return ((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT));}
 EXPORT boole mx_tty_yesorno(char const *prompt, boole noninteract_default);
 
 #ifdef mx_HAVE_NET
