@@ -5,10 +5,10 @@ Subject: This the subject is
 
 -------
 Attachments:
-#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2. message/rfc822: 2
-#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#4. message/rfc822: 1
+#1: txa3 [txa3 -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#2. message/rfc822: tx.box#2
+#3: 'tx a4' ['tx a4' -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#4. message/rfc822: tx.box#1
 -------
 Message contains:
 To: ex@amp.ple
@@ -16,8 +16,8 @@ Subject: This the subject is
 
 -------
 Attachments:
-#1: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2. message/rfc822: 2
+#1: 'tx a4' ['tx a4' -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#2. message/rfc822: tx.box#2
 -------
 Message contains:
 To: ex@amp.ple
@@ -25,10 +25,10 @@ Subject: Subject two
 
 -------
 Attachments:
-#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2. message/rfc822: 2
-#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#4. message/rfc822: 1
+#1: txa3 [txa3 -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#2. message/rfc822: tx.box#2
+#3: 'tx a4' ['tx a4' -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#4. message/rfc822: tx.box#1
 -------
 Message contains:
 To: ex@amp.ple
@@ -41,10 +41,10 @@ Subject: Subject three
 
 -------
 Attachments:
-#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2. message/rfc822: 2
-#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#4. message/rfc822: 1
+#1: txa3 [txa3 -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#2. message/rfc822: tx.box#2
+#3: 'tx a4' ['tx a4' -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#4. message/rfc822: tx.box#1
 -------
 Message contains:
 To: ex@amp.ple
@@ -52,7 +52,7 @@ Subject: Subject three
 
 -------
 Attachments:
-#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [txa3 -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
 -------
 Message contains:
 To: ex@amp.ple
@@ -60,10 +60,10 @@ Subject: Subject Four
 
 -------
 Attachments:
-#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2. message/rfc822: 2
-#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#4. message/rfc822: 1
+#1: txa3 [txa3 -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#2. message/rfc822: tx.box#2
+#3: 'tx a4' ['tx a4' -- not classified, incs=reproducible_build -> oucs=*sendcharsets*]
+#4. message/rfc822: tx.box#1
 -------
 Message contains:
 To: ex@amp.ple
@@ -71,7 +71,7 @@ Subject: Subject Four
 
 -------
 Attachments:
-#1. message/rfc822: 1
+#1. message/rfc822: tx.box#1
 -------
 Message contains:
 To: ex@amp.ple
@@ -79,4 +79,4 @@ Subject: Subject Five
 
 -------
 Attachments:
-#1. message/rfc822: 2
+#1. message/rfc822: tx.box#2

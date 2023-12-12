@@ -267,8 +267,8 @@ oce>
 oce=
 -------
 Attachments:
-#1: rctl [./t.readctl -- unclassified content, incs=reproducible_build (no conversion)]
-#2: tat [./t.attach -- application/x-sh, incs=reproducible_build (no conversion)]
+#1: rctl [t.readctl -- not classified, incs=reproducible_build (no conversion)]
+#2: tat [t.attach -- application/x-sh, incs=reproducible_build (no conversion)]
 on-compose-leave
 alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
 0/0/NONE
