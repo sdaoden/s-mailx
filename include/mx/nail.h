@@ -609,7 +609,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_charset_7bit, /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
    /* Unused without mx_HAVE_ICONV, we use n_var_oklook(CHARSET_8BIT_OKEY)! */
    ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_v_charset_locale, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_charset_locale, /* {vip=1,nolopts=1,rdonly=1,nodel=1} */
    ok_v_charset_unknown_8bit, /* {vip=1,notempty=1} */
    ok_v_cmd,
    ok_b_colour_disable,

@@ -28,6 +28,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+#define n_ICONV_ASCII_NAME "us-ascii"
+
 #ifdef mx_HAVE_ICONV
 enum n_iconv_flags{
 	n_ICONV_NONE,
@@ -40,9 +42,9 @@ enum n_iconv_flags{
 };
 #endif
 
-enum n__iconv_set{
-	n__ICONV_SET_U8,
-	n__ICONV_SET_US,
+enum n__iconv_mib{
+	n__ICONV_MIB_UTF8 = 106,
+	n__ICONV_MIB_US = 3,
 	n__ICONV_SET__MAX
 };
 
@@ -51,16 +53,17 @@ EXPORT_DATA s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
 EXPORT_DATA iconv_t iconvd;
 #endif
 
-EXPORT boole n__iconv_name_is(char const *cset, u32 set);
+EXPORT boole n__iconv_name_is(char const *cset, enum n__iconv_mib mib);
 
 /* May return newly AUTO_ALLOC()ated thing or a constant if there were adjustments.
  * NIL will be returned if cset is an invalid character set name.
- * If mime_name_norm is set and we know the "preferred MIME name" (IANA term), we use that */
+ * //CONFIG strings are always stripped, and character set names are made lowercase.
+ * With mime_name_norm cset is fully normalized and looked up in character set name DB */
 EXPORT char *n_iconv_norm_name(char const *cset, boole mime_name_norm);
 
-/* Is it ASCII / UTF-8 indeed? */
-INLINE boole n_iconv_name_is_ascii(char const *cset) {return n__iconv_name_is(cset, n__ICONV_SET_US);}
-INLINE boole n_iconv_name_is_utf8(char const *cset) {return n__iconv_name_is(cset, n__ICONV_SET_U8);}
+/* Is it ASCII / UTF-8 indeed?  Note: cset MUST be a iconv_norm_name()! */
+INLINE boole n_iconv_name_is_ascii(char const *cset) {return n__iconv_name_is(cset, n__ICONV_MIB_US);}
+INLINE boole n_iconv_name_is_utf8(char const *cset) {return n__iconv_name_is(cset, n__ICONV_MIB_UTF8);}
 
 #ifdef mx_HAVE_ICONV
 /* This sets err(ERR_NONE) if tocode and fromcode are de-facto identical but iconv does not deal with them. */
