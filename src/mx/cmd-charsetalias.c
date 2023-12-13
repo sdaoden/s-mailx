@@ -174,7 +174,7 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 		}
 
 	if(cp != cp_orig)
-		cp = savestr(n_iconv_norm_name(cp, TRU1));
+		cp = savestr(n_iconv_norm_name(cp, FAL0));
 
 	NYD_OU;
 	return cp;
