@@ -26,6 +26,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/utf.h>
 
 #ifdef mx_HAVE_ICONV
@@ -43,55 +44,108 @@ s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
 iconv_t iconvd;
 #endif
 
-/* TODO character set names should be ctext/su */
-struct a_iconv_set{
-	uz is_cnt;
-	char const * const *is_dat;
-};
-
-/* In reversed MIME preference order, lowercased */
-static char const
-#if 0
-	* const a_iconv_l1_names[] = {"csISOLatin1", "iso-ir-100", "l1",
-			"IBM819", "CP819",  "ISO_8859-1",
-			"ISO_8859-1:1987", "latin1", "ISO-8859-1"},
-	* const a_iconv_u8_names[] = {"utf8", "utf-8"},
-	* const a_iconv_us_names[] = {"csASCII", "cp367", "IBM367", "us",
-			"ISO646-US", "ISO_646.irv:1991", "ANSI_X3.4-1986", "iso-ir-6",
-			"ANSI_X3.4-1968", "ASCII", "US-ASCII"};
-#else
-#if 0
-	* const a_iconv_l1_names[] = {"csisolatin1", "iso-ir-100", "l1",
-			"ibm819", "cp819",  "iso_8859-1",
-			"iso_8859-1:1987", "latin1", "iso-8859-1"},
-#endif
-	* const a_iconv_u8_names[] = {"utf8", "utf-8"},
-	* const a_iconv_us_names[] = {"csascii", "cp367", "ibm367", "us",
-			"iso646-us", "iso_646.irv:1991", "ansi_x3.4-1986", "iso-ir-6",
-			"ansi_x3.4-1968", "ascii", "us-ascii"};
+/* Define a_iconv_dump() (DB devel-only) */
+#if DVLDBGOR(1, 0) && 0
+# define a_ICONV_DUMP
 #endif
 
-static struct a_iconv_set const a_iconv_sets[] = {
-	FII(n__ICONV_SET_U8) {NELEM(a_iconv_u8_names), a_iconv_u8_names},
-	FII(n__ICONV_SET_US) {NELEM(a_iconv_us_names), a_iconv_us_names}
+/* TODO IANA character set names: "compress" data+structure, etc (mibenum,name) */
+struct a_iconv_cs{
+	u16 ics_mibenum;
+	u8 ics_cnt; /* name+alias count */
+	u8 ics_mime_off; /* offset to preferred MIME name (not counting [0]) */
+	u8 ics_norm_cnt; /* normalized "name" count */
+	u8 ics__pad[3];
+	/* [0] = official MIME name, lowercased
+	 * [1] = official name
+	 * [..] = name+aliases
+	 * [.ics_norm_off] = first normalized name */
+	char const * const *ics_dat;
 };
 
-boole
-n__iconv_name_is(char const *cset, u32 set){
-	boole rv;
-	char const * const *npp;
-	struct a_iconv_set const *isp;
+/* Include the constant su-make-character-set-update.sh output */
+#include "mx/gen-iconv-db.h" /* $(MX_SRCDIR) */
+
+/* cset must already be lowercase */
+static char *a_iconv_db_lookup(char const *cset);
+
+static char *
+a_iconv_db_lookup(char const *cset){
+	struct a_iconv_cs const *icsp, *icsp_max;
+	enum {a_NONE, a_WS, a_ALPHA, a_DIGIT} sm;
+	char const *cp;
+	char *buf, *tcp, c;
+	uz i, j;
 	NYD2_IN;
 
-	isp = &a_iconv_sets[set];
-	npp = &isp->is_dat[set = S(u32,isp->is_cnt)];
+	i = su_cs_len(cset) << 1;
 
-	do if((rv = !su_cs_cmp_case(cset, *--npp)))
-		break;
-	while(--set != 0);
+	tcp = buf = su_LOFI_ALLOC(i +1);
+	cp = cset;
+
+	/* Generate normalized variant (of already lowercased cset) */
+	for(sm = a_NONE; (c = *(cp++)) != '\0';){
+		boole sep;
+
+		sep = FAL0;
+
+		if(su_cs_is_space(c) || su_cs_is_punct(c)){
+			if(sm == a_WS)
+				continue;
+			sm = a_WS;
+			c = ' ';
+		}else if(su_cs_is_lower(c)){
+			sep = (sm == a_DIGIT);
+			sm = a_ALPHA;
+		}else if(su_cs_is_digit(c)){
+			sep = (sm == a_ALPHA);
+			sm = a_DIGIT;
+		}else
+			continue;
+
+		do
+			*(tcp++) = (sep ? ' ' : c);
+		while(--sep >= FAL0);
+	}
+	*tcp = '\0';
+
+	/* Search our DB */
+	icsp = a_iconv_db;
+	icsp_max = &icsp[NELEM(a_iconv_db)];
+	do{
+		i = icsp->ics_cnt + 1;
+		j = icsp->ics_norm_cnt;
+		do{
+			cp = icsp->ics_dat[i++];
+			if(!su_cs_cmp(buf, cp)){
+				cset = icsp->ics_dat[0];
+				goto jdb_break;
+			}
+		}while(--j != 0);
+	}while(++icsp != icsp_max);
+
+	/*Does not exist in DB, take (lowercased) as is cset = NIL;*/
+jdb_break:
+	su_LOFI_FREE(buf);
 
 	NYD2_OU;
-	return rv;
+	return UNCONST(char*,cset);
+}
+
+boole
+n__iconv_name_is(char const *cset, enum n__iconv_mib mib){
+	struct a_iconv_cs const *icsp;
+	NYD2_IN;
+
+	icsp = a_iconv_db;
+	while(icsp->ics_mibenum != mib)
+		++icsp;
+
+	if(!su_cs_cmp(icsp->ics_dat[0], cset))
+		cset = NIL;
+
+	NYD2_OU;
+	return (cset == NIL);
 }
 
 char *
@@ -117,11 +171,9 @@ n_iconv_norm_name(char const *cset, boole mime_norm_name){
 		cp = savestrbuf(cset, P2UZ(cp - cset));
 		for(tcp = cp; (tc = *tcp) != '\0'; ++tcp)
 			*tcp = su_cs_to_lower(tc);
-
 		if(c != '\0' && (n_poption & n_PO_D_V))
 			n_err(_("Stripped off character set suffix: %s -> %s\n"),
 				n_shexp_quote_cp(cset, FAL0), n_shexp_quote_cp(cp, FAL0));
-
 		cset = cp;
 	}
 
@@ -130,15 +182,8 @@ n_iconv_norm_name(char const *cset, boole mime_norm_name){
 		if((cset = ok_vlook(charset_unknown_8bit)) == NIL)
 			cset = n_var_oklook(CHARSET_8BIT_OKEY);
 		cset = n_iconv_norm_name(cset, mime_norm_name);
-	}else if(mime_norm_name){
-		u32 i;
-
-		for(i = 0; i < n__ICONV_SET__MAX; ++i)
-			if(n__iconv_name_is(cset, i)){
-				cset = a_iconv_sets[i].is_dat[a_iconv_sets[i].is_cnt - 1];
-				break;
-			}
-	}
+	}else if(mime_norm_name)
+		cset = a_iconv_db_lookup(cset);
 
 jleave:
 	NYD2_OU;
@@ -478,6 +523,39 @@ jleave:
 	return err;
 }
 #endif /* mx_HAVE_ICONV */
+
+#ifdef a_ICONV_DUMP
+void
+mx_iconv_dump(void){
+	struct a_iconv_cs const *icsp, *icsp_max;
+
+	icsp = a_iconv_db;
+	icsp_max = &icsp[NELEM(a_iconv_db)];
+
+	fprintf(stderr, "DB has %zu entries\n", NELEM(a_iconv_db));
+	do{
+		u32 i;
+
+		fprintf(stderr, "- MIB=%u CNT=%u NORM_CNT=%u\n",
+			icsp->ics_mibenum, icsp->ics_cnt, icsp->ics_norm_cnt);
+		fprintf(stderr, "    MIME<%s>", icsp->ics_dat[0]);
+		if(icsp->ics_cnt > 0)
+			fprintf(stderr, " NAME<%s>%s",
+				icsp->ics_dat[1], (icsp->ics_mime_off == 0 ? " (MIME)" : su_empty));
+		fprintf(stderr, "\n    ");
+		for(i = 1 + (icsp->ics_cnt != 0); i < 1 + icsp->ics_cnt + icsp->ics_norm_cnt; ++i){
+			if(i == icsp->ics_cnt + 1)
+				fprintf(stderr, "%sNORM: ", ((i == 1 + (icsp->ics_cnt != 0)) ? su_empty : "\n    "));
+			fprintf(stderr, " %u<%s>", i, icsp->ics_dat[i]);
+			if(i == 1 + icsp->ics_mime_off)
+				fprintf(stderr, " (MIME)");
+			putc(' ', stderr);
+		}
+		putc('\n', stderr);
+	}while(++icsp != icsp_max);
+}
+# undef a_ICONV_DUMP
+#endif /* a_ICONV_DUMP */
 
 #include "su/code-ou.h"
 #undef su_FILE
