@@ -484,7 +484,7 @@ imap_path_encode(char const *cp, boole *err_or_null){
       char const *x;
 
       emsg = N_("iconv(3) from locale charset to UTF-8 failed");
-      if((x = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
+      if((x = n_iconv_onetime_cp(n_ICONV_NONE, n_ICONV_UTF8_NAME, ok_vlook(ttycharset),
             cp)) == NULL)
          goto jerr;
       cp = x;

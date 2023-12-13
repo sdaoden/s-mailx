@@ -1148,6 +1148,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			FALLTHRU
 		case ok_v_charset_7bit: FALLTHRU
 		case ok_v_charset_8bit: FALLTHRU
+		case ok_v_charset_locale: FALLTHRU
 		case ok_v_charset_unknown_8bit: FALLTHRU
 		case ok_v_ttycharset:
 			/* (Logs on error) */
