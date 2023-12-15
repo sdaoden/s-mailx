@@ -10279,7 +10279,7 @@ _EOT
 		-s Y \
 		-Y '~:unmimetype *' \
 		-Y '~:mimetype ? application/yeye txa3' \
-		-Y '~:mimetype ?* application/nono txa3' \
+		-Y '~:mimetype ?only-handler application/nono txa3' \
 		-Y '~@ ./txa3' \
 		ex@am.ple > ./t11 2>${E0}
 	cke0 11 0 ./t11 '334854921 459'
@@ -10513,7 +10513,7 @@ echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
 	ck 3 0 ./t3 '1840582819 265' '1306348135 57'
 	ck 4 - ./t4 '3643354701 32'
 
-	# Note: further type-marker stuff is done in t_pipe_handlers()
+	# Note: further type-marker stuff is done in t_pipe_handlers()!
 
 	t_epilog "${@}"
 } #}}}
@@ -13246,7 +13246,7 @@ t_pipe_handlers() { #{{{
 		cke0 7 0 ./t7 '2698061312 679'
 	fi
 
-	## Extension chains, type-markers (note: "linked" by t_mimetype())
+	## Extension chains, type-markers (note: "linked" by t_mimetype()!!)
 
 	tmt='#
 unmimetype *
@@ -13285,15 +13285,15 @@ mimetype ${x} application/x-gzip  tgz gz emz
 	cke0 13 0 ./t13 '2402061837 1859'
 
 	# handler-only, text: text
-	printf 'type\nxit' | ${MAILX} -S x='?*t' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t14 2>${E0}
+	printf 'type\nxit' | ${MAILX} -S x='?only-handler,t' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t14 2>${E0}
 	cke0 14 0 ./t14 '2402061837 1859'
 
 	# handler-only, no text: unhandled
-	printf 'type\nxit' | ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t15 2>${E0}
+	printf 'type\nxit' | ${MAILX} -S x='?o' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t15 2>${E0}
 	cke0 15 0 ./t15 '1737171988 2390'
 
-	# hdl-only type-marker is honoured when sending
-	printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} > ./t20 2>${E0}
+	# hdl-only type-marker is *not* honoured when sending
+	printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x='?o' -Y "${tmt}" ${ARGS} > ./t20 2>${E0}
 	ck0e0 20 0 ./t20
 	ck 21 - ./t21 '3051683085 2176'
 
@@ -13305,8 +13305,8 @@ mimetype ${x} application/x-gzip  tgz gz emz
 
 	printf 'type\nxit' |
 		${MAILX} -Sx -Y "${tmt}" \
-		-Y 'mimetype ?*t application/y-ma-tar-gz ma.tar.gz' \
-		-Y 'mimetype ?t* application/x-x-ma-tar-gz x.ma.tar.gz' \
+		-Y 'mimetype ?o,t application/y-ma-tar-gz ma.tar.gz' \
+		-Y 'mimetype ?t,only-handler application/x-x-ma-tar-gz x.ma.tar.gz' \
 		-Y 'mimetype ?t application/x-unix-readme README' \
 		${ARGS} -Rf ./t21 > ./t24 2>${E0}
 	cke0 24 0 ./t24 '4241547105 2311'
@@ -13314,14 +13314,21 @@ mimetype ${x} application/x-gzip  tgz gz emz
 	# .. and * still needs a handler
 	printf 'type\nxit' |
 		${MAILX} -Sx -S mime-counter-evidence=0b0110 -Y "${tmt}" \
-		-Y 'mimetype ?*t application/z-ma-tar-gz ma.tar.gz' \
-		-Y 'mimetype ?t* application/z-x-ma-tar-gz x.ma.tar.gz' \
+		-Y 'mimetype ?only-handler,t application/z-ma-tar-gz ma.tar.gz' \
+		-Y 'mimetype ?t,o application/z-x-ma-tar-gz x.ma.tar.gz' \
 		-Y 'mimetype ?t application/z-unix-readme README' \
-		-Y 'mimetype ?* application/z-xfun x' \
-		-Y 'mimetype ?* application/z-fun x.tar' \
+		-Y 'mimetype ?o application/z-xfun x' \
+		-Y 'mimetype ?o application/z-fun x.tar' \
 		-S pipe-application/z-fun="?* echo in; ${cat}; echo out" \
 		${ARGS} -Rf ./t21 > ./t25 2>${E0}
 	cke0 25 0 ./t25 '1303101797 2473'
+
+	# ~ enforces plain/txt
+	printf 'dödeldü' > INSTALL
+	printf 'm ./t27\nLine1\n~@ %s\n~.\nxit' "${tfs} INSTALL" |
+		${MAILX} -S x='?send-text' -Y "${tmt}" -S ttycharset-detect=latin1 -Siconv-disable ${ARGS} > ./t26 2>${E0}
+	ck0e0 26 0 ./t26
+	ck 27 - ./t27 '860307946 2493'
 
 	t_epilog "${@}"
 } #}}}
