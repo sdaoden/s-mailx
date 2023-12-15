@@ -130,7 +130,7 @@ DVL( static void a_mt__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 static struct a_mt_node *a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, uz len);
 
 /* Try to find MIME type by X (after zeroing mtlp), return NIL if not found.
- * is_hdl: whether for handler aka user context */
+ * is_hdl: whether for handler aka user context (aka whether ?* handler-only *can* match (then: first)) */
 static struct a_mt_lookup *a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name, boole is_hdl);
 static struct a_mt_lookup *a_mt_by_name(struct a_mt_lookup *mtlp, char const *name, boole is_hdl);
 
@@ -858,15 +858,16 @@ jnextc:
 		if(!(rv & mx_MIME_TYPE_HDL_COPIOUSOUTPUT))
 			goto jerr;
 	}
+	/* Log errors for the rest */
 
 	if(rv & mx_MIME_TYPE_HDL_NEEDSTERM){
 		if(rv & mx_MIME_TYPE_HDL_COPIOUSOUTPUT){
-			cp = N_("cannot use needsterminal and copiousoutput");
-			goto jerr;
+			cp = N_("cannot combine needsterminal and copiousoutput");
+			goto jerrlog;
 		}
 		if(rv & mx_MIME_TYPE_HDL_ASYNC){
-			cp = N_("cannot use needsterminal and x-mailx-async");
-			goto jerr;
+			cp = N_("cannot combine needsterminal and x-mailx-async");
+			goto jerrlog;
 		}
 		/* needsterminal needs a terminal */
 		if(!(n_psonce & n_PSO_INTERACTIVE))
@@ -875,11 +876,11 @@ jnextc:
 
 	if(rv & mx_MIME_TYPE_HDL_ASYNC){
 		if(rv & mx_MIME_TYPE_HDL_COPIOUSOUTPUT){
-			cp = N_("cannot use x-mailx-async and copiousoutput");
+			cp = N_("cannot combine x-mailx-async and copiousoutput");
 			goto jerrlog;
 		}
 		if(rv & mx_MIME_TYPE_HDL_TMPF_UNLINK){
-			cp = N_("cannot use x-mailx-async and x-mailx-tmpfile-unlink");
+			cp = N_("cannot combine x-mailx-async and x-mailx-tmpfile-unlink");
 			goto jerrlog;
 		}
 	}
