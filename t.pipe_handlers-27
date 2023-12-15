@@ -1,0 +1,95 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: inline
+Content-Type: text/plain; charset="us-ascii"
+
+Line1
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="README"
+Content-Type: text/plain; charset="us-ascii"
+
+body README
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="x.gz"
+Content-Type: text/plain; charset="us-ascii"
+
+body x.gz
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="x.ma.tar.gz"
+Content-Type: text/plain; charset="us-ascii"
+
+body x.ma.tar.gz
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="x.tar"
+Content-Type: text/plain; charset="us-ascii"
+
+body x.tar
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="x.tar.gz"
+Content-Type: text/plain; charset="us-ascii"
+
+body x.tar.gz
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="y.x.ma.tar.gz"
+Content-Type: text/plain; charset="us-ascii"
+
+body y.x.ma.tar.gz
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".x"
+Content-Type: text/plain; charset="us-ascii"
+
+body .x
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".x.ma.tar.gz"
+Content-Type: text/plain; charset="us-ascii"
+
+body .x.ma.tar.gz
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename=".x.tar"
+Content-Type: text/plain; charset="us-ascii"
+
+body .x.tar
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="y.x.tar"
+Content-Type: text/plain; charset="us-ascii"
+
+body y.x.tar
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="x.x"
+Content-Type: text/plain; charset="us-ascii"
+
+body x.x
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="NEWS"
+Content-Type: text/plain; charset="us-ascii"
+
+body NEWS
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="INSTALL"
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+d=F6deld=FC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
