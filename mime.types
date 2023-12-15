@@ -43,21 +43,21 @@ text/xml	xml xsd
 ? text/x-chdr	h
 ? text/x-csrc	c
 
-?* application/x-tar-xz	txz tar.xz
+?only-handler application/x-tar-xz	txz tar.xz
 application/x-xz	xz txz
-?* application/x-tar-zstd	tzst tar.zst
+?o, application/x-tar-zstd	tzst tar.zst
 # EXT tzst
 application/zstd	zst tzst
-?* application/x-tar-gz	tgz tar.gz
+?o application/x-tar-gz	tgz tar.gz
 # EXT emz tgz
 application/gzip	gz emz tgz
-?* application/x-tar-lzip	tlz tar.lz
+?o application/x-tar-lzip	tlz tar.lz
 application/x-lzip	lz tlz
-?* application/x-tar-lzma	tar.lzma
+?o application/x-tar-lzma	tar.lzma
 application/x-lzma	lzma
 application/x-lz4	lz4
 application/x-tar	tar
-?* application/x-tar-bzip2  tbz2 tar.bz2
+?o application/x-tar-bzip2  tbz2 tar.bz2
 application/x-bzip2	bz2 tbz2 boz
 application/zip	zip
 
@@ -158,7 +158,7 @@ text/x-jsp	jsp
 ? text/x-ruby	rb
 ? text/x-tex	tex
 ? text/x-texinfo	texinfo texi
-text/x-uuencode	uu
+? text/x-uuencode	uu
 ? text/x-vcalendar	vcs
 ? text/vcard	vcf
 ? text/x-yacc	y

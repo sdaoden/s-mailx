@@ -11775,9 +11775,9 @@ set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
 .Pp
 .Bl -tag -compact -width ".It Ql __"
 .It Ql \&*
-The command's output is reintegratable:
+The command output is reintegratable: see
 .Cd copiousoutput .
-This is implied when using a plain
+Implied when using a plain
 .Ql \& .
 .
 .It Ql #
@@ -14432,7 +14432,7 @@ Comments may be introduced anywhere on a line with a number sign
 causing the remaining line to be discarded.
 .
 .Pp
-An extended (non-portable) syntax that prepends an optional
+An extended (non-portable) syntax prepending an optional
 .Ql type-marker
 to the above is offered by the command
 .Ic mimetype ,
@@ -14444,15 +14444,16 @@ via the alternative value syntax of
 .Dl [?type-marker ]type/subtype extension [extension ...]
 .
 .Pp
-The following type-markers are supported; they are mutual exclusive
-unless documented otherwise:
+The
+.Ql type-marker
+is interpreted as a comma-separated list of a type and flags.
+The following mutually exclusive types are supported:
 .
 .Pp
-.Bl -tag -compact -width ".It Ar _n_u"
+.Bl -tag -compact -width ".It Ar BaNg"
 .It Ar t
-Treat this media type as plain text; the
-.Ar t
-is actually optional.
+Treat this media type as plain text; this is effectively optional unless
+the type-marker contains flags (see below).
 .It Ar h
 Treat message parts with this content as HTML tagsoup.
 If the \*(oPal HTML-tagsoup-to-text converter is not available treat
@@ -14467,11 +14468,23 @@ If no handler can be found a text message is displayed which says so.
 This can be annoying, for example signatures serve a contextual purpose,
 their content is of no use by itself.
 This marker will avoid displaying the text message.
-.It Ar *
+.El
+.
+.Pp
+The type-marker can include flags.
+If it does, the type is no longer optional, but must be given
+explicitly, if so desired:
+.
+.
+.Pp
+.Bl -tag -width ".It Ar BaNg"
+.It Ar only-handler , o
 The given MIME media type shall only be matched when looking for
-handlers, but not when classifying content to create messages.
-.Ar t
-is no longer optional when this is used.
+handlers (for
+.Ic type
+etc), not when classifying attachments
+.Pf ( Fl a )
+and other content to create messages.
 IANA MIME registry standards do not know about
 .Dq extension chains :
 .Ql tar.gz
@@ -14488,11 +14501,35 @@ unpacking is possible is not available.
 This flag may be used alongside other type-markers, and is especially
 useful in conjunction with
 .Va mime-counter-evidence .
+Mutual exclusive with
+.Ar send-text .
+.Bd -literal -offset indent
+?only-handler application/x-tar-xz	txz tar.xz
+application/x-xz	xz txz
+.Ed
+.
+.It Ar send-text , s
+When attaching (see
+.Fl a )
+data matching this MIME type, enforce a reclassification as
+.Ql text/plain ;
+Makes sense only for
+.Pf non- Ql text/
+types (and is ignored if binary data is encountered).
+Because
+.Sx "Character sets"
+are only honoured for
+.Ql text/
+attachments, this can support perceiving MUAs to save data in
+a localized character set.
+Mutual exclusive with
+.Ar only-handler .
 .El
 .
+.
 .Pp
-When classifying all registered MIME types are searched, and the longest
-matching extension will be used.
+When classifying, all registered MIME types are searched,
+and the longest matching extension will be used.
 A filename of only an
 .Ql extension
 will match, for example

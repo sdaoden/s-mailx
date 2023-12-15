@@ -101,10 +101,6 @@ struct mx_mime_type_classify_fp_ctx{
  * With subt_wildcard_ok, allow * as a SUBTYPE. */
 EXPORT boole mx_mime_type_is_valid(char const *name, boole t_a_subt, boole subt_wildcard_ok);
 
-/* Check whether the Content-Type name is internally known.
- * This only matches non-local MIME types (?* handler-only type-marker) */
-EXPORT boole mx_mime_type_is_known(char const *name);
-
 /* Return a Content-Type matching a path(name), or NIL if none could be found */
 EXPORT char *mx_mime_type_classify_path(char const *path);
 
