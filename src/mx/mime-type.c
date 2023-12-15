@@ -75,9 +75,12 @@ enum a_mt_flags{
 	a_MT_TM_QUIET = 4u<<16, /* No "no mime handler available" message */
 	a_MT__TM_MARKMASK = 7u<<16,
 
-	/* Only used when evaluating MIME type handlers, aka marked by the ?* type
+	/* Only used when evaluating MIME type handlers, aka marked by the ?only-handler type
 	 * marker: these are stored ONLY in a_mt_hdl_list */
-	a_MT_TM_HDL_ONLY = 1u<<20
+	a_MT_TM_ONLY_HANDLER = 1u<<20,
+	/* Only used when classifying: forcefully send as text/plain */
+	a_MT_TM_SEND_TEXT = 1u<<21,
+	a_MT_TM__FLAG_MASK = a_MT_TM_ONLY_HANDLER | a_MT_TM_SEND_TEXT
 };
 
 enum a_mt_counter_evidence{
@@ -165,7 +168,7 @@ a_mt_init(void){ /* {{{ */
 		mtnp = su_ALLOC(sizeof *mtnp);
 		mtbp = &a_mt_bltin[i];
 
-		if(!(mtbp->mtb_flags & a_MT_TM_HDL_ONLY)){
+		if(!(mtbp->mtb_flags & a_MT_TM_ONLY_HANDLER)){
 			if(tail != NIL)
 				tail->mtn_next = mtnp;
 			else
@@ -269,7 +272,7 @@ a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){ /* {{
 
 	while(fgetline(line, linesize, NIL, &len, fp, FAL0) != NIL)
 		if((mtnp = a_mt_create(FAL0, orflags, *line, len)) != NIL){
-			if(!(mtnp->mtn_flags & a_MT_TM_HDL_ONLY)){
+			if(!(mtnp->mtn_flags & a_MT_TM_ONLY_HANDLER)){
 				if(head == NIL)
 					head = tail = mtnp;
 				else
@@ -350,7 +353,6 @@ a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, 
 	work.l = len;
 	line = n_str_trim(&work, n_STR_TRIM_BOTH)->s;
 	len = work.l;
-	typ = line;
 
 	/* (But wait - is there a type marker?) */
 	if(!(orflags & (a_MT_USR | a_MT_SYS)) && (*line == '?' || *line == '@')){
@@ -365,18 +367,38 @@ a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, 
 			line += i;
 			len -= i;
 		}else{
-			for(--len, ++line, i = 1;; ++i){
+			for(typ = ++line;; ++typ){
+				if(su_cs_is_space(*typ))
+					break;
+				else if(*typ == '\0')
+					goto jeinval;
+			}
+			i = P2UZ(typ - line);
+			len -= i;
+			work.s = savestrbuf(line, i);
+			line = typ;
+
+			while((typ = su_cs_sep_c(&work.s, ',', TRU1)) != NIL){
 				char c;
 
-				if(--len == 0)
-					goto jeinval;
-				if(su_cs_is_space(c = *line++))
-					break;
-
-				if(c == '*'){
-					if(orflags & a_MT_TM_HDL_ONLY)
+				c = typ[0];
+				if(typ[1] != '\0'){
+					if(!su_cs_cmp_case(typ, "only-handler"))
+						goto jf_oh;
+					else if(!su_cs_cmp_case(typ, "send-text"))
+						goto jf_st;
+					else
 						goto jeinval;
-					orflags |= a_MT_TM_HDL_ONLY;
+				}else if(c == 'o'){
+jf_oh:
+					if(orflags & a_MT_TM__FLAG_MASK)
+						goto jeinval;
+					orflags |= a_MT_TM_ONLY_HANDLER;
+				}else if(c == 's'){
+jf_st:
+					if(orflags & a_MT_TM__FLAG_MASK)
+						goto jeinval;
+					orflags |= a_MT_TM_SEND_TEXT;
 				}else if(orflags & a_MT__TM_MARKMASK)
 					goto jeinval;
 				else switch(c){
@@ -387,6 +409,9 @@ a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, 
 				case 'q': orflags |= a_MT_TM_QUIET; break;
 				}
 			}
+
+			if(!(orflags & (a_MT__TM_MARKMASK | a_MT_TM__FLAG_MASK)))
+				orflags |= a_MT_TM_PLAIN;
 		}
 
 		work.s = UNCONST(char*,line);
@@ -936,18 +961,6 @@ mx_mime_type_is_valid(char const *name, boole t_a_subt, boole subt_wildcard_ok){
 	return (c == '\0');
 }
 
-boole
-mx_mime_type_is_known(char const *name){
-	struct a_mt_lookup mtl;
-	boole rv;
-	NYD_IN;
-
-	rv = (a_mt_by_name(&mtl, name, FAL0) != NIL);
-
-	NYD_OU;
-	return rv;
-}
-
 char *
 mx_mime_type_classify_path(char const *path){
 	struct a_mt_lookup mtl;
@@ -982,11 +995,19 @@ mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp){
 	else if(!su_cs_cmp_case_n(mtcfcp->mtcfc_content_type, "text/", 5))
 		mpf = ok_blook(mime_allow_text_controls) ? mx_MIME_PROBE_CT_TXT | mx_MIME_PROBE_CT_TXT_COK
 				: mx_MIME_PROBE_CT_TXT;
-	else if(!su_cs_cmp_case(mtcfcp->mtcfc_content_type, "message/rfc822")){
-		mpf = mx_MIME_PROBE_CT_TXT;
-		rfc822 = TRU1;
-	}else
-		mpf = mx_MIME_PROBE_CLEAN;
+	else{
+		struct a_mt_lookup mtl;
+
+		if(a_mt_by_name(&mtl, mtcfcp->mtcfc_content_type, FAL0) != NIL &&
+				(mtl.mtl_node->mtn_flags & a_MT_TM_SEND_TEXT)){
+			mpf = mx_MIME_PROBE_CT_TXT;
+			mtcfcp->mtcfc_content_type = "text/plain";
+		}else if(!su_cs_cmp_case(mtcfcp->mtcfc_content_type, "message/rfc822")){
+			mpf = mx_MIME_PROBE_CT_TXT;
+			rfc822 = TRU1;
+		}else
+			mpf = mx_MIME_PROBE_CLEAN;
+	}
 
 	mpf = mx_mime_probe_setup(&mpc, mpf)->mpc_mpf;
 
@@ -1076,16 +1097,17 @@ jleave:
 				: (menc == mx_MIME_ENC_8B ? CONV_8BIT
 				: (menc == mx_MIME_ENC_QP ? CONV_TOQP : CONV_TOB64)));
 	}else{
-		if(!(mpf & mx_MIME_PROBE_HIGHBIT))
-			mtcfcp->mtcfc_7bit_clean = TRU1;
-		if(mpccp->mpcc_iconv_disable)
-			mtcfcp->mtcfc_do_iconv = FAL0;
 		if(mpf & mx_MIME_PROBE_CT_NONE){
 			mpf |= mx_MIME_PROBE_CT_TXT;
 			mtcfcp->mtcfc_content_type = "text/plain";
 			mtcfcp->mtcfc_ct_is_text_plain = TRU1;
 		}else if((mpf & mx_MIME_PROBE_CT_TXT) && !su_cs_cmp_case(mtcfcp->mtcfc_content_type, "text/plain"))
 			mtcfcp->mtcfc_ct_is_text_plain = TRU1;
+
+		if(!(mpf & mx_MIME_PROBE_HIGHBIT))
+			mtcfcp->mtcfc_7bit_clean = TRU1;
+		if(mpccp->mpcc_iconv_disable)
+			mtcfcp->mtcfc_do_iconv = FAL0;
 
 		if(rfc822){
 			if(mpf & mx_MIME_PROBE_FROM_1STLINE){
@@ -1403,7 +1425,7 @@ c_mimetype(void *vp){ /* {{{ */
 
 		mtnp = a_mt_create(TRU1, a_MT_CMD, n_string_cp(s), s->s_len);
 		if(mtnp != NIL){
-			if(!(mtnp->mtn_flags & a_MT_TM_HDL_ONLY)){
+			if(!(mtnp->mtn_flags & a_MT_TM_ONLY_HANDLER)){
 				mtnp->mtn_next = a_mt_list;
 				a_mt_list = mtnp;
 			}else{
@@ -1439,21 +1461,19 @@ jiter:
 							: (mtnp->mtn_flags & a_MT_FSPEC ? "# f= file"
 							: (mtnp->mtn_flags & a_MT_CMD ? "# command"
 							: "# built-in")))));
-				if(mtnp->mtn_flags & a_MT_TM_HDL_ONLY)
-					s = n_string_push_cp(s, _(" *=only applicable to local/handler use"));
-
+				if(mtnp->mtn_flags & a_MT_TM_ONLY_HANDLER)
+					s = n_string_push_cp(s, _(" (not for sending mail)"));
+				else if(mtnp->mtn_flags & a_MT_TM_SEND_TEXT)
+					s = n_string_push_cp(s, _(" (send/attach as text/plain)"));
 				s = n_string_push_cp(s, "\n  ");
 			}
 
 			s = n_string_push_buf(s, "mimetype ", sizeof("mimetype ")-1);
 
-			if(mtnp->mtn_flags & (a_MT_TM_HDL_ONLY | a_MT__TM_MARKMASK)){
+			if(mtnp->mtn_flags & (a_MT__TM_MARKMASK | a_MT_TM__FLAG_MASK)){
 				char c;
 
 				s = n_string_push_c(s, '?');
-
-				if(mtnp->mtn_flags & a_MT_TM_HDL_ONLY)
-					s = n_string_push_c(s, '*');
 
 				switch(mtnp->mtn_flags & a_MT__TM_MARKMASK){
 				case a_MT_TM_PLAIN: c = 't'; break;
@@ -1462,8 +1482,17 @@ jiter:
 				case a_MT_TM_QUIET: c = 'q'; break;
 				default: c = '\0'; break;
 				}
-				if(c != '\0')
+				if(c != '\0'){
 					s = n_string_push_c(s, c);
+
+					if(mtnp->mtn_flags & a_MT_TM__FLAG_MASK)
+						s = n_string_push_c(s, ',');
+				}
+
+				if(mtnp->mtn_flags & a_MT_TM_ONLY_HANDLER)
+					s = n_string_push_cp(s, "only-handler");
+				else if(mtnp->mtn_flags & a_MT_TM_SEND_TEXT)
+					s = n_string_push_cp(s, "send-text");
 
 				s = n_string_push_c(s, ' ');
 			}
