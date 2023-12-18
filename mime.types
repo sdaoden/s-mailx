@@ -28,20 +28,20 @@
 
 # Expected frequent use
 # text/plain CHANGE: m4->text/x-m4, pod->text/x-pod; rc<-
-? text/plain	txt text conf cfg def list log in properties rc
+text/plain	txt text conf cfg def list log in properties rc
 		README INSTALL TODO COPYING NEWS
-? text/x-diff	diff patch
-? text/troff	t tr roff man me ms tmac 1 2 3 4 5 6 7 8 9
+text/x-diff	diff patch
+text/troff	t tr roff man me ms tmac 1 2 3 4 5 6 7 8 9
 application/pdf	pdf
 ?h application/xhtml+xml	xhtml xht
 ?h text/html	html htm
 # EXT xsd
 text/xml	xml xsd
 
-? text/x-shellscript	sh bash
-? text/x-awk	awk
-? text/x-chdr	h
-? text/x-csrc	c
+text/x-shellscript	sh bash
+text/x-awk	awk
+text/x-chdr	h
+text/x-csrc	c
 
 ?only-handler application/x-tar-xz	txz tar.xz
 application/x-xz	xz txz
@@ -120,48 +120,48 @@ image/x-xwindowdump	xwd
 
 message/rfc822	eml mime mht mhtml
 
-? text/calendar	ics ifb
-? text/css	css
-? text/csv	csv
-? text/javascript	js
-? text/sgml	sgml sgm
-? text/x-assembly	s S asm
+text/calendar	ics ifb
+text/css	css
+text/csv	csv
+text/javascript	js
+text/sgml	sgml sgm
+text/x-assembly	s S asm
 # (Note tuple extensions will never match since text/plain wins!)
-? text/x-asciidoc	asciidoc adoc ad ad.txt adoc.txt
-? text/x-c++hdr	hpp hxx hh h++ hp
-? text/x-c++src	cpp cxx cc c++
-? text/x-csharp	cs
+text/x-asciidoc	asciidoc adoc ad ad.txt adoc.txt
+text/x-c++hdr	hpp hxx hh h++ hp
+text/x-c++src	cpp cxx cc c++
+text/x-csharp	cs
 # (I have assembler CGI's written myself, do not "? " mark that one)
 text/x-cgi	cgi
-? text/x-csh	csh tcsh
-? text/x-d	d
-? text/x-go	go
-? text/x-ini	ini
-? text/x-java	java
+text/x-csh	csh tcsh
+text/x-d	d
+text/x-go	go
+text/x-ini	ini
+text/x-java	java
 text/x-jsp	jsp
-? text/x-latex	latex
-? text/x-lex	l
+text/x-latex	latex
+text/x-lex	l
 # CHANGE (tika: text/plain)
-? text/x-m4	m4
-? text/markdown	md markdown
+text/x-m4	m4
+text/markdown	md markdown
 # EXT nim
-? text/x-nim	nim
-? text/x-objcsrc	m
-? text/x-perl	pl pm al perl
-? text/x-php	php php3 php4
+text/x-nim	nim
+text/x-objcsrc	m
+text/x-perl	pl pm al perl
+text/x-php	php php3 php4
 # CHANGE (tika: text/plain)
-? text/x-pod	pod
-? text/x-python	py
-? text/x-raku	raku rakumod
-? text/x-rakudoc	rakudoc
-? text/x-rst	rst rest restx
-? text/x-ruby	rb
-? text/x-tex	tex
-? text/x-texinfo	texinfo texi
-? text/x-uuencode	uu
-? text/x-vcalendar	vcs
-? text/vcard	vcf
-? text/x-yacc	y
-? text/x-yaml	yaml
+text/x-pod	pod
+text/x-python	py
+text/x-raku	raku rakumod
+text/x-rakudoc	rakudoc
+text/x-rst	rst rest restx
+text/x-ruby	rb
+text/x-tex	tex
+text/x-texinfo	texinfo texi
+text/x-uuencode	uu
+text/x-vcalendar	vcs
+text/vcard	vcf
+text/x-yacc	y
+text/x-yaml	yaml
 
 # s-itt-mode
