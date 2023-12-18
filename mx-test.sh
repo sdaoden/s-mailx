@@ -10470,7 +10470,7 @@ t_mimetype() { #{{{
 	t_prolog "${@}"
 
 	tmt='#
-mimetype ? text/x-unix-readme README INSTALL TODO COPYING NEWS
+mimetype text/x-unix-readme README INSTALL TODO COPYING NEWS
 mimetype application/x-tar-gz tgz tar.gz
 mimetype application/x-ma-tar-gz ma.tar.gz
 mimetype application/x-x-ma-tar-gz x.ma.tar.gz
@@ -10482,7 +10482,7 @@ mimetype application/gzip	tgz gz emz
 
 	# It prepends
 	{ printf 'mimetype\nxit\n' | ${MAILX} -Y "${tmt}" ${ARGS} | ${sed} '9,$d' > ./t1; } 2>${E0}
-	cke0 1 0 ./t1 '668594290 337'
+	cke0 1 0 ./t1 '2444776365 334'
 
 	# It classifies
 	tfs='README x.gz x.ma.tar.gz x.tar x.tar.gz y.x.ma.tar.gz .x .x.ma.tar.gz .x.tar y.x.tar x.x NEWS'
