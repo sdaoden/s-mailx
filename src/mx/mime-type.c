@@ -68,6 +68,7 @@ enum a_mt_flags{
 	a_MT_USR = 1u<<9, /* VAL_MIME_TYPES_USR */
 	a_MT_SYS = 1u<<10, /* VAL_MIME_TYPES_SYS */
 	a_MT_FSPEC = 1u<<11, /* Via f= *mimetypes-load-control* spec. */
+	a_MT__SOURCE_MASK = a_MT_CMD | a_MT_USR | a_MT_SYS | a_MT_FSPEC,
 
 	a_MT_TM_PLAIN = 1u<<16, /* Without pipe handler display as text */
 	a_MT_TM_SOUP_h = 2u<<16, /* Ditto, but HTML tagsoup parser iff */
@@ -75,12 +76,14 @@ enum a_mt_flags{
 	a_MT_TM_QUIET = 4u<<16, /* No "no mime handler available" message */
 	a_MT__TM_MARKMASK = 7u<<16,
 
+	a_MT__TM_PLAIN_USER = 1<<19, /* User used "t" type marker explicitly */
+
 	/* Only used when evaluating MIME type handlers, aka marked by the ?only-handler type
 	 * marker: these are stored ONLY in a_mt_hdl_list */
 	a_MT_TM_ONLY_HANDLER = 1u<<20,
 	/* Only used when classifying: forcefully send as text/plain */
 	a_MT_TM_SEND_TEXT = 1u<<21,
-	a_MT_TM__FLAG_MASK = a_MT_TM_ONLY_HANDLER | a_MT_TM_SEND_TEXT
+	a_MT__TM_FLAG_MASK = a_MT_TM_ONLY_HANDLER | a_MT_TM_SEND_TEXT
 };
 
 enum a_mt_counter_evidence{
@@ -338,6 +341,7 @@ a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, 
 	char const *line_orig, *typ, *subtyp;
 	struct a_mt_node *mtnp;
 	NYD_IN;
+	ASSERT((orflags & ~a_MT__SOURCE_MASK) == 0);
 
 	mtnp = NIL;
 
@@ -362,7 +366,7 @@ a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, 
 			goto jeinval;
 
 		if(line[1] == ' '){
-			orflags |= a_MT_TM_PLAIN;
+			orflags |= a_MT_TM_PLAIN | a_MT__TM_PLAIN_USER;
 			i = 2;
 			line += i;
 			len -= i;
@@ -391,26 +395,26 @@ a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, 
 						goto jeinval;
 				}else if(c == 'o'){
 jf_oh:
-					if(orflags & a_MT_TM__FLAG_MASK)
+					if(orflags & a_MT__TM_FLAG_MASK)
 						goto jeinval;
 					orflags |= a_MT_TM_ONLY_HANDLER;
 				}else if(c == 's'){
 jf_st:
-					if(orflags & a_MT_TM__FLAG_MASK)
+					if(orflags & a_MT__TM_FLAG_MASK)
 						goto jeinval;
 					orflags |= a_MT_TM_SEND_TEXT;
 				}else if(orflags & a_MT__TM_MARKMASK)
 					goto jeinval;
 				else switch(c){
 				default: goto jeinval;
-				case 't': orflags |= a_MT_TM_PLAIN; break;
+				case 't': orflags |= a_MT_TM_PLAIN | a_MT__TM_PLAIN_USER; break;
 				case 'h': orflags |= a_MT_TM_SOUP_h; break;
 				case 'H': orflags |= a_MT_TM_SOUP_H; break;
 				case 'q': orflags |= a_MT_TM_QUIET; break;
 				}
 			}
 
-			if(!(orflags & (a_MT__TM_MARKMASK | a_MT_TM__FLAG_MASK)))
+			if(!(orflags & (a_MT__TM_MARKMASK | a_MT__TM_FLAG_MASK)))
 				orflags |= a_MT_TM_PLAIN;
 		}
 
@@ -426,7 +430,7 @@ jf_st:
 
 	/* Ignore empty lines and even incomplete specifications (only MIME type): quite common in mime.types(5) files */
 	if(len == 0 || (tlen = P2UZ(line - typ)) == 0){
-		if(cmdcalled || (orflags & a_MT_FSPEC))
+		if(cmdcalled || (len != 0 && (orflags & a_MT_FSPEC)))
 			n_err(_("Empty MIME type or no extensions: %.*s\n"), S(int,len_orig), line_orig);
 		goto jleave;
 	}
@@ -455,6 +459,13 @@ jeinval:
 			break;
 		}
 	}
+
+	if((orflags & a_MT__TM_PLAIN_USER) && (orflags & a_MT__TMASK) == a_MT_TEXT &&
+			(cmdcalled || (orflags & a_MT_FSPEC))){
+		n_err(_("Plain text treatment implied for any text/ subtype: %.*s\n"), S(int,len_orig), line_orig);
+		orflags &= ~a_MT_TM_PLAIN;
+	}
+	orflags &= ~a_MT__TM_PLAIN_USER;
 
 	/* Strip leading whitespace from the list of extensions; trailing WS has already been trimmed away above.
 	 * Be silent on slots which define a mimetype without any value */
@@ -1375,9 +1386,7 @@ jc_t:
 #endif
 			/* FALLTHRU */
 		case a_MT_TM_PLAIN:
-			mthp->mth_msg.l = su_cs_len(mthp->mth_msg.s = UNCONST(char*,_("Plain text")));
-			rv ^= mx_MIME_TYPE_HDL_NIL | mx_MIME_TYPE_HDL_TEXT;
-			goto jleave;
+			goto jtext_plain;
 		case a_MT_TM_QUIET:
 			mthp->mth_msg.l = 0;
 			mthp->mth_msg.s = UNCONST(char*,su_empty);
@@ -1387,9 +1396,16 @@ jc_t:
 		}
 	}
 
-	/* x-mailx-last-resort, anyone? XXX support that for *pipe-TYPE/SUBTYPE* */
+	/* mailcap's x-mailx-last-resort, anyone? XXX support that for *pipe-TYPE/SUBTYPE* */
 	if(xrv != mx_MIME_TYPE_HDL_NIL)
 		rv = xrv;
+	/* Otherwise treat text/ as text */
+	else if(su_cs_starts_with(cs, "text/")){
+jtext_plain:
+		mthp->mth_msg.l = su_cs_len(mthp->mth_msg.s = UNCONST(char*,_("Plain text")));
+		ASSERT((rv & (mx_MIME_TYPE_HDL_NIL | mx_MIME_TYPE_HDL_TEXT)) == mx_MIME_TYPE_HDL_NIL);
+		rv ^= mx_MIME_TYPE_HDL_NIL | mx_MIME_TYPE_HDL_TEXT;
+	}
 
 jleave:
 	if(buf != NIL)
@@ -1483,7 +1499,7 @@ jiter:
 
 			s = n_string_push_buf(s, "mimetype ", sizeof("mimetype ")-1);
 
-			if(mtnp->mtn_flags & (a_MT__TM_MARKMASK | a_MT_TM__FLAG_MASK)){
+			if(mtnp->mtn_flags & (a_MT__TM_MARKMASK | a_MT__TM_FLAG_MASK)){
 				char c;
 
 				s = n_string_push_c(s, '?');
@@ -1498,7 +1514,7 @@ jiter:
 				if(c != '\0'){
 					s = n_string_push_c(s, c);
 
-					if(mtnp->mtn_flags & a_MT_TM__FLAG_MASK)
+					if(mtnp->mtn_flags & a_MT__TM_FLAG_MASK)
 						s = n_string_push_c(s, ',');
 				}
 

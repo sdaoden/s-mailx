@@ -14452,8 +14452,11 @@ The following mutually exclusive types are supported:
 .Pp
 .Bl -tag -compact -width ".It Ar BaNg"
 .It Ar t
-Treat this media type as plain text; this is effectively optional unless
-the type-marker contains flags (see below).
+Treat this media type as plain text; effectively optional unless the
+type-marker contains flags (see below).
+This is implied for any
+.Ql text/
+subtype.
 .It Ar h
 Treat message parts with this content as HTML tagsoup.
 If the \*(oPal HTML-tagsoup-to-text converter is not available treat
