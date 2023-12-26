@@ -24,6 +24,7 @@ export LC_ALL MAXDISTANCE_PENALTY VERB MAILX IN XOUT
 # Compile-time only
 : ${rm:=rm}
 : ${sort:=sort}
+: ${CC:=cc}
 
 # The set of errors we support {{{
 ERRORS="\
