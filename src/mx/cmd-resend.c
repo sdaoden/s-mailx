@@ -48,6 +48,7 @@
 
 #include "mx/attachments.h"
 #include "mx/cmd.h"
+#include "mx/cmd-ali-alt.h"
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-mlist.h"
 #include "mx/compat.h"
@@ -136,14 +137,12 @@ static struct mx_name *
 a_crese_reply_to(struct message *mp, struct mx_name **the_rt){
    char const *cp;
    struct mx_name *rt, *np;
-   enum gfield gf;
    NYD2_IN;
 
-   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
    rt = NIL;
 
    if((cp = hfield1("reply-to", mp)) != NIL)
-      rt = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT, NIL);
+      rt = mx_namelist_check(mx_name_parse(cp, GTO), mx_EACM_STRICT, NIL);
 
    *the_rt = rt;
 
@@ -179,38 +178,37 @@ static struct mx_name *
 a_crese_mail_followup_to(struct message *mp){
    char const *cp, *cp2;
    struct mx_name *mft, *np;
-   enum gfield gf;
    NYD2_IN;
 
-   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-   mft = NULL;
+   mft = NIL;
 
-   if((cp = ok_vlook(followup_to_honour)) != NULL &&
-         (cp2 = hfield1("mail-followup-to", mp)) != NULL &&
-         (mft = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
-            ) != NULL){
+   if((cp = ok_vlook(followup_to_honour)) != NIL &&
+         (cp2 = hfield1("mail-followup-to", mp)) != NIL &&
+         (mft = mx_namelist_check(mx_name_parse(cp2, GTO), mx_EACM_STRICT, NIL)
+            ) != NIL){
       char *lp;
       uz l;
       char const *tr;
 
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          fprintf(n_stdout, _("Mail-Followup-To: header contains:"));
-         for(np = mft; np != NULL; np = np->n_flink)
+         for(np = mft; np != NIL; np = np->n_flink)
             fprintf(n_stdout, " %s", np->n_name);
          putc('\n', n_stdout);
       }
 
       tr = _("Followup-To %s%s");
       l = su_cs_len(tr) + su_cs_len(mft->n_name) + 3 +1;
-      lp = n_lofi_alloc(l);
+      lp = su_LOFI_ALLOC(l);
 
       snprintf(lp, l, tr, mft->n_name,
-         (mft->n_flink != NULL ? "..." : n_empty));
+         (mft->n_flink != NIL ? "..." : n_empty));
       if(n_quadify(cp, UZ_MAX, lp, TRU1) <= FAL0)
-         mft = NULL;
+         mft = NIL;
 
-      n_lofi_free(lp);
+      su_LOFI_FREE(lp);
    }
+
    NYD2_OU;
    return mft;
 }
@@ -417,7 +415,7 @@ a_crese_rt_swap_in(struct header *hp, struct mx_name *the_rt){
       }
 
       if(any){
-         np = ndup(np, GCC | GSKIN);
+         np = ndup(np, GCC);
          hp->h_cc = cat(hp->h_cc, np);
       }
    }
@@ -452,27 +450,28 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
       reflen += oldmsgidlen;
    }
 
-   newref = n_alloc(reflen);
-   if (oldref != NULL) {
+   newref = su_LOFI_ALLOC(reflen);
+   if(oldref != NIL){
       su_mem_copy(newref, oldref, oldreflen +1);
-      if (oldmsgid != NULL) {
+      if(oldmsgid != NIL){
          newref[oldreflen++] = ',';
          newref[oldreflen++] = ' ';
          su_mem_copy(newref + oldreflen, oldmsgid, oldmsgidlen +1);
       }
-   } else if (oldmsgid)
+   }else if(oldmsgid != NIL)
       su_mem_copy(newref, oldmsgid, oldmsgidlen +1);
-   n = extract(newref, GREF);
-   n_free(newref);
+   n = mx_name_parse(newref, GREF);
+   su_LOFI_FREE(newref);
 
    /* Limit number of references TODO better on parser side */
-   while (n->n_flink != NULL)
-      n = n->n_flink;
-   for (i = 1; i <= REFERENCES_MAX; ++i) {
-      if (n->n_blink != NULL)
+   if(n != NIL){
+      while(n->n_flink != NIL)
+         n = n->n_flink;
+      for(i = 1; i <= REFERENCES_MAX; ++i){
+         if(n->n_blink == NIL)
+            break;
          n = n->n_blink;
-      else
-         break;
+      }
    }
    n->n_blink = NIL;
    head->h_ref = n;
@@ -504,7 +503,6 @@ a_crese_list_reply(void *vp, enum header_flags hf){
    struct message *mp;
    char const *cp, *cp2;
    struct mx_name *the_rt, *mft, *np;
-   enum gfield gf;
    BITENUM(u32,a_flags) flags;
    int *msgvec;
    struct mx_cmd_arg_ctx *cacp;
@@ -516,7 +514,6 @@ a_crese_list_reply(void *vp, enum header_flags hf){
    cacp = vp;
    msgvec = cacp->cac_arg->ca_arg.ca_msglist;
    flags = (cacp->cac_scope == mx_SCOPE_LOCAL) ? a_LOCAL : a_NONE;
-   UNINIT(gf, GSKIN);
 
 jwork_msg:
    mp = &message[*msgvec - 1];
@@ -531,11 +528,8 @@ jwork_msg:
       if(ok_blook(markanswered))
          flags |= a_MARK_ANSWER;
 
-      gf = GSKIN;
-      if(ok_blook(fullnames)){
+      if(ok_blook(fullnames))
          flags |= a_FULLNAMES;
-         gf |= GFULL;
-      }
    }
    flags |= a_TICKED_ONCE;
 
@@ -543,11 +537,11 @@ jwork_msg:
    head.h_flags = hf;
    head.h_subject = a_crese_sub_edit(mp, FAL0);
    /* XXX Why did i do it so, no fallback to n_header_senderfield_of()? */
-   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
-   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
-   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
-   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
-   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp);
+   head.h_mailx_orig_from = mx_name_parse(hfield1("from", mp), GIDENT);
+   head.h_mailx_orig_to = mx_name_parse(hfield1("to", mp), GTO);
+   head.h_mailx_orig_cc = mx_name_parse(hfield1("cc", mp), GCC);
+   head.h_mailx_orig_bcc = mx_name_parse(hfield1("bcc", mp), GBCC);
 
    /* First of all check for Reply-To: then Mail-Followup-To:, because these,
     * if honoured, take precedence over anything else.  We will join the
@@ -559,19 +553,19 @@ jwork_msg:
    if(the_rt != NIL || mft != NIL){
       np = cat(the_rt, mft);
       if(mft != NIL)
-         head.h_mft = n_namelist_dup(np, GTO | gf); /* xxx GTO: no "clone"! */
+         head.h_mft = n_namelist_dup(np, GTO); /* xxx GTO: no "clone"! */
 
       /* Optionally do not propagate a recipient that originally was in
        * secondary Cc: to the primary To: list */
       if(flags & a_REC_IN_CC){
          a_crese_polite_rt_mft_move(mp, &head, np);
 
-         head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
+         head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC);
          head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
       }else
          head.h_to = np;
 
-      head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
+      head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO);
       head.h_to = mx_alternates_remove(head.h_to, FAL0);
 #ifdef mx_HAVE_DEVEL
       for(np = head.h_to; np != NULL; np = np->n_flink)
@@ -592,36 +586,36 @@ jwork_msg:
    /* Cc: */
    np = NIL;
    if((flags & a_REC_IN_CC) && (cp = hfield1("to", mp)) != NIL)
-      np = lextract(cp, GCC | gf);
-   if((cp = hfield1("cc", mp)) != NULL){
+      np = mx_name_parse(cp, GCC | GTRASH_HACK);
+   if((cp = hfield1("cc", mp)) != NIL){
       struct mx_name *x;
 
-      if((x = lextract(cp, GCC | gf)) != NULL)
+      if((x = mx_name_parse(cp, GCC | GTRASH_HACK)) != NIL)
          np = cat(np, x);
    }
-   if(np != NULL){
-      head.h_mailx_raw_cc = n_namelist_dup(np, GCC | gf);
+   if(np != NIL){
+      head.h_mailx_raw_cc = n_namelist_dup(np, GCC);
       head.h_cc = mx_alternates_remove(np, FAL0);
    }
 
    /* To: */
-   np = NULL;
-   if(cp2 != NULL)
-      np = lextract(cp2, GTO | gf);
-   if(!(flags & a_REC_IN_CC) && (cp = hfield1("to", mp)) != NULL){
+   np = NIL;
+   if(cp2 != NIL)
+      np = mx_name_parse(cp2, GTO | GTRASH_HACK);
+   if(!(flags & a_REC_IN_CC) && (cp = hfield1("to", mp)) != NIL){
       struct mx_name *x;
 
-      if((x = lextract(cp, GTO | gf)) != NULL)
+      if((x = mx_name_parse(cp, GTO | GTRASH_HACK)) != NIL)
          np = cat(np, x);
    }
    /* Delete my name from reply list, and with it, all my alternate names */
    if(np != NULL){
-      head.h_mailx_raw_to = n_namelist_dup(np, GTO | gf);
+      head.h_mailx_raw_to = n_namelist_dup(np, GTO);
       np = mx_alternates_remove(np, FAL0);
       /* The user may have send this to himself, don't ignore that */
       if(count(np) == 0){
-         np = lextract(cp2, GTO | gf);
-         head.h_mailx_raw_to = n_namelist_dup(np, GTO | gf);
+         np = mx_name_parse(cp2, GTO);
+         head.h_mailx_raw_to = n_namelist_dup(np, GTO);
       }
    }
    head.h_to = np;
@@ -661,7 +655,7 @@ jrecipients_done:
           * a single address which points to the same domain as List-Post: */
          if(the_rt != NIL && the_rt->n_flink == NIL &&
                (lpnp == NIL || mx_name_is_same_domain(lpnp, the_rt)))
-            cp = the_rt->n_name; /* rt is EACM_STRICT tested */
+            cp = the_rt->n_name; /* rt is mx_EACM_STRICT tested */
          else
             cp = (lpnp == NIL) ? NIL : lpnp->n_name;
 
@@ -783,7 +777,6 @@ a_crese_Reply(void *vp, boole recipient_record){
    struct header head;
    int *ap;
    struct message *mp;
-   enum gfield gf;
    struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
@@ -791,17 +784,16 @@ a_crese_Reply(void *vp, boole recipient_record){
    n_pstate_err_no = su_ERR_NONE;
 
    cacp = vp;
-   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
    mp = n_msgmark1;
    ASSERT(mp != NIL);
    head.h_flags = HF_CMD_Reply;
    head.h_subject = a_crese_sub_edit(mp, FAL0);
    a_crese_make_ref_and_cs(mp, &head);
-   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
-   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
-   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
-   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
-   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp);
+   head.h_mailx_orig_from = mx_name_parse(hfield1("from", mp), GIDENT);
+   head.h_mailx_orig_to = mx_name_parse(hfield1("to", mp), GTO);
+   head.h_mailx_orig_cc = mx_name_parse(hfield1("cc", mp), GCC);
+   head.h_mailx_orig_bcc = mx_name_parse(hfield1("bcc", mp), GBCC);
 
    for(ap = cacp->cac_arg->ca_arg.ca_msglist; *ap != 0; ++ap){
       struct mx_name *np, *the_rt;
@@ -811,7 +803,7 @@ a_crese_Reply(void *vp, boole recipient_record){
       setdot(mp, FAL0);
 
       if((np = a_crese_reply_to(mp, &the_rt)) == NIL)
-         np = lextract(n_header_senderfield_of(mp), GTO | gf);
+         np = mx_name_parse(n_header_senderfield_of(mp), GTO);
 
       if(a_crese_do_rt_swap_in(&head, the_rt)){
          struct mx_name *np_save;
@@ -829,7 +821,7 @@ a_crese_Reply(void *vp, boole recipient_record){
 
    mp = n_msgmark1;
 
-   head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
+   head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO);
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
    if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
@@ -863,8 +855,7 @@ a_crese_fwd(void *vp, boole recipient_record){
 
    struct header head;
    struct message *mp;
-   struct mx_name *recp_base, *recp;
-   enum gfield gf;
+   struct mx_name *recp;
    int *msgvec, rv;
    struct mx_cmd_arg *cap;
    BITENUM(u32,a_flags) flags;
@@ -878,8 +869,7 @@ a_crese_fwd(void *vp, boole recipient_record){
    msgvec = cap->ca_arg.ca_msglist;
    cap = cap->ca_next;
    rv = su_EX_ERR;
-   UNINIT(gf, GSKIN);
-   UNINIT(recp_base, NIL);
+   UNINIT(recp, NIL);
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
@@ -903,31 +893,26 @@ jwork_msg:
          flags |= a_AS_ATTACHMENT;
       if(ok_blook(forward_add_cc))
          flags |= a_ADD_CC;
-      gf = GSKIN;
-      if(ok_blook(fullnames)){
+      if(ok_blook(fullnames))
          flags |= a_FULLNAMES;
-         gf |= GFULL;
-      }
 
-      recp_base = lextract(cap->ca_arg.ca_str.s, (GTO | GNOT_A_LIST | gf));
+      recp = mx_name_parse_as_one(cap->ca_arg.ca_str.s, GTO | GTRASH_HACK);
 
       if(!(flags & a_TICKED_ONCE))
          su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    }
    flags |= a_TICKED_ONCE;
 
-   recp = ndup(recp_base, (GTO | GNOT_A_LIST | gf));
-
    STRUCT_ZERO(struct header, &head);
    head.h_flags = HF_CMD_forward;
-   head.h_to = ndup(recp, (GTO | gf));
+   head.h_to = ndup(recp, GTO);
    head.h_subject = a_crese_sub_edit(mp, TRU1);
-   head.h_mailx_raw_to = n_namelist_dup(recp, GTO | gf);
-   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
-   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
-   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
-   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
-   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
+   head.h_mailx_raw_to = n_namelist_dup(recp, GTO);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp);
+   head.h_mailx_orig_from = mx_name_parse(hfield1("from", mp), GIDENT);
+   head.h_mailx_orig_to = mx_name_parse(hfield1("to", mp), GTO);
+   head.h_mailx_orig_cc = mx_name_parse(hfield1("cc", mp), GCC);
+   head.h_mailx_orig_bcc = mx_name_parse(hfield1("bcc", mp), GBCC);
 
    if(flags & a_AS_ATTACHMENT){
       head.h_attach = su_AUTO_TCALLOC(struct mx_attachment, 1);
@@ -935,12 +920,8 @@ jwork_msg:
       head.h_attach->a_content_description =
          ok_vlook(content_description_forwarded_message);
 
-      if(head.h_mailx_orig_sender != NIL && (flags & a_ADD_CC)){
-         gf = GCC | GSKIN;
-         if(ok_blook(fullnames))
-            gf |= GFULL;
-         head.h_cc = ndup(head.h_mailx_orig_sender, gf);
-      }
+      if(head.h_mailx_orig_sender != NIL && (flags & a_ADD_CC))
+         head.h_cc = ndup(head.h_mailx_orig_sender, GCC);
    }
 
    if(n_mail1((n_MAILSEND_IS_FWD |
@@ -972,7 +953,6 @@ a_crese_resend1(void *vp, boole add_resent){
    struct header head;
    struct mx_name *myto, *myrawto;
    boole mta_isexe;
-   enum gfield gf;
    int *msgvec, rv, *ip;
    struct mx_cmd_arg *cap;
    struct mx_cmd_arg_ctx *cacp;
@@ -998,9 +978,7 @@ jedar:
    }
    mta_isexe = (mta_isexe != TRU1);
 
-   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-
-   myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf | GNOT_A_LIST | GNULL_OK);
+   myrawto = mx_name_parse_as_one(cap->ca_arg.ca_str.s, GTO);
    if(myrawto == NIL)
       goto jedar;
 
@@ -1010,8 +988,10 @@ jedar:
       s8 snderr;
 
       snderr = 0;
-      myto = n_namelist_vaporise_head(&head, (EACM_NORMAL | EACM_DOMAINCHECK |
-               (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),
+      myto = n_namelist_vaporise_head(&head, (mx_EACM_NORMAL |
+                  mx_EACM_DOMAINCHECK |
+                  (mta_isexe ? mx_EACM_NONE
+                  : mx_EACM_NONAME | mx_EACM_NONAME_OR_FAIL)),
             &snderr);
 
       if(snderr < 0){
@@ -1035,11 +1015,11 @@ jedar:
       head.h_flags = HF_CMD_resend;
       head.h_to = myto;
       head.h_mailx_raw_to = myrawto;
-      head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
-      head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT|GFULL|gf);
-      head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
-      head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
-      head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
+      head.h_mailx_orig_sender = mx_header_sender_of(mp);
+      head.h_mailx_orig_from = mx_name_parse(hfield1("from", mp), GIDENT);
+      head.h_mailx_orig_to = mx_name_parse(hfield1("to", mp), GTO);
+      head.h_mailx_orig_cc = mx_name_parse(hfield1("cc", mp), GCC);
+      head.h_mailx_orig_bcc = mx_name_parse(hfield1("bcc", mp), GBCC);
 
       if(n_resend_msg(cacp->cac_scope, mp, urlp, &head, add_resent) != OKAY){
          /* n_autorec_snap_gut(); XXX but is handled automatically? */

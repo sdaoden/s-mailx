@@ -33,6 +33,7 @@
 #include <su/mem-bag.h>
 #include <su/sort.h>
 
+#include "mx/cmd-ali-alt.h"
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-cnd.h"
 #include "mx/cmd-commandalias.h"
@@ -813,7 +814,7 @@ jshexp_restart:
 					(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY)){
 				struct mx_name *np;
 
-				if((np = n_extract_single((*target_argpp)->ca_arg.ca_str.s, GTO)) == NIL ||
+				if((np = mx_name_parse_as_one((*target_argpp)->ca_arg.ca_str.s, GTO)) == NIL ||
 						!(np->n_flags & (mx_NAME_ADDRSPEC_ISNAME | mx_NAME_ADDRSPEC_ISADDR)))
 					n_pstate |= n_PS_GABBY_FUZZ;
 			}

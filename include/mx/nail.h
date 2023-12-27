@@ -94,54 +94,6 @@ enum n_announce_flags{
    n__ANNOUNCE_ANY = 1u<<7
 };
 
-enum expand_addr_flags{
-   EAF_NONE = 0, /* -> EAF_NOFILE | EAF_NOPIPE */
-   EAF_RESTRICT = 1u<<0, /* "restrict" (do unless interactive / -[~#]) */
-   EAF_FAIL = 1u<<1, /* "fail" */
-   EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
-   EAF_DOMAINCHECK = 1u<<3, /* "domaincheck" <-> *expandaddr-domaincheck* */
-   EAF_NAMETOADDR = 1u<<4, /* "nametoaddr": expand valid name to NAME@HOST */
-   EAF_SHEXP_PARSE = 1u<<5, /* shexp_parse() the address first is allowed */
-   /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FCC = 1u<<8, /* +"fcc" umbrella */
-   EAF_FILE = 1u<<9, /* +"file" targets */
-   EAF_PIPE = 1u<<10, /* +"pipe" command pipe targets */
-   EAF_NAME = 1u<<11, /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR = 1u<<12, /* +"addr" network address (contain "@") */
-
-   EAF_TARGET_MASK = EAF_FCC | EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
-   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
-   /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
-    * TODO design problem): if n_collect() calls makeheader(), e.g., for -t or
-    * TODO because of ~e diting, then that will checkaddr() and that will
-    * TODO remove invalid headers.  However, this code path does not know
-    * TODO about keeping track of senderrors unless a pointer has been passed,
-    * TODO but which it doesn't for ~e, and shall not, too.  Thus, invalid
-    * TODO addresses may be automatically removed, silently, and no one will
-    * TODO ever know, in particular not regarding "failinvaddr".
-    * TODO The hacky solution is this bit -- which can ONLY be used for fields
-    * TODO which will be subject to namelist_vaporise_head() later on!! --,
-    * TODO if it is set (by n_header_extract()) then checkaddr() will NOT strip
-    * TODO invalid headers off IF it deals with a NULL senderror pointer */
-   ,EAF_MAYKEEP = 1u<<15
-};
-
-enum expand_addr_check_mode{
-   EACM_NONE = 0u, /* Don't care about *expandaddr* */
-   EACM_NORMAL = 1u<<0, /* Use our normal *expandaddr* checking */
-   EACM_STRICT = 1u<<1, /* Never allow any file or pipe addressee */
-   EACM_MODE_MASK = 0x3u, /* _NORMAL and _STRICT are mutual! */
-
-   EACM_NOLOG = 1u<<2, /* Do not log check errors */
-
-   /* Some special overwrites of EAF_TARGETs.
-    * May NOT clash with EAF_* bits which may be ORd to these here! */
-
-   EACM_NONAME = 1u<<16,
-   EACM_NONAME_OR_FAIL = 1u<<17,
-   EACM_DOMAINCHECK = 1u<<18 /* Honour it! */
-};
-
 enum conversion{
    CONV_NONE, /* no conversion */
    CONV_7BIT, /* no conversion, is 7bit */
@@ -1169,29 +1121,27 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
 
    GNL = 1u<<4, /* Print blank line after */
    GDEL = 1u<<5, /* Entity removed from list */
-   GCOMMA = 1u<<6, /* detract() puts in commas */
+   GCOMMA = 1u<<6, /* namelist_detract() puts in commas */
    GUA = 1u<<7, /* User-Agent field */
    GMIME = 1u<<8, /* MIME 1.0 fields */
    GMSGID = 1u<<9, /* a Message-ID */
-   GNAMEONLY = 1u<<10, /* detract() does NOT use fullnames */
+   GNAMEONLY = 1u<<10, /* namelist_detract() does NOT use fullnames */
 
-   GIDENT = 1u<<11, /* From:, Reply-To:, MFT: (user headers) */
+   GIDENT = 1u<<11, /* From:, Sender:, Author:, Reply-To:, MFT: */
    GREF = 1u<<12, /* References:, In-Reply-To:, (Message-ID:) */
-   GREF_IRT = 1u<<30, /* XXX Hack; only In-Reply-To: -> n_run_editor() */
-   GDATE = 1u<<13, /* Date: field */
-   GFULL = 1u<<14, /* Include full names, comments etc. */
-   GSKIN = 1u<<15, /* Skin names */
-   GEXTRA = 1u<<16, /* Extra fields (mostly like GIDENT XXX) */
-   GFILES = 1u<<17, /* Include filename and pipe addresses */
-   GFULLEXTRA = 1u<<18, /* Only with GFULL: GFULL less address */
-   GBCC_IS_FCC = 1u<<19, /* This GBCC is (or was) indeed a Fcc: */
-   GSHEXP_PARSE_HACK = 1u<<20, /* lextract()+: *expandaddr*=shquote */
-   /* All given input (nalloc() etc.) to be interpreted as a single address */
-   GNOT_A_LIST = 1u<<21,
-   GNULL_OK = 1u<<22, /* NULL return OK for nalloc()+ */
+   GREF_IRT = 1u<<13, /* XXX Hack; only In-Reply-To: -> n_run_editor() */
+   GDATE = 1u<<14, /* Date: field */
+   GSPECIAL = 1u<<15, /* Specials like List-Post: etc */
+   GFILES = 1u<<16, /* Include filename and pipe addresses */
+   GFULLEXTRA = 1u<<17, /* Full name less address */
+   GBCC_IS_FCC = 1u<<18, /* This GBCC is (or was) indeed a Fcc: */
+   GSHEXP_PARSE_HACK = 1u<<19, /* name_parse()+: *expandaddr*=shquote */
    /* HACK: support "|bla", i.e., anything enclosed in quotes; e.g., used for
     * MTA alias parsing */
-   GQUOTE_ENCLOSED_OK = 1u<<23
+   GQUOTE_ENCLOSED_OK = 1u<<20,
+   /* HACK: allow mx_name_parse*() to return what'll fail mx_namelist_check() */
+   GTRASH_HACK = 1u<<21
+   /* 1u<<30 MUST NOT be used */
 };
 #define GMASK (GTO | GSUBJECT | GCC | GBCC)
 

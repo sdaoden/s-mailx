@@ -4406,12 +4406,22 @@ Perform email address codec transformations on raw-data argument, rather
 according to email standards (RFC 5322; \*(ID will furtherly improve).
 Supports
 .Cm > .
-The first argument must be one of
-.Ar [+[+[+]]]e[ncode] ,
-.Ar d[ecode] ,
-.Ar s[kin]
+The first argument must be any unique substring one of
+.Ar [+[+[+]]]encode ,
+.Ar decode ,
+.Ar skin ,
+.Ar skinlist ,
 and
-.Ar skinl[ist] .
+.Ar normalize .
+The last parses the data as a potential list of multiple email addresses
+(including comments etc), and normalizes them to make them accessible in
+.Mx -sx
+.Sx "result set"
+accessors
+.Va ^# , ^0 , ^1
+etc;
+.Va ^0
+is the rejoined list of normalized data.
 .
 .Pp
 Decoding will show how a standard-compliant MUA will display the data.
@@ -4420,27 +4430,26 @@ parenthesis, double-quoted strings, or so-called quoted-pairs.
 \*(ID \*(Xx currently does not perform decoding when displaying addresses.
 .
 .Pp
-Skinning is identical to decoding but only outputs the plain address,
-without any string, comment etc. components.
-Another difference is that it may fail with
+Skinning parses the data as a single email address, strips any comments
+and name parts and outputs the address only.
+It may fail with
 .Va \&!
 set to
 .Va ^ERR Ns -INVAL
-if decoding fails to find a(n) (valid) email address, in which case the
-unmodified input will be output again.
+for invalid data, in which case the unmodified input is output again.
 .
 .Pp
 .Ar skinlist
-first performs a skin operation, and thereafter checks a valid result
-for whether it is registered via
+performs a
+.Ar skin
+operation, and on success tests whether the result is known by
 .Ic mlist
 or
 .Ic mlsubscribe ,
-eventually reporting the result in
+reporting the result via
 .Va \&!
 as
 .Va ^ERR Ns -EXIST .
-(That could become overwritten by an I/O error, though.)
 .
 .Pp
 Encoding supports four different modes: the more plus signs, the lesser
