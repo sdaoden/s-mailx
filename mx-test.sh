@@ -8817,6 +8817,7 @@ a a8 ex1@a8.ple
 a a1
 a a2
 a a3
+se fullnames
 m a1
 ~c a2
 ~b a3
@@ -8931,7 +8932,7 @@ __EOT
 	#}}}
 	cke0 4 0 ./t4 '3511439903 929'
 
-	# TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
+	# TODO t_alias: mx_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
 
 	t_epilog "${@}"
@@ -9258,29 +9259,23 @@ t_specifying_sorting() { #{{{
 
 	#{{{
 	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t1 2>${E0}
-ec def
-h
-ec date
-sort date
-h
-ec from
-sort from
-h
-ec size
-sort size
-h
-ec status
-sort status
-h
-ec subject
-sort subject
-h
-ec thread
-sort thread
-h
-ec to
-sort to
-h
+ec def;h
+ec date;sort date;h
+ec from;sort from;h
+ec size;sort size;h
+ec status;sort status;h
+ec subject;sort subject;h
+ec thread;sort thread;h
+ec to;sort to;h
+#ec ==showname==;se showname
+#ec def;h
+#ec date;sort date;h
+#ec from;sort from;h
+#ec size;sort size;h
+#ec status;sort status;h
+#ec subject;sort subject;h
+#ec thread;sort thread;h
+#ec to;sort to;h
 	__EOT
 	#}}}
 	cke0 1 0 ./t1 '2781961062 6444'
@@ -9688,7 +9683,7 @@ t_expandaddr() { #{{{
 
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 		-Sexpandaddr=fail,domaincheck -Sexpandaddr-domaincheck=exam.ple,tro.uble \
-		> ${EX} 2>${E0}
+		-Sfullnames > ${EX} 2>${E0}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
 	cke0 85 0 ./t.mbox '1670655701 410'
@@ -9698,7 +9693,7 @@ t_expandaddr() { #{{{
 	printf 'To: <reproducible_build>' |
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t87.mbox -t -ssub \
 			-Sexpandaddr=nametoaddr \
-			> ${EX} 2>${E0}
+			-Sfullnames > ${EX} 2>${E0}
 	cke0 87 0 ./t87.mbox '1288059511 146'
 	ck0 88 - ${EX}
 
@@ -9706,7 +9701,7 @@ t_expandaddr() { #{{{
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t89.mbox -t -ssub \
 			-Sexpandaddr=nametoaddr -Shostname=nowhere \
 			> ${EX} 2>${E0}
-	cke0 89 0 ./t89.mbox '3724074854 203'
+	cke0 89 0 ./t89.mbox '961894717 201'
 	ck0 90 - ${EX}
 
 	t_epilog "${@}"
@@ -9729,7 +9724,7 @@ t_mta_aliases() { #{{{
 	
 	
 	a1: ex1@a1.ple  , 
-	  ex2@a1.ple, <ex3@a1.ple> ,
+	  ex2@a1.ple, ex 3 <ex3@a1.ple> ,
 	  ex4@a1.ple	 
 	a2:	  ex1@a2.ple  , 	ex2@a2.ple,a2_2
 	a2_2:ex3@a2.ple,ex4@a2.ple
@@ -9747,7 +9742,7 @@ t_mta_aliases() { #{{{
 	#}}}
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox -Smta-aliases=./t.ali -X mtaaliases -X xit > ./tlist 2>${E0}
-	cke0 list 0 ./tlist '1644126449 193'
+	cke0 list 0 ./tlist '3895685295 198'
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox \
 		-Smta-aliases=./t.ali \
@@ -9759,10 +9754,10 @@ t_mta_aliases() { #{{{
 		\commandali x \\mtaali
 		\call y
 		' > ./tlook 2>${EX}
-	ck look 0 ./tlook '3425855815 506' '2628536915 170'
+	ck look 0 ./tlook '206734032 511' '2628536915 170'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Smta-aliases=./t.ali -b a3 -c a2 a1 > ${E0} 2>&1
-	cke0 1 0 ./t.mbox '1172368381 238'
+	cke0 1 0 ./t.mbox '3950607105 236'
 
 	## xxx The following are actually *expandaddr* tests!!
 
@@ -9773,7 +9768,7 @@ t_mta_aliases() { #{{{
 			-Smta-aliases=./t.ali \
 			-b a3 -c a2 a1 > ${E0} 2>${EX}
 		ck_exx 3
-		ck 4 - ./t.mbox '1172368381 238'
+		ck 4 - ./t.mbox '3950607105 236'
 		ck0 5 - ${E0} '771616226 179'
 	else
 		t_echoskip '5:[!SMTP]'
@@ -9783,23 +9778,23 @@ t_mta_aliases() { #{{{
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=fail,-name -Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ${E0} 2>${EX}
 	ck_exx 6
-	ck 7 - ./t.mbox '1172368381 238'
+	ck 7 - ./t.mbox '3950607105 236'
 	ck0 8 - ${E0} '2834389894 178'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=-name -Smta-aliases=./t.ali \
-		-b a3 -c a2 a1 > ${E0} 2>${EX}
-	ck 9 4 ./t.mbox '2322273994 472'
+		-Sfullnames -b a3 -c a2 a1 > ${E0} 2>${EX}
+	ck 9 4 ./t.mbox '1478069304 475'
 	ck0 10 - ${E0} '2136559508 69'
 
 	echo 'a9:nine@nine.nine' >> ./t.ali
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=fail,-name -Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ${E0} 2>&1
-	cke0 11 0 ./t.mbox '2422268299 722'
+	cke0 11 0 ./t.mbox '176233680 723'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Scat="${cat}" -Smta=test://t.mbox -Sescape=! -Smta-aliases=./t.ali > ./t14 2>${EX}
-se expandaddr=-name
+se expandaddr=-name fullnames
 mail a1
 !c a2
 !:ec $?/$^ERRNAME
@@ -9823,6 +9818,7 @@ mail a1
 !:echo $?/$^ERRNAME
 !.
 ec trigger happiness
+uns fullnames
 mail a1
 !c a2
 !:ec $?/$^ERRNAME
@@ -9831,14 +9827,14 @@ mail a1
 !.
 __EOT
 	#}}}
-	ck 13 0 ./t.mbox '550955032 1469' '2654195888 315'
+	ck 13 0 ./t.mbox '53891473 1478' '2654195888 315'
 	ck 14 - ./t14 '2924332769 158'
-	ck 15 - ./t.f1 '3056269950 249'
-	ck 16 - ./t.p1 '3056269950 249'
-	ck 17 - ./t.p2 '3056269950 249'
-	ck 18 - ./t.f2 '3056269950 249'
+	ck 15 - ./t.f1 '2635873594 247'
+	ck 16 - ./t.p1 '2635873594 247'
+	ck 17 - ./t.p2 '2635873594 247'
+	ck 18 - ./t.f2 '2635873594 247'
 
-	# TODO t_mta_aliases: n_ALIAS_MAXEXP is compile-time constant,
+	# TODO t_mta_aliases: mx_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
 
 	t_epilog "${@}"
@@ -10788,10 +10784,9 @@ t_cmd_escapes() { #{{{
 	# ~@ is tested with other attachment stuff, ~^ in compose_edits,digmsg,compose_hooks
 	#{{{
 	${cat} << '__EOT' > ./t2.in
-set Sign=SignVar sign=signvar DEAD=./t.txt
-set forward-inject-head quote-inject-head
+se Sign=SignVar sign=signvar DEAD=./t.txt forward-inject-head quote-inject-head
 headerpick type retain Subject
-headerpick forward retain Subject To
+headerpick forward retain Subject To from
 reply 2
 !!1 Not escaped.  And shell test last, right before !..
 !:ec 1
@@ -10824,19 +10819,20 @@ reply 2
 !F 1 3
 !:ec 13:$?/$^ERRNAME
 !F 1000
-!:ec 13-1:$?/$^ERRNAME; set posix
+!:ec 13-1:$?/$^ERRNAME; se posix
 14: ~f (headerpick: subject)
 !f
-!:ec 14:$?/$^ERRNAME; unset posix forward-inject-head quote-inject-head
+!:ec 14:$?/$^ERRNAME; uns posix forward-inject-head quote-inject-head
 14.1: ~f (!posix: injections; headerpick: subject to)
 !f
-!:ec 14.1:$?/$^ERRNAME; set forward-add-cc
+!:ec 14.1:$?/$^ERRNAME; se forward-add-cc
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 !f 3
-!:ec 14.2:$?/$^ERRNAME; set fullnames
-14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+!:ec 14.2:$?/$^ERRNAME; se fullnames
+14.3: ~f (!posix: headerpick: subject to from; forward-add-cc adds mr1 fullnames)
+TODO ~f etc do not honour fullnames!
 !f 1
-!:ec 14.3:$?/$^ERRNAME; set nofullnames noforward-add-cc posix
+!:ec 14.3:$?/$^ERRNAME; se nofullnames noforward-add-cc posix
 15: ~f 1
 !f 1
 !:ec 15:$?/$^ERRNAME
@@ -10872,22 +10868,22 @@ reply 2
 !Q 1 3
 !:ec 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
-!:set quote-inject-head=%a quote-inject-tail=--%r
+!:se quote-inject-head=%a quote-inject-tail=--%r
 32: ~Q
 !Q
 !:ec 32:$?/$^ERRNAME
 set noquote-inject-head noquote-inject-tail quote-add-cc
-!:set noquote-inject-head noquote-inject-tail quote-add-cc
+!:se noquote-inject-head noquote-inject-tail quote-add-cc
 33: ~Q 4
 !Q 4
 !:ec 33:$?/$^ERRNAME
 set fullnames
-!:set fullnames
+!:se fullnames
 34: ~Q 5
 !Q 5
 !:ec 34:$?/$^ERRNAME
 unset fullnames, quote stuff
-!:unset quote quote-add-cc fullnames
+!:uns quote quote-add-cc fullnames
 22: ~R ./t.txt
 !R ./t.txt
 !:ec 22:$?/$^ERRNAME
@@ -10924,7 +10920,7 @@ _EOT
 _EOT
 !:ec 23.4:$?/$^ERRNAME
 !:# TODO 23.[56]: n_SHEXP_PARSE_SCOPE_CAPSULE not yet honoured
-!:se i=11; vpospar set d o h
+!:se i=11; vpospar se d o h
 23.5: ~< - -_EOT NUTS
 !< - -_EOT
 	l1
@@ -10959,17 +10955,17 @@ _EOT
 and i ~w rite this out to ./t3
 !w ./t3
 !:ec i ~w:$?/$^ERRNAME bang-data<$bang-data>
-!:set x=$escape;set escape=~
+!:se x=$escape;set escape=~
 ~!echo shell command output
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~!echo no_!_bang\!
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
-~:set bang
+~:se bang
 ~!echo NO-!-BANG\!
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~!echo no=!=bang\!
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
-~:set nobang escape=$x
+~:se nobang escape=$x
 50:F
 !F 6
 !:ec 50 was F:$?/$^ERRNAME
@@ -10981,7 +10977,7 @@ and i ~w rite this out to ./t3
 !:ec 52 was M:$?/$^ERRNAME
 53:m
 !m 6
-!:ec 53 was m:$?/$^ERRNAME; set quote
+!:ec 53 was m:$?/$^ERRNAME; se quote
 54:Q
 !Q 6
 !:ec 54 was Q:$?/$^ERRNAME
@@ -11006,8 +11002,8 @@ __EOT
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '600677470 8507' '3575876476 49'
-	ck 3-nohtml - ./t3 '1553884295 4748'
+	ck 2-nohtml - ./t2-nohtml '1015051952 8599' '3575876476 49'
+	ck 3-nohtml - ./t3 '1327297557 4917'
 
 	if have_feat filter-html-tagsoup; then
 		> ./t3
@@ -11015,8 +11011,8 @@ __EOT
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '996062905 8447' '3575876476 49'
-		ck 3-html - ./t3 '1553884295 4748'
+		ck 2-html - ./t2-html '2680796281 8539' '3575876476 49'
+		ck 3-html - ./t3 '1327297557 4917'
 	else
 		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
 	fi
@@ -11535,7 +11531,7 @@ t_on_program_exit() { #{{{
 #}}}
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{
-t_compose_hooks() { #{{{ TODO monster
+t_compose_hooks() { #{{{ TODO monster (v15-compat: splice stuff falls off)
 	t_prolog "${@}"
 
 	if have_feat cmd-csop; then :; else
@@ -11782,6 +11778,8 @@ __EOT
 	#{{{ Supposed to extend t_compose_edits with ~^ stress tests!
 	${cat} <<'__EOT' > ./t.rc
 commandali d \\digmsg
+commandali x 'ec $^0=$^#="$^@"; \call x $^0'
+se on-compose-enter=t_oce on-compose-embed=t_ocm on-compose-leave=t_ocl on-compose-cleanup=t_occ  fullnames
 define bail {
 	echoerr "Failed: $1.  Bailing out"
 	xit
@@ -11789,15 +11787,19 @@ define bail {
 define x {
 	if $1 -ne $2; xcall bail "$3: $1!=$2"; el; ec $3: ok; en
 }
-commandali x 'ec $^0=$^#="$^@"; \call x $^0'
 define ia {
-	local se xh=$1 mls=$2
+	local se xh=$1 mls=$2 mult=$3
 	if -z "$mls"; se mls=211; en
+	if -z "$mult"; se mult=1; en
 
 	d - h; x 210 "ia $xh 1-0"
 	d - h i $xh diet <"$xh"@exam.ple> spliced; x 210 "ia $xh 1-1"
-	d - h i $xh <${xh}2@exam.ple>; x 210 "ia $xh 1-2"
-	d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 1-3"
+	if $mult -ne 0
+		d - h i $xh <${xh}2@exam.ple>; x 210 "ia $xh 1-2"
+		d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 1-3"
+	el
+		d - h i $xh <${xh}2@exam.ple>; x 506 "ia $xh 1-2.2"
+	en
 	d - h l $xh; x 210 "ia $xh 1-4"
 	d - h s $xh; x $mls "ia $xh 1-5"
 
@@ -11810,14 +11812,18 @@ define ia {
 
 	#
 	d - h i $xh "diet <x$xh@exam.ple> spliced"; x 210 "ia $xh 3-1"
-	d - h i $xh "<x${xh}2@exam.ple>"; x 210 "ia $xh 3-2"
-	d - h i $xh "x${xh}3@exam.ple"; x 210 "ia $xh 3-3"
+	if $mult -ne 0
+		d - h i $xh "<x${xh}2@exam.ple>"; x 210 "ia $xh 3-2"
+		d - h i $xh "x${xh}3@exam.ple"; x 210 "ia $xh 3-3"
+	en
 	d - h l $xh; x 210 "ia $xh 3-4"
 	d - h s $xh; x $mls "ia $xh 3-5"
 
 	d - h remove-at $xh 1; x 210 "ia $xh 3-6"
-	d - h remove-a $xh 1; x 210 "ia $xh 3-7"
-	d - h remove- $xh 1; x 210 "ia $xh 3-8"
+	if $mult -ne 0
+		d - h remove-a $xh 1; x 210 "ia $xh 3-7"
+		d - h remove- $xh 1; x 210 "ia $xh 3-8"
+	en
 	d - h remove- $xh 1; x 501 "ia $xh 3-9"
 	d - h remove- $xh T; x 505 "ia $xh 3-10"
 	d - h l $xh; x 501 "ia $xh 3-11"
@@ -11825,14 +11831,18 @@ define ia {
 
 	#
 	d - h i $xh "diet <$xh@exam.ple>"; x 210 "ia $xh 4-1"
-	d - h i $xh "<${xh}2@exam.ple> (comment) \\\"Quot(e)d\\\""; x 210 "ia $xh 4-2"
-	d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 4-3"
+	if $mult -ne 0
+		d - h i $xh "<${xh}2@exam.ple> (comment) \\\"Quot(e)d\\\""; x 210 "ia $xh 4-2"
+		d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 4-3"
+	en
 	d - h l $xh; x 210 "hea list $xh 4-4"
 	d - h s $xh; x $mls "ia $xh 4-5"
 
-	d - h remove- $xh 3; x 210 "ia $xh 4-6"
-	d - h s $xh; x $mls "ia $xh 4-7"
-	d - h remove- $xh 2; x 210 "ia $xh 4-8"
+	if $mult -ne 0
+		d - h remove- $xh 3; x 210 "ia $xh 4-6"
+		d - h s $xh; x $mls "ia $xh 4-7"
+		d - h remove- $xh 2; x 210 "ia $xh 4-8"
+	en
 	d - h s $xh; x $mls "ia $xh 4-9"
 	d - h remove- $xh 1; x 210 "ia $xh 4-10"
 	d - h remove- $xh 1; x 501 "ia $xh 4-11"
@@ -11853,7 +11863,6 @@ define ir {
 	el
 		d - h i $xh <${xh}2@exam.ple>; x 506 "ir $xh 1-4"
 	en
-
 	d - h l $xh; x 210 "ir $xh 1-5"
 	d - h s $xh; x $mls "ir $xh 1-6"
 
@@ -11883,7 +11892,7 @@ define ir {
 	d - h s $xh; x 501 "ir $xh 3-11"
 
 	#
-	d - h i $xh " $xh <$xh@exam.ple> "; x 210 "ir $xh 4-1"
+	d - h i $xh " <$xh@exam.ple> "; x 210 "ir $xh 4-1"
 	if $mult -ne 0
 		d - h i $xh "<${xh}2@exam.ple> "; x 210 "ir $xh 4-2"
 		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 4-3"
@@ -11906,7 +11915,7 @@ define t_hea {
 	ec t_hea ENTER
 	# In collect.c order
 	call ia from
-	call ir sender 0 # Not a "ref", but works
+	call ia sender '' 0
 	call ia To
 	call ia cC
 	call ia bCc
@@ -12104,20 +12113,19 @@ define t_occ {
 		dig - h;readall x;echon $x;\
 		dig r -;ec $?/$!/$^ERRNAME
 }
-set on-compose-enter=t_oce on-compose-embed=t_ocm on-compose-leave=t_ocl on-compose-cleanup=t_occ
 __EOT
 	#}}}
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://tm1 > ./tm1.out 2>${E0}
-	cke0 m1 0 ./tm1 '2955987796 2069'
-	ck m1-out - ./tm1.out '1099505374 10256'
+	cke0 m1 0 ./tm1 '2543921427 2095'
+	ck m1-out - ./tm1.out '220711117 10282'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 		MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sescape=! -Sstealthmua=noagent -Smta=test://tm2 \
 			-St_remove=1 > ./tm2.out 2>${E0}
 	cke0 m2 0 ./tm2 '161605867 167'
-	ck m2-out - ./tm2.out '3179236083 25546'
+	ck m2-out - ./tm2.out '344198081 25703'
 
 	## OLD v15-compat
 
@@ -12511,7 +12519,7 @@ set on-compose-splice=t_ocs \
 __EOT__
 	#}}}
 
-	printf 'm this-goes@nowhere\nbody\n!.\n' |
+	printf 'se fullnames;m this-goes@nowhere\nbody\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://t1 > ./t1-x 2>${E0}
 	ck_ex0 1-estat
 	${cat} ./t1-x >> ./t1
@@ -12709,7 +12717,7 @@ define t_occ {
 		digmsg - header show mailx-oriG-bcc;\
 		digmsg remove -;echo $?/$!/$^ERRNAME
 }
-set on-compose-splice=t_ocs \
+set fullnames on-compose-splice=t_ocs \
 	on-compose-splice-shell="read ver;echo t_ocs-shell;\
 		echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
 	on-compose-enter=t_oce on-compose-leave=t_ocl \
@@ -12723,15 +12731,16 @@ set on-compose-splice=t_ocs \
 	# Reply, forward, resend, Resend
 
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! > ./t4-x 2>${EX}
-set from=f1@z
+se from=f1@z
 m t1@z
 b1
 !.
 se stealthmua=noagent
 var from
+se fullnames
 local m
 !t t2@z
-!:se from='du <f2@z>'
+!:se from='du <f2@z>' fullnames
 b2
 !.
 var from
@@ -12739,7 +12748,7 @@ __EOT
 	ck_ex0 4-intro-estat
 
 	#{{{
-	${cat} << '__EOT' > ./t5.in
+	${cat} << '__EOT' > ./t4.in
 echo start: $? $! $^ERRNAME
 File ./t4
 echo File: $? $! $^ERRNAME;echo;echo
@@ -12771,7 +12780,7 @@ echo resend 1 2: $? $! $^ERRNAME;echo;echo
 Resend 1 2 Resendex@am.ple
 echo Resend 1 2: $? $! $^ERRNAME;echo;echo
 __EOT
-	< ./t5.in ${MAILX} ${ARGS} -Sescape=! -Sfullnames -Smta=test://t4 -X'
+	< ./t4.in ${MAILX} ${ARGS} -Sescape=! -Smta=test://t4 -X'
 			define bail {
 				echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
 			}
@@ -12869,7 +12878,7 @@ __EOT
 				echo on-resend-enter
 				set t_oce autobcc=oce@exam.ple
 			}
-			set on-compose-splice=t_ocs \
+			se on-compose-splice=t_ocs \
 				on-compose-enter=t_oce on-compose-leave=t_ocl \
 					on-compose-cleanup=t_occ \
 				on-resend-enter=t_oce_r on-resend-cleanup=t_occ
@@ -12877,7 +12886,7 @@ __EOT
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
-	ck 4 - ./t4 '3350979868 10060' '1312459649 605'
+	ck 4 - ./t4 '2416299422 10055' '1312459649 605'
 
 	t_epilog "${@}"
 } #}}}
@@ -12886,38 +12895,37 @@ t_mass_recipients() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<'__EOT__' > ./t.rc
+	${cat} <<'__EOT' > ./t.rc
 define bail {
-	echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+	echoerr "Failed: $1.  Bailing out"; xit 1
 }
 define ins_addr {
-	local set nr=$1 hn=$2
-	ec "~$hn $hn$nr@$hn"; ec '~:echo $?'; read es
-	i "$es" -ne 0; xcall bail "ins_addr $hn 1-$nr"; en
+	local se nr=$1
+	dig - h i $2$3 $2$nr@$2
+	if $^? -ne 0; xcall bail "ins_addr $2$3 1-$nr"; en
 	: $((nr += 1))
-	i "$nr" -le "$maximum"; xcall ins_addr $nr $hn;  en
+	if "$nr" -le "$maximum"; xcall ins_addr $nr $2 $3; en
 }
 define bld_alter {
-	local set nr=$1 hn=$2
-	alternates $hn$nr@$hn
-	alias $hn$((nr + 1))@$hn $hn$nr@$hn
+	local se nr=$1
+	alt $2$nr@$2
+	al $2$((nr + 1))@$2 $2$nr@$2
 	: $((nr += 2))
-	i "$nr" -le "$maximum"; xcall bld_alter $nr $hn; en
+	if "$nr" -le "$maximum"; xcall bld_alter $nr $2; en
 }
-define t_ocs {
-	local read ver
-	call ins_addr 1 t
-	call ins_addr 1 c
-	call ins_addr 1 b
+define t_oce {
+!: call ins_addr 1 t o
+!: call ins_addr 1 c c
+!: call ins_addr 1 b cc
 }
 define t_ocl {
-	i -n "$t_remove"
+	if -n "$t_remove"
 		call bld_alter 2 t
 		call bld_alter 1 c
 	en
 }
-set on-compose-splice=t_ocs on-compose-leave=t_ocl
-__EOT__
+se on-compose-embed=t_oce on-compose-leave=t_ocl
+__EOT
 	#}}}
 
 	t1() {
@@ -12963,149 +12971,142 @@ t_lreply_futh_rth_etc() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<-'_EOT' > ./t.mbox
-	From neverneverland  Sun Jul 23 13:46:25 2017
-	Subject: Bugstop: five miles out 1
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out, laber@backe.eu
-	Cc: is@a.list
-	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
-	In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
-	Date: Wed, 19 Jul 2017 09:22:57 -0400
-	Message-Id: <20170719132257.766AF781267@originator>
-	Status: RO
-	
-	 >  |Sorry, I think I misunderstand something. I would think that
-	
-	That's appalling.
-	
-	From neverneverland  Fri Jul  7 22:39:11 2017
-	Subject: Bugstop: five miles out 2
-	Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	Status: R
-	
-	capable of changing back.
-	
-	From neverneverland  Fri Jul  7 22:42:00 2017
-	Subject: Bugstop: five miles out 3
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	List-Post: <mailto:bugstop@five.miles.out>
-	Status: R
-	
-	are you ready, boots?
-	
-	From neverneverland  Sat Aug 19 23:15:00 2017
-	Subject: Bugstop: five miles out 4
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	List-Post: <mailto:bugstop@five.miles.out>
-	Status: R
-	
-	are you ready, boots?
-	_EOT
+	${cat} <<'_EOT' > ./t.mbox
+From neverneverland  Sun Jul 23 13:46:25 2017
+Subject: Bugstop: five miles out 1
+Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+From: mister originator <mr@originator>
+To: bugstop-commit@five.miles.out, laber@backe.eu
+Cc: is@a.list
+Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
+Date: Wed, 19 Jul 2017 09:22:57 -0400
+Message-Id: <20170719132257.766AF781267@originator>
+
+ >  |Sorry, I think I misunderstand something. I would think that
+
+That's appalling.
+
+From neverneverland  Fri Jul  7 22:39:11 2017
+Subject: Bugstop: five miles out 2
+Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
+From: mister originator <mr@originator>
+To: bugstop-commit@five.miles.out
+Cc: is@a.list
+Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Date: Fri, 07 Jul 2017 16:33:59 -0400
+
+capable of changing back.
+
+From neverneverland  Fri Jul  7 22:42:00 2017
+Subject: Bugstop: five miles out 3
+Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+From: mister originator <mr@originator>
+To: bugstop-commit@five.miles.out
+Cc: is@a.list
+Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Date: Fri, 07 Jul 2017 16:33:59 -0400
+List-Post: <mailto:bugstop@five.miles.out>
+
+are you ready, boots?
+
+From neverneverland  Sat Aug 19 23:15:00 2017
+Subject: Bugstop: five miles out 4
+Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+Content-Transfer-Encoding: 7bit
+From: mister originator <mr@originator>
+To: bugstop@five.miles.out
+Cc: is@a.list
+Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+Date: Fri, 07 Jul 2017 16:33:59 -0400
+List-Post: <mailto:bugstop@five.miles.out>
+
+are you ready, boots?
+_EOT
 	#}}}
 
 	#{{{
-	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 -Rf ./t.mbox >> ./t1 2>${EX}
-	define r {
-		set m="This is text of \"reply ${1}."
-		reply 1 2 3
-	!I m
-	1".
-	!.
-	!I m
-	2".
-	!.
-	!I m
-	3".
-	!.
-		echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
-	}
-	define R {
-		set m="This is text of \"Reply ${1}."
-		eval Reply $2
-	!I m
-	!I 2
-	".
-	!.
-		echo -----After Reply $1.$2: $?/$^ERRNAME
-	}
-	define _Lh {
-		read protover
-		echo '~I m'
-		echo '~I n'
-		echo '".'
-	}
-	define _Ls {
-		set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
-		eval Lreply $2
-	}
-	define L {
-		# We need two indirections for this test: one for the case that Lreply
-		# fails because of missing recipients: we need to read EOF next, thus
-		# place this in _Ls last; and second for the succeeding cases EOF is
-		# not what these should read, so go over the backside and splice it in!
-		# (A shame we do not have redirection++ as a Bourne/K/POSIX shell!)
-		call _Ls "$@"
-		echo -----After Lreply $1.$2: $?/$^ERRNAME
-	}
-	define x {
-		commandalias lc '\local call'
-		lc r $1
-		lc R $1 1; lc R $1 2; lc R $1 3; lc R $1 4
-		lc L $1 1; lc L $1 2; lc L $1 3
-		uncommandalias lc
-	}
-	define tweak {
-		echo;echo '===== CHANGING === '"$*"' =====';echo
-		eval "$@"
-	}
-	#
-	set from=laber@backe.eu
-	mlist is@a.list
-	call x 1
-	call tweak set reply-to-honour
-	call x 2
-	call tweak set followup-to
-	call x 3
-	call tweak set followup-to-honour
-	call x 4
-	call tweak mlist bugstop@five.miles.out
-	call x 5
-	call tweak mlsubscribe bugstop@five.miles.out
-	call x 6
-	call tweak set recipients-in-cc
-	call x 7
-	# While here, test that *fullnames* works (also here)
-	call tweak set fullnames
-	reply 1
-	This message should have *fullnames* in the header.
-	!.
-	# Revert
-	call tweak unmlsubscribe bugstop@five.miles.out';' \
-		set followup-to-add-cc nofullnames
-	call x 8
-	call tweak mlsubscribe bugstop@five.miles.out
-	call x 9
-	_EOT
+	<<'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 -Rf ./t.mbox >> ./t1 2>${EX}
+define r {
+	set m="This is text of \"reply ${1}."
+	reply 1 2 3
+!I m
+1".
+!.
+!I m
+2".
+!.
+!I m
+3".
+!.
+	echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
+}
+define R {
+	set m="This is text of \"Reply ${1}."
+	eval Reply $2
+!I m
+!I 2
+".
+!.
+	echo -----After Reply $1.$2: $?/$^ERRNAME
+}
+define _Lh {
+!I m
+!I n
+".
+}
+define _Ls {
+	set m="This is text of \"Lreply ${1}." on-compose-embed=_Lh n=$2
+	eval Lreply $2
+}
+define L {
+	# We need two indirections for this test: one for the case that Lreply
+	# fails because of missing recipients: we need to read EOF next, thus
+	# place this in _Ls last; and second for the succeeding cases EOF is
+	# not what these should read, so embed it over the backside!
+	# (A shame we do not have redirection++ like a Bourne/K/POSIX shell!)
+	call _Ls "$@"
+	echo -----After Lreply $1.$2: $?/$^ERRNAME
+}
+define x {
+	commandalias lc '\local call'
+	lc r $1
+	lc R $1 1; lc R $1 2; lc R $1 3; lc R $1 4
+	lc L $1 1; lc L $1 2; lc L $1 3
+	uncommandalias lc
+}
+define tweak {
+	echo;echo '===== CHANGING === '"$*"' =====';echo
+	eval "$@"
+}
+#
+se from=laber@backe.eu
+mlist is@a.list
+call x 1
+call tweak set reply-to-honour
+call x 2
+call tweak set followup-to
+call x 3
+call tweak set followup-to-honour
+call x 4
+call tweak mlist bugstop@five.miles.out
+call x 5
+call tweak mlsubscribe bugstop@five.miles.out
+call x 6
+call tweak set recipients-in-cc
+call x 7
+# While here, test that *fullnames* works (also here)
+call tweak set fullnames
+reply 1
+This message should have *fullnames* in the header.
+!.
+# Revert
+call tweak unmlsubscribe bugstop@five.miles.out';' \
+	set followup-to-add-cc nofullnames
+call x 8
+call tweak mlsubscribe bugstop@five.miles.out
+call x 9
+_EOT
 	#}}}
 	ck 1 0 ./t1 '3438593020 41761' '861585057 114'
 
@@ -15107,7 +15108,7 @@ cc_all_configs() { #{{{
 		}
 		/^[	 ]*OPT_/{
 			sub(/^[	 ]*/, "")
-			# This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
+			# This bails for UnixWare 7.1.4 awk(1), but preceding = with \
 			# does not seem to be a compliant escape for =
 			#sub(/=.*$/, "")
 			$1 = substr($1, 1, index($1, "=") - 1)

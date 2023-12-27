@@ -95,7 +95,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
       struct mx_name *np;
 
       if((cp = n_header_senderfield_of(n_msgmark1)) == NIL ||
-            (np = lextract(cp, GTO | GSKIN)) == NIL){
+            (np = mx_name_parse(cp, GTO)) == NIL){
          n_err(_("Cannot determine message sender to %s.\n"),
             cacp->cac_desc->cad_name);
          goto jleave;
