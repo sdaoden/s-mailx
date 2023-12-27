@@ -726,7 +726,7 @@ a_mime_write_tohdr_a(struct str *in, FILE *f, uz *colp,
 
    in->s[in->l] = '\0';
 
-   if((cp = routeaddr(lastcp = in->s)) != NIL && cp > lastcp){
+   if((cp = mx_name_routeaddr_cp(lastcp = in->s)) != NIL && cp > lastcp){
       xin.s = UNCONST(char*,lastcp);
       xin.l = P2UZ(cp - lastcp);
       if((size = a_mime__convhdra(&xin, f, colp, msh)) < 0)
@@ -747,7 +747,7 @@ a_mime_write_tohdr_a(struct str *in, FILE *f, uz *colp,
             size += i;
          }
          lastcp = ++cp;
-         cp = skip_comment(cp);
+         cp = mx_name_skip_comment_cp(cp);
          if(cp > lastcp)
             --cp;
          /* We want to keep empty comments, too! */
@@ -1276,7 +1276,7 @@ mx_mime_fromaddr(char const *name){
       goto jleave;
    }
 
-   if((cp = routeaddr(name)) != NIL && cp > name){
+   if((cp = mx_name_routeaddr_cp(name)) != NIL && cp > name){
       a_mime_append_conv(&res, &ressz, &rescur, name, P2UZ(cp - name));
       lastcp = cp;
    }else
@@ -1288,7 +1288,7 @@ mx_mime_fromaddr(char const *name){
          a_mime_append_str(&res, &ressz, &rescur, lastcp,
             P2UZ(cp - lastcp + 1));
          lastcp = ++cp;
-         cp = skip_comment(cp);
+         cp = mx_name_skip_comment_cp(cp);
          if(--cp > lastcp)
             a_mime_append_conv(&res, &ressz, &rescur, lastcp,
                P2UZ(cp - lastcp));

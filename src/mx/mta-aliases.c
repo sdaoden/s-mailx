@@ -288,7 +288,7 @@ jename:
 				struct n_strlist **tailp;
 				struct mx_name *nphead,*np;
 
-				nphead = lextract(l2.s = &nsp->s_dat[l2.l + 1], GTO | GFULL | GQUOTE_ENCLOSED_OK);
+				nphead = mx_name_parse(l2.s = &nsp->s_dat[l2.l + 1], GTO | GQUOTE_ENCLOSED_OK);
 
 				if(UNLIKELY(nphead == NIL)){
 jeval:
@@ -389,19 +389,19 @@ a_mtaali_expand(uz lvl, char const *name, struct a_mtaali_query *maqp){
 	if((p.v = su_cs_dict_lookup(maqp->maq_dp, name)) == NIL){
 jput_name:
 		maqp->maq_err = su_ERR_DESTADDRREQ;
-		maqp->maq_result = cat(nalloc(name, maqp->maq_type | GFULL), maqp->maq_result);
+		maqp->maq_result = cat(mx_name_parse(name, maqp->maq_type), maqp->maq_result);
 	}else{
 		for(p.sl = p.maa->maa_values; p.sl != NIL; p.sl = p.sl->sl_next){
 			/* Is it a name itself? */
 			if(p.sl->sl_dat[p.sl->sl_len + 1] == a_MTAALI_T_NAME){
-				if(UCMP(z, lvl, <, n_ALIAS_MAXEXP)) /* TODO not a real error! */
+				if(UCMP(z, lvl, <, mx_ALIAS_MAXEXP)) /* TODO not a real error! */
 					a_mtaali_expand(lvl, p.sl->sl_dat, maqp);
 				else{
-					n_err(_("*mta_aliases*: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
+					n_err(_("*mta_aliases*: stopping recursion at depth %d\n"), mx_ALIAS_MAXEXP);
 					goto jput_name;
 				}
 			}else
-				maqp->maq_result = cat(maqp->maq_result, nalloc(p.sl->sl_dat, maqp->maq_type | GFULL));
+				maqp->maq_result = cat(maqp->maq_result, mx_name_parse(p.sl->sl_dat, maqp->maq_type));
 		}
 	}
 

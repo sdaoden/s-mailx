@@ -453,7 +453,7 @@ jcmd_insert:{ /* {{{ */
 	 * TODO header fields etc., a little workaround */
 	struct mx_name *xnp;
 	char const *mod_suff;
-	enum expand_addr_check_mode eacm;
+	enum mx_expand_addr_check_mode eacm;
 	enum gfield ntype;
 	boole mult_ok;
 	s8 aerr;
@@ -513,8 +513,8 @@ jcmd_insert:{ /* {{{ */
 	}
 
 	mult_ok = TRU1;
-	ntype = GEXTRA | GFULL | GFULLEXTRA;
-	eacm = EACM_STRICT;
+	ntype = GIDENT | GFULLEXTRA;
+	eacm = mx_EACM_STRICT;
 	mod_suff = NIL;
 
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "From")){
@@ -523,15 +523,15 @@ jins:
 		aerr = 0;
 		/* todo As said above, this should be table driven etc., but.. */
 		if(ntype & GBCC_IS_FCC){
-			np = nalloc_fcc(a3p->ca_arg.ca_str.s);
-			if(is_addr_invalid(np, eacm))
+			np = mx_name_parse_fcc(a3p->ca_arg.ca_str.s);
+			if(mx_name_is_invalid(np, eacm))
 				goto jins_505;
 		}else{
-			np = ((mult_ok > FAL0) ? lextract : n_extract_single)(a3p->ca_arg.ca_str.s, (ntype | GNULL_OK));
+			np = (mult_ok > FAL0 ? mx_name_parse : mx_name_parse_as_one)(a3p->ca_arg.ca_str.s, ntype);
 			if(np == NIL)
 				goto j501cp;
 
-			if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
+			if((np = mx_namelist_check(np, eacm, &aerr), aerr != 0)){
 jins_505:
 				dmslp->dmsl_status_or_new_ent = 505;
 				dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
@@ -592,21 +592,21 @@ jins_505:
 	}
 
 	/* Just like with ~t,~c,~b, immediately test *expandaddr* compliance */
-	a_X("To", h_to, ntype = GTO|GFULL su_COMMA eacm = EACM_NORMAL);
-	a_X("Cc", h_cc, ntype = GCC|GFULL su_COMMA eacm = EACM_NORMAL);
-	a_X("Bcc", h_bcc, ntype = GBCC|GFULL su_COMMA eacm = EACM_NORMAL);
+	a_X("To", h_to, ntype = GTO su_COMMA eacm = mx_EACM_NORMAL);
+	a_X("Cc", h_cc, ntype = GCC su_COMMA eacm = mx_EACM_NORMAL);
+	a_X("Bcc", h_bcc, ntype = GBCC su_COMMA eacm = mx_EACM_NORMAL);
 
 	if((cp = mod_suff) != NIL)
 		goto j501cp;
 
 	/* Not | EAF_FILE, depend on *expandaddr*! */
-	a_X("Fcc", h_fcc, ntype = GBCC|GBCC_IS_FCC su_COMMA eacm = EACM_NORMAL);
-	a_X("Sender", h_sender, mult_ok = FAL0);
-	a_X("Reply-To", h_reply_to, eacm = EACM_NONAME);
-	a_X("Mail-Followup-To", h_mft, eacm = EACM_NONAME);
-	a_X("Message-ID", h_message_id, mult_ok = FAL0 su_COMMA ntype = GREF su_COMMA eacm = EACM_NONAME);
-	a_X("References", h_ref, ntype = GREF su_COMMA eacm = EACM_NONAME);
-	a_X("In-Reply-To", h_in_reply_to, ntype = GREF su_COMMA eacm = EACM_NONAME);
+	a_X("Fcc", h_fcc, ntype = GBCC|GBCC_IS_FCC su_COMMA eacm = mx_EACM_NORMAL);
+	a_X("Sender", h_sender, ntype = GIDENT su_COMMA mult_ok = FAL0);
+	a_X("Reply-To", h_reply_to, ntype = GIDENT su_COMMA eacm = mx_EACM_NONAME);
+	a_X("Mail-Followup-To", h_mft, ntype = GIDENT su_COMMA eacm = mx_EACM_NONAME);
+	a_X("Message-ID", h_message_id, mult_ok = FAL0 su_COMMA ntype = GREF su_COMMA eacm = mx_EACM_NONAME);
+	a_X("References", h_ref, ntype = GREF su_COMMA eacm = mx_EACM_NONAME);
+	a_X("In-Reply-To", h_in_reply_to, ntype = GREF su_COMMA eacm = mx_EACM_NONAME);
 #undef a_X
 
 	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
@@ -1389,10 +1389,10 @@ jatt_attset:
 				if(c != '\0'){
 					struct mx_name *np;
 
-					/* XXX lextract->extract_single() */
-					np = checkaddrs(lextract(cp, GREF),
-							/*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-							NIL);
+					/* XXX ->name_parse_as_one() */
+					np = mx_namelist_check(mx_name_parse(cp, GREF),
+							(/*mx_EACM_STRICT | TODO '/' valid!! */ mx_EACM_NOLOG |
+							 mx_EACM_NONAME), NIL);
 					if(np != NIL && np->n_flink == NIL)
 						ap->a_content_id = np;
 					else

@@ -1741,7 +1741,7 @@ smime_sign_cert(char const *xname, char const *xname2, boole dowarn,
 
 jloop:
    if (name) {
-      np = lextract(name, GTO | GSKIN);
+      np = mx_name_parse(name, GTO);
       while (np != NULL) {
          /* This needs to be more intelligent since it will currently take the
           * first name for which a private key is available regardless of
@@ -1792,30 +1792,34 @@ jerr:
 }
 
 static char const *
-a_xtls_smime_sign_include_certs(char const *name)
-{
+a_xtls_smime_sign_include_certs(char const *name){
    char const *rv;
-   NYD_IN;
+   NYD2_IN;
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
-   if (name != NULL) {
+   if(name != NIL){
       struct mx_name *np;
 
-      for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
+      for(np = mx_name_parse(name, GTO); np != NIL; np = np->n_flink){
          int vs;
          char *vn;
 
-         vn = n_lofi_alloc(vs = su_cs_len(np->n_name) + 30);
+         vn = su_LOFI_ALLOC(vs = su_cs_len(np->n_name) + 30);
+
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
          rv = n_var_vlook(vn, FAL0);
-         n_lofi_free(vn);
-         if (rv != NULL)
+
+         su_LOFI_FREE(vn);
+
+         if(rv != NIL)
             goto jleave;
       }
    }
+
    rv = ok_vlook(smime_sign_include_certs);
+
 jleave:
-   NYD_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -1872,16 +1876,18 @@ a_xtls_smime_sign_digest(char const *name, char const **digname,
    if(name != NIL){
       struct mx_name *np;
 
-      for(np = lextract(name, GTO | GSKIN); np != NIL; np = np->n_flink){
+      for(np = mx_name_parse(name, GTO); np != NIL; np = np->n_flink){
          int vs;
          char *vn;
 
          vn = su_LOFI_ALLOC(vs = su_cs_len(np->n_name) + 30);
+
          snprintf(vn, vs, "smime-sign-digest-%s", np->n_name);
          if((cp = n_var_vlook(vn, FAL0)) == NIL){
             snprintf(vn, vs, "smime-sign-message-digest-%s",np->n_name);/*v15*/
             cp = n_var_vlook(vn, FAL0);
          }
+
          su_LOFI_FREE(vn);
 
          if(cp != NIL)

@@ -22,7 +22,7 @@
 # define mx_CONFIG_H
 
 #define ACCOUNT_NULL "null" /* Name of "null" account */
-#define n_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
+#define mx_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
 
 #define mx_CONTENT_DESC_FORWARDED_MESSAGE "Forwarded message"
 #define mx_CONTENT_DESC_QUOTE_ATTACHMENT "Original message content"

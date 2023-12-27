@@ -949,18 +949,18 @@ t_call_xcall() { #{{{
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 define one {
-	echo one<$0>: $#: $*
+	echo "one<$0>: $#: $*"
 }
 define two {
-	echo two<$0>: $#: $*
+	echo "two<$0>: $#: $*"
 	call one "$@"
 }
 define three {
-	echo three<$0>: $#: 1=$1, 2=$2, 3=$3, $*
+	echo "three<$0>: $#: 1=$1, 2=$2, 3=$3, $*"
 	call two "$@"
 }
 define four {
-	echo four<$0>: $#: 1=$1, 2=$2, 3=$3, $*
+	echo "four<$0>: $#: 1=$1, 2=$2, 3=$3, $*"
 	call three "$@${@}"${@}
 }
 call one
@@ -4314,7 +4314,7 @@ t_call_xcall_scope() { #{{{
 	cke0 our 0 ./tour '3263504530 899'
 
 	# (xxx revealed environ link scope bugs t_environ() did not catch) {{{
-	${cat} << '__EOT' | ${MAILX} ${ARGS} >./tft 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} >./tft 2>${E0}
 define 1 {
 	x 1>; eval our "$C1" 2; x 1<
 }
@@ -9461,7 +9461,9 @@ t_alias() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${EX}
+unalias a1
+una a1
 alias a1 ex1@a1.ple
 a a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
 a a1 ex4@a1.ple
@@ -9475,6 +9477,7 @@ a a8 ex1@a8.ple
 a a1
 a a2
 a a3
+se fullnames
 m a1
 ~c a2
 ~b a3
@@ -9482,9 +9485,11 @@ m a1
    This body is!
    This also body is!!
 _EOT
+~.
+una a1 a2 a3
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '139467786 277'
+	ck 1 0 ./t1 '139467786 277' '1620767763 80'
 	ck 2 - ./t2 '1598893942 133'
 
 	#{{{
@@ -9589,7 +9594,7 @@ __EOT
 	#}}}
 	cke0 4 0 ./t4 '3511439903 929'
 
-	# TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
+	# TODO t_alias: mx_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
 
 	t_epilog "${@}"
@@ -9916,29 +9921,23 @@ t_specifying_sorting() { #{{{
 
 	#{{{
 	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t1 2>${E0}
-ec def
-h
-ec date
-sort date
-h
-ec from
-sort from
-h
-ec size
-sort size
-h
-ec status
-sort status
-h
-ec subject
-sort subject
-h
-ec thread
-sort thread
-h
-ec to
-sort to
-h
+ec def;h
+ec date;sort date;h
+ec from;sort from;h
+ec size;sort size;h
+ec status;sort status;h
+ec subject;sort subject;h
+ec thread;sort thread;h
+ec to;sort to;h
+#ec ==showname==;se showname
+#ec def;h
+#ec date;sort date;h
+#ec from;sort from;h
+#ec size;sort size;h
+#ec status;sort status;h
+#ec subject;sort subject;h
+#ec thread;sort thread;h
+#ec to;sort to;h
 	__EOT
 	#}}}
 	cke0 1 0 ./t1 '2781961062 6444'
@@ -10346,7 +10345,7 @@ t_expandaddr() { #{{{
 
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 		-Sexpandaddr=fail,domaincheck -Sexpandaddr-domaincheck=exam.ple,tro.uble \
-		> ${EX} 2>${E0}
+		-Sfullnames > ${EX} 2>${E0}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
 	cke0 85 0 ./t.mbox '1670655701 410'
@@ -10356,7 +10355,7 @@ t_expandaddr() { #{{{
 	printf 'To: <reproducible_build>' |
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t87.mbox -t -ssub \
 			-Sexpandaddr=nametoaddr \
-			> ${EX} 2>${E0}
+			-Sfullnames > ${EX} 2>${E0}
 	cke0 87 0 ./t87.mbox '1288059511 146'
 	ck0 88 - ${EX}
 
@@ -10364,7 +10363,7 @@ t_expandaddr() { #{{{
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t89.mbox -t -ssub \
 			-Sexpandaddr=nametoaddr -Shostname=nowhere \
 			> ${EX} 2>${E0}
-	cke0 89 0 ./t89.mbox '3724074854 203'
+	cke0 89 0 ./t89.mbox '961894717 201'
 	ck0 90 - ${EX}
 
 	t_epilog "${@}"
@@ -10387,7 +10386,7 @@ t_mta_aliases() { #{{{
 	
 	
 	a1: ex1@a1.ple  , 
-	  ex2@a1.ple, <ex3@a1.ple> ,
+	  ex2@a1.ple, ex 3 <ex3@a1.ple> ,
 	  ex4@a1.ple	 
 	a2:	  ex1@a2.ple  , 	ex2@a2.ple,a2_2
 	a2_2:ex3@a2.ple,ex4@a2.ple
@@ -10405,7 +10404,7 @@ t_mta_aliases() { #{{{
 	#}}}
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox -Smta-aliases=./t.ali -X mtaaliases -X xit > ./tlist 2>${E0}
-	cke0 list 0 ./tlist '1644126449 193'
+	cke0 list 0 ./tlist '3895685295 198'
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox \
 		-Smta-aliases=./t.ali \
@@ -10417,10 +10416,10 @@ t_mta_aliases() { #{{{
 		\commandali x \\mtaali
 		\call y
 		' > ./tlook 2>${EX}
-	ck look 0 ./tlook '3425855815 506' '2628536915 170'
+	ck look 0 ./tlook '206734032 511' '2628536915 170'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Smta-aliases=./t.ali -b a3 -c a2 a1 > ${E0} 2>&1
-	cke0 1 0 ./t.mbox '1172368381 238'
+	cke0 1 0 ./t.mbox '3950607105 236'
 
 	## xxx The following are actually *expandaddr* tests!!
 
@@ -10431,7 +10430,7 @@ t_mta_aliases() { #{{{
 			-Smta-aliases=./t.ali \
 			-b a3 -c a2 a1 > ${E0} 2>${EX}
 		ck_exx 3
-		ck 4 - ./t.mbox '1172368381 238'
+		ck 4 - ./t.mbox '3950607105 236'
 		ck0 5 - ${E0} '771616226 179'
 	else
 		t_echoskip '[!5:!SMTP]'
@@ -10441,23 +10440,23 @@ t_mta_aliases() { #{{{
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=fail,-name -Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ${E0} 2>${EX}
 	ck_exx 6
-	ck 7 - ./t.mbox '1172368381 238'
+	ck 7 - ./t.mbox '3950607105 236'
 	ck0 8 - ${E0} '2834389894 178'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=-name -Smta-aliases=./t.ali \
-		-b a3 -c a2 a1 > ${E0} 2>${EX}
-	ck 9 4 ./t.mbox '2322273994 472'
+		-Sfullnames -b a3 -c a2 a1 > ${E0} 2>${EX}
+	ck 9 4 ./t.mbox '1478069304 475'
 	ck0 10 - ${E0} '2136559508 69'
 
 	echo 'a9:nine@nine.nine' >> ./t.ali
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=fail,-name -Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ${E0} 2>&1
-	cke0 11 0 ./t.mbox '2422268299 722'
+	cke0 11 0 ./t.mbox '176233680 723'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Scat="${cat}" -Smta=test://t.mbox -Sescape=! -Smta-aliases=./t.ali > ./t14 2>${EX}
-se expandaddr=-name
+se expandaddr=-name fullnames
 mail a1
 !c a2
 !:ec "$?/$^ERRNAME"
@@ -10481,6 +10480,7 @@ mail a1
 !:echo "$?/$^ERRNAME"
 !.
 ec trigger happiness
+uns fullnames
 mail a1
 !c a2
 !:ec "$?/$^ERRNAME"
@@ -10489,14 +10489,14 @@ mail a1
 !.
 __EOT
 	#}}}
-	ck 13 0 ./t.mbox '550955032 1469' '2654195888 315'
+	ck 13 0 ./t.mbox '53891473 1478' '2654195888 315'
 	ck 14 - ./t14 '2924332769 158'
-	ck 15 - ./t.f1 '3056269950 249'
-	ck 16 - ./t.p1 '3056269950 249'
-	ck 17 - ./t.p2 '3056269950 249'
-	ck 18 - ./t.f2 '3056269950 249'
+	ck 15 - ./t.f1 '2635873594 247'
+	ck 16 - ./t.p1 '2635873594 247'
+	ck 17 - ./t.p2 '2635873594 247'
+	ck 18 - ./t.f2 '2635873594 247'
 
-	# TODO t_mta_aliases: n_ALIAS_MAXEXP is compile-time constant,
+	# TODO t_mta_aliases: mx_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
 
 	t_epilog "${@}"
@@ -11446,10 +11446,9 @@ t_cmd_escapes() { #{{{
 	# ~@ is tested with other attachment stuff, ~^ in compose_edits,digmsg,compose_hooks
 	#{{{
 	${cat} << '__EOT' > ./t2.in
-set Sign=SignVar sign=signvar DEAD=./t.txt
-set forward-inject-head quote-inject-head
+se Sign=SignVar sign=signvar DEAD=./t.txt forward-inject-head quote-inject-head
 headerpick type retain Subject
-headerpick forward retain Subject To
+headerpick forward retain Subject To from
 reply 2
 !!1 Not escaped.  And shell test last, right before !..
 !:ec 1
@@ -11482,19 +11481,20 @@ reply 2
 !F 1 3
 !:ec 13:$?/$^ERRNAME
 !F 1000
-!:ec 13-1:$?/$^ERRNAME; set posix
+!:ec 13-1:$?/$^ERRNAME; se posix
 14: ~f (headerpick: subject)
 !f
-!:ec 14:$?/$^ERRNAME; unset posix forward-inject-head quote-inject-head
+!:ec 14:$?/$^ERRNAME; uns posix forward-inject-head quote-inject-head
 14.1: ~f (!posix: injections; headerpick: subject to)
 !f
-!:ec 14.1:$?/$^ERRNAME; set forward-add-cc
+!:ec 14.1:$?/$^ERRNAME; se forward-add-cc
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 !f 3
-!:ec 14.2:$?/$^ERRNAME; set fullnames
-14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+!:ec 14.2:$?/$^ERRNAME; se fullnames
+14.3: ~f (!posix: headerpick: subject to from; forward-add-cc adds mr1 fullnames)
+TODO ~f etc do not honour fullnames!
 !f 1
-!:ec 14.3:$?/$^ERRNAME; set nofullnames noforward-add-cc posix
+!:ec 14.3:$?/$^ERRNAME; se nofullnames noforward-add-cc posix
 15: ~f 1
 !f 1
 !:ec 15:$?/$^ERRNAME
@@ -11530,22 +11530,22 @@ reply 2
 !Q 1 3
 !:ec 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
-!:set quote-inject-head=%a quote-inject-tail=--%r
+!:se quote-inject-head=%a quote-inject-tail=--%r
 32: ~Q
 !Q
 !:ec 32:$?/$^ERRNAME
 set noquote-inject-head noquote-inject-tail quote-add-cc
-!:set noquote-inject-head noquote-inject-tail quote-add-cc
+!:se noquote-inject-head noquote-inject-tail quote-add-cc
 33: ~Q 4
 !Q 4
 !:ec 33:$?/$^ERRNAME
 set fullnames
-!:set fullnames
+!:se fullnames
 34: ~Q 5
 !Q 5
 !:ec 34:$?/$^ERRNAME
 unset fullnames, quote stuff
-!:unset quote quote-add-cc fullnames
+!:uns quote quote-add-cc fullnames
 22: ~R ./t.txt
 !R ./t.txt
 !:ec 22:$?/$^ERRNAME
@@ -11582,7 +11582,7 @@ _EOT
 _EOT
 !:ec 23.4:$?/$^ERRNAME
 !:# TODO 23.[56]: n_SHEXP_PARSE_SCOPE_CAPSULE not yet honoured
-!:se i=11; vpospar set d o h
+!:se i=11; vpospar se d o h
 23.5: ~< - -_EOT NUTS
 !< - -_EOT
 	l1
@@ -11617,17 +11617,17 @@ _EOT
 and i ~w rite this out to ./t3
 !w ./t3
 !:ec i ~w:$?/$^ERRNAME bang-data<$bang-data>
-!:set x=$escape;set escape=~
+!:se x=$escape;set escape=~
 ~!echo shell command output
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~!echo no_!_bang\!
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
-~:set bang
+~:se bang
 ~!echo NO-!-BANG\!
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
 ~!echo no=!=bang\!
 ~:ec shell:$?/$^ERRNAME bang-data<$bang-data>
-~:set nobang escape=$x
+~:se nobang escape=$x
 50:F
 !F 6
 !:ec 50 was F:$?/$^ERRNAME
@@ -11639,7 +11639,7 @@ and i ~w rite this out to ./t3
 !:ec 52 was M:$?/$^ERRNAME
 53:m
 !m 6
-!:ec 53 was m:$?/$^ERRNAME; set quote
+!:ec 53 was m:$?/$^ERRNAME; se quote
 54:Q
 !Q 6
 !:ec 54 was Q:$?/$^ERRNAME
@@ -11664,8 +11664,8 @@ __EOT
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '600677470 8507' '3575876476 49'
-	ck 3-nohtml - ./t3 '1553884295 4748'
+	ck 2-nohtml - ./t2-nohtml '1015051952 8599' '3575876476 49'
+	ck 3-nohtml - ./t3 '1327297557 4917'
 
 	if have_feat filter-html-tagsoup; then
 		> ./t3
@@ -11673,8 +11673,8 @@ __EOT
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '996062905 8447' '3575876476 49'
-		ck 3-html - ./t3 '1553884295 4748'
+		ck 2-html - ./t2-html '2680796281 8539' '3575876476 49'
+		ck 3-html - ./t3 '1327297557 4917'
 	else
 		t_echoskip '[!{2,3}-html:!FILTER_HTML_TAGSOUP]'
 	fi
@@ -12251,7 +12251,7 @@ ec c
 #}}}
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{
-t_compose_hooks() { #{{{ TODO monster
+t_compose_hooks() { #{{{ TODO monster (v15-compat: splice stuff falls off)
 	t_prolog "${@}"
 
 	if have_feat cmd-csop; then :; else
@@ -12270,7 +12270,7 @@ define h2 {
 	!r ./tsig.in
 }
 define h3 {
-	!:set indentprefix='_/\_'
+	!:se indentprefix='_/\_'
 	!R ./tsig.in
 }
 define h4 {
@@ -12281,14 +12281,14 @@ define h4 {
 }
 define .h4 {
   digmsg - h l
-  ec 1:$^0: $^*
+  ec "1:$^0: $^*"
   digmsg c -
   digmsg - h l
   local readall x
-  ec 2:$x
+  ec "2:$x"
   digmsg r -
   digmsg - h l
-  ec 3:$^0: $^*
+  ec "3:$^0: $^*"
 }
 define hd1 { # TODO no here document expansion yet +hhd[234]
   Ciao!
@@ -12301,7 +12301,7 @@ ech 1
 define hd2 {
   Ciao!
 	!r - -_EOT
-				$sign
+				"$sign"
 				_EOT
 				ech 2
 	!:ec 2
@@ -12317,7 +12317,7 @@ ech 3
 define hd4 {
   Ciao!
 	!r - '-_EOT'
-		$sign
+		"$sign"
 		_EOT
 		ech 4
 	!:ec 4
@@ -12327,45 +12327,45 @@ m t1@o
 !ss1
 b1
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=h2
 m t2@o
 !ss2
 b2
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=h3
 m t3@o
 !ss3
 b3
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=h4
 m t4@o
 !ss4
 b4
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=hd1
 m h1@o
 !sh1
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=hd2
 m h2@o
 !sh2
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=hd3
 m h3@o
 !sh3
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 se on-compose-embed=hd4
 m h4@o
 !sh4
 !.
-ec $!/$?/$^ERRNAME
+ec "$!/$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 sig 0 ./tsig '1696504352 1030'
@@ -12375,11 +12375,11 @@ __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://teasy -Sescape=! > ./teasy.out 2>${E0}
 define oce {
 	se oce=$((oce + 1))
-	ec in oce=$oce
+	ec "in oce=$oce"
 }
 define ocm {
 	!:se ocm=$((ocm + 1))
-	!:ec in embed=$ocm
+	!:ec "in embed=$ocm"
 	embed>
 	!i oce
 	!i ocm
@@ -12389,12 +12389,12 @@ define ocm {
 }
 define ocl {
 	se ocl=$((ocl + 1))
-	ec in ocl=$ocl
+	ec "in ocl=$ocl"
 	se from=u$ocl@i
 }
 define occ {
 	se occ=$((occ + 1))
-	ec in occ=$occ
+	ec "in occ=$occ"
 	se from=c$occ@i
 }
 se on-compose-enter=oce on-compose-embed=ocm on-compose-leave=ocl on-compose-cleanup=occ from=i@u
@@ -12452,12 +12452,12 @@ __EOT
 	<< '__EOT' ${cat} > ./txitquit.in
 define fun {
 	ec fun: no escapes!
-	eval $cmd $*
+	eval "$cmd" "$*"
 }
 define ocm {
 	!:ec in embed
 	embed>
-	!:eval $call fun 5
+	!:eval "$call" fun 5
 	!p
 }
 define ocl {
@@ -12498,6 +12498,8 @@ __EOT
 	#{{{ Supposed to extend t_compose_edits with ~^ stress tests!
 	${cat} <<'__EOT' > ./t.rc
 commandali d \\digmsg
+commandali x 'ec "$^0=$^#=$^@"; \call x "$^0"'
+se on-compose-enter=t_oce on-compose-embed=t_ocm on-compose-leave=t_ocl on-compose-cleanup=t_occ  fullnames
 define bail {
 	echoerr "Failed: $1.  Bailing out"
 	xit
@@ -12505,124 +12507,135 @@ define bail {
 define x {
 	if $1 -ne $2; xcall bail "$3: $1!=$2"; el; ec "$3": ok; en
 }
-commandali x 'ec "$^0=$^#=$^@"; \call x $^0'
 define ia {
-	local se xh=$1 mls=$2
-	if -z "$mls"; se mls=211; en
+	local se xh=$1 mls=$2 mult=$3
+	if -z $mls; se mls=211; en
+	if -z $mult; se mult=1; en
 
 	d - h; x 210 "ia $xh 1-0"
-	d - h i $xh diet <"$xh"@exam.ple> spliced; x 210 "ia $xh 1-1"
-	d - h i $xh <${xh}2@exam.ple>; x 210 "ia $xh 1-2"
-	d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 1-3"
-	d - h l $xh; x 210 "ia $xh 1-4"
-	d - h s $xh; x $mls "ia $xh 1-5"
+	d - h i "$xh" diet <"$xh"@exam.ple> spliced; x 210 "ia $xh 1-1"
+	if $mult -ne 0
+		d - h i "$xh" "<${xh}2@exam.ple>"; x 210 "ia $xh 1-2"
+		d - h i "$xh" "${xh}3@exam.ple"; x 210 "ia $xh 1-3"
+	el
+		d - h i "$xh" "<${xh}2@exam.ple>"; x 506 "ia $xh 1-2.2"
+	en
+	d - h l "$xh"; x 210 "ia $xh 1-4"
+	d - h s "$xh"; x "$mls" "ia $xh 1-5"
 
 	if -z "$t_remove"; return; en
 
-	d - h r $xh; x 210 "ia $xh 2-1"
-	d - h r $xh; x 501 "ia $xh 2-2"
-	d - h l $xh; x 501 "ia $xh 2-3"
-	d - h s $xh; x 501 "ia $xh 2-4"
+	d - h r "$xh"; x 210 "ia $xh 2-1"
+	d - h r "$xh"; x 501 "ia $xh 2-2"
+	d - h l "$xh"; x 501 "ia $xh 2-3"
+	d - h s "$xh"; x 501 "ia $xh 2-4"
 
 	#
-	d - h i $xh "diet <x$xh@exam.ple> spliced"; x 210 "ia $xh 3-1"
-	d - h i $xh "<x${xh}2@exam.ple>"; x 210 "ia $xh 3-2"
-	d - h i $xh "x${xh}3@exam.ple"; x 210 "ia $xh 3-3"
-	d - h l $xh; x 210 "ia $xh 3-4"
-	d - h s $xh; x $mls "ia $xh 3-5"
+	d - h i "$xh" "diet <x$xh@exam.ple> spliced"; x 210 "ia $xh 3-1"
+	if $mult -ne 0
+		d - h i "$xh" "<x${xh}2@exam.ple>"; x 210 "ia $xh 3-2"
+		d - h i "$xh" "x${xh}3@exam.ple"; x 210 "ia $xh 3-3"
+	en
+	d - h l "$xh"; x 210 "ia $xh 3-4"
+	d - h s "$xh"; x "$mls" "ia $xh 3-5"
 
-	d - h remove-at $xh 1; x 210 "ia $xh 3-6"
-	d - h remove-a $xh 1; x 210 "ia $xh 3-7"
-	d - h remove- $xh 1; x 210 "ia $xh 3-8"
-	d - h remove- $xh 1; x 501 "ia $xh 3-9"
-	d - h remove- $xh T; x 505 "ia $xh 3-10"
-	d - h l $xh; x 501 "ia $xh 3-11"
-	d - h s $xh; x 501 "ia $xh 3-12"
+	d - h remove-at "$xh" 1; x 210 "ia $xh 3-6"
+	if $mult -ne 0
+		d - h remove-a "$xh" 1; x 210 "ia $xh 3-7"
+		d - h remove- "$xh" 1; x 210 "ia $xh 3-8"
+	en
+	d - h remove- "$xh" 1; x 501 "ia $xh 3-9"
+	d - h remove- "$xh" T; x 505 "ia $xh 3-10"
+	d - h l "$xh"; x 501 "ia $xh 3-11"
+	d - h s "$xh"; x 501 "ia $xh 3-12"
 
 	#
-	d - h i $xh "diet <$xh@exam.ple>"; x 210 "ia $xh 4-1"
-	d - h i $xh "<${xh}2@exam.ple> (comment) \\\"Quot(e)d\\\""; x 210 "ia $xh 4-2"
-	d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 4-3"
-	d - h l $xh; x 210 "hea list $xh 4-4"
-	d - h s $xh; x $mls "ia $xh 4-5"
+	d - h i "$xh" "diet <$xh@exam.ple>"; x 210 "ia $xh 4-1"
+	if $mult -ne 0
+		d - h i "$xh" "<${xh}2@exam.ple> (comment) \\\"Quot(e)d\\\""; x 210 "ia $xh 4-2"
+		d - h i "$xh" ${xh}3@exam.ple; x 210 "ia $xh 4-3"
+	en
+	d - h l "$xh"; x 210 "hea list $xh 4-4"
+	d - h s "$xh"; x "$mls" "ia $xh 4-5"
 
-	d - h remove- $xh 3; x 210 "ia $xh 4-6"
-	d - h s $xh; x $mls "ia $xh 4-7"
-	d - h remove- $xh 2; x 210 "ia $xh 4-8"
-	d - h s $xh; x $mls "ia $xh 4-9"
-	d - h remove- $xh 1; x 210 "ia $xh 4-10"
-	d - h remove- $xh 1; x 501 "ia $xh 4-11"
-	d - h remove- $xh T; x 505 "ia $xh 4-12"
-	d - h l $xh; x 501 "ia $xh 4-13"
-	d - h s $xh; x 501 "ia $xh 4-14"
+	if $mult -ne 0
+		d - h remove- "$xh" 3; x 210 "ia $xh 4-6"
+		d - h s "$xh"; x "$mls" "ia $xh 4-7"
+		d - h remove- "$xh" 2; x 210 "ia $xh 4-8"
+	en
+	d - h s "$xh"; x $mls "ia $xh 4-9"
+	d - h remove- "$xh" 1; x 210 "ia $xh 4-10"
+	d - h remove- "$xh" 1; x 501 "ia $xh 4-11"
+	d - h remove- "$xh" T; x 505 "ia $xh 4-12"
+	d - h l "$xh"; x 501 "ia $xh 4-13"
+	d - h s "$xh"; x 501 "ia $xh 4-14"
 }
 define ir {
 	local se xh=$1 mult=$2 mls=$3
-	if -z "$mls"; se mls=211; en
+	if -z $mls; se mls=211; en
 
 	d - h; x 210 "ir ($xh) 0-1"
 
-	d - h i $xh <$xh@exam.ple>; x 210 "ir $xh 1-1"
+	d - h i "$xh" <$xh@exam.ple>; x 210 "ir $xh 1-1"
 	if $mult -ne 0
-		d - h i $xh <${xh}2@exam.ple>; x 210 "ir $xh 1-2"
-		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 1-3"
+		d - h i "$xh" "<${xh}2@exam.ple>"; x 210 "ir $xh 1-2"
+		d - h i "$xh" "${xh}3@exam.ple"; x 210 "ir $xh 1-3"
 	el
-		d - h i $xh <${xh}2@exam.ple>; x 506 "ir $xh 1-4"
+		d - h i "$xh" "<${xh}2@exam.ple>"; x 506 "ir $xh 1-4"
 	en
+	d - h l "$xh"; x 210 "ir $xh 1-5"
+	d - h s "$xh"; x $mls "ir $xh 1-6"
 
-	d - h l $xh; x 210 "ir $xh 1-5"
-	d - h s $xh; x $mls "ir $xh 1-6"
+	if -z $t_remove; return; en
 
-	if -z "$t_remove"; return; en
-
-	d - h r $xh; x 210 "ir $xh 2-1"
-	d - h r $xh; x 501 "ir $xh 2-2"
-	d - h l $xh; x 501 "$es ir $xh 2-3"
-	d - h s $xh; x 501 "ir $xh 2-4"
+	d - h r "$xh"; x 210 "ir $xh 2-1"
+	d - h r "$xh"; x 501 "ir $xh 2-2"
+	d - h l "$xh"; x 501 "$es ir $xh 2-3"
+	d - h s "$xh"; x 501 "ir $xh 2-4"
 
 	#
-	d - h i $xh <$xh@exam.ple>; x 210 "ir $xh 3-1"
+	d - h i "$xh" "<$xh@exam.ple>"; x 210 "ir $xh 3-1"
 	if $mult -ne 0
-		d - h i $xh <${xh}2@exam.ple>; x 210 "ir $xh 3-2"
-		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 3-3"
+		d - h i "$xh" "<${xh}2@exam.ple>"; x 210 "ir $xh 3-2"
+		d - h i "$xh" "${xh}3@exam.ple"; x 210 "ir $xh 3-3"
 	en
-	d - h l $xh; x 210 "ir $xh 3-4"
-	d - h s $xh; x $mls "ir $xh 3-5"
+	d - h l "$xh"; x 210 "ir $xh 3-4"
+	d - h s "$xh"; x $mls "ir $xh 3-5"
 
-	d - h remove- $xh 1; x 210 "ir $xh 3-6"
+	d - h remove- "$xh" 1; x 210 "ir $xh 3-6"
 	if $mult -ne 0 && $xh != subject
-		d - h remove- $xh 1; x 210 "ir $xh 3-7"
-		d - h remove- $xh 1; x 210 "ir $xh 3-8"
+		d - h remove- "$xh" 1; x 210 "ir $xh 3-7"
+		d - h remove- "$xh" 1; x 210 "ir $xh 3-8"
 	en
-	d - h remove- $xh 1; x 501 "ir $xh 3-9"
-	d - h remove- $xh T; x 505 "ir $xh 3-10"
-	d - h s $xh; x 501 "ir $xh 3-11"
+	d - h remove- "$xh" 1; x 501 "ir $xh 3-9"
+	d - h remove- "$xh" T; x 505 "ir $xh 3-10"
+	d - h s "$xh"; x 501 "ir $xh 3-11"
 
 	#
-	d - h i $xh " $xh <$xh@exam.ple> "; x 210 "ir $xh 4-1"
+	d - h i "$xh" " <$xh@exam.ple> "; x 210 "ir $xh 4-1"
 	if $mult -ne 0
-		d - h i $xh "<${xh}2@exam.ple> "; x 210 "ir $xh 4-2"
-		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 4-3"
+		d - h i "$xh" "<${xh}2@exam.ple> "; x 210 "ir $xh 4-2"
+		d - h i "$xh" "${xh}3@exam.ple"; x 210 "ir $xh 4-3"
 	en
-	d - h l $xh; x 210 "ir $xh 4-4"
-	d - h s $xh; x $mls "ir $xh 4-5"
+	d - h l "$xh"; x 210 "ir $xh 4-4"
+	d - h s "$xh"; x $mls "ir $xh 4-5"
 
 	if $mult -ne 0 && $xh != subject
-		d - h remove- $xh 3; x 210 "ir $xh 4-6"
-		d - h s $xh; x $mls "ir $xh 4-7"
-		d - h remove- $xh 2; x 210 "ir $xh 4-8"
-		d - h s $xh; x $mls "ir $xh 4-9"
+		d - h remove- "$xh" 3; x 210 "ir $xh 4-6"
+		d - h s "$xh"; x "$mls" "ir $xh 4-7"
+		d - h remove- "$xh" 2; x 210 "ir $xh 4-8"
+		d - h s "$xh"; x "$mls" "ir $xh 4-9"
 	en
-	d - h remove- $xh 1; x 210 "ir $xh 4-10"
-	d - h remove- $xh 1; x 501 "ir $xh 4-11"
-	d - h remove- $xh T; x 505 "ir $xh 4-12"
-	d - h s $xh; x 501 "ir $xh 4-13"
+	d - h remove- "$xh" 1; x 210 "ir $xh 4-10"
+	d - h remove- "$xh" 1; x 501 "ir $xh 4-11"
+	d - h remove- "$xh" T; x 505 "ir $xh 4-12"
+	d - h s "$xh"; x 501 "ir $xh 4-13"
 }
 define t_hea {
 	ec t_hea ENTER
 	# In collect.c order
 	call ia from
-	call ir sender 0 # Not a "ref", but works
+	call ia sender '' 0
 	call ia To
 	call ia cC
 	call ia bCc
@@ -12735,7 +12748,7 @@ define t_oce {
 	alt
 	set autocc='alter1@exam.ple autocc'
 	alias autocc alter2@exam.ple
-	digmsg create - -;ec $?/$!/$^ERRNAME;\
+	digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		dig - h;\
 		dig - h s mailX-command;\
 		dig - H S sUbject;\
@@ -12750,10 +12763,10 @@ define t_oce {
 		dig - h s mailx-orig-tO;\
 		dig - h s mailx-orig-Cc;\
 		dig - h s mailx-oriG-bcc;\
-		dig r -;ec $?/$!/$^ERRNAME
-	dig c -;ec $?/$!/$^ERRNAME;\
-		dig - h;readall x;echon $x;\
-		dig r -;ec $?/$!/$^ERRNAME
+		dig r -;ec "$?/$!/$^ERRNAME"
+	dig c -;ec "$?/$!/$^ERRNAME";\
+		dig - h;readall x;echon "$x";\
+		dig r -;ec "$?/$!/$^ERRNAME"
 }
 define t_ocm {
 	oce>
@@ -12771,12 +12784,12 @@ define t_ocm {
 define t_ocl {
 	ec on-compose-leave
 	#>al alt
-	#eval alt $al alter3@exam.ple alter4@exam.ple
+	#eval alt "$al" alter3@exam.ple alter4@exam.ple
 	alt alter3@exam.ple alter4@exam.ple
 	se autobcc=autobcc
 	alias autobcc alter3@exam.ple alter4@exam.ple # always metoo in Bcc:!
 	alt
-	digmsg c - -;ec $?/$!/$^ERRNAME;\
+	digmsg c - -;ec "$?/$!/$^ERRNAME";\
 		dig - h;\
 		dig - h s mailX-command;\
 		dig - h s sUbject;\
@@ -12791,16 +12804,16 @@ define t_ocl {
 		dig - h s mailx-orig-tO;\
 		dig - h s mailx-orig-Cc;\
 		dig - h s mailx-oriG-bcc;\
-		dig r -;ec $?/$!/$^ERRNAME
-	dig c -;ec $?/$!/$^ERRNAME;\
-		dig - h;readall x;echon $x;\
-		dig r -;ec $?/$!/$^ERRNAME
+		dig r -;ec "$?/$!/$^ERRNAME"
+	dig c -;ec "$?/$!/$^ERRNAME";\
+		dig - h;readall x;echon "$x";\
+		dig r -;ec "$?/$!/$^ERRNAME"
 }
 define t_occ {
 	ec on-compose-cleanup
 	unalt *
 	alt
-	# XXX error message variable digmsg create - -;ec $?/$!/$^ERRNAME;\
+	# XXX error message variable digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea;\
 		dig - h show mailX-command;\
 		dig - h s sUbject;\
@@ -12815,19 +12828,18 @@ define t_occ {
 		dig - h s mailx-orig-tO;\
 		dig - h s mailx-orig-Cc;\
 		dig - H S mailx-oriG-bcc;\
-		dig r -;ec $?/$!/$^ERRNAME
-	# ditto dig c -;ec $?/$!/$^ERRNAME;\
-		dig - h;readall x;echon $x;\
-		dig r -;ec $?/$!/$^ERRNAME
+		dig r -;ec "$?/$!/$^ERRNAME"
+	# ditto dig c -;ec "$?/$!/$^ERRNAME";\
+		dig - h;readall x;echon "$x";\
+		dig r -;ec "$?/$!/$^ERRNAME"
 }
-set on-compose-enter=t_oce on-compose-embed=t_ocm on-compose-leave=t_ocl on-compose-cleanup=t_occ
 __EOT
 	#}}}
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://tm1 > ./tm1.out 2>${E0}
-	cke0 m1 0 ./tm1 '2955987796 2069'
-	ck m1-out - ./tm1.out '1099505374 10256'
+	cke0 m1 0 ./tm1 '2543921427 2095'
+	ck m1-out - ./tm1.out '220711117 10282'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 		MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sescape=! -Sstealthmua=noagent -Smta=test://tm2 \
@@ -12844,145 +12856,145 @@ define bail {
 }
 define xerr {
 	>es csop substr "$1" 0 1
-	if "$es" -ne 2; xcall bail "$2: $1"; en
+	if $es -ne 2; xcall bail "$2: $1"; en
 }
 define read_mline_res {
-	readsh hl; set len=$? es=$! en=$^ERRNAME; ec "$len/$es/$^ERRNAME: $hl"
+	readsh hl; se len=$? es=$! en=$^ERRNAME; ec "$len/$es/$^ERRNAME: $hl"
 	if $es -ne $^ERR-NONE; xcall bail read_mline_res
 	eli $len -ne 0; \xcall read_mline_res
 	en
 }
 define ins_addr {
-	set xh=$1
-	ec "~^hea list"; read hl; ec $hl; call xerr "$hl" "in_addr ($xh) 0-1"
+	se xh=$1
+	ec "~^hea list"; read hl; ec "$hl"; call xerr "$hl" "in_addr ($xh) 0-1"
 
-	ec "~^h insert $xh 'diet <$xh@exam.ple> spliced'"; read es; ec $es; call xerr "$es" "ins_addr $xh 1-1"
-	ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_addr $xh 1-2"
-	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_addr $xh 1-3"
-	ec "~^h list $xh"; read hl; ec $hl; call xerr "$hl" "ins_addr $xh 1-4"
-	ec "~^h show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
+	ec "~^h insert $xh 'diet <$xh@exam.ple> spliced'"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 1-1"
+	ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 1-2"
+	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 1-3"
+	ec "~^h list $xh"; read hl; ec "$hl"; call xerr "$hl" "ins_addr $xh 1-4"
+	ec "~^h show $xh"; read es; call xerr "$es" "ins_addr $xh 1-5"
 	call read_mline_res
 
-	if "$t_remove" == ""; return; en
+	if -z $t_remove; return; en
 
-	ec "~^h remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
-	ec "~^h r $xh"; read es; >es csop substr $es 0 3
+	ec "~^h remove $xh"; read es; call xerr "$es" "ins_addr $xh 2-1"
+	ec "~^h r $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 2-2"; en
-	ec "~^h l $xh"; read es; >es csop substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 2-3"; en
-	ec "~^h s $xh"; read es; >es csop substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 2-4"; en
 
 	#
-	ec "~^h i $xh 'diet <$xh@exam.ple> spliced'"; read es; ec $es; call xerr "$es" "ins_addr $xh 3-1"
-	ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_addr $xh 3-2"
-	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_addr $xh 3-3"
-	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_addr $xh 3-4"
-	ec "~^h s $xh"; read es; call xerr $es "ins_addr $xh 3-5"
+	ec "~^h i $xh 'diet <$xh@exam.ple> spliced'"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 3-1"
+	ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 3-2"
+	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 3-3"
+	ec "~^h l $xh"; read hl; ec "$hl"; call xerr "$hl" "ins_addr $xh 3-4"
+	ec "~^h s $xh"; read es; call xerr "$es" "ins_addr $xh 3-5"
 	call read_mline_res
 
-	ec "~^h remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-6"
-	ec "~^h remove-a $xh 1"; read es; call xerr $es "ins_addr $xh 3-7"
-	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_addr $xh 3-8"
-	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
+	ec "~^h remove-at $xh 1"; read es; call xerr "$es" "ins_addr $xh 3-6"
+	ec "~^h remove-a $xh 1"; read es; call xerr "$es" "ins_addr $xh 3-7"
+	ec "~^h remove- $xh 1"; read es; call xerr "$es" "ins_addr $xh 3-8"
+	ec "~^h remove- $xh 1"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 3-9"; en
-	ec "~^h remove- $xh T"; read es; >es csop substr $es 0 3
+	ec "~^h remove- $xh T"; read es; >es csop substr "$es" 0 3
 	if $es != 505; xcall bail "ins_addr $xh 3-10"; en
-	ec "~^h l $xh"; read es; >es csop substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 3-11"; en
-	ec "~^h s $xh"; read es; >es csop substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 3-12"; en
 
 	#
-	ec "~^h i $xh 'diet <$xh@exam.ple> spliced'"; read es; ec $es; call xerr "$es" "ins_addr $xh 4-1"
+	ec "~^h i $xh 'diet <$xh@exam.ple> spliced'"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 4-1"
 	ec "~^h i $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";
-		read es; ec $es; call xerr "$es" "ins_addr $xh 4-2"
-	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_addr $xh 4-3"
-	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "hea list $xh 3-4"
-	ec "~^h s $xh"; read es; call xerr $es "ins_addr $xh 4-5"
+		read es; ec "$es"; call xerr "$es" "ins_addr $xh 4-2"
+	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec "$es"; call xerr "$es" "ins_addr $xh 4-3"
+	ec "~^h l $xh"; read hl; ec "$hl"; call xerr "$hl" "hea list $xh 3-4"
+	ec "~^h s $xh"; read es; call xerr "$es" "ins_addr $xh 4-5"
 	call read_mline_res
 
-	ec "~^h remove- $xh 3"; read es; call xerr $es "ins_addr $xh 4-6"
-	ec "~^h remove- $xh 2"; read es; call xerr $es "ins_addr $xh 4-7"
-	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_addr $xh 4-8"
-	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
+	ec "~^h remove- $xh 3"; read es; call xerr "$es" "ins_addr $xh 4-6"
+	ec "~^h remove- $xh 2"; read es; call xerr "$es" "ins_addr $xh 4-7"
+	ec "~^h remove- $xh 1"; read es; call xerr "$es" "ins_addr $xh 4-8"
+	ec "~^h remove- $xh 1"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 4-9"; en
-	ec "~^h remove- $xh T"; read es; >es csop substr $es 0 3
+	ec "~^h remove- $xh T"; read es; >es csop substr "$es" 0 3
 	if $es != 505; xcall bail "ins_addr $xh 4-10"; en
-	ec "~^h l $xh"; read es; >es csop substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 4-11"; en
-	ec "~^h s $xh"; read es; >es csop substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_addr $xh 4-12"; en
 }
 define ins_ref {
-	set xh=$1 mult=$2
-	ec "~^h"; read hl; ec $hl; call xerr "$hl" "ins_ref ($xh) 0-1"
+	se xh=$1 mult=$2
+	ec "~^h"; read hl; ec "$hl"; call xerr "$hl" "ins_ref ($xh) 0-1"
 
-	ec "~^h i $xh <$xh@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-1"
+	ec "~^h i $xh <$xh@exam.ple>"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 1-1"
 	if $mult -ne 0
-		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-2"
-		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-3"
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 1-2"
+		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 1-3"
 	el
-		ec "~^h i $xh <${xh}2@exam.ple>"; read es; >es csop substr $es 0 3
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; >es csop substr "$es" 0 3
 		if $es != 506; xcall bail "ins_ref $xh 1-4"; en
 	en
 
-	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 1-5"
-	ec "~^h s $xh"; read es; call xerr $es "ins_ref $xh 1-6"
+	ec "~^h l $xh"; read hl; ec "$hl"; call xerr "$hl" "ins_ref $xh 1-5"
+	ec "~^h s $xh"; read es; call xerr "$es" "ins_ref $xh 1-6"
 	call read_mline_res
 
-	if -z "$t_remove"; return; en
+	if -z $t_remove; return; en
 
-	ec "~^h r $xh"; read es; call xerr $es "ins_ref $xh 2-1"
-	ec "~^h r $xh"; read es; >es csop substr $es 0 3
+	ec "~^h r $xh"; read es; call xerr "$es" "ins_ref $xh 2-1"
+	ec "~^h r $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_ref $xh 2-2"; en
-	ec "~^h l $xh"; read es; >es csop substr $es 0 3
+	ec "~^h l $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "$es ins_ref $xh 2-3"; en
-	ec "~^h s $xh"; read es; >es csop substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_ref $xh 2-4"; en
 
 	#
-	ec "~^h i $xh <$xh@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-1"
+	ec "~^h i $xh <$xh@exam.ple>"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 3-1"
 	if $mult -ne 0
-		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-2"
-		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-3"
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 3-2"
+		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 3-3"
 	en
-	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 3-4"
-	ec "~^h s $xh"; read es; call xerr $es "ins_ref $xh 3-5"
+	ec "~^h l $xh"; read hl; ec "$hl"; call xerr "$hl" "ins_ref $xh 3-4"
+	ec "~^h s $xh"; read es; call xerr "$es" "ins_ref $xh 3-5"
 	call read_mline_res
 
-	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-6"
+	ec "~^h remove- $xh 1"; read es; call xerr "$es" "ins_ref $xh 3-6"
 	if $mult -ne 0 && $xh != subject
-		ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-7"
-		ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-8"
+		ec "~^h remove- $xh 1"; read es; call xerr "$es" "ins_ref $xh 3-7"
+		ec "~^h remove- $xh 1"; read es; call xerr "$es" "ins_ref $xh 3-8"
 	en
-	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
+	ec "~^h remove- $xh 1"; read es; >es csop substr "$es" 0 3
 	if $es != 501;;; xcall bail "ins_ref $xh 3-9"; en
-	ec "~^hea remove- $xh T"; read es; >es csop substr $es 0 3
+	ec "~^hea remove- $xh T"; read es; >es csop substr "$es" 0 3
 	if $es != 505; xcall bail "ins_ref $xh 3-10"; en
-	ec "~^h s $xh"; read es; >es csop substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_ref $xh 3-11"; en
 
 	#
-	ec "~^h i $xh <$xh@exam.ple> "; read es; ec $es; call xerr "$es" "ins_ref $xh 4-1"
+	ec "~^h i $xh <$xh@exam.ple> "; read es; ec "$es"; call xerr "$es" "ins_ref $xh 4-1"
 	if $mult -ne 0
-		ec "~^h i $xh <${xh}2@exam.ple> "; read es; ec $es; call xerr "$es" "ins_ref $xh 4-2"
-		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 4-3"
+		ec "~^h i $xh <${xh}2@exam.ple> "; read es; ec "$es"; call xerr "$es" "ins_ref $xh 4-2"
+		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec "$es"; call xerr "$es" "ins_ref $xh 4-3"
 	en
-	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 4-4"
-	ec "~^h s $xh"; read es; call xerr $es "ins_ref $xh 4-5"
+	ec "~^h l $xh"; read hl; ec "$hl"; call xerr "$hl" "ins_ref $xh 4-4"
+	ec "~^h s $xh"; read es; call xerr "$es" "ins_ref $xh 4-5"
 	call read_mline_res
 
 	if $mult -ne 0 && $xh != subject
-		ec "~^h remove- $xh 3"; read es; call xerr $es "ins_ref $xh 4-6"
-		ec "~^h remove- $xh 2"; read es; call xerr $es "ins_ref $xh 4-7"
+		ec "~^h remove- $xh 3"; read es; call xerr "$es" "ins_ref $xh 4-6"
+		ec "~^h remove- $xh 2"; read es; call xerr "$es" "ins_ref $xh 4-7"
 	en
-	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 4-8"
-	ec "~^h remove- $xh 1"; read es; >es csop substr $es 0 3
+	ec "~^h remove- $xh 1"; read es; call xerr "$es" "ins_ref $xh 4-8"
+	ec "~^h remove- $xh 1"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_ref $xh 4-9"; en
-	ec "~^h remove- $xh T"; read es; >es csop substr $es 0 3
+	ec "~^h remove- $xh T"; read es; >es csop substr "$es" 0 3
 	if $es != 505; xcall bail "ins_ref $xh 4-10"; end
-	ec "~^h s $xh"; read es; >es csop substr $es 0 3
+	ec "~^h s $xh"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "ins_ref $xh 4-11"; en
 }
 define t_hea {
@@ -13002,9 +13014,9 @@ define t_hea {
 	call ins_addr freeForm1
 	call ins_addr freeform2
 
-	ec "~^h s MAILX-Command"; read es; call xerr $es "t_hea 1000"
+	ec "~^h s MAILX-Command"; read es; call xerr "$es" "t_hea 1000"
 	call read_mline_res
-	ec "~^h s MAILX-raw-TO"; read es; call xerr $es "t_hea 1001"
+	ec "~^h s MAILX-raw-TO"; read es; call xerr "$es" "t_hea 1001"
 	call read_mline_res
 
 	ec t_hea LEAVE
@@ -13012,127 +13024,127 @@ define t_hea {
 define t_attach {
 	ec t_attach ENTER
 
-	ec "~^attachment"; read hl; ec $hl; >es csop substr "$hl" 0 3
-	if "$es" != 501; xcall bail "attach 0-1"; en
+	ec "~^attachment"; read hl; ec "$hl"; >es csop substr "$hl" 0 3
+	if $es != 501; xcall bail "attach 0-1"; en
 
-	ec "~^att a ./t.readctl"; read hl; ec $hl; >es csop  substr "$hl" 0 3
-	if "$es" != 501; xcall bail "attach 0-2"; en
-	ec "~^a attribute- 1"; read hl; ec $hl; >es csop  substr "$hl" 0 3
-	if "$es" != 501; xcall bail "attach 0-3"; en
+	ec "~^att a ./t.readctl"; read hl; ec "$hl"; >es csop substr "$hl" 0 3
+	if $es != 501; xcall bail "attach 0-2"; en
+	ec "~^a attribute- 1"; read hl; ec "$hl"; >es csop substr "$hl" 0 3
+	if $es != 501; xcall bail "attach 0-3"; en
 
-	ec "~^a i ./t.readctl=ascii"; read hl; ec $hl; call xerr "$hl" "attach 1-1"
-	ec "~^a l"; read es; ec $es;call xerr "$es" "attach 1-2"
+	ec "~^a i ./t.readctl=ascii"; read hl; ec "$hl"; call xerr "$hl" "attach 1-1"
+	ec "~^a l"; read es; ec "$es";call xerr "$es" "attach 1-2"
 	call read_mline_res
-	ec "~^a a ./t.readctl"; read es; ec $es;call xerr "$es" "attach 1-3"
+	ec "~^a a ./t.readctl"; read es; ec "$es";call xerr "$es" "attach 1-3"
 	call read_mline_res
-	ec "~^a a t.readctl"; read es; ec $es;call xerr "$es" "attach 1-4"
+	ec "~^a a t.readctl"; read es; ec "$es";call xerr "$es" "attach 1-4"
 	call read_mline_res
-	ec "~^a attribute- 1"; read es; ec $es;call xerr "$es" "attach 1-5"
-	call read_mline_res
-
-	ec "~^a attribute-set ./t.readctl filename rctl"; read es; ec $es;call xerr "$es" "attach 1-6"
-	ec "~^a attribute-s t.readctl content-description Au"; read es; ec $es;call xerr "$es" "attach 1-7"
-	ec "~^a attribute-set- 1 content-id <10.du@ich>"; read es; ec $es;call xerr "$es" "attach 1-8"
-
-	ec "~^a a ./t.readctl"; read es; ec $es;call xerr "$es" "attach 1-9"
-	call read_mline_res
-	ec "~^a a t.readctl"; read es; ec $es;call xerr "$es" "attach 1-10"
-	call read_mline_res
-	ec "~^a a rctl"; read es; ec $es;call xerr "$es" "attach 1-11"
-	call read_mline_res
-	ec "~^a attribute- 1"; read es; ec $es;call xerr "$es" "attach 1-12"
+	ec "~^a attribute- 1"; read es; ec "$es";call xerr "$es" "attach 1-5"
 	call read_mline_res
 
-	#
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 2-1"
-	ec "~^a"; read es; ec $es;call xerr "$es" "attach 2-2"
-	call read_mline_res
-	ec "~^a a ./t.attach"; read es; ec $es;call xerr "$es" "attach 2-3"
-	call read_mline_res
-	ec "~^a a t.attach"; read es; ec $es;call xerr "$es" "attach 2-4"
-	call read_mline_res
-	ec "~^a attribute- 2"; read es; ec $es;call xerr "$es" "attach 2-5"
-	call read_mline_res
+	ec "~^a attribute-set ./t.readctl filename rctl"; read es; ec "$es";call xerr "$es" "attach 1-6"
+	ec "~^a attribute-s t.readctl content-description Au"; read es; ec "$es";call xerr "$es" "attach 1-7"
+	ec "~^a attribute-set- 1 content-id <10.du@ich>"; read es; ec "$es";call xerr "$es" "attach 1-8"
 
-	ec "~^a attribute-s ./t.attach filename tat"; read es; ec $es;call xerr "$es" "attach 2-6"
-	ec "~^a attribute-s t.attach content-description Au2"; read es; ec $es;call xerr "$es" "attach 2-7"
-	ec "~^a attribute-set- 2 content-id <20.du@wir>"; read es; ec $es;call xerr "$es" "attach 2-8"
-	ec "~^a attribute-set- 2 content-type application/x-sh"; read es; ec $es;call xerr "$es" "attach 2-9"
-
-	ec "~^a a ./t.attach"; read es; ec $es;call xerr "$es" "attach 2-10"
+	ec "~^a a ./t.readctl"; read es; ec "$es";call xerr "$es" "attach 1-9"
 	call read_mline_res
-	ec "~^a a t.attach"; read es; ec $es;call xerr "$es" "attach 2-11"
+	ec "~^a a t.readctl"; read es; ec "$es";call xerr "$es" "attach 1-10"
 	call read_mline_res
-	ec "~^a a tat"; read es; ec $es;call xerr "$es" "attach 2-12"
+	ec "~^a a rctl"; read es; ec "$es";call xerr "$es" "attach 1-11"
 	call read_mline_res
-	ec "~^a attribute- 2"; read es; ec $es;call xerr "$es" "attach 2-13"
+	ec "~^a attribute- 1"; read es; ec "$es";call xerr "$es" "attach 1-12"
 	call read_mline_res
 
 	#
-	if "$t_remove" == ""; return; en
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 2-1"
+	ec "~^a"; read es; ec "$es";call xerr "$es" "attach 2-2"
+	call read_mline_res
+	ec "~^a a ./t.attach"; read es; ec "$es";call xerr "$es" "attach 2-3"
+	call read_mline_res
+	ec "~^a a t.attach"; read es; ec "$es";call xerr "$es" "attach 2-4"
+	call read_mline_res
+	ec "~^a attribute- 2"; read es; ec "$es";call xerr "$es" "attach 2-5"
+	call read_mline_res
 
-	ec "~^a remove ./t.readctl"; read es; call xerr $es "attach 3-1"
-	ec "~^a r ./t.attach"; read es; call xerr $es "attach 3-2"
-	ec "~^   a	  r		 ./t.readctl"; read es;>es csop  substr $es 0 3
+	ec "~^a attribute-s ./t.attach filename tat"; read es; ec "$es";call xerr "$es" "attach 2-6"
+	ec "~^a attribute-s t.attach content-description Au2"; read es; ec "$es";call xerr "$es" "attach 2-7"
+	ec "~^a attribute-set- 2 content-id <20.du@wir>"; read es; ec "$es";call xerr "$es" "attach 2-8"
+	ec "~^a attribute-set- 2 content-type application/x-sh"; read es; ec "$es";call xerr "$es" "attach 2-9"
+
+	ec "~^a a ./t.attach"; read es; ec "$es";call xerr "$es" "attach 2-10"
+	call read_mline_res
+	ec "~^a a t.attach"; read es; ec "$es";call xerr "$es" "attach 2-11"
+	call read_mline_res
+	ec "~^a a tat"; read es; ec "$es";call xerr "$es" "attach 2-12"
+	call read_mline_res
+	ec "~^a attribute- 2"; read es; ec "$es";call xerr "$es" "attach 2-13"
+	call read_mline_res
+
+	#
+	if -z $t_remove; return; en
+
+	ec "~^a remove ./t.readctl"; read es; call xerr "$es" "attach 3-1"
+	ec "~^a r ./t.attach"; read es; call xerr "$es" "attach 3-2"
+	ec "~^   a	  r		 ./t.readctl"; read es;>es csop substr "$es" 0 3
 	if $es != 501
 		xcall bail "attach 3-3"
 	en
-	ec "~^   a	  r		 ./t.attach"; read es;>es csop  substr $es 0 3
+	ec "~^   a	  r		 ./t.attach"; read es;>es csop  substr "$es" 0 3
 	if $es != 501; xcall bail "attach 3-4"; en
-	ec "~^a l"; read es; >es csop  substr $es 0 3
+	ec "~^a l"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 3-5"; en
 
 	#
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-1"
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-2"
-	ec "~^a"; read es; ec $es;call xerr "$es" "attach 4-3"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 4-1"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 4-2"
+	ec "~^a"; read es; ec "$es";call xerr "$es" "attach 4-3"
 	call read_mline_res
-	ec "~^   a	  r		 t.attach"; read es;>es csop  substr $es 0 3
+	ec "~^   a	  r		 t.attach"; read es;>es csop substr "$es" 0 3
 	if $es != 506; xcall bail "attach 4-4 $es"; en
-	ec "~^a remove- T"; read es; >es csop  substr $es 0 3
+	ec "~^a remove- T"; read es; >es csop substr "$es" 0 3
 	if $es != 505; xcall bail "attach 4-5"; en
-	ec "~^a r ./t.attach"; read es; call xerr $es "attach 4-6"
-	ec "~^a r ./t.attach"; read es; call xerr $es "attach 4-7"
-	ec "~^   a	  r		 ./t.attach"; read es;>es csop  substr $es 0 3
+	ec "~^a r ./t.attach"; read es; call xerr "$es" "attach 4-6"
+	ec "~^a r ./t.attach"; read es; call xerr "$es" "attach 4-7"
+	ec "~^   a	  r		 ./t.attach"; read es;>es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 4-8 $es"; end
-	ec "~^a"; read es; >es csop  substr $es 0 3
+	ec "~^a"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 4-9"; en
 
 	#
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-1"
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-2"
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-3"
-	ec "~^a"; read es; ec $es;call xerr "$es" "attach 5-4"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 5-1"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 5-2"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 5-3"
+	ec "~^a"; read es; ec "$es";call xerr "$es" "attach 5-4"
 	call read_mline_res
 
-	ec "~^a remove- 3"; read es; call xerr $es "attach 5-5"
-	ec "~^a remove- 3"; read es; >es csop  substr $es 0 3
+	ec "~^a remove- 3"; read es; call xerr "$es" "attach 5-5"
+	ec "~^a remove- 3"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 5-6"; en
-	ec "~^a remove- 2"; read es; call xerr $es "attach 5-7"
-	ec "~^a remove- 2"; read es; >es csop  substr $es 0 3
+	ec "~^a remove- 2"; read es; call xerr "$es" "attach 5-7"
+	ec "~^a remove- 2"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 5-8"
 	en
-	ec "~^a remove- 1"; read es; call xerr $es "attach 5-9"
-	ec "~^a remove- 1"; read es; >es csop  substr $es 0 3
+	ec "~^a remove- 1"; read es; call xerr "$es" "attach 5-9"
+	ec "~^a remove- 1"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 5-10"; en
 
-	ec "~^a"; read es; >es csop  substr $es 0 3
+	ec "~^a"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 5-11"; en
 
 	#
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-1"
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-2"
-	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-3"
-	ec "~^a"; read es; ec $es;call xerr "$es" "attach 6-4"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 6-1"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 6-2"
+	ec "~^a i ./t.attach=latin1"; read hl; ec "$hl"; call xerr "$hl" "attach 6-3"
+	ec "~^a"; read es; ec "$es";call xerr "$es" "attach 6-4"
 	call read_mline_res
 
-	ec "~^a remove- 1"; read es; call xerr $es "attach 6-5"
-	ec "~^a remove- 1"; read es; call xerr $es "attach 6-6"
-	ec "~^a remove- 1"; read es; call xerr $es "attach 6-7"
-	ec "~^a remove- 1"; read es; >es csop  substr $es 0 3
+	ec "~^a remove- 1"; read es; call xerr "$es" "attach 6-5"
+	ec "~^a remove- 1"; read es; call xerr "$es" "attach 6-6"
+	ec "~^a remove- 1"; read es; call xerr "$es" "attach 6-7"
+	ec "~^a remove- 1"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 6-8"; en
 
-	ec "~^a"; read es; >es csop  substr $es 0 3
+	ec "~^a"; read es; >es csop substr "$es" 0 3
 	if $es != 501; xcall bail "attach 6-9"; en
 
 	ec t_attach LEAVE
@@ -13227,7 +13239,7 @@ set on-compose-splice=t_ocs \
 __EOT__
 	#}}}
 
-	printf 'm this-goes@nowhere\nbody\n!.\n' |
+	printf 'se fullnames;m this-goes@nowhere\nbody\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://t1 > ./t1-x 2>${E0}
 	ck_ex0 1-estat
 	${cat} ./t1-x >> ./t1
@@ -13244,9 +13256,8 @@ __EOT__
 	# Some state machine stress, shell compose hook, localopts for hook, etc.
 	# readctl in child. ~r as HERE document
 	#{{{
-	printf 'local mail ex@am.ple\nbody\n!.
-		varshow t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
-	' | ${MAILX} ${ARGS} -Sescape=! \
+	printf 'local mail ex@am.ple\nbody\n!.\n     varshow t_oce t_ocs t_ocs_sh t_ocl t_occ autocc' |
+		${MAILX} ${ARGS} -Sescape=! \
 		-Smta=test://t3 \
 		-X'
 define bail {
@@ -13254,116 +13265,113 @@ define bail {
 }
 define xerr {
 	>es csop substr "$1" 0 1
-	if "$es" != 2; xcall bail "$2"; en
+	if $es != 2; xcall bail "$2"; en
 }
 define read_mline_res {
-	read hl; set len=$? es=$! en=$^ERRNAME;echo "$len/$es/$^ERRNAME: $hl"
+	read hl; se len=$? es=$! en=$^ERRNAME; ec "$len/$es/$^ERRNAME: $hl"
 	if $es -ne $^ERR-NONE; xcall bail read_mline_res
-	elif $len -ne 0; \xcall read_mline_res
+	eli $len -ne 0; \xcall read_mline_res
 	end
 }
 define _work {
-	if $# -eq 1; local set i=$1; else; local pp : $((i = $2, ++i)); endif
+	if $# -eq 1; local se i=$1; else; local pp : $((i = $2, ++i)); end
 	if $i -lt 111
 		: $((j = i % 10))
 		if $j -ne 0
-			set j=xcall
+			se j=xcall
 		else
 			echon "$i.. "
-			set j=call
+			se j=call
 		end
-		eval \\$j _work $1 $i
-		return $?
+		\eval "$j" _work "$1" "$i"
+		return "$?"
 	end
 	: $((i += $1))
-	return $i
+	return "$i"
 }
 define _read {
-	set line; read line;set es=$? en=$^ERRNAME ; echo "read:$es/$en: $line"
+	se line; read line; se es=$? en=$^ERRNAME ; ec "read:$es/$en: $line"
 	if ${es} -ne -1; xcall _read; end
-	readctl remove $cwd/t.readctl; echo "readctl remove:$?/$^ERRNAME"
+	readctl remove "$cwd"/t.readctl; ec "readctl remove:$?/$^ERRNAME"
 }
 define t_ocs {
 	read ver
-	echo t_ocs
-	echo "~^header list"; read hl; echo $hl; >es csop substr "$hl" 0 1
-	if "$es" != 2; xcall bail "header list"; endif
+	ec t_ocs
+	ec "~^header list"; read hl; echo "$hl"; >es csop substr "$hl" 0 1
+	if $es != 2; xcall bail "header list"; end
 	#
-	call _work 1; echo $?
+	call _work 1; ec "$?"
   echo "~^header insert cc splicy\ diet\ <splice@exam.ple>\ spliced";\
-		read es; echo $es; >es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be diet"; endif
-	echo "~^header insert cc <splice2@exam.ple>";\
-		read es; echo $es; >es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be diet2"; endif
+		read es; ec "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be diet"; end
+	ec "~^header insert cc <splice2@exam.ple>";\
+		read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be diet2"; end
 	#
-	call _work 2; echo $?
+	call _work 2; ec "$?"
   echo "~^header insert bcc juicy\ juice\ <juice@exam.ple>\ spliced";\
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy"; endif
-	echo "~^header insert bcc juice2@exam.ple";\
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy2";endif
-	echo "~^header insert bcc juice3\ <juice3@exam.ple>";\
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy3"; endif
-	echo "~^header insert bcc juice4@exam.ple";\
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy4"; endif
+		read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy"; end
+	ec "~^header insert bcc juice2@exam.ple";\
+		read es; ec "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy2";end
+	ec "~^header insert bcc juice3\ <juice3@exam.ple>";\
+		read es; echo "$es";>es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy3"; end
+	ec "~^header insert bcc juice4@exam.ple";\
+		read es; echo "$es";>es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy4"; end
 	#
-	echo "~^header remove-at bcc 3"; read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "remove juicy5"; endif
-	echo "~^header remove-at bcc 2"; read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "remove juicy6"; endif
-	echo "~^header remove-at bcc 3"; read es; echo $es;>es csop substr "$es" 0 3
-	if "$es" != 501; xcall bail "failed to remove-at"; endif
+	echo "~^header remove-at bcc 3"; read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "remove juicy5"; end
+	ec "~^header remove-at bcc 2"; read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "remove juicy6"; end
+	ec "~^header remove-at bcc 3"; read es; echo "$es"; >es csop substr "$es" 0 3
+	if $es != 501; xcall bail "failed to remove-at"; end
 	# Add duplicates which ought to be removed!
-	echo "~^header insert bcc juice4@exam.ple";
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy4-1"; endif
-	echo "~^header insert bcc juice4@exam.ple";\
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy4-2"; endif
-	echo "~^header insert bcc juice4@exam.ple";\
-		read es; echo $es;>es csop substr "$es" 0 1
-	if "$es" != 2; xcall bail "be juicy4-3"; endif
-	echo "~:set t_ocs"
+	ec "~^header insert bcc juice4@exam.ple"; read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy4-1"; end
+	ec "~^header insert bcc juice4@exam.ple"; read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy4-2"; end
+	ec "~^header insert bcc juice4@exam.ple"; read es; echo "$es"; >es csop substr "$es" 0 1
+	if $es != 2; xcall bail "be juicy4-3"; end
+	ec "~:set t_ocs"
 
 	#
-	call _work 3; echo $?
-	echo "~r - '__EOT'"
+	call _work 3; ec "$?"
+	ec "~r - '__EOT'"
 	>i ! echo just knock if you can hear me;\
 		i=0;\
 		while [ $i -lt 24 ]; do printf "%s " $i; i=$(expr $i + 1); done;\
 		echo relax
 	echon "shell-cmd says $?/$^ERRNAME: $i"
-	echo "~x  will not become interpreted, we are reading until __EOT"
-	echo "__EOT"
-	read r_status; echo "~~r status output: $r_status"
-	echo "~:echo $? $! $^ERRNAME"
+	ec "~x  will not become interpreted, we are reading until __EOT"
+	ec "__EOT"
+	read r_status; ec "~~r status output: $r_status"
+	ec "~:ec \"$? $! $^ERRNAME\""
 	read r_status
-	echo "~~r status from parent: $r_status"
+	ec "~~r status from parent: \"$r_status\""
 
 	#
-	call _work 4; echo $?
-	>cwd cwd;echo cwd:$?
-	readctl create $cwd/t.readctl ;echo "readctl:$?/$^ERRNAME"; call _read
+	call _work 4; ec "$?"
+	>cwd cwd;ec "cwd:$?"
+	readctl create "$cwd"/t.readctl ;ec "readctl:$?/$^ERRNAME"; call _read
 
 	#
-	call _work 5; echo $?
-	echo "~^header show MAILX-Command"; read es;
-		call xerr $es "t_hea 1000"; call read_mline_res
-	echo "~^header show MAILX-raw-TO"; read es;\
-		call xerr $es "t_hea 1001"; xcall read_mline_res
+	call _work 5; ec "$?"
+	ec "~^header show MAILX-Command"; read es;
+		call xerr "$es" "t_hea 1000"; call read_mline_res
+	ec "~^header show MAILX-raw-TO"; read es;\
+		call xerr "$es" "t_hea 1001"; xcall read_mline_res
 
 	echoerr IT IS WRONG IF YOU SEE THIS
 }
 define t_oce {
-	echo on-compose-enter
-	set t_oce autobcc=oce@exam.ple
+	ec on-compose-enter
+	se t_oce autobcc=oce@exam.ple
 	alternates alter1@exam.ple alter2@exam.ple
 	alternates
-	digmsg create - -;echo "$?/$!/$^ERRNAME";\
+	digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		digmsg - header list;\
 		digmsg - header show mailX-command;\
 		digmsg - header show sUbject;\
@@ -13378,15 +13386,15 @@ define t_oce {
 		digmsg - header show mailx-orig-tO;\
 		digmsg - header show mailx-orig-Cc;\
 		digmsg - header show mailx-oriG-bcc;\
-		digmsg remove -;echo "$?/$!/$^ERRNAME"
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
 }
 define t_ocl {
-	echo on-compose-leave
-	set t_ocl autocc=ocl@exam.ple
+	ec on-compose-leave
+	se t_ocl autocc=ocl@exam.ple
 	unalternates *
 	alternates alter3@exam.ple alter4@exam.ple
 	alternates
-	digmsg create - -;echo "$?/$!/$^ERRNAME";\
+	digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		digmsg - header list;\
 		digmsg - header show mailX-command;\
 		digmsg - header show sUbject;\
@@ -13401,11 +13409,11 @@ define t_ocl {
 		digmsg - header show mailx-orig-tO;\
 		digmsg - header show mailx-orig-Cc;\
 		digmsg - header show mailx-oriG-bcc;\
-		digmsg remove -;echo "$?/$!/$^ERRNAME"
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
 }
 define t_occ {
-	echo on-compose-cleanup
-	set t_occ autocc=occ@exam.ple
+	ec on-compose-cleanup
+	se t_occ autocc=occ@exam.ple
 	unalternates *
 	alternates
 	# XXX error message digmsg create - -;echo "$?/$!/$^ERRNAME";\
@@ -13423,11 +13431,11 @@ define t_occ {
 		digmsg - header show mailx-orig-tO;\
 		digmsg - header show mailx-orig-Cc;\
 		digmsg - header show mailx-oriG-bcc;\
-		digmsg remove -;echo "$?/$!/$^ERRNAME"
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
 }
-set on-compose-splice=t_ocs \
-	on-compose-splice-shell="read ver;echo t_ocs-shell;\
-		echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
+se fullnames on-compose-splice=t_ocs \
+	on-compose-splice-shell="read ver;ec t_ocs-shell;\
+		ec \"~t shell@exam.ple\"; ec \"~:set t_ocs_sh\"" \
 	on-compose-enter=t_oce on-compose-leave=t_ocl \
 	on-compose-cleanup=t_occ
 		' > ./t3-x 2>${E0}
@@ -13439,15 +13447,16 @@ set on-compose-splice=t_ocs \
 	# Reply, forward, resend, Resend
 
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! > ./t4-x 2>${EX}
-set from=f1@z
+se from=f1@z
 m t1@z
 b1
 !.
 se stealthmua=noagent
 var from
+se fullnames
 local m
 !t t2@z
-!:se from='du <f2@z>'
+!:se from='du <f2@z>' fullnames
 b2
 !.
 var from
@@ -13455,141 +13464,141 @@ __EOT
 	ck_ex0 4-intro-estat
 
 	#{{{
-	${cat} << '__EOT' > ./t5.in
-echo start: $? $! $^ERRNAME
+	${cat} << '__EOT' > ./t4.in
+ec "start: $? $! $^ERRNAME"
 File ./t4
-echo File: $? $! $^ERRNAME;echo;echo
+ec "File: $? $! $^ERRNAME";ec;ec
 reply 1
 this is content of reply 1
 !.
-echo reply 1: $? $! $^ERRNAME;echo;echo
+ec "reply 1: $? $! $^ERRNAME";ec;ec
 Reply 1 2
 this is content of Reply 1 2
 !.
-echo Reply 1 2: $? $! $^ERRNAME;echo;echo
+ec "Reply 1 2: $? $! $^ERRNAME";ec;ec
 forward 1 fwdex@am.ple
 this is content of forward 1
 !.
-echo forward 1: $? $! $^ERRNAME;echo;echo
-set forward-inject-head=$'-- forward (%a)(%d)(%f)(%i)(%n)(%r) --\n'
-set forward-inject-tail=$'-- end of forward (%i) --\n'
+ec "forward 1: $? $! $^ERRNAME";ec;ec
+se forward-inject-head=$'-- forward (%a)(%d)(%f)(%i)(%n)(%r) --\n'
+se forward-inject-tail=$'-- end of forward (%i) --\n'
 forward 2 fwdex@am.ple
 this is content of forward 2
 !.
-echo forward 2: $? $! $^ERRNAME;echo;echo
-set showname
+ec "forward 2: $? $! $^ERRNAME";ec;ec
+se showname
 forward 2 fwdex2@am.ple
 this is content of forward 2, 2nd, with showname set
 !.
-echo forward 2, 2nd: $? $! $^ERRNAME;echo;echo
+ec "forward 2, 2nd: $? $! $^ERRNAME";ec;ec
 resend 1 2 resendex@am.ple
-echo resend 1 2: $? $! $^ERRNAME;echo;echo
+ec "resend 1 2: $? $! $^ERRNAME";ec;ec
 Resend 1 2 Resendex@am.ple
-echo Resend 1 2: $? $! $^ERRNAME;echo;echo
+ec "Resend 1 2: $? $! $^ERRNAME";ec;ec
 __EOT
-	< ./t5.in ${MAILX} ${ARGS} -Sescape=! -Sfullnames -Smta=test://t4 -X'
-			define bail {
-				echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
-			}
-			define xerr {
-				>es csop substr "$1" 0 1
-				if "$es" != 2; xcall bail "$2"; end
-			}
-			define read_mline_res {
-				readsh hl; set len=$? es=$! en=$^ERRNAME;echo "  mline_res:$len/$es/$^ERRNAME: $hl"
-				if $es -ne $^ERR-NONE
-					xcall bail read_mline_res
-				elif $len -ne 0
-					\xcall read_mline_res
-				end
-			}
-			define work_hl {
-				echo "~^header show $1"; read es;
-					call xerr $es "work_hl $1"; echo $1" ->"; call read_mline_res
-				if $# -gt 1
-					shift
-					xcall work_hl "$@"
-				end
-			}
-			define t_ocs {
-				read ver
-				echo t_ocs version $ver
-				echo "~^header list"; readsh hl; echo $hl;
-				echoerr the header list is $hl; call xerr "$hl" "header list"
-				eval vpospar set $hl
+	< ./t4.in ${MAILX} ${ARGS} -Sescape=! -Smta=test://t4 -X'
+		define bail {
+			echoerr "Failed: $1.  Bailing out"; ec "~x"; xit
+		}
+		define xerr {
+			>es csop substr "$1" 0 1
+			if $es != 2; xcall bail "$2"; end
+		}
+		define read_mline_res {
+			readsh hl; se len=$? es=$! en=$^ERRNAME;ec "  mline_res:$len/$es/$^ERRNAME: $hl"
+			if $es -ne $^ERR-NONE
+				xcall bail read_mline_res
+			elif $len -ne 0
+				\xcall read_mline_res
+			end
+		}
+		define work_hl {
+			ec "~^header show $1"; read es;
+				call xerr "$es" "work_hl $1"; ec "$1 ->"; call read_mline_res
+			if $# -gt 1
 				shift
 				xcall work_hl "$@"
-				echoerr IMPLERR
-			}
-			define t_oce {
-				echo on-XY-enter
-				set t_oce autobcc=oce@exam.ple
-				digmsg create - -;echo "$?/$!/$^ERRNAME";\
-					digmsg - header list;\
-					digmsg - header show mailX-command;\
-					digmsg - header show sUbject;\
-					digmsg - header show tO;\
-					digmsg - header show Cc;\
-					digmsg - header show bCc;\
-					digmsg - header show Mailx-raw-to;\
-					digmsg - header show mailX-raw-cc;\
-					digmsg - header show maiLx-raw-bcc;\
-					digmsg - header show maIlx-orig-sender;\
-					digmsg - header show mAilx-orig-from;\
-					digmsg - header show mailx-orig-tO;\
-					digmsg - header show mailx-orig-Cc;\
-					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo "$?/$!/$^ERRNAME"
-			}
-			define t_ocl {
-				echo on-XY-leave
-				set t_ocl autocc=ocl@exam.ple
-				digmsg create - -;echo "$?/$!/$^ERRNAME";\
-					digmsg - header list;\
-					digmsg - header show mailX-command;\
-					digmsg - header show sUbject;\
-					digmsg - header show tO;\
-					digmsg - header show Cc;\
-					digmsg - header show bCc;\
-					digmsg - header show Mailx-raw-to;\
-					digmsg - header show mailX-raw-cc;\
-					digmsg - header show maiLx-raw-bcc;\
-					digmsg - header show maIlx-orig-sender;\
-					digmsg - header show mAilx-orig-from;\
-					digmsg - header show mailx-orig-tO;\
-					digmsg - header show mailx-orig-Cc;\
-					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo "$?/$!/$^ERRNAME"
-			}
-			define t_occ {
-				echo on-XY-cleanup
-				set t_occ autocc=occ@exam.ple
-				# XXX error message digmsg create - -;echo "$?/$!/$^ERRNAME";\
-					digmsg - header list;\
-					digmsg - header show mailX-command;\
-					digmsg - header show sUbject;\
-					digmsg - header show tO;\
-					digmsg - header show Cc;\
-					digmsg - header show bCc;\
-					digmsg - header show Mailx-raw-to;\
-					digmsg - header show mailX-raw-cc;\
-					digmsg - header show maiLx-raw-bcc;\
-					digmsg - header show maIlx-orig-sender;\
-					digmsg - header show mAilx-orig-from;\
-					digmsg - header show mailx-orig-tO;\
-					digmsg - header show mailx-orig-Cc;\
-					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo "$?/$!/$^ERRNAME"
-			}
-			define t_oce_r { # XXX use normal callbacks
-				echo on-resend-enter
-				set t_oce autobcc=oce@exam.ple
-			}
-			set on-compose-splice=t_ocs \
-				on-compose-enter=t_oce on-compose-leave=t_ocl \
-					on-compose-cleanup=t_occ \
-				on-resend-enter=t_oce_r on-resend-cleanup=t_occ
-		' >> ./t4-x 2>>${EX}
+			end
+		}
+		define t_ocs {
+			read ver
+			ec t_ocs version "$ver"
+			ec "~^header list"; readsh hl; ec "$hl";
+			echoerr "the header list is $hl"; call xerr "$hl" "header list"
+			eval vpospar set "$hl"
+			shift
+			xcall work_hl "$@"
+			echoerr IMPLERR
+		}
+		define t_oce {
+			ec on-XY-enter
+			se t_oce autobcc=oce@exam.ple
+			digmsg create - -;ec "$?/$!/$^ERRNAME";\
+				digmsg - header list;\
+				digmsg - header show mailX-command;\
+				digmsg - header show sUbject;\
+				digmsg - header show tO;\
+				digmsg - header show Cc;\
+				digmsg - header show bCc;\
+				digmsg - header show Mailx-raw-to;\
+				digmsg - header show mailX-raw-cc;\
+				digmsg - header show maiLx-raw-bcc;\
+				digmsg - header show maIlx-orig-sender;\
+				digmsg - header show mAilx-orig-from;\
+				digmsg - header show mailx-orig-tO;\
+				digmsg - header show mailx-orig-Cc;\
+				digmsg - header show mailx-oriG-bcc;\
+				digmsg remove -;ec "$?/$!/$^ERRNAME"
+		}
+		define t_ocl {
+			ec on-XY-leave
+			se t_ocl autocc=ocl@exam.ple
+			digmsg create - -;ec "$?/$!/$^ERRNAME";\
+				digmsg - header list;\
+				digmsg - header show mailX-command;\
+				digmsg - header show sUbject;\
+				digmsg - header show tO;\
+				digmsg - header show Cc;\
+				digmsg - header show bCc;\
+				digmsg - header show Mailx-raw-to;\
+				digmsg - header show mailX-raw-cc;\
+				digmsg - header show maiLx-raw-bcc;\
+				digmsg - header show maIlx-orig-sender;\
+				digmsg - header show mAilx-orig-from;\
+				digmsg - header show mailx-orig-tO;\
+				digmsg - header show mailx-orig-Cc;\
+				digmsg - header show mailx-oriG-bcc;\
+				digmsg remove -;ec "$?/$!/$^ERRNAME"
+		}
+		define t_occ {
+			ec on-XY-cleanup
+			se t_occ autocc=occ@exam.ple
+			# XXX error message digmsg create - -;echo "$?/$!/$^ERRNAME";\
+				digmsg - header list;\
+				digmsg - header show mailX-command;\
+				digmsg - header show sUbject;\
+				digmsg - header show tO;\
+				digmsg - header show Cc;\
+				digmsg - header show bCc;\
+				digmsg - header show Mailx-raw-to;\
+				digmsg - header show mailX-raw-cc;\
+				digmsg - header show maiLx-raw-bcc;\
+				digmsg - header show maIlx-orig-sender;\
+				digmsg - header show mAilx-orig-from;\
+				digmsg - header show mailx-orig-tO;\
+				digmsg - header show mailx-orig-Cc;\
+				digmsg - header show mailx-oriG-bcc;\
+				digmsg remove -;ec "$?/$!/$^ERRNAME"
+		}
+		define t_oce_r { # XXX use normal callbacks
+			ec on-resend-enter
+			se t_oce autobcc=oce@exam.ple
+		}
+		se on-compose-splice=t_ocs \
+			on-compose-enter=t_oce on-compose-leave=t_ocl \
+				on-compose-cleanup=t_occ \
+			on-resend-enter=t_oce_r on-resend-cleanup=t_occ
+	' >> ./t4-x 2>>${EX}
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
@@ -13602,38 +13611,37 @@ t_mass_recipients() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<'__EOT__' > ./t.rc
+	${cat} <<'__EOT' > ./t.rc
 define bail {
-	echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+	echoerr "Failed: $1.  Bailing out"; xit 1
 }
 define ins_addr {
-	local set nr=$1 hn=$2
-	ec "~$hn $hn$nr@$hn"; ec '~:echo "$?"'; read es
-	i "$es" -ne 0; xcall bail "ins_addr $hn 1-$nr"; en
+	local se nr=$1
+	dig - h i "$2$3" "$2$nr@$2"
+	if $^? -ne 0; xcall bail "ins_addr $2$3 1-$nr"; en
 	: $((nr += 1))
-	i $nr -le $maximum; xcall ins_addr "$nr" "$hn";  en
+	if $nr -le $maximum; xcall ins_addr "$nr" "$2" "$3"; en
 }
 define bld_alter {
-	local set nr=$1 hn=$2
-	alternates "$hn$nr@$hn"
-	alias "$hn$((nr + 1))@$hn" "$hn$nr@$hn"
+	local se nr=$1
+	alt "$2$nr@$2"
+	al "$2$((nr + 1))@$2" "$2$nr@$2"
 	: $((nr += 2))
-	i $nr -le $maximum; xcall bld_alter "$nr" "$hn"; en
+	if $nr -le $maximum; xcall bld_alter "$nr" "$2"; en
 }
-define t_ocs {
-	local read ver
-	call ins_addr 1 t
-	call ins_addr 1 c
-	call ins_addr 1 b
+define t_oce {
+!: call ins_addr 1 t o
+!: call ins_addr 1 c c
+!: call ins_addr 1 b cc
 }
 define t_ocl {
-	i -n $t_remove
+	if -n $t_remove
 		call bld_alter 2 t
 		call bld_alter 1 c
 	en
 }
-set on-compose-splice=t_ocs on-compose-leave=t_ocl
-__EOT__
+se on-compose-embed=t_oce on-compose-leave=t_ocl
+__EOT
 	#}}}
 
 	t1() {
@@ -13679,149 +13687,142 @@ t_lreply_futh_rth_etc() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<-'_EOT' > ./t.mbox
-	From neverneverland  Sun Jul 23 13:46:25 2017
-	Subject: Bugstop: five miles out 1
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out, laber@backe.eu
-	Cc: is@a.list
-	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
-	In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
-	Date: Wed, 19 Jul 2017 09:22:57 -0400
-	Message-Id: <20170719132257.766AF781267@originator>
-	Status: RO
-	
-	 >  |Sorry, I think I misunderstand something. I would think that
-	
-	That's appalling.
-	
-	From neverneverland  Fri Jul  7 22:39:11 2017
-	Subject: Bugstop: five miles out 2
-	Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	Status: R
-	
-	capable of changing back.
-	
-	From neverneverland  Fri Jul  7 22:42:00 2017
-	Subject: Bugstop: five miles out 3
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	List-Post: <mailto:bugstop@five.miles.out>
-	Status: R
-	
-	are you ready, boots?
-	
-	From neverneverland  Sat Aug 19 23:15:00 2017
-	Subject: Bugstop: five miles out 4
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	List-Post: <mailto:bugstop@five.miles.out>
-	Status: R
-	
-	are you ready, boots?
-	_EOT
+	${cat} <<'_EOT' > ./t.mbox
+From neverneverland  Sun Jul 23 13:46:25 2017
+Subject: Bugstop: five miles out 1
+Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+From: mister originator <mr@originator>
+To: bugstop-commit@five.miles.out, laber@backe.eu
+Cc: is@a.list
+Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
+Date: Wed, 19 Jul 2017 09:22:57 -0400
+Message-Id: <20170719132257.766AF781267@originator>
+
+ >  |Sorry, I think I misunderstand something. I would think that
+
+That's appalling.
+
+From neverneverland  Fri Jul  7 22:39:11 2017
+Subject: Bugstop: five miles out 2
+Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
+From: mister originator <mr@originator>
+To: bugstop-commit@five.miles.out
+Cc: is@a.list
+Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Date: Fri, 07 Jul 2017 16:33:59 -0400
+
+capable of changing back.
+
+From neverneverland  Fri Jul  7 22:42:00 2017
+Subject: Bugstop: five miles out 3
+Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+From: mister originator <mr@originator>
+To: bugstop-commit@five.miles.out
+Cc: is@a.list
+Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Date: Fri, 07 Jul 2017 16:33:59 -0400
+List-Post: <mailto:bugstop@five.miles.out>
+
+are you ready, boots?
+
+From neverneverland  Sat Aug 19 23:15:00 2017
+Subject: Bugstop: five miles out 4
+Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+Content-Transfer-Encoding: 7bit
+From: mister originator <mr@originator>
+To: bugstop@five.miles.out
+Cc: is@a.list
+Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+Date: Fri, 07 Jul 2017 16:33:59 -0400
+List-Post: <mailto:bugstop@five.miles.out>
+
+are you ready, boots?
+_EOT
 	#}}}
 
 	#{{{
-	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 -Rf ./t.mbox >> ./t1 2>${EX}
-	define r {
-		set m="This is text of \"reply ${1}."
-		reply 1 2 3
-	!I m
-	1".
-	!.
-	!I m
-	2".
-	!.
-	!I m
-	3".
-	!.
-		echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
-	}
-	define R {
-		set m="This is text of \"Reply ${1}."
-		eval Reply $2
-	!I m
-	!I 2
-	".
-	!.
-		echo -----After Reply $1.$2: $?/$^ERRNAME
-	}
-	define _Lh {
-		read protover
-		echo '~I m'
-		echo '~I n'
-		echo '".'
-	}
-	define _Ls {
-		set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
-		eval Lreply $2
-	}
-	define L {
-		# We need two indirections for this test: one for the case that Lreply
-		# fails because of missing recipients: we need to read EOF next, thus
-		# place this in _Ls last; and second for the succeeding cases EOF is
-		# not what these should read, so go over the backside and splice it in!
-		# (A shame we do not have redirection++ as a Bourne/K/POSIX shell!)
-		call _Ls "$@"
-		echo -----After Lreply $1.$2: $?/$^ERRNAME
-	}
-	define x {
-		commandalias lc '\local call'
-		lc r $1
-		lc R $1 1; lc R $1 2; lc R $1 3; lc R $1 4
-		lc L $1 1; lc L $1 2; lc L $1 3
-		uncommandalias lc
-	}
-	define tweak {
-		echo;echo '===== CHANGING === '"$*"' =====';echo
-		eval "$@"
-	}
-	#
-	set from=laber@backe.eu
-	mlist is@a.list
-	call x 1
-	call tweak set reply-to-honour
-	call x 2
-	call tweak set followup-to
-	call x 3
-	call tweak set followup-to-honour
-	call x 4
-	call tweak mlist bugstop@five.miles.out
-	call x 5
-	call tweak mlsubscribe bugstop@five.miles.out
-	call x 6
-	call tweak set recipients-in-cc
-	call x 7
-	# While here, test that *fullnames* works (also here)
-	call tweak set fullnames
-	reply 1
-	This message should have *fullnames* in the header.
-	!.
-	# Revert
-	call tweak unmlsubscribe bugstop@five.miles.out';' \
-		set followup-to-add-cc nofullnames
-	call x 8
-	call tweak mlsubscribe bugstop@five.miles.out
-	call x 9
-	_EOT
+	<<'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 -Rf ./t.mbox >> ./t1 2>${EX}
+define r {
+	set m="This is text of \"reply ${1}."
+	reply 1 2 3
+!I m
+1".
+!.
+!I m
+2".
+!.
+!I m
+3".
+!.
+	echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
+}
+define R {
+	set m="This is text of \"Reply ${1}."
+	eval Reply $2
+!I m
+!I 2
+".
+!.
+	echo -----After Reply $1.$2: $?/$^ERRNAME
+}
+define _Lh {
+!I m
+!I n
+".
+}
+define _Ls {
+	set m="This is text of \"Lreply ${1}." on-compose-embed=_Lh n=$2
+	eval Lreply $2
+}
+define L {
+	# We need two indirections for this test: one for the case that Lreply
+	# fails because of missing recipients: we need to read EOF next, thus
+	# place this in _Ls last; and second for the succeeding cases EOF is
+	# not what these should read, so embed it over the backside!
+	# (A shame we do not have redirection++ like a Bourne/K/POSIX shell!)
+	call _Ls "$@"
+	echo -----After Lreply $1.$2: $?/$^ERRNAME
+}
+define x {
+	commandalias lc '\local call'
+	lc r $1
+	lc R $1 1; lc R $1 2; lc R $1 3; lc R $1 4
+	lc L $1 1; lc L $1 2; lc L $1 3
+	uncommandalias lc
+}
+define tweak {
+	echo;echo '===== CHANGING === '"$*"' =====';echo
+	eval "$@"
+}
+#
+se from=laber@backe.eu
+mlist is@a.list
+call x 1
+call tweak set reply-to-honour
+call x 2
+call tweak set followup-to
+call x 3
+call tweak set followup-to-honour
+call x 4
+call tweak mlist bugstop@five.miles.out
+call x 5
+call tweak mlsubscribe bugstop@five.miles.out
+call x 6
+call tweak set recipients-in-cc
+call x 7
+# While here, test that *fullnames* works (also here)
+call tweak set fullnames
+reply 1
+This message should have *fullnames* in the header.
+!.
+# Revert
+call tweak unmlsubscribe bugstop@five.miles.out';' \
+	set followup-to-add-cc nofullnames
+call x 8
+call tweak mlsubscribe bugstop@five.miles.out
+call x 9
+_EOT
 	#}}}
 	ck 1 0 ./t1 '3438593020 41761' '861585057 114'
 
@@ -15835,7 +15836,7 @@ cc_all_configs() { #{{{
 		}
 		/^[	 ]*OPT_/{
 			sub(/^[	 ]*/, "")
-			# This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
+			# This bails for UnixWare 7.1.4 awk(1), but preceding = with \
 			# does not seem to be a compliant escape for =
 			#sub(/=.*$/, "")
 			$1 = substr($1, 1, index($1, "=") - 1)

@@ -81,11 +81,6 @@ enum a_msg_token{
    a_MSG_T_ERROR     /* Lexical error */
 };
 
-enum a_msg_idfield{
-   a_MSG_ID_REFERENCES,
-   a_MSG_ID_IN_REPLY_TO
-};
-
 enum a_msg_state{
    a_MSG_S_NEWEST = 1u<<0,
    a_MSG_S_NEW = 1u<<1,
@@ -189,10 +184,6 @@ static int a_msg_scan(struct a_msg_speclex *mslp);
 static boole a_msg_match_sender(struct message *mp, char const *str,
                boole allnet);
 
-/* Check whether the given message-id or references match */
-static boole a_msg_match_mid(struct message *mp, char const *id,
-               enum a_msg_idfield idfield);
-
 /* See if the given string matches.
  * For the purpose of the scan, we ignore case differences.
  * This is the engine behind the "/" search */
@@ -265,8 +256,8 @@ a_msg_add_to_nmadat(char ***nmadat, uz *nmasize, /* TODO Vector */
 static int
 a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    struct a_msg_speclex msl;
-   enum a_msg_idfield idfield;
    uz j, nmasize;
+   struct mx_name *np_id;
    char const *id;
    char **nmadat_lofi, **nmadat, **np, **nq, *cp;
    struct message *mp, *mx;
@@ -312,11 +303,11 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    np = nmadat =
    nmadat_lofi = su_LOFI_ALLOC((nmasize = 64) * sizeof *np); /* TODO vector */
    UNINIT(beg, 0);
-   UNINIT(idfield, a_MSG_ID_REFERENCES);
    a_msg_threadflag = FAL0;
    valdot = S(int,P2UZ(dot - message + 1));
    colmod = 0;
-   id = NULL;
+   np_id = NIL;
+   id = NIL;
    flags = (a_ALLOC | (mb.mb_threaded ? a_THREADED : 0) |
          ((!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
             ? a_LOG : 0));
@@ -560,23 +551,12 @@ jevalcol_err:
          }
 #endif
 
-         if(id == NULL){
-            if((cp = hfield1("in-reply-to", dot)) != NULL)
-               idfield = a_MSG_ID_IN_REPLY_TO;
-            else if((cp = hfield1("references", dot)) != NULL){
-               struct mx_name *enp;
-
-               if((enp = extract(cp, GREF)) != NULL){
-                  while(enp->n_flink != NULL)
-                     enp = enp->n_flink;
-                  cp = enp->n_name;
-                  idfield = a_MSG_ID_REFERENCES;
-               }else
-                  cp = NULL;
-            }
-
-            if(cp != NULL)
-               id = savestr(cp);
+         if(id == NIL){
+            np_id = NIL;
+            if(((cp = hfield1("in-reply-to", dot)) != NIL ||
+                  (id = cp = hfield1("references", dot)) != NIL) &&
+                  (np_id = mx_name_parse(cp, GREF)) != NIL)
+               id = cp;
             else{
                id = N_("Message-ID of parent of \"dot\" is indeterminable\n");
                i = su_ERR_CANCELED;
@@ -779,9 +759,14 @@ jat_where_default:
                }
             }
          }
-         if(!(flags & a_TMP) &&
-               id != NULL && a_msg_match_mid(mp, id, idfield))
-            flags |= a_TMP;
+         if(!(flags & a_TMP) && np_id != NIL &&
+               (id = hfield1("message-id", mp)) != NIL){
+            for(; np_id != NIL; np_id = np_id->n_flink)
+               if(!mx_name_msgid_cmp_cp(np_id->n_name, id)){
+                  flags |= a_TMP;
+                  break;
+               }
+         }
 
          if(flags & a_TMP){
             mark(i + 1, f);
@@ -1067,10 +1052,10 @@ a_msg_match_sender(struct message *mp, char const *str, boole allnet){
 
    rv = FAL0;
 
-   /* Empty string doesn't match */
-   namep = lextract(n_header_senderfield_of(mp), GFULL | GSKIN);
+   /* Empty string does not match */
+   namep = mx_name_parse(n_header_senderfield_of(mp), GIDENT);
 
-   if(namep == NULL || *(str_base = str) == '\0')
+   if(namep == NIL || *(str_base = str) == '\0')
       goto jleave;
 
    /* *allnet* is POSIX and, since it explicitly mentions login and user names,
@@ -1131,39 +1116,6 @@ jagain:
       }
    }
 jleave:
-   NYD2_OU;
-   return rv;
-}
-
-static boole
-a_msg_match_mid(struct message *mp, char const *id,
-      enum a_msg_idfield idfield){
-   char const *cp;
-   boole rv;
-   NYD2_IN;
-
-   rv = FAL0;
-
-   if((cp = hfield1("message-id", mp)) != NULL){
-      switch(idfield){
-      case a_MSG_ID_REFERENCES:
-         if(!msgidcmp(id, cp))
-            rv = TRU1;
-         break;
-      case a_MSG_ID_IN_REPLY_TO:{
-         struct mx_name *np;
-
-         if((np = extract(id, GREF)) != NULL)
-            do{
-               if(!msgidcmp(np->n_name, cp)){
-                  rv = TRU1;
-                  break;
-               }
-            }while((np = np->n_flink) != NULL);
-         break;
-      }
-      }
-   }
    NYD2_OU;
    return rv;
 }

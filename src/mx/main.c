@@ -427,8 +427,8 @@ a_main_o_r(struct a_main_ctx *mcp, struct su_avopt *avop){
 	if(avop->avo_current_arg[0] == '\0')
 		goto jleave;
 
-	fap = nalloc(avop->avo_current_arg, GSKIN | GFULL | GFULLEXTRA | GNOT_A_LIST | GNULL_OK | GSHEXP_PARSE_HACK);
-	if(fap == NIL || is_addr_invalid(fap, EACM_STRICT | EACM_NOLOG)){
+	fap = mx_name_parse_as_one(avop->avo_current_arg, GIDENT | GFULLEXTRA | GSHEXP_PARSE_HACK | GTRASH_HACK);
+	if(fap == NIL || mx_name_is_invalid(fap, mx_EACM_STRICT)){
 		rv = N_("Invalid address argument with -r");
 		goto jleave;
 	}
@@ -538,15 +538,15 @@ a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){
 	rv = NIL;
 
 	if((a = n_header_get_field(avop->avo_current_arg, "to", &suffix)) != NIL){
-		gf = GTO | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+		gf = GTO | GSHEXP_PARSE_HACK | GTRASH_HACK;
 		npp = &mcp->mc_to;
 	}else if((a = n_header_get_field(avop->avo_current_arg, "cc", &suffix)) != NIL){
-		gf = GCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+		gf = GCC | GSHEXP_PARSE_HACK | GTRASH_HACK;
 		npp = &mcp->mc_cc;
 	}else if((a = n_header_get_field(avop->avo_current_arg, "bcc", &suffix)) != NIL){
-		gf = GBCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+		gf = GBCC | GSHEXP_PARSE_HACK | GTRASH_HACK;
 		npp = &mcp->mc_bcc;
-	}else if((a = n_header_get_field(avop->avo_current_arg, "fcc", su_NIL)) != NIL){
+	}else if((a = n_header_get_field(avop->avo_current_arg, "fcc", NIL)) != NIL){
 		gf = GBCC_IS_FCC;
 		npp = &mcp->mc_bcc;
 	}else{
@@ -556,16 +556,15 @@ jeTuse:
 		goto jleave;
 	}
 
-	if(suffix.s != NIL){
-		if(suffix.l > 0 && !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
-			goto jeTuse;
-		gf |= GNOT_A_LIST;
-	}
-
-	if(!(gf & GBCC_IS_FCC))
-		np = lextract(a, gf);
-	else
-		np = nalloc_fcc(a);
+	if(!(gf & GBCC_IS_FCC)){
+		if(suffix.s != NIL){
+			if(suffix.l > 0 && !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
+				goto jeTuse;
+			np = mx_name_parse_as_one(a, gf);
+		}else
+			np = mx_name_parse(a, gf);
+	}else
+		np = mx_name_parse_fcc(a);
 	if(np == NIL){
 		rv = N_("-T: invalid recipient (address)");
 		goto jleave;
@@ -772,8 +771,8 @@ main(int argc, char *argv[]){
 		case 'b':
 			/* Add (a) blind carbon copy recipient (list) */
 			n_psonce |= n_PSO_SENDMODE;
-			mc.mc_bcc = cat(mc.mc_bcc, lextract(avo.avo_current_arg,
-					GBCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
+			mc.mc_bcc = cat(mc.mc_bcc, mx_name_parse_as_one(avo.avo_current_arg,
+					GBCC | GSHEXP_PARSE_HACK | GTRASH_HACK));
 			break;
 		case 'C':{
 			/* Create custom header (at list tail) */
@@ -792,8 +791,8 @@ main(int argc, char *argv[]){
 		case 'c':
 			/* Add (a) carbon copy recipient (list) */
 			n_psonce |= n_PSO_SENDMODE;
-			mc.mc_cc = cat(mc.mc_cc, lextract(avo.avo_current_arg,
-					GCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
+			mc.mc_cc = cat(mc.mc_cc, mx_name_parse_as_one(avo.avo_current_arg,
+					GCC | GSHEXP_PARSE_HACK | GTRASH_HACK));
 			break;
 		case 'D':
 #ifdef mx_HAVE_IMAP
@@ -1016,7 +1015,7 @@ jgetopt_done:
 	}else{
 		n_psonce |= n_PSO_SENDMODE;
 		for(;;){
-			mc.mc_to = cat(mc.mc_to, lextract(cp, GTO | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
+			mc.mc_to = cat(mc.mc_to, mx_name_parse_as_one(cp, GTO | GSHEXP_PARSE_HACK | GTRASH_HACK));
 			if((cp = argv[++i]) == NIL)
 				break;
 			if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0'){

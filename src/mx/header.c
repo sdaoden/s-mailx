@@ -42,24 +42,18 @@
 # include "mx/nail.h"
 #endif
 
-#include <pwd.h>
-
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
-#include <su/time.h>
 
 #include "mx/cmd.h"
-#include "mx/cmd-mlist.h"
 #include "mx/compat.h"
 #include "mx/file-streams.h"
-#include "mx/go.h"
 #include "mx/mime.h"
 #include "mx/mime-probe.h"
 #include "mx/names.h"
 #include "mx/srch-ctx.h"
-#include "mx/termios.h"
 #include "mx/time.h"
 #include "mx/ui-str.h"
 #include "mx/url.h"
@@ -134,21 +128,6 @@ static void a_header_parse_from_(struct message *mp,
  * xxx and selectively add onto what is missing / etc, 'need to ignore some */
 static char const *a_header_extract_ignore_field_XXX(char const *linebuf);
 
-/* Convert the domain part of a skinned address to IDNA.
- * If an error occurs before Unicode information is available, revert the IDNA
- * error to a normal CHAR one so that the error message doesn't talk Unicode */
-#ifdef mx_HAVE_IDNA
-static struct n_addrguts *a_header_idna_apply(struct n_addrguts *agp);
-#endif
-
-/* Classify and check a (possibly skinned) header body according to RFC
- * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
- * also a file or a pipe command, so check that first, then.
- * Otherwise perform content checking and isolate the domain part (for IDNA).
- * issingle_hack <-> GNOT_A_LIST */
-static boole a_header_addrspec_check(struct n_addrguts *agp, boole skinned,
-               boole issingle_hack);
-
 /* Return the next header field found in the given message.
  * Return >= 0 if something found, < 0 elsewise.
  * "colon" is set to point to the colon in the header.
@@ -156,9 +135,7 @@ static boole a_header_addrspec_check(struct n_addrguts *agp, boole skinned,
 static long a_gethfield(enum n_header_extract_flags hef, FILE *f,
                char **linebuf, uz *linesize, long rem, char **colon);
 
-static int                 msgidnextc(char const **cp, int *status);
-
-static char const *        nexttoken(char const *cp);
+static char const *a_header_date_token(char const *cp);
 
 static int
 a_header_extract_date_from_from_(char const *line, uz linelen,
@@ -364,691 +341,6 @@ jleave:
    return ccp;
 }
 
-#ifdef mx_HAVE_IDNA
-static struct n_addrguts *
-a_header_idna_apply(struct n_addrguts *agp){
-   struct n_string idna_ascii;
-   NYD_IN;
-
-   n_string_creat_auto(&idna_ascii);
-
-   if(!n_idna_to_ascii(&idna_ascii, &agp->ag_skinned[agp->ag_sdom_start],
-         agp->ag_slen - agp->ag_sdom_start))
-      agp->ag_n_flags ^= mx_NAME_ADDRSPEC_ERR_IDNA | mx_NAME_ADDRSPEC_ERR_CHAR;
-   else{
-      /* Replace the domain part of .ag_skinned with IDNA version */
-      n_string_unshift_buf(&idna_ascii, agp->ag_skinned, agp->ag_sdom_start);
-
-      agp->ag_skinned = n_string_cp(&idna_ascii);
-      agp->ag_slen = idna_ascii.s_len;
-      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-         mx_NAME_NAME_SALLOC | mx_NAME_SKINNED | mx_NAME_IDNA, '\0');
-   }
-   NYD_OU;
-   return agp;
-}
-#endif /* mx_HAVE_IDNA */
-
-static boole
-a_header_addrspec_check(struct n_addrguts *agp, boole skinned,
-      boole issingle_hack)
-{
-   char *addr, *p;
-   union {boole b; char c; unsigned char u; u32 ui32; s32 si32;} c;
-   enum{
-      a_NONE,
-      a_IDNA_ENABLE = 1u<<0,
-      a_IDNA_APPLY = 1u<<1,
-      a_REDO_NODE_AFTER_ADDR = 1u<<2,
-      a_RESET_MASK = a_IDNA_ENABLE | a_IDNA_APPLY | a_REDO_NODE_AFTER_ADDR,
-      a_IN_QUOTE = 1u<<8,
-      a_IN_AT = 1u<<9,
-      a_IN_DOMAIN = 1u<<10,
-      a_DOMAIN_V6 = 1u<<11,
-      a_DOMAIN_MASK = a_IN_DOMAIN | a_DOMAIN_V6
-   } flags;
-   NYD_IN;
-
-   flags = a_NONE;
-#ifdef mx_HAVE_IDNA
-   if(!ok_blook(idna_disable))
-      flags = a_IDNA_ENABLE;
-#endif
-
-   if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
-      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-            mx_NAME_ADDRSPEC_ERR_EMPTY, '\0');
-      goto jleave;
-   }
-
-   addr = agp->ag_skinned;
-
-   /* If the field is not a recipient, it cannot be a file or a pipe */
-   if (!skinned)
-      goto jaddr_check;
-
-   /* When changing any of the following adjust any RECIPIENTADDRSPEC;
-    * grep the latter for the complete picture */
-   if (*addr == '|') {
-      agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISPIPE;
-      goto jleave;
-   }
-   if (addr[0] == '/' || (addr[0] == '.' && addr[1] == '/') ||
-         (addr[0] == '-' && addr[1] == '\0'))
-      goto jisfile;
-   if (su_mem_find(addr, '@', agp->ag_slen) == NULL) {
-      if (*addr == '+')
-         goto jisfile;
-      for (p = addr; (c.c = *p); ++p) {
-         if (c.c == '!' || c.c == '%')
-            break;
-         if (c.c == '/') {
-jisfile:
-            agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISFILE;
-            goto jleave;
-         }
-      }
-   }
-
-jaddr_check:
-   /* TODO This is false.  If super correct this should work on wide
-    * TODO characters, just in case (some bytes of) the ASCII set is (are)
-    * TODO shared; it may yet tear apart multibyte sequences, possibly.
-    * TODO All this should interact with mime_enc_mustquote(), too!
-    * TODO That is: once this is an object, we need to do this in a way
-    * TODO that it is valid for the wire format (instead)! */
-   /* TODO addrspec_check: we need a real RFC 5322 (un)?structured parser!
-    * TODO Note this correlats with addrspec_with_guts() which is in front
-    * TODO of us and encapsulates (what it thinks is, sigh) the address
-    * TODO boundary.  ALL THIS should be one object that knows how to deal */
-   flags &= a_RESET_MASK;
-   for (p = addr; (c.c = *p++) != '\0';) {
-      if (c.c == '"') {
-         flags ^= a_IN_QUOTE;
-      } else if (c.u < 040 || c.u >= 0177) { /* TODO no magics: !bodychar()? */
-#ifdef mx_HAVE_IDNA
-         if ((flags & (a_IN_DOMAIN | a_IDNA_ENABLE)) ==
-               (a_IN_DOMAIN | a_IDNA_ENABLE))
-            flags |= a_IDNA_APPLY;
-         else
-#endif
-            break;
-      } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
-         if ((c.c == ']' && *p != '\0') || c.c == '\\' || su_cs_is_white(c.c))
-            break;
-      } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
-         /*EMPTY*/;
-      } else if (c.c == '\\' && *p != '\0') {
-         ++p;
-      } else if (c.c == '@') {
-         if(flags & a_IN_AT){
-            agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-                  mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
-            goto jleave;
-         }
-         agp->ag_sdom_start = P2UZ(p - addr);
-         agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
-         flags &= ~a_DOMAIN_MASK;
-         flags |= (*p == '[') ? a_IN_AT | a_IN_DOMAIN | a_DOMAIN_V6
-               : a_IN_AT | a_IN_DOMAIN;
-         continue;
-      }
-      /* TODO This interferes with our alias handling, which allows :!
-       * TODO Update manual on support (search the several ALIASCOLON)! */
-      else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
-            c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
-            c.c == '\\' || c.c == ',' || su_cs_is_blank(c.c))
-         break;
-      flags &= ~a_IN_AT;
-   }
-   if (c.c != '\0') {
-      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-            mx_NAME_ADDRSPEC_ERR_CHAR, c.u);
-      goto jleave;
-   }
-
-   /* If we do not think this is an address we may treat it as an alias name
-    * if and only if the original input is identical to the skinned version */
-   if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR) &&
-         !su_cs_cmp(agp->ag_skinned, agp->ag_input)){
-      /* TODO This may be an UUCP address */
-      agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISNAME;
-      if(!mx_alias_is_valid_name(agp->ag_input))
-         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-               mx_NAME_ADDRSPEC_ERR_NAME, '.');
-   }else{
-      /* If we seem to know that this is an address.  Ensure this is correct
-       * according to RFC 5322 TODO the entire address parser should be like
-       * TODO that for one, and then we should know whether structured or
-       * TODO unstructured, and just parse correctly overall!
-       * TODO In addition, this can be optimised a lot.
-       * TODO And it is far from perfect: it should not forget whether no
-       * TODO whitespace followed some snippet, and it was written hastily.
-       * TODO It is even wrong sometimes.  Not only for strange cases */
-      struct a_token{
-         struct a_token *t_last;
-         struct a_token *t_next;
-         enum{
-            a_T_TATOM = 1u<<0,
-            a_T_TCOMM = 1u<<1,
-            a_T_TQUOTE = 1u<<2,
-            a_T_TADDR = 1u<<3,
-            a_T_TMASK = (1u<<4) - 1,
-
-            a_T_SPECIAL = 1u<<8     /* An atom actually needs to go TQUOTE */
-         } t_f;
-         u8 t__pad[4];
-         uz t_start;
-         uz t_end;
-      } *thead, *tcurr, *tp;
-
-      struct n_string ost, *ostp;
-      char const *cp, *cp1st, *cpmax, *xp;
-      void *lofi_snap;
-
-      /* Name and domain must be non-empty */
-      if(*addr == '@' || &addr[2] >= p || p[-2] == '@'){
-jeat:
-         c.c = '@';
-         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-               mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
-         goto jleave;
-      }
-
-      cp = agp->ag_input;
-
-      /* Nothing to do if there is only an address (in angle brackets) */
-      /* TODO This is wrong since we allow invalid constructs in local-part
-       * TODO and domain, AT LEAST in so far as a"bc"d@abc should become
-       * TODO "abcd"@abc.  Etc. */
-      if(agp->ag_iaddr_start == 0){
-         /* No @ seen? */
-         if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR))
-            goto jeat;
-         if(agp->ag_iaddr_aend == agp->ag_ilen)
-            goto jleave;
-      }else if(agp->ag_iaddr_start == 1 && *cp == '<' &&
-            agp->ag_iaddr_aend == agp->ag_ilen - 1 &&
-            cp[agp->ag_iaddr_aend] == '>'){
-         /* No @ seen?  Possibly insert n_nodename() */
-         if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR)){
-            cp = &agp->ag_input[agp->ag_iaddr_start];
-            cpmax = &agp->ag_input[agp->ag_iaddr_aend];
-            goto jinsert_domain;
-         }
-         goto jleave;
-      }
-
-      /* It is not, so parse off all tokens, then resort and rejoin */
-      lofi_snap = n_lofi_snap_create();
-
-      cp1st = cp;
-      if((c.ui32 = agp->ag_iaddr_start) > 0)
-         --c.ui32;
-      cpmax = &cp[c.ui32];
-
-      thead = tcurr = NULL;
-jnode_redo:
-      for(tp = NULL; cp < cpmax;){
-         switch((c.c = *cp)){
-         case '(':
-            if(tp != NULL)
-               tp->t_end = P2UZ(cp - cp1st);
-            tp = n_lofi_alloc(sizeof *tp);
-            tp->t_next = NULL;
-            if((tp->t_last = tcurr) != NULL)
-               tcurr->t_next = tp;
-            else
-               thead = tp;
-            tcurr = tp;
-            tp->t_f = a_T_TCOMM;
-            tp->t_start = P2UZ(++cp - cp1st);
-            xp = skip_comment(cp);
-            tp->t_end = P2UZ(xp - cp1st);
-            cp = xp;
-            if(tp->t_end > tp->t_start){
-               if(xp[-1] == ')')
-                  --tp->t_end;
-               else{
-                  /* No closing comment - strip trailing whitespace */
-                  while(su_cs_is_blank(*--xp))
-                     if(--tp->t_end == tp->t_start)
-                        break;
-               }
-            }
-            tp = NULL;
-            break;
-
-         case '"':
-            if(tp != NULL)
-               tp->t_end = P2UZ(cp - cp1st);
-            tp = n_lofi_alloc(sizeof *tp);
-            tp->t_next = NULL;
-            if((tp->t_last = tcurr) != NULL)
-               tcurr->t_next = tp;
-            else
-               thead = tp;
-            tcurr = tp;
-            tp->t_f = a_T_TQUOTE;
-            tp->t_start = P2UZ(++cp - cp1st);
-            for(xp = cp; xp < cpmax; ++xp){
-               if((c.c = *xp) == '"')
-                  break;
-               if(c.c == '\\' && xp[1] != '\0')
-                  ++xp;
-            }
-            tp->t_end = P2UZ(xp - cp1st);
-            cp = &xp[1];
-            if(tp->t_end > tp->t_start){
-               /* No closing quote - strip trailing whitespace */
-               if(*xp != '"'){
-                  while(su_cs_is_blank(*xp--))
-                     if(--tp->t_end == tp->t_start)
-                        break;
-               }
-            }
-            tp = NULL;
-            break;
-
-         default:
-            if(su_cs_is_blank(c.c)){
-               if(tp != NULL)
-                  tp->t_end = P2UZ(cp - cp1st);
-               tp = NULL;
-               ++cp;
-               break;
-            }
-
-            if(tp == NULL){
-               tp = n_lofi_alloc(sizeof *tp);
-               tp->t_next = NULL;
-               if((tp->t_last = tcurr) != NULL)
-                  tcurr->t_next = tp;
-               else
-                  thead = tp;
-               tcurr = tp;
-               tp->t_f = a_T_TATOM;
-               tp->t_start = P2UZ(cp - cp1st);
-            }
-            ++cp;
-
-            /* Reverse solidus transforms the following into a quoted-pair, and
-             * therefore (must occur in comment or quoted-string only) the
-             * entire atom into a quoted string */
-            if(c.c == '\\'){
-               tp->t_f |= a_T_SPECIAL;
-               if(cp < cpmax)
-                  ++cp;
-               break;
-            }
-
-            /* Is this plain RFC 5322 "atext", or "specials"?
-             * TODO Because we don't know structured/unstructured, nor anything
-             * TODO else, we need to treat "dot-atom" as being identical to
-             * TODO "specials".
-             * However, if the 8th bit is set, this will be RFC 2047 converted
-             * and the entire sequence is skipped */
-            if(!(c.u & 0x80) && !su_cs_is_alnum(c.c) &&
-                  c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
-                  c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
-                  c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
-                  c.c != '^' && c.c != '_' && c.c != '`' && c.c != '{' &&
-                  c.c != '}' && c.c != '|' && c.c != '}' && c.c != '~')
-               tp->t_f |= a_T_SPECIAL;
-            break;
-         }
-      }
-      if(tp != NULL)
-         tp->t_end = P2UZ(cp - cp1st);
-
-      if(!(flags & a_REDO_NODE_AFTER_ADDR)){
-         flags |= a_REDO_NODE_AFTER_ADDR;
-
-         /* The local-part may be in quotes.. */
-         if((tp = tcurr) != NULL && (tp->t_f & a_T_TQUOTE) &&
-               tp->t_end == agp->ag_iaddr_start - 1){
-            /* ..so backward extend it, including the starting quote */
-            /* TODO This is false and the code below #if 0 away.  We would
-             * TODO need to create a properly quoted local-part HERE AND NOW
-             * TODO and REPLACE the original data with that version, but the
-             * TODO current code cannot do that.  The node needs the data,
-             * TODO not only offsets for that, for example.  If we had all that
-             * TODO the code below could produce a really valid thing */
-            if(tp->t_start > 0)
-               --tp->t_start;
-            if(tp->t_start > 0 &&
-                  (tp->t_last == NULL || tp->t_last->t_end < tp->t_start) &&
-                     agp->ag_input[tp->t_start - 1] == '\\')
-               --tp->t_start;
-            tp->t_f = a_T_TADDR | a_T_SPECIAL;
-         }else{
-            tp = n_lofi_alloc(sizeof *tp);
-            tp->t_next = NULL;
-            if((tp->t_last = tcurr) != NULL)
-               tcurr->t_next = tp;
-            else
-               thead = tp;
-            tcurr = tp;
-            tp->t_f = a_T_TADDR;
-            tp->t_start = agp->ag_iaddr_start;
-            /* TODO Very special case because of our hacky non-object-based and
-             * TODO non-compliant address parser.  Note */
-            if(tp->t_last == NULL && tp->t_start > 0)
-               tp->t_start = 0;
-            if(agp->ag_input[tp->t_start] == '<')
-               ++tp->t_start;
-
-            /* TODO Very special check for whether we need to massage the
-             * TODO local part.  This is wrong, but otherwise even more so */
-#if 0
-            cp = &agp->ag_input[tp->t_start];
-            cpmax = &agp->ag_input[agp->ag_iaddr_aend];
-            while(cp < cpmax){
-               c.c = *cp++;
-               if(!(c.u & 0x80) && !su_cs_is_alnum(c.c) &&
-                     c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
-                     c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
-                     c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
-                     c.c != '^' && c.c != '_' && c.c != '`' && c.c != '{' &&
-                     c.c != '}' && c.c != '|' && c.c != '}' && c.c != '~'){
-                  tp->t_f |= a_T_SPECIAL;
-                  break;
-               }
-            }
-#endif
-         }
-         tp->t_end = agp->ag_iaddr_aend;
-         ASSERT(tp->t_start <= tp->t_end);
-         tp = NULL;
-
-         cp = &agp->ag_input[agp->ag_iaddr_aend + 1];
-         cpmax = &agp->ag_input[agp->ag_ilen];
-         if(cp < cpmax)
-            goto jnode_redo;
-      }
-
-      /* Nothing may follow the address, move it to the end */
-      ASSERT(tcurr != NULL);
-      if(tcurr != NULL && !(tcurr->t_f & a_T_TADDR)){
-         for(tp = thead; tp != NULL; tp = tp->t_next){
-            if(tp->t_f & a_T_TADDR){
-               if(tp->t_last != NULL)
-                  tp->t_last->t_next = tp->t_next;
-               else
-                  thead = tp->t_next;
-               if(tp->t_next != NULL)
-                  tp->t_next->t_last = tp->t_last;
-
-               tcurr = tp;
-               while(tp->t_next != NULL)
-                  tp = tp->t_next;
-               tp->t_next = tcurr;
-               tcurr->t_last = tp;
-               tcurr->t_next = NULL;
-               break;
-            }
-         }
-      }
-
-      /* Make ranges contiguous: ensure a continuous range of atoms is
-       * converted to a SPECIAL one if at least one of them requires it */
-      for(tp = thead; tp != NULL; tp = tp->t_next){
-         if(tp->t_f & a_T_SPECIAL){
-            tcurr = tp;
-            while((tp = tp->t_last) != NULL && (tp->t_f & a_T_TATOM))
-               tp->t_f |= a_T_SPECIAL;
-            tp = tcurr;
-            while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
-               tp->t_f |= a_T_SPECIAL;
-            if(tp == NULL)
-               break;
-         }
-      }
-
-      /* And yes, we want quotes to extend as much as possible */
-      for(tp = thead; tp != NULL; tp = tp->t_next){
-         if(tp->t_f & a_T_TQUOTE){
-            tcurr = tp;
-            while((tp = tp->t_last) != NULL && (tp->t_f & a_T_TATOM))
-               tp->t_f |= a_T_SPECIAL;
-            tp = tcurr;
-            while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
-               tp->t_f |= a_T_SPECIAL;
-            if(tp == NULL)
-               break;
-         }
-      }
-
-      /* Then rejoin */
-      ostp = n_string_creat_auto(&ost);
-      if((c.ui32 = agp->ag_ilen) <= U32_MAX >> 1)
-         ostp = n_string_reserve(ostp, c.ui32 <<= 1);
-
-      for(tcurr = thead; tcurr != NULL;){
-         if(tcurr != thead)
-            ostp = n_string_push_c(ostp, ' ');
-         if(tcurr->t_f & a_T_TADDR){
-            if(tcurr->t_last != NULL)
-               ostp = n_string_push_c(ostp, '<');
-            agp->ag_iaddr_start = ostp->s_len;
-            /* Now it is terrible to say, but if that thing contained
-             * quotes, then those may contain quoted-pairs! */
-#if 0
-            if(!(tcurr->t_f & a_T_SPECIAL)){
-#endif
-               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                     (tcurr->t_end - tcurr->t_start));
-#if 0
-            }else{
-               boole quot, esc;
-
-               ostp = n_string_push_c(ostp, '"');
-               quot = TRU1;
-
-               cp = &cp1st[tcurr->t_start];
-               cpmax = &cp1st[tcurr->t_end];
-               for(esc = FAL0; cp < cpmax;){
-                  if((c.c = *cp++) == '\\' && !esc){
-                     if(cp < cpmax && (*cp == '"' || *cp == '\\'))
-                        esc = TRU1;
-                  }else{
-                     if(esc || c.c == '"')
-                        ostp = n_string_push_c(ostp, '\\');
-                     else if(c.c == '@'){
-                        ostp = n_string_push_c(ostp, '"');
-                        quot = FAL0;
-                     }
-                     ostp = n_string_push_c(ostp, c.c);
-                     esc = FAL0;
-                  }
-               }
-            }
-#endif
-            agp->ag_iaddr_aend = ostp->s_len;
-
-            if(tcurr->t_last != NULL)
-               ostp = n_string_push_c(ostp, '>');
-            tcurr = tcurr->t_next;
-         }else if(tcurr->t_f & a_T_TCOMM){
-            ostp = n_string_push_c(ostp, '(');
-            ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                  (tcurr->t_end - tcurr->t_start));
-            while((tp = tcurr->t_next) != NULL && (tp->t_f & a_T_TCOMM)){
-               tcurr = tp;
-               ostp = n_string_push_c(ostp, ' '); /* XXX may be artificial */
-               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                     (tcurr->t_end - tcurr->t_start));
-            }
-            ostp = n_string_push_c(ostp, ')');
-            tcurr = tcurr->t_next;
-         }else if(tcurr->t_f & a_T_TQUOTE){
-jput_quote:
-            ostp = n_string_push_c(ostp, '"');
-            tp = tcurr;
-            do/* while tcurr && TATOM||TQUOTE */{
-               cp = &cp1st[tcurr->t_start];
-               cpmax = &cp1st[tcurr->t_end];
-               if(cp == cpmax)
-                  continue;
-
-               if(tcurr != tp)
-                  ostp = n_string_push_c(ostp, ' ');
-
-               if((tcurr->t_f & (a_T_TATOM | a_T_SPECIAL)) == a_T_TATOM)
-                  ostp = n_string_push_buf(ostp, cp, P2UZ(cpmax - cp));
-               else{
-                  boole esc;
-
-                  for(esc = FAL0; cp < cpmax;){
-                     if((c.c = *cp++) == '\\' && !esc){
-                        if(cp < cpmax && (*cp == '"' || *cp == '\\'))
-                           esc = TRU1;
-                     }else{
-                        if(esc || c.c == '"'){
-jput_quote_esc:
-                           ostp = n_string_push_c(ostp, '\\');
-                        }
-                        ostp = n_string_push_c(ostp, c.c);
-                        esc = FAL0;
-                     }
-                  }
-                  if(esc){
-                     c.c = '\\';
-                     goto jput_quote_esc;
-                  }
-               }
-            }while((tcurr = tcurr->t_next) != NULL &&
-               (tcurr->t_f & (a_T_TATOM | a_T_TQUOTE)));
-            ostp = n_string_push_c(ostp, '"');
-         }else if(tcurr->t_f & a_T_SPECIAL)
-            goto jput_quote;
-         else{
-            /* Can we use a fast join mode? */
-            for(tp = tcurr; tcurr != NULL; tcurr = tcurr->t_next){
-               if(!(tcurr->t_f & a_T_TATOM))
-                  break;
-               if(tcurr != tp)
-                  ostp = n_string_push_c(ostp, ' ');
-               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                     (tcurr->t_end - tcurr->t_start));
-            }
-         }
-      }
-
-      n_lofi_snap_gut(lofi_snap);
-
-      agp->ag_input = n_string_cp(ostp);
-      agp->ag_ilen = ostp->s_len;
-      /*ostp = n_string_drop_ownership(ostp);*/
-
-      /* Name and domain must be non-empty, the second */
-      cp = &agp->ag_input[agp->ag_iaddr_start];
-      cpmax = &agp->ag_input[agp->ag_iaddr_aend];
-      if(*cp == '@' || &cp[2] > cpmax || cpmax[-1] == '@'){
-         c.c = '@';
-         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-               mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
-         goto jleave;
-      }
-
-      addr = agp->ag_skinned = savestrbuf(cp, P2UZ(cpmax - cp));
-
-      /* TODO This parser is a mess.  We do not know whether this is truly
-       * TODO valid, and all our checks are not truly RFC conforming.
-       * TODO Do check the skinned thing by itself once more, in order
-       * TODO to catch problems from reordering, e.g., this additional
-       * TODO test catches a final address without AT..
-       * TODO This is a plain copy+paste of the weird thing above, no care */
-      agp->ag_n_flags &= ~mx_NAME_ADDRSPEC_ISADDR;
-      flags &= a_RESET_MASK;
-      for (p = addr; (c.c = *p++) != '\0';) {
-         if(c.c == '"')
-            flags ^= a_IN_QUOTE;
-         else if (c.u < 040 || c.u >= 0177) {
-#ifdef mx_HAVE_IDNA
-               if(!(flags & a_IN_DOMAIN))
-#endif
-                  break;
-         } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
-            if ((c.c == ']' && *p != '\0') || c.c == '\\' ||
-                  su_cs_is_white(c.c))
-               break;
-         } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
-            /*EMPTY*/;
-         } else if (c.c == '\\' && *p != '\0') {
-            ++p;
-         } else if (c.c == '@') {
-            if(flags & a_IN_AT){
-               agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-                     mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
-               goto jleave;
-            }
-            flags |= a_IN_AT;
-            agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
-            flags &= ~a_DOMAIN_MASK;
-            flags |= (*p == '[') ? a_IN_DOMAIN | a_DOMAIN_V6 : a_IN_DOMAIN;
-            continue;
-         } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
-               c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
-               c.c == '\\' || c.c == ',' || su_cs_is_blank(c.c))
-            break;
-         flags &= ~a_IN_AT;
-      }
-
-      if(c.c != '\0')
-         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-               mx_NAME_ADDRSPEC_ERR_CHAR, c.u);
-      else if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR)){
-         /* This is not an address, but if we had seen angle brackets convert
-          * it to a n_nodename() address if the name is a valid user */
-jinsert_domain:
-         if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
-               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>'){
-            if(su_cs_cmp(addr, ok_vlook(LOGNAME)) && getpwnam(addr) == NIL){
-               agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-                     mx_NAME_ADDRSPEC_ERR_NAME, '*');
-               goto jleave;
-            }
-
-            /* XXX However, if hostname is set to the empty string this
-             * XXX indicates that the used *mta* will perform the
-             * XXX auto-expansion instead.  Not so with `addrcodec' though */
-            agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR;
-            if(!issingle_hack &&
-                  (cp = ok_vlook(hostname)) != NIL && *cp == '\0')
-               agp->ag_n_flags |= mx_NAME_ADDRSPEC_WITHOUT_DOMAIN;
-            else{
-               c.ui32 = su_cs_len(cp = n_nodename(TRU1));
-               /* This is yet IDNA converted.. */
-               ostp = n_string_creat_auto(&ost);
-               ostp = n_string_assign_buf(ostp, agp->ag_input, agp->ag_ilen);
-               ostp = n_string_insert_c(ostp, agp->ag_iaddr_aend++, '@');
-               ostp = n_string_insert_buf(ostp, agp->ag_iaddr_aend, cp,
-                     c.ui32);
-               agp->ag_iaddr_aend += c.ui32;
-               agp->ag_input = n_string_cp(ostp);
-               agp->ag_ilen = ostp->s_len;
-               /*ostp = n_string_drop_ownership(ostp);*/
-
-               cp = &agp->ag_input[agp->ag_iaddr_start];
-               cpmax = &agp->ag_input[agp->ag_iaddr_aend];
-               agp->ag_skinned = savestrbuf(cp, P2UZ(cpmax - cp));
-            }
-         }else
-            agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-                  mx_NAME_ADDRSPEC_ERR_ATSEQ, '@');
-      }
-   }
-
-jleave:
-#ifdef mx_HAVE_IDNA
-   if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
-      agp = a_header_idna_apply(agp);
-#endif
-   NYD_OU;
-   return !(agp->ag_n_flags & mx_NAME_ADDRSPEC_INVALID);
-}
-
 static long
 a_gethfield(enum n_header_extract_flags hef, FILE *f,
    char **linebuf, uz *linesize, long rem, char **colon)
@@ -1141,84 +433,34 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
    return rem;
 }
 
-static int
-msgidnextc(char const **cp, int *status)
-{
-   int c;
-   NYD2_IN;
-
-   ASSERT(cp != NULL);
-   ASSERT(*cp != NULL);
-   ASSERT(status != NULL);
-
-   for (;;) {
-      if (*status & 01) {
-         if (**cp == '"') {
-            *status &= ~01;
-            (*cp)++;
-            continue;
-         }
-         if (**cp == '\\') {
-            (*cp)++;
-            if (**cp == '\0')
-               goto jeof;
-         }
-         goto jdfl;
-      }
-      switch (**cp) {
-      case '(':
-         *cp = skip_comment(&(*cp)[1]);
-         continue;
-      case '>':
-      case '\0':
-jeof:
-         c = '\0';
-         goto jleave;
-      case '"':
-         (*cp)++;
-         *status |= 01;
-         continue;
-      case '@':
-         *status |= 02;
-         /*FALLTHRU*/
-      default:
-jdfl:
-         c = *(*cp)++ & 0377;
-         c = (*status & 02) ? su_cs_to_lower(c) : c;
-         goto jleave;
-      }
-   }
-jleave:
-   NYD2_OU;
-   return c;
-}
-
 static char const *
-nexttoken(char const *cp)
-{
+a_header_date_token(char const *cp){
    NYD2_IN;
-   for (;;) {
-      if (*cp == '\0') {
-         cp = NULL;
+
+   for(;;){
+      if(*cp == '\0'){
+         cp = NIL;
          break;
       }
 
-      if (*cp == '(') {
-         uz nesting = 1;
+      if(*cp == '('){
+         uz nesting;
 
-         do switch (*++cp) {
+         nesting = 1;
+         do switch(*++cp){
          case '(':
             ++nesting;
             break;
          case ')':
             --nesting;
             break;
-         } while (nesting > 0 && *cp != '\0'); /* XXX error? */
-      } else if (su_cs_is_blank(*cp) || *cp == ',')
+         }while(nesting > 0 && *cp != '\0'); /* XXX error? */
+      }else if(su_cs_is_blank(*cp) || *cp == ',')
          ++cp;
       else
          break;
    }
+
    NYD2_OU;
    return cp;
 }
@@ -1276,22 +518,23 @@ jnodename:{
 }
 
 FL char const *
-myorigin(struct header *hp) /* TODO vanish! see myaddrs() */
-{
-   char const *rv = NULL, *ccp;
+myorigin(struct header *hp){ /* TODO vanish! see myaddrs() */
+   char const *rv, *ccp;
    struct mx_name *np;
-   NYD_IN;
+   NYD2_IN;
 
-   if((ccp = myaddrs(hp)) != NULL &&
-         (np = lextract(ccp, GEXTRA | GFULL)) != NULL){
-      if(np->n_flink == NULL)
+   rv = NIL;
+
+   if((ccp = myaddrs(hp)) != NIL && (np = mx_name_parse(ccp, GIDENT)) != NIL){
+      if(np->n_flink == NIL)
          rv = ccp;
       /* Verified upon variable set time */
-      else if((ccp = ok_vlook(sender)) != NULL)
+      else if((ccp = ok_vlook(sender)) != NIL)
          rv = ccp;
       /* TODO why not else rv = n_poption_arg_r; ?? */
    }
-   NYD_OU;
+
+   NYD2_OU;
    return rv;
 }
 
@@ -1534,67 +777,76 @@ jeseek:
       goto jleave;
    }
 
-   /* TODO yippieia, cat(check(lextract)) :-) */
+   /* TODO yippieia, cat(check(name_parse)) :-) */
    clear_ref = TRU1;
    while ((lc = a_gethfield(hef, fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       struct mx_name *np;
 
-      /* We explicitly allow EAF_NAME for some addressees since aliases are not
+      /* Explicitly allow mx_EAF_NAME for some addressees since aliases are not
        * yet expanded when we parse these! */
       if ((val = n_header_get_field(linebuf, "to", &suffix)) != NULL) {
          ++seenfields;
-         if(suffix.s != su_NIL && suffix.l > 0 &&
+         if(suffix.s != NIL && suffix.l > 0 &&
                !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
             goto jebadhead;
-         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL |
-               (suffix.s != su_NIL ? GNOT_A_LIST : GNONE)),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
+         np = (suffix.s != NIL
+               ? mx_name_parse_as_one : mx_name_parse)(val, GTO);
+         if(np != NIL)
+            np = mx_namelist_check(np,
+                  (mx_EACM_NORMAL | mx_EAF_NAME | mx_EAF_MAYKEEP),
+                  checkaddr_err_or_null);
+         if(np != NIL)
+            hq->h_to = cat(hq->h_to, np);
       } else if ((val = n_header_get_field(linebuf, "cc", &suffix)) != NULL) {
          ++seenfields;
-         if(suffix.s != su_NIL && suffix.l > 0 &&
+         if(suffix.s != NIL && suffix.l > 0 &&
                !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
             goto jebadhead;
-         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL |
-               (suffix.s != su_NIL ? GNOT_A_LIST : GNONE)),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
+         hq->h_cc = cat(hq->h_cc, mx_namelist_check(
+               ((suffix.s != NIL
+                  ? mx_name_parse_as_one : mx_name_parse)(val, GCC)),
+               (mx_EACM_NORMAL | mx_EAF_NAME | mx_EAF_MAYKEEP),
+               checkaddr_err_or_null));
       } else if ((val = n_header_get_field(linebuf, "bcc", &suffix)) != NULL) {
          ++seenfields;
-         if(suffix.s != su_NIL && suffix.l > 0 &&
+         if(suffix.s != NIL && suffix.l > 0 &&
                !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
             goto jebadhead;
-         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL |
-               (suffix.s != su_NIL ? GNOT_A_LIST : GNONE)),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
+         hq->h_bcc = cat(hq->h_bcc, mx_namelist_check(
+               ((suffix.s != NIL
+                  ? mx_name_parse_as_one : mx_name_parse)(val, GBCC)),
+               (mx_EACM_NORMAL | mx_EAF_NAME | mx_EAF_MAYKEEP),
+               checkaddr_err_or_null));
       } else if ((val = n_header_get_field(linebuf, "fcc", NULL)) != NULL) {
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
-            hq->h_fcc = cat(hq->h_fcc, nalloc_fcc(val));
+            hq->h_fcc = cat(hq->h_fcc, mx_name_parse_fcc(val));
          }else
             goto jebadhead;
       }else if((val = n_header_get_field(linebuf, "author", NIL)) != NIL){
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_author = cat(hq->h_author,
-                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
-                     EACM_STRICT, NULL));
+                  mx_namelist_check(mx_name_parse(val, GIDENT | GFULLEXTRA),
+                     mx_EACM_STRICT, NIL));
          }
       } else if ((val = n_header_get_field(linebuf, "from", NULL)) != NULL) {
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_from = cat(hq->h_from,
-                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
-                     EACM_STRICT, NULL));
+                  mx_namelist_check(mx_name_parse(val, GIDENT | GFULLEXTRA),
+                     mx_EACM_STRICT, NIL));
          }
       }else if((val = n_header_get_field(linebuf, "reply-to", NIL)) != NIL){
          ++seenfields;
          hq->h_reply_to = cat(hq->h_reply_to,
-               checkaddrs(lextract(val, GEXTRA | GFULL),
-                  EACM_STRICT | EACM_NONAME, NIL));
+               mx_namelist_check(mx_name_parse(val, GIDENT),
+                  mx_EACM_STRICT | mx_EACM_NONAME, NIL));
       }else if((val = n_header_get_field(linebuf, "sender", NULL)) != NULL){
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
-            hq->h_sender = checkaddrs(n_extract_single(val,
-                  GEXTRA | GFULL | GFULLEXTRA), EACM_STRICT, NULL);
+            hq->h_sender = mx_namelist_check(mx_name_parse_as_one(val,
+                  GIDENT | GFULLEXTRA), mx_EACM_STRICT, NIL);
          } else
             goto jebadhead;
       }else if((val = n_header_get_field(linebuf, "subject", NULL)) != NULL){
@@ -1630,34 +882,40 @@ jeseek:
       }
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
-      else if((val = n_header_get_field(linebuf, "message-id", NULL)) != NULL){
+      else if((val = n_header_get_field(linebuf, "message-id", NIL)) != NIL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
-            np = checkaddrs(lextract(val, GREF | GNOT_A_LIST),
-                  /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-                  NULL);
-            if (np == NULL || np->n_flink != NULL)
+            np = mx_name_parse(val, GREF);
+            if(np == NIL || np->n_flink != NIL)
+               goto jebadhead;
+            np = mx_namelist_check(np,
+                  (/*mx_EACM_STRICT | TODO '/' valid!! */ mx_EACM_NOLOG |
+                   mx_EACM_NONAME), NIL);
+            if(np == NIL)
                goto jebadhead;
             ++seenfields;
             hq->h_message_id = np;
          }else
             goto jebadhead;
-      }else if((val = n_header_get_field(linebuf, "in-reply-to", NULL)
-            ) != NULL){
+      }else if((val = n_header_get_field(linebuf, "in-reply-to", NIL)) != NIL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
-            np = checkaddrs(lextract(val, GREF),
-                  /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-                  NULL);
-            ++seenfields;
+            np = mx_name_parse(val, GREF);
+            if(np != NIL && np->n_flink != NIL)
+               np = NIL;
+            if(np != NIL)
+               np = mx_namelist_check(np,
+                     (/*mx_EACM_STRICT| TODO '/' valid!*/ mx_EACM_NOLOG |
+                      mx_EACM_NONAME), NIL);
+            if(np != NIL)
+               ++seenfields;
             hq->h_in_reply_to = np;
 
             /* Break thread if In-Reply-To: has been modified */
             if((clear_ref = (np == NIL)) || (hp->h_in_reply_to != NIL &&
-                  su_cs_cmp_case(hp->h_in_reply_to->n_fullname,
-                     np->n_fullname))){
+                  su_cs_cmp_case(hp->h_in_reply_to->n_name, np->n_name))){
                clear_ref = TRU1;
 
                /* Create thread of only replied-to message if it is - */
-               if(np != NIL && !su_cs_cmp(np->n_fullname, n_hy)){
+               if(np != NIL && !su_cs_cmp(np->n_name, n_hy)){
                   clear_ref = TRUM1;
                   hq->h_in_reply_to = hp->h_in_reply_to;
                }
@@ -1669,9 +927,10 @@ jeseek:
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             /* TODO Limit number of references TODO better on parser side */
-            hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
-                  /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
-                  NULL));
+            hq->h_ref = cat(hq->h_ref,
+                  mx_namelist_check(mx_name_parse(val, GREF),
+                     (/*mx_EACM_STRICT | TODO '/' valid!! */ mx_EACM_NOLOG |
+                     mx_EACM_NONAME), NIL));
          }else
             goto jebadhead;
       }
@@ -1680,10 +939,10 @@ jeseek:
                ) != NULL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
-            hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val,
-                  GEXTRA | GFULL),
-                  /*EACM_STRICT | TODO '/' valid! | EACM_NOLOG | */EACM_NONAME,
-                  checkaddr_err_or_null));
+            hq->h_mft = cat(hq->h_mft,
+                  mx_namelist_check(mx_name_parse(val, GIDENT),
+                     (/*mx_EACM_STRICT | TODO '/' valid! | mx_EACM_NOLOG | */
+                     mx_EACM_NONAME), checkaddr_err_or_null));
          }else
             goto jebadhead;
       }else if((hef & n_HEADER_EXTRACT_COMPOSE_MODE) &&
@@ -1764,8 +1023,8 @@ jebadhead:
             hp->h_from = n_poption_arg_r;
          else if((hef & n_HEADER_EXTRACT_FULL) &&
                hp->h_from->n_flink != NULL && hp->h_sender == NULL)
-            hp->h_sender = n_extract_single(ok_vlook(sender),
-                  GEXTRA | GFULL | GFULLEXTRA);
+            hp->h_sender = mx_name_parse_as_one(ok_vlook(sender),
+                  GIDENT | GFULLEXTRA);
       }
    }else if(hef & n_HEADER_EXTRACT_COMPOSE_MODE)
       n_err(_("Message header remains unchanged by template\n"));
@@ -1776,7 +1035,8 @@ jleave:
 }
 
 FL char *
-hfield_mult(char const *field, struct message *mp, int mult  su_DVL_LOC_ARGS_DECL)
+hfield_mult(char const *field, struct message *mp, int mult
+      su_DVL_LOC_ARGS_DECL)
 {
    FILE *ibuf;
    struct str hfs;
@@ -1873,765 +1133,8 @@ jleave:
    return rv;
 }
 
-FL char const *
-skip_comment(char const *cp)
-{
-   uz nesting;
-   NYD_IN;
-
-   for (nesting = 1; nesting > 0 && *cp; ++cp) {
-      switch (*cp) {
-      case '\\':
-         if (cp[1])
-            ++cp;
-         break;
-      case '(':
-         ++nesting;
-         break;
-      case ')':
-         --nesting;
-         break;
-      }
-   }
-   NYD_OU;
-   return cp;
-}
-
-FL char const *
-routeaddr(char const *name)
-{
-   char const *np, *rp = NULL;
-   NYD_IN;
-
-   for (np = name; *np; np++) {
-      switch (*np) {
-      case '(':
-         np = skip_comment(np + 1) - 1;
-         break;
-      case '"':
-         while (*np) {
-            if (*++np == '"')
-               break;
-            if (*np == '\\' && np[1])
-               np++;
-         }
-         break;
-      case '<':
-         rp = np;
-         break;
-      case '>':
-         goto jleave;
-      }
-   }
-   rp = NULL;
-jleave:
-   NYD_OU;
-   return rp;
-}
-
-FL enum expand_addr_flags
-expandaddr_to_eaf(void){ /* TODO should happen at var assignment time */
-   struct eafdesc{
-      char eafd_name[15];
-      boole eafd_is_target;
-      u32 eafd_andoff;
-      u32 eafd_or;
-   } const eafa[] = {
-      {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
-      {"fail", FAL0, EAF_NONE, EAF_FAIL},
-      {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
-      {"domaincheck\0", FAL0, EAF_NONE, EAF_DOMAINCHECK | EAF_ADDR},
-      {"nametoaddr\0", FAL0, EAF_NONE, EAF_NAMETOADDR},
-      {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
-      {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
-         {"fcc", TRU1, EAF_NONE, EAF_FCC}, /* Fcc: only */
-         {"file", TRU1, EAF_NONE, EAF_FILE | EAF_FCC}, /* Fcc: + other addr */
-         {"pipe", TRU1, EAF_NONE, EAF_PIPE}, /* TODO No Pcc: yet! */
-         {"name", TRU1, EAF_NONE, EAF_NAME},
-         {"addr", TRU1, EAF_NONE, EAF_ADDR}
-   }, *eafp;
-
-   char *buf;
-   enum expand_addr_flags rv;
-   char const *cp;
-   NYD2_IN;
-
-   if((cp = ok_vlook(expandaddr)) == NULL)
-      rv = EAF_RESTRICT_TARGETS;
-   else if(*cp == '\0')
-      rv = EAF_TARGET_MASK;
-   else{
-      rv = EAF_TARGET_MASK;
-
-      for(buf = savestr(cp); (cp = su_cs_sep_c(&buf, ',', TRU1)) != NULL;){
-         boole minus;
-
-         if((minus = (*cp == '-')) || (*cp == '+' ? (minus = TRUM1) : FAL0))
-            ++cp;
-
-         for(eafp = eafa;; ++eafp) {
-            if(eafp == &eafa[NELEM(eafa)]){
-               if(n_poption & n_PO_D_V)
-                  n_err(_("Unknown *expandaddr* value: %s\n"), cp);
-               break;
-            }else if(!su_cs_cmp_case(cp, eafp->eafd_name)){
-               if(minus){
-                  if(eafp->eafd_is_target){
-                     if(minus != TRU1)
-                        goto jandor;
-                     else
-                        rv &= ~eafp->eafd_or;
-                  }else if(n_poption & n_PO_D_V)
-                     n_err(_("- or + prefix invalid for *expandaddr* value: "
-                        "%s\n"), --cp);
-               }else{
-jandor:
-                  rv &= ~eafp->eafd_andoff;
-                  rv |= eafp->eafd_or;
-               }
-               break;
-            }else if(!su_cs_cmp_case(cp, "noalias")){ /* TODO v15 OBSOLETE */
-               n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
-               rv &= ~EAF_NAME;
-               break;
-            }else if(!su_cs_cmp_case(cp, "namehostex")){ /* TODO v15 OBSOLETE*/
-               n_OBSOLETE(_("*expandaddr*: "
-                  "weird namehostex renamed to nametoaddr, "
-                  "sorry for the inconvenience!"));
-               rv |= EAF_NAMETOADDR;
-               break;
-            }
-         }
-      }
-
-      if((rv & EAF_RESTRICT) && ((n_psonce & n_PSO_INTERACTIVE) ||
-            (n_poption & n_PO_TILDE_FLAG)))
-         rv |= EAF_TARGET_MASK;
-      else if(n_poption & n_PO_D_V){
-         if(!(rv & EAF_TARGET_MASK))
-            n_err(_("*expandaddr* does not allow any addressees\n"));
-         else if((rv & EAF_FAIL) && (rv & EAF_TARGET_MASK) == EAF_TARGET_MASK)
-            n_err(_("*expandaddr* with fail, but no restrictions to apply\n"));
-      }
-   }
-   NYD2_OU;
-   return rv;
-}
-
-FL s8
-is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
-   /* TODO This is called much too often!  Message->DOMTree->modify->..
-    * TODO I.e., [verify once before compose-mode], verify once after
-    * TODO compose-mode, store result in object */
-   char cbuf[sizeof "'\\U12340'"];
-   char const *cs;
-   int f;
-   s8 rv;
-   enum expand_addr_flags eaf;
-   NYD_IN;
-
-   eaf = expandaddr_to_eaf();
-   f = np->n_flags;
-
-   if((rv = ((f & mx_NAME_ADDRSPEC_INVALID) != 0))){
-      if(eaf & EAF_FAILINVADDR)
-         rv = -rv;
-
-      if(!(eacm & EACM_NOLOG) && !(f & mx_NAME_ADDRSPEC_ERR_EMPTY)){
-         u32 c;
-         boole ok8bit;
-         char const *fmt;
-
-         fmt = "'\\x%02X'";
-         ok8bit = TRU1;
-
-         if(f & mx_NAME_ADDRSPEC_ERR_IDNA) {
-            cs = _("Invalid domain name: %s, character %s\n");
-            fmt = "'\\U%04X'";
-            ok8bit = FAL0;
-         }else if(f & mx_NAME_ADDRSPEC_ERR_ATSEQ)
-            cs = _("%s contains invalid %s sequence\n");
-         else if(f & mx_NAME_ADDRSPEC_ERR_NAME)
-            cs = _("%s is an invalid name (alias)\n");
-         else
-            cs = _("%s contains invalid byte %s\n");
-
-         c = mx_name_flags_get_err_wc(f);
-         if(ok8bit && c >= 040 && c <= 0177)
-            snprintf(cbuf, sizeof cbuf, "'%c'", S(char,c));
-         else
-            snprintf(cbuf, sizeof cbuf, fmt, c);
-         goto jprint;
-      }
-      goto jleave;
-   }
-
-   /* *expandaddr* stuff */
-   if(!(rv = ((eacm & EACM_MODE_MASK) != EACM_NONE)))
-      goto jleave;
-
-   /* This header does not allow such targets at all (XXX >RFC 5322 parser) */
-   if((eacm & EACM_STRICT) && (f & mx_NAME_ADDRSPEC_ISFILEORPIPE)){
-      if(eaf & EAF_FAIL)
-         rv = -rv;
-      cs = _("%s%s: file or pipe addressees not allowed here\n");
-      goto j0print;
-   }
-
-   eaf |= (eacm & EAF_TARGET_MASK);
-   if(eacm & EACM_NONAME)
-      eaf &= ~EAF_NAME;
-   if(eaf & EAF_FAIL)
-      rv = -rv;
-
-   switch(f & mx_NAME_ADDRSPEC_ISMASK){
-   case mx_NAME_ADDRSPEC_ISFILE:
-      if((eaf & EAF_FILE) || ((eaf & EAF_FCC) && (np->n_type & GBCC_IS_FCC)))
-         goto jgood;
-      cs = _("%s%s: *expandaddr* does not allow file target\n");
-      break;
-   case mx_NAME_ADDRSPEC_ISPIPE:
-      if(eaf & EAF_PIPE)
-         goto jgood;
-      cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
-      break;
-   case mx_NAME_ADDRSPEC_ISNAME:
-      if((eaf & EAF_NAMETOADDR) &&
-            (!su_cs_cmp(np->n_name, ok_vlook(LOGNAME)) ||
-               getpwnam(np->n_name) != NIL)){
-         np->n_flags ^= mx_NAME_ADDRSPEC_ISADDR | mx_NAME_ADDRSPEC_ISNAME;
-         np->n_name = np->n_fullname = savecatsep(np->n_name, '@',
-               n_nodename(TRU1));
-         goto jisaddr;
-      }
-
-      if(eaf & EAF_NAME)
-         goto jgood;
-      if(!(eaf & EAF_FAIL) && (eacm & EACM_NONAME_OR_FAIL)){
-         rv = -rv;
-         cs = _("%s%s: user name (MTA alias) targets are not allowed\n");
-      }else
-         cs = _("%s%s: *expandaddr* does not allow user name target\n");
-      break;
-   default:
-   case mx_NAME_ADDRSPEC_ISADDR:
-jisaddr:
-      if(!(eaf & EAF_ADDR)){
-         cs = _("%s%s: *expandaddr* does not allow mail address target\n");
-         break;
-      }
-      if(!(eacm & EACM_DOMAINCHECK) || !(eaf & EAF_DOMAINCHECK))
-         goto jgood;
-      else{
-         char const *doms;
-
-         ASSERT(np->n_flags & mx_NAME_SKINNED);
-         /* XXX We had this info before, and threw it away.. */
-         doms = su_cs_rfind_c(np->n_name, '@');
-         ASSERT(doms != NULL);
-         ++doms;
-
-         if(!su_cs_cmp_case("localhost", doms))
-            goto jgood;
-         if(!su_cs_cmp_case(n_nodename(TRU1), doms))
-            goto jgood;
-
-         if((cs = ok_vlook(expandaddr_domaincheck)) != NULL){
-            char *cpb, *cp;
-
-            cpb = savestr(cs);
-            while((cp = su_cs_sep_c(&cpb, ',', TRU1)) != NULL)
-               if(!su_cs_cmp_case(cp, doms))
-                  goto jgood;
-         }
-      }
-      cs = _("%s%s: *expandaddr*: not \"domaincheck\" whitelisted\n");
-      break;
-   }
-
-j0print:
-   cbuf[0] = '\0';
-   if(!(eacm & EACM_NOLOG))
-jprint:
-      n_err(cs, n_shexp_quote_cp(np->n_name, TRU1), cbuf);
-   goto jleave;
-jgood:
-   rv = FAL0;
-jleave:
-   NYD_OU;
-   return rv;
-}
-
-FL char *
-skin(char const *name)
-{
-   struct n_addrguts ag;
-   char *rv;
-   NYD_IN;
-
-   if(name != NULL){
-      /*name =*/ n_addrspec_with_guts(&ag, name, GSKIN);
-      rv = ag.ag_skinned;
-      if(!(ag.ag_n_flags & mx_NAME_NAME_SALLOC))
-         rv = savestrbuf(rv, ag.ag_slen);
-   }else
-      rv = NULL;
-   NYD_OU;
-   return rv;
-}
-
-/* TODO addrspec_with_guts: RFC 5322
- * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC. BAD BAD BAD!!! */
-FL char const *
-n_addrspec_with_guts(struct n_addrguts *agp, char const *name, u32 gfield){
-   char const *cp;
-   char *cp2, *bufend, *nbuf, c;
-   enum{
-      a_NONE,
-      a_DOSKIN = 1u<<0,
-      a_NOLIST = 1u<<1,
-      a_QUENCO = 1u<<2,
-
-      a_GOTLT = 1u<<3,
-      a_GOTADDR = 1u<<4,
-      a_GOTSPACE = 1u<<5,
-      a_LASTSP = 1u<<6,
-      a_IDX0 = 1u<<7
-   } flags;
-   NYD_IN;
-
-jredo_uri:
-   su_mem_set(agp, 0, sizeof *agp);
-
-   if((agp->ag_input = name) == NULL || (agp->ag_ilen = su_cs_len(name)) == 0){
-      agp->ag_skinned = n_UNCONST(n_empty); /* ok: mx_NAME_SALLOC is not set */
-      agp->ag_slen = 0;
-      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
-            mx_NAME_ADDRSPEC_ERR_EMPTY, '\0');
-      goto jleave;
-   }
-
-   flags = a_NONE;
-   if(gfield & (GFULL | GSKIN | GREF))
-      flags |= a_DOSKIN;
-   if(gfield & GNOT_A_LIST)
-      flags |= a_NOLIST;
-   if(gfield & GQUOTE_ENCLOSED_OK){
-      gfield ^= GQUOTE_ENCLOSED_OK;
-      flags |= a_QUENCO;
-   }
-
-   if(!(flags & a_DOSKIN)){
-      /*agp->ag_iaddr_start = 0;*/
-      agp->ag_iaddr_aend = agp->ag_ilen;
-      agp->ag_skinned = n_UNCONST(name); /* (mx_NAME_SALLOC not set) */
-      agp->ag_slen = agp->ag_ilen;
-      agp->ag_n_flags = mx_NAME_SKINNED;
-      goto jcheck;
-   }
-
-   /* We will skin that thing */
-   nbuf = n_lofi_alloc(agp->ag_ilen +1);
-   /*agp->ag_iaddr_start = 0;*/
-   cp2 = bufend = nbuf;
-
-   /* TODO This is complete crap and should use a token parser.
-    * TODO It can be fooled and is too stupid to find an email address in
-    * TODO something valid unless it contains <>.  oh my */
-   for(cp = name++; (c = *cp++) != '\0';){
-      switch (c) {
-      case '(':
-         cp = skip_comment(cp);
-         flags &= ~a_LASTSP;
-         break;
-      case '"':
-         /* Start of a "quoted-string".  Copy it in its entirety */
-         /* XXX RFC: quotes are "semantically invisible"
-          * XXX But it was explicitly added (Changelog.Heirloom,
-          * XXX [9.23] released 11/15/00, "Do not remove quotes
-          * XXX when skinning names"?  No more info.. */
-         *cp2++ = c;
-         ASSERT(!(flags & a_IDX0));
-         if((flags & a_QUENCO) && cp == name)
-            flags |= a_IDX0;
-         while ((c = *cp) != '\0') { /* TODO improve */
-            ++cp;
-            if (c == '"') {
-               *cp2++ = c;
-               /* Special case: if allowed so and anything is placed in quotes
-                * then throw away the quotes and start all over again */
-               if((flags & a_IDX0) && *cp == '\0'){
-                  name = savestrbuf(name, P2UZ(--cp - name));
-                  goto jredo_uri;
-               }
-               break;
-            }
-            if (c != '\\')
-               *cp2++ = c;
-            else if ((c = *cp) != '\0') {
-               *cp2++ = c;
-               ++cp;
-            }
-         }
-         flags &= ~(a_LASTSP | a_IDX0);
-         break;
-      case ' ':
-      case '\t':
-         if((flags & (a_GOTADDR | a_GOTSPACE)) == a_GOTADDR){
-            flags |= a_GOTSPACE;
-            agp->ag_iaddr_aend = P2UZ(cp - name);
-         }
-         if (cp[0] == 'a' && cp[1] == 't' && su_cs_is_blank(cp[2]))
-            cp += 3, *cp2++ = '@';
-         else if (cp[0] == '@' && su_cs_is_blank(cp[1]))
-            cp += 2, *cp2++ = '@';
-         else
-            flags |= a_LASTSP;
-         break;
-      case '<':
-         agp->ag_iaddr_start = P2UZ(cp - (name - 1));
-         cp2 = bufend;
-         flags &= ~(a_GOTSPACE | a_LASTSP);
-         flags |= a_GOTLT | a_GOTADDR;
-         break;
-      case '>':
-         if(flags & a_GOTLT){
-            /* (_addrspec_check() verifies these later!) */
-            flags &= ~(a_GOTLT | a_LASTSP);
-            agp->ag_iaddr_aend = P2UZ(cp - name);
-
-            /* Skip over the entire remaining field */
-            while((c = *cp) != '\0'){
-               if(c == ',' && !(flags & a_NOLIST))
-                  break;
-               ++cp;
-               if (c == '(')
-                  cp = skip_comment(cp);
-               else if (c == '"')
-                  while ((c = *cp) != '\0') {
-                     ++cp;
-                     if (c == '"')
-                        break;
-                     if (c == '\\' && *cp != '\0')
-                        ++cp;
-                  }
-            }
-            break;
-         }
-         /* FALLTHRU */
-      default:
-         if(flags & a_LASTSP){
-            flags &= ~a_LASTSP;
-            if(flags & a_GOTADDR)
-               *cp2++ = ' ';
-         }
-         *cp2++ = c;
-         /* This character is forbidden here, but it may nonetheless be
-          * present: ensure we turn this into something valid!  (E.g., if the
-          * next character would be a "..) */
-         if(c == '\\' && *cp != '\0')
-            *cp2++ = *cp++;
-         if(c == ',' && !(flags & a_NOLIST)){
-            if(!(flags & a_GOTLT)){
-               *cp2++ = ' ';
-               for(; su_cs_is_blank(*cp); ++cp)
-                  ;
-               flags &= ~a_LASTSP;
-               bufend = cp2;
-            }
-         }else if(!(flags & a_GOTADDR)){
-            flags |= a_GOTADDR;
-            agp->ag_iaddr_start = P2UZ(cp - name);
-         }
-      }
-   }
-   agp->ag_slen = P2UZ(cp2 - nbuf);
-
-   if (agp->ag_iaddr_aend == 0)
-      agp->ag_iaddr_aend = agp->ag_ilen;
-   /* Misses > */
-   else if (agp->ag_iaddr_aend < agp->ag_iaddr_start) {
-      cp2 = n_autorec_alloc(agp->ag_ilen + 1 +1);
-      su_mem_copy(cp2, agp->ag_input, agp->ag_ilen);
-      agp->ag_iaddr_aend = agp->ag_ilen;
-      cp2[agp->ag_ilen++] = '>';
-      cp2[agp->ag_ilen] = '\0';
-      agp->ag_input = cp2;
-   }
-
-   agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
-   n_lofi_free(nbuf);
-   agp->ag_n_flags = mx_NAME_NAME_SALLOC | mx_NAME_SKINNED;
-jcheck:
-   if(a_header_addrspec_check(agp, ((flags & a_DOSKIN) != 0),
-         ((flags & GNOT_A_LIST) != 0)) <= FAL0)
-      name = NULL;
-   else
-      name = agp->ag_input;
-jleave:
-   NYD_OU;
-   return name;
-}
-
-FL int
-c_addrcodec(void *vp){
-   struct n_string s_b, *s;
-   u8 mode;
-   char const *cp;
-   struct mx_cmd_arg *cap;
-   struct mx_cmd_arg_ctx *cacp;
-   NYD_IN;
-
-   n_pstate_err_no = su_ERR_NONE;
-   s = n_string_creat_auto(&s_b);
-   cacp = vp;
-   cap = cacp->cac_arg;
-   cp = cap->ca_arg.ca_str.s;
-   cap = cap->ca_next;
-
-   /* C99 */{
-      uz i;
-
-      i = su_cs_len(cap->ca_arg.ca_str.s);
-      if(i <= UZ_MAX / 4)
-         i <<= 1;
-      s = n_string_reserve(s, i);
-   }
-
-   for(mode = 0; *cp == '+';){
-      ++cp;
-      if(++mode == 3)
-         break;
-   }
-
-   if(su_cs_starts_with_case("encode", cp)){
-      struct mx_name *np;
-      char c;
-
-      cp = cap->ca_arg.ca_str.s;
-
-      while((c = *cp++) != '\0'){
-         if(((c == '(' || c == ')') && mode < 1) || (c == '"' && mode < 2) ||
-               (c == '\\' && mode < 3))
-            s = n_string_push_c(s, '\\');
-         s = n_string_push_c(s, c);
-      }
-
-      if((np = n_extract_single(cp = n_string_cp(s), GTO | GFULL)) != NIL &&
-            (np->n_flags & mx_NAME_ADDRSPEC_ISADDR))
-         cp = np->n_fullname;
-      else{
-         n_pstate_err_no = su_ERR_INVAL;
-         vp = NIL;
-      }
-   }else if(mode == 0){
-      if(su_cs_starts_with_case("decode", cp)){
-         char c;
-
-         cp = cap->ca_arg.ca_str.s;
-
-         while((c = *cp++) != '\0'){
-            switch(c){
-            case '(':
-               s = n_string_push_c(s, '(');
-               /* C99 */{
-                  char const *cpx;
-
-                  cpx = skip_comment(cp);
-                  if(--cpx > cp)
-                     s = n_string_push_buf(s, cp, P2UZ(cpx - cp));
-                  s = n_string_push_c(s, ')');
-                  cp = ++cpx;
-               }
-               break;
-            case '"':
-               while(*cp != '\0'){
-                  if((c = *cp++) == '"')
-                     break;
-                  if(c == '\\' && (c = *cp) != '\0')
-                     ++cp;
-                  s = n_string_push_c(s, c);
-               }
-               break;
-            default:
-               if(c == '\\' && (c = *cp++) == '\0')
-                  break;
-               s = n_string_push_c(s, c);
-               break;
-            }
-         }
-         cp = n_string_cp(s);
-      }else if(su_cs_starts_with_case("skin", cp) ||
-            (mode = 1, su_cs_starts_with_case("skinlist", cp))){
-         struct mx_name *np;
-
-         cp = cap->ca_arg.ca_str.s;
-
-         if((np = n_extract_single(cp, GTO | GFULL)) != NIL &&
-               (np->n_flags & mx_NAME_ADDRSPEC_ISADDR)){
-            s8 mltype;
-
-            cp = np->n_name;
-
-            if(mode == 1 &&
-                  (mltype = mx_mlist_query(cp, FAL0)) != mx_MLIST_OTHER &&
-                  mltype != mx_MLIST_POSSIBLY)
-               n_pstate_err_no = su_ERR_EXIST;
-         }else{
-            n_pstate_err_no = su_ERR_INVAL;
-            vp = NIL;
-         }
-      }else
-         goto jesynopsis;
-   }else
-      goto jesynopsis;
-
-   if(cacp->cac_vput == NIL){
-      if(fprintf(n_stdout, "%s\n", cp) < 0){
-         n_pstate_err_no = su_err_by_errno();
-         vp = NIL;
-      }
-   }else if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
-      n_pstate_err_no = su_ERR_NOTSUP;
-      vp = NIL;
-   }
-
-jleave:
-   NYD_OU;
-   return (vp != NIL ? su_EX_OK : su_EX_ERR);
-
-jesynopsis:
-   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("addrcodec"), NIL);
-   n_pstate_err_no = su_ERR_INVAL;
-   vp = NIL;
-   goto jleave;
-}
-
-FL char *
-realname(char const *name)
-{
-   char const *cp, *cq, *cstart = NULL, *cend = NULL;
-   char *rname, *rp;
-   struct str in, out;
-   int quoted, good, nogood;
-   NYD_IN;
-
-   if ((cp = n_UNCONST(name)) == NULL)
-      goto jleave;
-   for (; *cp != '\0'; ++cp) {
-      switch (*cp) {
-      case '(':
-         if (cstart != NULL) {
-            /* More than one comment in address, doesn't make sense to display
-             * it without context.  Return the entire field */
-            cp = mx_mime_fromaddr(name);
-            goto jleave;
-         }
-         cstart = cp++;
-         cp = skip_comment(cp);
-         cend = cp--;
-         if (cend <= cstart)
-            cend = cstart = NULL;
-         break;
-      case '"':
-         while (*cp) {
-            if (*++cp == '"')
-               break;
-            if (*cp == '\\' && cp[1])
-               ++cp;
-         }
-         break;
-      case '<':
-         if (cp > name) {
-            cstart = name;
-            cend = cp;
-         }
-         break;
-      case ',':
-         /* More than one address. Just use the first one */
-         goto jbrk;
-      }
-   }
-
-jbrk:
-   if (cstart == NULL) {
-      if (*name == '<') {
-         /* If name contains only a route-addr, the surrounding angle brackets
-          * don't serve any useful purpose when displaying, so remove */
-         cp = mx_makeprint_cp(skin(name));
-      } else
-         cp = mx_mime_fromaddr(name);
-      goto jleave;
-   }
-
-   /* Strip quotes. Note that quotes that appear within a MIME encoded word are
-    * not stripped. The idea is to strip only syntactical relevant things (but
-    * this is not necessarily the most sensible way in practice) */
-   rp = rname = su_LOFI_ALLOC(P2UZ(cend - cstart +1));
-
-   quoted = 0;
-   for (cp = cstart; cp < cend; ++cp) {
-      if (*cp == '(' && !quoted) {
-         cq = skip_comment(++cp);
-         if (PCMP(--cq, >, cend))
-            cq = cend;
-         while (cp < cq) {
-            if (*cp == '\\' && PCMP(cp + 1, <, cq))
-               ++cp;
-            *rp++ = *cp++;
-         }
-      } else if (*cp == '\\' && PCMP(cp + 1, <, cend))
-         *rp++ = *++cp;
-      else if (*cp == '"') {
-         quoted = !quoted;
-         continue;
-      } else
-         *rp++ = *cp;
-   }
-   *rp = '\0';
-   in.s = rname;
-   in.l = rp - rname;
-
-   if(!mx_mime_display_from_header(&in, &out,
-         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
-      cp = NIL;
-      goto jleave;
-   }
-   rname = savestr(out.s);
-   su_FREE(out.s);
-
-   su_LOFI_FREE(rname);
-
-   while (su_cs_is_blank(*rname))
-      ++rname;
-   for (rp = rname; *rp != '\0'; ++rp)
-      ;
-   while (PCMP(--rp, >=, rname) && su_cs_is_blank(*rp))
-      *rp = '\0';
-   if (rp == rname) {
-      cp = mx_mime_fromaddr(name);
-      goto jleave;
-   }
-
-   /* mime_fromhdr() has converted all nonprintable characters to question
-    * marks now. These and blanks are considered uninteresting; if the
-    * displayed part of the real name contains more than 25% of them, it is
-    * probably better to display the plain email address instead */
-   good = 0;
-   nogood = 0;
-   for (rp = rname; *rp != '\0' && PCMP(rp, <, rname + 20); ++rp)
-      if (*rp == '?' || su_cs_is_blank(*rp))
-         ++nogood;
-      else
-         ++good;
-   cp = (good * 3 < nogood) ? mx_makeprint_cp(skin(name)) : rname;
-jleave:
-   NYD_OU;
-   return n_UNCONST(cp);
-}
-
 FL struct mx_name *
-mx_header_list_post_of(struct message *mp){
+mx_header_list_post_of(struct message *mp){ /* FIXME NOW A SUPER HACK */
    char *cp;
    struct mx_name *rv;
    NYD_IN;
@@ -2640,26 +1143,16 @@ mx_header_list_post_of(struct message *mp){
 
    /* RFC 2369 says this is a potential list, in preference order */
    if((cp = hfield1("list-post", mp)) != NIL &&
-         (rv = lextract(cp, GEXTRA)) != NIL){
+         (rv = mx_name_parse(cp, GSPECIAL | GTRASH_HACK)) != NIL){
       do{
-         uz i;
-
-         if(*(cp = rv->n_name) == '<' && cp[i = su_cs_len(cp) -1] == '>'){
-            ++cp;
-            cp[--i] = '\0';
-            if((cp = mx_url_mailto_to_address(cp)) != NIL){
-               rv = n_extract_single(cp, GEXTRA);
-
-               if(rv != NIL && is_addr_invalid(rv, EACM_STRICT)){
-                  if(n_poption & n_PO_D_V)
-                     n_err(_("Invalid List-Post: header: %s\n"),
-                        n_shexp_quote_cp(cp, FAL0));
-               }
-               break;
-            }
-         }else if(!su_cs_cmp_case(rv->n_name, "no")){
+         if(!su_cs_cmp_case(rv->n_name, "no")){
             rv = R(struct mx_name*,-1);
             break;
+         }else if((cp = mx_url_mailto_to_address(rv->n_name)) != NIL){
+            rv = mx_name_parse_as_one(cp, GSPECIAL | GTRASH_HACK);
+            if(rv != NIL && !mx_name_is_invalid(rv, (mx_EACM_STRICT |
+                     ((n_poption & n_PO_D_V) ? 0 : mx_EACM_NOLOG))))
+               break;
          }
       }while((rv = rv->n_flink) != NIL);
    }
@@ -2669,24 +1162,19 @@ mx_header_list_post_of(struct message *mp){
 }
 
 FL struct mx_name *
-mx_header_sender_of(struct message *mp, u32 gf){
+mx_header_sender_of(struct message *mp){
    struct mx_name *rv;
    char const *cp;
-   NYD_IN;
-
-   if(gf == 0)
-      gf = GFULL | GSKIN;
+   NYD2_IN;
 
    if((cp = hfield1("from", mp)) != NIL && *cp != '\0' &&
-         (rv = lextract(cp, gf)) != NIL && rv->n_flink == NIL){
-      ;
+         (rv = mx_name_parse(cp, GIDENT)) != NIL && rv->n_flink == NIL){
    }else if((cp = hfield1("sender", mp)) != NIL && *cp != '\0' &&
-         (rv = lextract(cp, gf)) != NIL)
-      ;
-   else
+         (rv = mx_name_parse(cp, GIDENT)) != NIL){
+   }else
       rv = NIL;
 
-   NYD_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -2696,7 +1184,7 @@ n_header_senderfield_of(struct message *mp){
    struct mx_name *np;
    NYD_IN;
 
-   if((np = mx_header_sender_of(mp, GFULL | GSKIN)) != NIL){
+   if((np = mx_header_sender_of(mp)) != NIL){
       cp = np->n_fullname;
       goto jleave;
    }
@@ -2985,40 +1473,28 @@ jleave:
    return UNCONST(char*,subp);
 } /* }}} */
 
-FL int
-msgidcmp(char const *s1, char const *s2)
-{
-   int q1 = 0, q2 = 0, c1, c2;
-   NYD_IN;
-
-   while(*s1 == '<')
-      ++s1;
-   while(*s2 == '<')
-      ++s2;
-
-   do {
-      c1 = msgidnextc(&s1, &q1);
-      c2 = msgidnextc(&s2, &q2);
-      if (c1 != c2)
-         break;
-   } while (c1 && c2);
-   NYD_OU;
-   return c1 - c2;
-}
-
 FL char const *
 fakefrom(struct message *mp){
+   char const * const a_h[3] = {"return-path", "from", "author"}, * const *hpp;
    char const *name;
    NYD2_IN;
 
-   if(((name = skin(hfield1("return-path", mp))) == NIL || *name == '\0' ) &&
-         ((name = skin(hfield1("from", mp))) == NIL || *name == '\0') &&
-         ((name = skin(hfield1("author", mp))) == NIL || *name == '\0'))
-      /* XXX MAILER-DAEMON is what an old MBOX manual page says.
-       * RFC 4155 however requires a RFC 5322 (2822) conforming
-       * "addr-spec", but we simply can't provide that */
-      name = "MAILER-DAEMON";
+   for(hpp = a_h; hpp < &a_h[NELEM(a_h)]; ++hpp){
+      name = hfield1(*hpp, mp);
+      if(name != NIL && *name != '\0'){
+         struct mx_name *np;
 
+         np = mx_name_parse(name, GIDENT);
+         if(np != NIL && np->n_flink == NIL){
+            name = np->n_name;
+            goto jleave;
+         }
+      }
+   }
+
+   name = "MAILER-DAEMON";
+
+jleave:
    NYD2_OU;
    return name;
 }
@@ -3095,16 +1571,16 @@ mx_header_rfctime(char const *date) /* TODO su_idec_ return tests */
 
    cp = date;
 
-   if ((cp = nexttoken(cp)) == NULL)
+   if((cp = a_header_date_token(cp)) == NIL)
       goto jinvalid;
-   if (su_cs_is_alpha(cp[0]) && su_cs_is_alpha(cp[1]) &&
-         su_cs_is_alpha(cp[2]) && cp[3] == ',') {
-      if ((cp = nexttoken(&cp[4])) == NULL)
+   if(su_cs_is_alpha(cp[0]) && su_cs_is_alpha(cp[1]) &&
+         su_cs_is_alpha(cp[2]) && cp[3] == ','){
+      if((cp = a_header_date_token(&cp[4])) == NIL)
          goto jinvalid;
    }
    su_idec_s32_cp(&day, cp, 10, &x);
 
-   if((cp = nexttoken(x)) == NIL)
+   if((cp = a_header_date_token(x)) == NIL)
       goto jinvalid;
    for(i = 0;;){
       if(!su_cs_cmp_n(cp, su_time_month_names_abbrev[i],
@@ -3117,7 +1593,7 @@ mx_header_rfctime(char const *date) /* TODO su_idec_ return tests */
 
    if(!su_cs_is_space(cp[su_TIME_MONTH_NAMES_ABBREV_LEN]))
       goto jinvalid;
-   if((cp = nexttoken(&cp[su_TIME_MONTH_NAMES_ABBREV_LEN + 1])) == NIL)
+   if((cp = a_header_date_token(&cp[su_TIME_MONTH_NAMES_ABBREV_LEN+1])) == NIL)
       goto jinvalid;
    /* RFC 5322, 4.3:
     *  Where a two or three digit year occurs in a date, the year is to be
@@ -3132,7 +1608,7 @@ mx_header_rfctime(char const *date) /* TODO su_idec_ return tests */
       year += 2000;
    else if (i == 3 || (i == 2 && year >= 50 && year <= 99))
       year += 1900;
-   if ((cp = nexttoken(x)) == NULL)
+   if ((cp = a_header_date_token(x)) == NULL)
       goto jinvalid;
    su_idec_s32_cp(&hour, cp, 10, &x);
    if (*x != ':')
@@ -3153,7 +1629,7 @@ mx_header_rfctime(char const *date) /* TODO su_idec_ return tests */
          goto jinvalid;
       t = epsecs;
    }
-   if ((cp = nexttoken(x)) != NULL) {
+   if ((cp = a_header_date_token(x)) != NULL) {
       char buf[3];
       int sign = 1;
 
@@ -3208,7 +1684,7 @@ substdate(struct message *m)
 
    m->m_time = 0;
    if ((cp = hfield1("received", m)) != NULL) {
-      while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
+      while ((cp = a_header_date_token(cp)) != NULL && *cp != ';') {
          do
             ++cp;
          while (su_cs_is_alnum(*cp));
@@ -3341,11 +1817,11 @@ n_header_textual_sender_info(struct message *mp, struct header *hp_or_nil,
              (np = hp_or_nil->h_mailx_orig_from) != NIL ||
              (np = hp_or_nil->h_sender) != NIL ||
              (np = hp_or_nil->h_from) != NIL)) ||
-         (np = lextract(n_header_senderfield_of(mp), GFULL | GSKIN)) != NIL){
+         (np = mx_name_parse(n_header_senderfield_of(mp), GIDENT)) != NIL){
       if(is_to_or_null != NULL && ok_blook(showto) &&
-            np->n_flink == NULL && mx_name_is_metoo(np->n_name, TRU1)){
-         if((cp = hfield1("to", mp)) != NULL &&
-               (np2 = lextract(cp, GFULL | GSKIN)) != NULL){
+            np->n_flink == NULL && mx_name_is_metoo_cp(np->n_name, TRU1)){
+         if((cp = hfield1("to", mp)) != NIL &&
+               (np2 = mx_name_parse(cp, GTO)) != NIL){
             np = np2;
             isto = TRU1;
          }
@@ -3372,7 +1848,7 @@ n_header_textual_sender_info(struct message *mp, struct header *hp_or_nil,
                }
             }
 
-            if((cp = realname(np2->n_fullname)) == NULL || *cp == '\0')
+            if((cp = mx_name_real_cp(np2->n_fullname)) == NULL || *cp == '\0')
                cp = np2->n_name;
             sp1 = n_string_push_cp(sp1, cp);
             if(sp2 != NULL)
@@ -3393,7 +1869,7 @@ n_header_textual_sender_info(struct message *mp, struct header *hp_or_nil,
       }
 
       if((b = (!b && cumulation_or_null != NULL)) || addr_or_null != NULL){
-         cp = detract(np, GCOMMA | GNAMEONLY);
+         cp = mx_namelist_detract(np, GCOMMA | GNAMEONLY);
          if(b)
             *cumulation_or_null = cp;
          if(addr_or_null != NULL)
@@ -3434,7 +1910,7 @@ setup_from_and_sender(struct header *hp){
          ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NIL)){
       ;
    }else if((addr = myaddrs(hp)) != NIL)
-      np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
+      np = mx_name_parse(addr, GIDENT | GFULLEXTRA);
 
    hp->h_from = np;
 
@@ -3443,9 +1919,8 @@ setup_from_and_sender(struct header *hp){
     *  and the author and transmitter are identical, the "Sender:" field SHOULD
     *  NOT be used.  Otherwise, both fields SHOULD appear. */
    if((np = hp->h_sender) != NIL){
-      ;
    }else if((addr = ok_vlook(sender)) != NIL)
-      np = n_extract_single(addr, GEXTRA | GFULL | GFULLEXTRA);
+      np = mx_name_parse_as_one(addr, GIDENT | GFULLEXTRA);
 
    if(np != NIL && hp->h_from != NIL && hp->h_from->n_flink == NIL &&
          mx_name_is_same_address(hp->h_from, np))
@@ -3490,18 +1965,25 @@ jleave:
 
 #ifdef mx_HAVE_XTLS
 FL char *
-getsender(struct message *mp)
-{
+getsender(struct message *mp){
    char *cp;
    struct mx_name *np;
-   NYD_IN;
+   NYD2_IN;
 
-   if ((cp = hfield1("from", mp)) == NULL ||
-         (np = lextract(cp, GEXTRA | GSKIN)) == NULL)
-      cp = NULL;
-   else
-      cp = (np->n_flink != NULL) ? skin(hfield1("sender", mp)) : np->n_name;
-   NYD_OU;
+   if((cp = hfield1("from", mp)) == NIL ||
+         (np = mx_name_parse(cp, GIDENT)) == NIL)
+      cp = NIL;
+   else if(np->n_flink == NIL)
+      cp = np->n_name;
+   else{
+      cp = hfield1("sender", mp);
+      if(cp != NIL){
+         np = mx_name_parse(cp, GIDENT);
+         cp = (np != NIL && np->n_flink == NIL) ? np->n_name : NIL;
+      }
+   }
+
+   NYD2_OU;
    return cp;
 }
 #endif
@@ -3535,31 +2017,31 @@ grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
    errs = 0;
    comma = (ok_blook(bsdcompat) || ok_blook(bsdmsgs)) ? 0 : GCOMMA;
 
-   if (gflags & GTO)
-      hp->h_to = grab_names(gif, "To: ", hp->h_to, comma, GTO | GFULL);
-   if (subjfirst && (gflags & GSUBJECT))
+   if(gflags & GTO)
+      hp->h_to = mx_namelist_grab(gif, "To: ", hp->h_to, comma, GTO, FAL0);
+   if(subjfirst && (gflags & GSUBJECT))
       hp->h_subject = mx_go_input_cp(gif, "Subject: ", hp->h_subject);
-   if (gflags & GCC)
-      hp->h_cc = grab_names(gif, "Cc: ", hp->h_cc, comma, GCC | GFULL);
-   if (gflags & GBCC)
-      hp->h_bcc = grab_names(gif, "Bcc: ", hp->h_bcc, comma, GBCC | GFULL);
+   if(gflags & GCC)
+      hp->h_cc = mx_namelist_grab(gif, "Cc: ", hp->h_cc, comma, GCC, FAL0);
+   if(gflags & GBCC)
+      hp->h_bcc = mx_namelist_grab(gif, "Bcc: ", hp->h_bcc, comma, GBCC, FAL0);
 
-   if (gflags & GEXTRA) {
-      if (hp->h_from == NULL)
-         hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
-      hp->h_from = grab_names(gif, "From: ", hp->h_from, comma,
-            GEXTRA | GFULL | GFULLEXTRA);
+   if(gflags & GIDENT){
+      if(hp->h_from == NIL)
+         hp->h_from = mx_name_parse(myaddrs(hp), GIDENT | GFULLEXTRA);
+      hp->h_from = mx_namelist_grab(gif, "From: ", hp->h_from, comma,
+            GIDENT | GFULLEXTRA, FAL0);
       if(hp->h_reply_to == NIL && (cp = ok_vlook(reply_to)) != NIL)
-         hp->h_reply_to = lextract(cp, GEXTRA | GFULL);
-      hp->h_reply_to = grab_names(gif, "Reply-To: ", hp->h_reply_to, comma,
-            GEXTRA | GFULL);
+         hp->h_reply_to = mx_name_parse(cp, GIDENT);
+      hp->h_reply_to = mx_namelist_grab(gif, "Reply-To: ", hp->h_reply_to,
+            comma, GIDENT, FAL0);
       if(hp->h_sender == NIL && (cp = ok_vlook(sender)) != NIL)
-         hp->h_sender = n_extract_single(cp, GEXTRA | GFULL);
-      hp->h_sender = grab_names(gif, "Sender: ", hp->h_sender, comma,
-            GEXTRA | GFULL | GNOT_A_LIST);
+         hp->h_sender = mx_name_parse_as_one(cp, GIDENT);
+      hp->h_sender = mx_namelist_grab(gif, "Sender: ", hp->h_sender, comma,
+            GIDENT, TRU1);
    }
 
-   if (!subjfirst && (gflags & GSUBJECT))
+   if(!subjfirst && (gflags & GSUBJECT))
       hp->h_subject = mx_go_input_cp(gif, "Subject: ", hp->h_subject);
 
    NYD_OU;
@@ -3686,7 +2168,7 @@ n_header_match(struct message *mp, struct mx_srch_ctx const *scp){
        * TODO at some later time we should ignore and log efforts to search
        * TODO a skinned address list if we know the header has none such */
       if(scp->sc_skin){
-         if((np = lextract(in.s, GSKIN)) == NULL)
+         if((np = mx_name_parse(in.s, 0)) == NIL)
             continue;
          out.s = np->n_name;
       }else{

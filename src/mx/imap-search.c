@@ -163,7 +163,7 @@ static char *        _imap_unquotestr(char const *s);
 static boole        matchfield(struct message *m, char const *field,
                         void const *what);
 static int           matchenvelope(struct message *m, char const *field,
-                        void const *what);
+                        enum gfield gf, void const *what);
 static char *        mkenvelope(struct mx_name *np);
 static char const *  around(char const *cp);
 
@@ -513,7 +513,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       rv = ((m->m_flag & MANSWERED) != 0);
       break;
    case ITBCC:
-      rv = matchenvelope(m, "bcc", n->n_v);
+      rv = matchenvelope(m, "bcc", GBCC, n->n_v);
       break;
    case ITBEFORE:
       rv = UCMP(z, m->m_time, <, n->n_n);
@@ -525,7 +525,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       rv = mx_message_match(m, &sctx, FAL0);
       break;
    case ITCC:
-      rv = matchenvelope(m, "cc", n->n_v);
+      rv = matchenvelope(m, "cc", GCC, n->n_v);
       break;
    case ITDELETED:
       rv = ((m->m_flag & MDELETED) != 0);
@@ -537,7 +537,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       rv = ((m->m_flag & MFLAGGED) != 0);
       break;
    case ITFROM:
-      rv = matchenvelope(m, "from", n->n_v);
+      rv = matchenvelope(m, "from", GIDENT, n->n_v);
       break;
    case ITHEADER:
       rv = matchfield(m, n->n_v, n->n_w);
@@ -596,7 +596,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       rv = mx_message_match(m, &sctx, TRU1);
       break;
    case ITTO:
-      rv = matchenvelope(m, "to", n->n_v);
+      rv = matchenvelope(m, "to", GTO, n->n_v);
       break;
    case ITUNANSWERED:
       rv = !(m->m_flag & MANSWERED);
@@ -730,26 +730,25 @@ matchfield(struct message *m, char const *field, void const *what){
 }
 
 static int
-matchenvelope(struct message *m, char const *field, void const *what)
-{
+matchenvelope(struct message *m, char const *field, enum gfield gf,
+      void const *what){
    struct mx_name *np;
    char *cp;
-   int rv = 0;
-   NYD_IN;
+   int rv;
+   NYD2_IN;
 
-   if ((cp = hfieldX(field, m)) == NULL)
-      goto jleave;
+   rv = 0;
 
-   for (np = lextract(cp, GFULL); np != NULL; np = np->n_flink) {
-      if(mx_substr(np->n_name, what) == NIL &&
-            mx_substr(mkenvelope(np), what) == NIL)
-         continue;
-      rv = 1;
-      break;
-   }
+   if((cp = hfieldX(field, m)) != NIL)
+      for(np = mx_name_parse(cp, gf); np != NIL; np = np->n_flink){
+         if(mx_substr(np->n_name, what) == NIL &&
+               mx_substr(mkenvelope(np), what) == NIL)
+            continue;
+         rv = 1;
+         break;
+      }
 
-jleave:
-   NYD_OU;
+   NYD2_OU;
    return rv;
 }
 

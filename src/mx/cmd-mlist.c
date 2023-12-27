@@ -566,7 +566,7 @@ mx_mlist_query_mp(struct message *mp, enum mx_mlist_type what){
 	rv = mx_MLIST_OTHER;
 
 	cc = FAL0;
-	np = lextract(hfield1("to", mp), GTO | GSKIN);
+	np = mx_name_parse(hfield1("to", mp), GTO);
 jredo:
 	for(; np != NIL; np = np->n_flink){
 		switch(mx_mlist_query(np->n_name, FAL0)){
@@ -593,7 +593,7 @@ jredo:
 
 	if(!cc){
 		cc = TRU1;
-		np = lextract(hfield1("cc", mp), GCC | GSKIN);
+		np = mx_name_parse(hfield1("cc", mp), GCC);
 		goto jredo;
 	}
 

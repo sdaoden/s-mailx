@@ -50,6 +50,7 @@
 #include "mx/attachments.h"
 #include "mx/child.h"
 #include "mx/cmd.h"
+#include "mx/cmd-ali-alt.h"
 #include "mx/cmd-mlist.h"
 #include "mx/compat.h"
 #include "mx/cred-auth.h"
@@ -227,7 +228,7 @@ a_sendout_fullnames_cleanup(struct mx_name *np){
    NYD2_IN;
 
    for(xp = np; xp != NULL; xp = xp->n_flink){
-      xp->n_type &= ~(GFULL | GFULLEXTRA);
+      xp->n_type &= ~GFULLEXTRA;
       xp->n_fullname = xp->n_name;
       xp->n_fullextra = NULL;
    }
@@ -242,7 +243,7 @@ a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
    struct mx_name *np;
    NYD_IN;
 
-   np = (w & GNOT_A_LIST ? n_extract_single : lextract)(line, GEXTRA | GFULL);
+   np = mx_name_parse(line, GIDENT);
    if(xp != NIL)
       *xp = np;
 
@@ -293,7 +294,16 @@ a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps){
 
    rv = FAL0;
    shost = ok_vlook(smtp_hostname);
-   from = ((sign_caps || shost == NIL) ? skin(myorigin(scp->sc_hp)) : NIL);
+   if(sign_caps || shost == NIL){
+      from = UNCONST(char*,myorigin(scp->sc_hp));
+      if(from != NIL){
+         struct mx_name *np;
+
+         np = mx_name_parse(from, GTO);
+         from = (np != NIL) ? np->n_name : NIL;
+      }
+   }else
+      from = NIL;
 
    if(sign_caps){
       if(from == NIL){
@@ -1196,7 +1206,7 @@ _check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo)
    }
 
    if (!a_sendout_put_addrline("Disposition-Notification-To:",
-         nalloc(n_UNCONST(from), 0), fo, 0))
+         mx_name_parse(UNCONST(char*,from), GIDENT), fo, 0))
       rv = FAL0;
 jleave:
    NYD_OU;
@@ -1208,19 +1218,19 @@ a_sendout_sendmail(void *vp, enum n_mailsend_flags msf){
    struct header head;
    int rv;
    struct mx_cmd_arg_ctx *cacp;
-   NYD_IN;
+   NYD2_IN;
 
    STRUCT_ZERO(struct header, &head);
    head.h_flags = HF_CMD_mail;
+
    cacp = vp;
    if(cacp->cac_no > 0 &&
-         (head.h_to = lextract(cacp->cac_arg->ca_arg.ca_str.s,
-            (GTO | (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN)))) != NIL)
+         (head.h_to = mx_name_parse(cacp->cac_arg->ca_arg.ca_str.s, GTO)) != NIL)
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, head.h_to->n_type);
 
    rv = n_mail1(msf, cacp->cac_scope, &head, NIL, NIL);
 
-   NYD_OU;
+   NYD2_OU;
    return (rv != OKAY); /* reverse! */
 }
 
@@ -1726,7 +1736,7 @@ jewritebcc:
             fisave = scp->sc_input;
             nsave = scp->sc_to;
 
-            scp->sc_to = ndup(np, np->n_type & ~(GFULL | GFULLEXTRA | GSKIN));
+            scp->sc_to = ndup(np, np->n_type & ~GFULLEXTRA);
             scp->sc_input = ef;
             if(!a_sendout_mta_start(scp))
                rv = FAL0;
@@ -1967,9 +1977,13 @@ a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
             args[i++] = np->n_fullextra;
          }
          cp = np->n_name;
-      } else {
+      }else{
          ASSERT(n_poption_arg_r == NULL);
-         cp = skin(myorigin(NULL));
+         cp = myorigin(NIL);
+         if(cp != NIL){
+            np = mx_name_parse(cp, GTO);
+            cp = (np != NIL) ? np->n_name : NIL;
+         }
       }
 
       if (cp != NULL) {
@@ -2146,7 +2160,13 @@ a_sendout_random_id(struct header *hp, boole msgid){ /* {{{ */
    sender = __sendout_ident;
    c |= (sender != NIL);
    if(sender == NIL && hp != NIL){
-      sender = skin(myorigin(hp));
+      sender = myorigin(hp);
+      if(sender != NIL){
+         struct mx_name *np;
+
+         np = mx_name_parse(sender, GIDENT);
+         sender = (np != NIL) ? np->n_name : NIL;
+      }
       c = (sender != NIL && su_cs_find_c(sender, '@') != NIL); /* v15compat */
    }
 
@@ -2250,7 +2270,8 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
       m_COMMA = 1u<<2,
       m_NOPF = 1u<<3,
       m_NONAME = 1u<<4,
-      m_CSEEN = 1u<<5
+      m_CSEEN = 1u<<5,
+      m_FULL = 1u<<6
    } m;
    NYD_IN;
 
@@ -2259,48 +2280,58 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
    if((col = hnlen = su_cs_len(hname)) > 0){
 #undef _X
 #define _X(S)  (col == sizeof(S) -1 && !su_cs_cmp_case(hname, S))
-      if (saf & GFILES) {
-         ;
-      } else if (_X("reply-to:") || _X("mail-followup-to:") ||
-            _X("references:") || _X("in-reply-to:") ||
+
+      boole fn;
+
+      fn = ok_blook(fullnames);
+
+      if(_X("sender:") || _X("from:") || _X("author:") ||
+            _X("to:") || _X("cc:") || _X("bcc:") ||
+            _X("resent-from:") || _X("resent-to:") /*|| _X("resent-cc:") ||
+               _X("resent-bcc:")*/)
+         m |= m_NOPF | (fn ? m_FULL : 0);
+      else if(_X("reply-to:") || _X("mail-followup-to:") ||
             _X("disposition-notification-to:"))
+         m |= m_NOPF | m_NONAME | (fn ? m_FULL : 0);
+      else if(_X("references:") || _X("in-reply-to:"))
          m |= m_NOPF | m_NONAME;
-      else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
-         m |= m_NOPF;
 #undef _X
    }
 
-   for (; np != NULL; np = np->n_flink) {
+   for(; np != NIL; np = np->n_flink){
+      char *hb;
+
       if(np->n_type & GDEL)
          continue;
-      if(is_addr_invalid(np,
-               ((saf & a_SENDOUT_AL_INC_INVADDR ? 0 : EACM_NOLOG) |
-                (m & m_NONAME ? EACM_NONAME : EACM_NONE))) &&
+      if(mx_name_is_invalid(np,
+               ((saf & a_SENDOUT_AL_INC_INVADDR ? 0 : mx_EACM_NOLOG) |
+                (m & m_NONAME ? mx_EACM_NONAME : mx_EACM_NONE))) &&
             !(saf & a_SENDOUT_AL_INC_INVADDR))
          continue;
 
-      if ((m & m_NOPF) && is_fileorpipe_addr(np))
+      if((m & m_NOPF) && mx_name_is_fileorpipe(np))
          continue;
 
-      if ((m & (m_INIT | m_COMMA)) == (m_INIT | m_COMMA)) {
-         if (putc(',', fo) == EOF)
+      if((m & (m_INIT | m_COMMA)) == (m_INIT | m_COMMA)){
+         if(putc(',', fo) == EOF)
             goto jleave;
          m |= m_CSEEN;
          ++col;
       }
 
-      len = su_cs_len(np->n_fullname);
-      if (np->n_type & GREF)
+      hb = (m & m_FULL) ? np->n_fullname : np->n_name;
+      len = su_cs_len(hb);
+
+      if(np->n_type & GREF)
          len += 2;
       ++col; /* The separating space */
-      if ((m & m_INIT) && /*col > 1 &&*/
-            UCMP(z, col + len, >,
-               (np->n_type & GREF ? MIME_LINELEN : 72))) {
-         if (fputs("\n ", fo) == EOF)
+      if((m & m_INIT) && /*col > 1 &&*/
+            UCMP(z, col + len, >, (np->n_type & GREF ? MIME_LINELEN : 72))){
+         if(fputs("\n ", fo) == EOF)
             goto jleave;
          col = 1;
          m &= ~m_CSEEN;
-      } else {
+      }else{
          if(!(m & m_INIT) && fwrite(hname, sizeof *hname, hnlen, fo
                ) != sizeof *hname * hnlen)
             goto jleave;
@@ -2309,28 +2340,26 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
       }
       m = (m & ~m_CSEEN) | m_INIT;
 
-      /* C99 */{
-         char *hb;
-
-         /* GREF needs to be placed in angle brackets, but which are missing */
-         hb = np->n_fullname;
-         if(np->n_type & GREF){
-            ASSERT(UCMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
-            hb = n_lofi_alloc(len +1);
-            len -= 2;
-            hb[0] = '<';
-            hb[len + 1] = '>';
-            hb[len + 2] = '\0';
-            su_mem_copy(&hb[1], np->n_fullname, len);
-            len += 2;
-         }
-         len = mx_xmime_write(hb, len, fo,
-               ((saf & a_SENDOUT_AL_DOMIME) ? CONV_TOHDR_A : CONV_NONE),
-               mx_MIME_DISPLAY_ICONV, NIL, NIL);
-         if(np->n_type & GREF)
-            n_lofi_free(hb);
+      /* GREF needs to be placed in angle brackets, but which are missing */
+      if(np->n_type & GREF){
+         ASSERT(UCMP(z, len, ==, su_cs_len(hb) + 2));
+         hb = su_LOFI_ALLOC(len +1);
+         len -= 2;
+         hb[0] = '<';
+         hb[len + 1] = '>';
+         hb[len + 2] = '\0';
+         su_mem_copy(&hb[1], np->n_name, len);
+         len += 2;
       }
-      if (len < 0)
+
+      len = mx_xmime_write(hb, len, fo,
+            ((saf & a_SENDOUT_AL_DOMIME) ? CONV_TOHDR_A : CONV_NONE),
+            mx_MIME_DISPLAY_ICONV, NIL, NIL);
+
+      if(np->n_type & GREF)
+         su_LOFI_FREE(hb);
+
+      if(len < 0)
          goto jleave;
       col += len;
    }
@@ -2369,8 +2398,8 @@ a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
             goto jleave;
       }
       /* TODO RFC 5322: Resent-Sender SHOULD NOT be used if it's EQ -From: */
-      if ((cp = ok_vlook(sender)) != NULL) {
-         if (!a_sendout_put_name(cp, GCOMMA | GNOT_A_LIST, SEND_MBOX,
+      if((cp = ok_vlook(sender)) != NIL){
+         if(!a_sendout_put_name(cp, GCOMMA, SEND_MBOX,
                "Resent-Sender:", fo, &senderfield))
             goto jleave;
       }
@@ -2685,9 +2714,9 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
       goto jfail_dead;
    mta_isexe = (mta_isexe != TRU1);
 
-   to = n_namelist_vaporise_head(hp, (EACM_NORMAL | EACM_DOMAINCHECK |
-            (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),
-         &_sendout_error);
+   to = n_namelist_vaporise_head(hp, (mx_EACM_NORMAL | mx_EACM_DOMAINCHECK |
+               (mta_isexe ? mx_EACM_NONE
+               : mx_EACM_NONAME | mx_EACM_NONAME_OR_FAIL)), &_sendout_error);
 
    if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
@@ -2754,7 +2783,8 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
       if (_sendout_error)
          savedeadletter(mtf, FAL0);
 
-      to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      to = mx_namelist_elide(to);
       cnt = count(to);
 
       if(((msf & n_MAILSEND_RECORD_RECIPIENT) || b || cnt > 0) &&
@@ -2915,7 +2945,7 @@ do{\
          if(f & a_HADMFT){
             /* Detect whether we were part of the former MFT:.
              * Throw away MFT: if we were the sole member (kidding) */
-            hp->h_mft = mft = elide(hp->h_mft);
+            hp->h_mft = mft = mx_namelist_elide(hp->h_mft);
             mft = mx_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
             if(mft == NIL)
                f ^= a_HADMFT;
@@ -2934,9 +2964,9 @@ do{\
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
-         np = elide(mx_alternates_remove(cat(
-               n_namelist_dup(hp->h_to, GEXTRA | GFULL),
-               n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
+         np = mx_namelist_elide(mx_alternates_remove(cat(
+               n_namelist_dup(hp->h_to, GTO),
+               n_namelist_dup(hp->h_cc, GCC)), FAL0));
          addr = hp->h_list_post;
          mft = NIL;
          mftp = &mft;
@@ -2966,8 +2996,8 @@ do{\
                f |= a_OTHER;
                if(!(f & HF_LIST_REPLY)){
 j_mft_add:
-                  if(!is_addr_invalid(x,
-                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)){
+                  if(!mx_name_is_invalid(x,
+                        mx_EACM_STRICT | mx_EACM_NOLOG | mx_EACM_NONAME)){
                      x->n_blink = *mftp;
                      x->n_flink = NIL;
                      *mftp = x;
@@ -2995,7 +3025,7 @@ j_mft_add:
             if(((f & HF_MFT_SENDER) ||
                      ((f & (a_ANYLIST | a_HADMFT)) == a_HADMFT)) &&
                   (np = fromasender) != NIL && np != R(struct mx_name*,0x1)){
-               *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
+               *mftp = ndup(np, (np->n_type & ~GMASK) | GIDENT);
 
                /* Place ourselves in the Cc: if we will be a member of M-F-T:,
                 * and we are not subscribed (and are no addressee yet)? */
@@ -3004,10 +3034,10 @@ j_mft_add:
                if(ok_blook(followup_to_add_cc)){
                   struct mx_name **npp;
 
-                  np = ndup(np, (np->n_type & ~GMASK) | GCC | GFULL);
+                  np = ndup(np, (np->n_type & ~GMASK) | GCC);
                   np = cat(cat(hp->h_to, hp->h_cc), np);
                   np = mx_alternates_remove(np, TRU1);
-                  np = elide(np);
+                  np = mx_namelist_elide(np);
                   hp->h_to = hp->h_cc = NIL;
                   for(; np != NIL; np = np->n_flink){
                      switch(np->n_type & (GDEL | GMASK)){
@@ -3015,7 +3045,7 @@ j_mft_add:
                      case GCC: npp = &hp->h_cc; break;
                      default: continue;
                      }
-                     *npp = cat(*npp, ndup(np, np->n_type | GFULL));
+                     *npp = cat(*npp, ndup(np, np->n_type));
                   }
                }
             }
@@ -3094,17 +3124,16 @@ j_mft_add:
        * the list first.. TODO it is a terrible codebase.. */
       if((np = hp->h_reply_to) != NIL){
          np = n_namelist_dup(np, np->n_type);
-         if((np = usermap(np, TRU1)) == NIL)
+         if((np = mx_alias_expand_list(np, TRU1)) == NIL)
             break;
-         if((np = checkaddrs(np,
-                  (EACM_STRICT | EACM_NONAME | EACM_NOLOG), NIL)) == NIL)
+         if((np = mx_namelist_check(np, (mx_EACM_STRICT | mx_EACM_NONAME |
+                  mx_EACM_NOLOG), NIL)) == NIL)
             break;
       }else if((addr = ok_vlook(reply_to)) != NIL)
-         np = lextract(addr, GEXTRA |
-               (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN));
+         np = mx_name_parse(addr, GIDENT);
       else
          break;
-      if((np = elide(np)) == NIL)
+      if((np = mx_namelist_elide(np)) == NIL)
          break;
       if(!a_sendout_put_addrline("Reply-To:", np, fo, saf))
          goto jleave;
@@ -3331,7 +3360,8 @@ jerr_o:
       if(_sendout_error)
          savedeadletter(nfi, FAL0);
 
-      to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      to = mx_namelist_elide(to);
       c = (count(to) > 0);
 
       if(b || c){

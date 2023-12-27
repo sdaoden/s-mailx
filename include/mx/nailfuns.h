@@ -678,62 +678,22 @@ FL char *hfield_mult(char const *field, struct message *mp, int mult
 FL char const *n_header_get_field(char const *linebuf, char const *field,
       struct str *qm_suffix_or_nil);
 
-/* Start of a "comment".  Ignore it */
-FL char const * skip_comment(char const *cp);
-
-/* Return the start of a route-addr (address in angle brackets), if present */
-FL char const * routeaddr(char const *name);
-
-/* Query *expandaddr*, parse it and return flags.
- * Flags are already adjusted for n_PSO_INTERACTIVE, n_PO_TILDE_FLAG etc. */
-FL enum expand_addr_flags expandaddr_to_eaf(void);
-
-/* Check if an address is invalid, either because it is malformed or, if not,
- * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
- * but the error condition was not covered by a 'hard "fail"ure', else -1 */
-FL s8       is_addr_invalid(struct mx_name *np,
-                  enum expand_addr_check_mode eacm);
-
-/* Does *NP* point to a file or pipe addressee? */
-#define is_fileorpipe_addr(NP)   \
-   (((NP)->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE) != 0)
-
-/* Skin an address according to the RFC 822 interpretation of "host-phrase" */
-FL char *      skin(char const *name);
-
-/* Skin *name* and extract *addr-spec* according to RFC 5322 and enum gfield.
- * Store the result in .ag_skinned and also fill in those .ag_ fields that have
- * actually been seen.
- * Return NULL on error, or name again, but which may have been replaced by
- * a version with fixed quotation etc.! */
-FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
-      u32 gfield);
-
-/* `addrcodec' */
-FL int c_addrcodec(void *vp);
-
-/* Fetch the real name from an internet mail address field */
-FL char *      realname(char const *name);
-
 /* Look for a RFC 2369 List-Post: header, return NIL if none was found, -1 if
  * the one found forbids posting to the list, a header otherwise.
  * .n_type needs to be set to something desired still */
 FL struct mx_name *mx_header_list_post_of(struct message *mp);
 
-/* Get the sender (From: or Sender:) of this message, or NIL.
- * If gf is 0 GFULL|GSKIN is used (no senderfield beside that) */
-FL struct mx_name *mx_header_sender_of(struct message *mp, u32 gf);
+/* Get the sender (From: or Sender:) of this message, or NIL. */
+FL struct mx_name *mx_header_sender_of(struct message *mp);
 
 /* Get header_sender_of(), or From_ line from this message.
- * The return value may be empty and needs lextract()ion */
+ * The return value may be empty and needs name_parse()ion */
 FL char *n_header_senderfield_of(struct message *mp);
 
 /* Trim and possibly edit the Subject: sp according to hsef.
  * The return value may logically cast away "const", give _DUP to be safe */
 FL char *mx_header_subject_edit(char const *subp,
       BITENUM(u32,mx_header_subject_edit_flags) hsef);
-
-FL int         msgidcmp(char const *s1, char const *s2);
 
 /* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);

@@ -608,16 +608,10 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
 	struct mx_name *addcc;
 	NYD_IN;
 
-	addcc = (mp != NIL) ? mx_header_sender_of(mp, 0) : hp->h_mailx_orig_sender;
+	addcc = (mp != NIL) ? mx_header_sender_of(mp) : hp->h_mailx_orig_sender;
 
-	if(addcc != NIL){
-		u32 gf;
-
-		gf = GCC | GSKIN;
-		if(ok_blook(fullnames))
-			gf |= GFULL;
-		hp->h_cc = cat(hp->h_cc, ndup(addcc, gf));
-	}
+	if(addcc != NIL)
+		hp->h_cc = cat(hp->h_cc, ndup(addcc, GCC));
 
 	NYD_OU;
 }
@@ -693,7 +687,9 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
 			struct mx_name *np;
 			char const *msgid;
 
-			if((msgid = hfield1("message-id", cqcp->cqc_mp)) != NIL && (np = lextract(msgid, GREF)) != NIL)
+			if((msgid = hfield1("message-id", cqcp->cqc_mp)) != NIL &&
+					(np = mx_name_parse(msgid, GREF)) != NIL &&
+					np->n_flink == NIL)
 				msgid = np->n_name;
 			else
 				msgid = NIL;
@@ -1503,11 +1499,11 @@ jreasksend:
 
 	/* Automatic recipients */
 	if((cp = ok_vlook(autocc)) != NIL && *cp != '\0')
-		hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, (GCC | (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))),
-				EACM_NORMAL, checkaddr_err));
+		hp->h_cc = cat(hp->h_cc, mx_namelist_check(mx_name_parse(cp, GCC | GTRASH_HACK),
+				mx_EACM_NORMAL, checkaddr_err));
 	if((cp = ok_vlook(autobcc)) != NIL && *cp != '\0')
-		hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp,
-				(GBCC | (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))), EACM_NORMAL, checkaddr_err));
+		hp->h_bcc = cat(hp->h_bcc, mx_namelist_check(mx_name_parse(cp, GBCC | GTRASH_HACK),
+				mx_EACM_NORMAL, checkaddr_err));
 	if(*checkaddr_err != 0)
 		goto jerr;
 
@@ -1997,7 +1993,8 @@ jearg:
 				s8 soe;
 
 				soe = 0;
-				if((np = checkaddrs(lextract(cp, GBCC | GFULL), EACM_NORMAL, &soe)) != NIL)
+				if((np = mx_namelist_check(mx_name_parse(cp, GBCC | GTRASH_HACK),
+						mx_EACM_NORMAL, &soe)) != NIL)
 					hp->h_bcc = cat(hp->h_bcc, np);
 				if(soe == 0){
 					n_pstate_err_no = su_ERR_NONE;
@@ -2018,7 +2015,8 @@ jearg:
 				s8 soe;
 
 				soe = 0;
-				if((np = checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, &soe)) != NIL)
+				if((np = mx_namelist_check(mx_name_parse(cp, GCC | GTRASH_HACK),
+						mx_EACM_NORMAL, &soe)) != NIL)
 					hp->h_cc = cat(hp->h_cc, np);
 				if(soe == 0){
 					n_pstate_err_no = su_ERR_NONE;
@@ -2136,7 +2134,7 @@ jev_go:
 				break;
 			}
 			do
-				grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
+				grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp, GIDENT, 0);
 			while(check_from_and_sender(hp->h_from, hp->h_sender) == NIL);
 			n_pstate_err_no = su_ERR_NONE; /* XXX */
 			n_pstate_ex_no = 0; /* XXX */
@@ -2236,7 +2234,8 @@ jqx:
 				s8 soe;
 
 				soe = 0;
-				if((np = checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, &soe)) != NIL)
+				if((np = mx_namelist_check(mx_name_parse(cp, GTO | GTRASH_HACK),
+						mx_EACM_NORMAL, &soe)) != NIL)
 					hp->h_to = cat(hp->h_to, np);
 				if(soe == 0){
 					n_pstate_err_no = su_ERR_NONE;
