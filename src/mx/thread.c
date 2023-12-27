@@ -67,7 +67,6 @@ struct mitem {
    struct message *mi_data;
    char           *mi_id;
 };
-#define NOT_AN_ID ((struct mitem*)-1)
 
 struct msort {
    union {
@@ -80,12 +79,7 @@ struct msort {
    int         ms_n;
 };
 
-/* Return the hash value for a message id modulo mprime, or mprime if the
- * passed string does not look like a message-id */
-static u32           _mhash(char const *cp, u32 mprime);
-
-/* Look up a message id. Returns NOT_AN_ID if the passed string does not look
- * like a message-id */
+/* Look up a message id */
 static struct mitem *   _mlook(char *id, struct mitem *mt,
                            struct message *mdata, u32 mprime);
 
@@ -137,34 +131,6 @@ static int              _colpt(int *msgvec, int cl);
 static void             _colps(struct message *b, int cl);
 static void             _colpm(struct message *m, int cl, int *cc, int *uncc);
 
-static u32
-_mhash(char const *cp, u32 mprime)
-{
-   u32 h = 0, g, at = 0;
-   NYD2_IN;
-
-   for (--cp; *++cp != '\0';) {
-      /* Pay attention not to hash characters which are irrelevant for
-       * Message-ID semantics */
-      if (*cp == '(') {
-         cp = skip_comment(cp + 1) - 1;
-         continue;
-      }
-      if (*cp == '"' || *cp == '\\')
-         continue;
-      if (*cp == '@')
-         ++at;
-      /* TODO torek hash */
-      h = ((h << 4) & 0xffffffff) + su_cs_to_lower(*cp);
-      if ((g = h & 0xf0000000) != 0) {
-         h = h ^ (g >> 24);
-         h = h ^ g;
-      }
-   }
-   NYD2_OU;
-   return (at ? h % mprime : mprime);
-}
-
 static struct mitem *
 _mlook(char *id, struct mitem *mt, struct message *mdata, u32 mprime)
 {
@@ -172,36 +138,34 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, u32 mprime)
    u32 h, c, n = 0;
    NYD2_IN;
 
-   if (id == NULL) {
-      if ((id = hfield1("message-id", mdata)) == NULL)
-         goto jleave;
-      /* Normalize, what hfield1() doesn't do (TODO should now GREF, too!!) */
-      if (id[0] == '<') {
-         id[su_cs_len(id) -1] = '\0';
-         if (*id != '\0')
-            ++id;
-      }
+   if(id == NIL){
+      if((id = hfield1("message-id", mdata)) == NIL)
+      goto jleave;
+      if(*id == '<'){
+         uz i;
+         ++id;
+         i = su_cs_len(id);
+         while(i > 0 && id[i - 1] == '>')
+            --i;
+         id = savestrbuf(id, i);
+
+     }
    }
 
-   if (mdata != NULL && mdata->m_idhash)
+   if(mdata != NIL && mdata->m_idhash)
       h = ~mdata->m_idhash;
-   else {
-      h = _mhash(id, mprime);
-      if (h == mprime) {
-         mp = NOT_AN_ID;
-         goto jleave;
-      }
-   }
+   else
+      h = mx_name_msgid_hash_cp(id) % mprime;
 
    mp = mt + (c = h);
-   while (mp->mi_id != NULL) {
-      if (!msgidcmp(mp->mi_id, id))
+   while(mp->mi_id != NIL){
+      if(!mx_name_msgid_cmp_cp(mp->mi_id, id))
          break;
       c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
       ++n;
-      if ((s32)c < 0)
+      if(S(s32,c) < 0)
          c = 0;
-      else while (c >= mprime)
+      else while(c >= mprime)
          c -= mprime;
       mp = mt + c;
    }
@@ -350,44 +314,38 @@ _mcharlt(void const *a, void const *b)
 }
 
 static void
-_lookup(struct message *m, struct mitem *mi, u32 mprime)
-{
+_lookup(struct message *m, struct mitem *mi, u32 mprime){
    struct mx_name *np;
    struct mitem *ip;
    char *cp;
    long dist;
    NYD2_IN;
 
-   if (m->m_flag & MHIDDEN)
+   if(m->m_flag & MHIDDEN)
       goto jleave;
 
    dist = 1;
-   if ((cp = hfield1("in-reply-to", m)) != NULL) {
-      if ((np = extract(cp, GREF)) != NULL)
-         do {
-            if ((ip = _mlook(np->n_name, mi, NULL, mprime)) != NULL &&
-                  ip != NOT_AN_ID) {
-               _adopt(ip->mi_data, m, 1);
-               goto jleave;
-            }
-         } while ((np = np->n_flink) != NULL);
+   if((cp = hfield1("in-reply-to", m)) != NIL &&
+         (np = mx_name_parse(cp, GREF)) != NIL && np->n_flink == NIL &&
+         (ip = _mlook(np->n_name, mi, NIL, mprime)) != NIL){
+      _adopt(ip->mi_data, m, 1);
+      goto jleave;
    }
 
-   if ((cp = hfield1("references", m)) != NULL) {
-      if ((np = extract(cp, GREF)) != NULL) {
-         while (np->n_flink != NULL)
+   if((cp = hfield1("references", m)) != NIL){
+      if((np = mx_name_parse(cp, GREF)) != NIL){
+         while(np->n_flink != NIL)
             np = np->n_flink;
-         do {
-            if ((ip = _mlook(np->n_name, mi, NULL, mprime)) != NULL) {
-               if (ip == NOT_AN_ID)
-                  continue; /* skip dist++ */
+         do{
+            if((ip = _mlook(np->n_name, mi, NULL, mprime)) != NIL){
                _adopt(ip->mi_data, m, dist);
                goto jleave;
             }
             ++dist;
-         } while ((np = np->n_blink) != NULL);
+         }while((np = np->n_blink) != NIL);
       }
    }
+
 jleave:
    NYD2_OU;
 }
@@ -763,13 +721,23 @@ c_sort(void *vp)
 #endif
          case SORT_FROM:
          case SORT_TO:
-            if ((cp = hfield1((method == SORT_FROM ?  "from" : "to"), mp)
-                  ) != NULL) {
-               ms[n].ms_u.ms_char = su_cs_dup((showname ? realname(cp)
-                     : skin(cp)), 0);
-               mx_makelow(ms[n].ms_u.ms_char);
-            } else
-               ms[n].ms_u.ms_char = su_cs_dup(n_empty, 0);
+            if((cp = hfield1((method == SORT_FROM ?  "from" : "to"), mp)
+                  ) != NIL){
+               if(showname)
+                  cp = mx_name_real_cp(cp);
+               else{
+                  struct mx_name *np;
+
+                  np = mx_name_parse(cp, (method == SORT_FROM ? GIDENT : GTO));
+                  if(np == NIL)
+                     goto jfrom_to_empty;
+                  else for(cp = NIL; np != NIL; np = np->n_flink)
+                     cp = savecat/*sep*/(cp, /*' ',*/ np->n_name);
+               }
+               mx_makelow(ms[n].ms_u.ms_char = su_cs_dup(cp, 0));
+            }else
+jfrom_to_empty:
+               ms[n].ms_u.ms_char = su_cs_dup(su_empty, 0);
             break;
          default:
          case SORT_SUBJECT:

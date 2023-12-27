@@ -33,7 +33,7 @@ struct mx_srch_ctx;
 struct mx_srch_ctx{
 	/* XXX Type of search should not be evaluated but be enum */
 	boole sc_field_exists; /* Only check whether field spec. exists */
-	boole sc_skin; /* Shall work on (skin()ned) addresses */
+	boole sc_skin; /* Shall work on *fullnames*-skinned plain addresses */
 	u8 sc__pad[6];
 	char const *sc_field; /* Field spec. where to search (not always used) */
 	char const *sc_body; /* Field body search expression */
