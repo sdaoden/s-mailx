@@ -77,6 +77,7 @@
 #endif
 
 #include "mx/cmd.h"
+#include "mx/cmd-ali-alt.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/iconv.h"
@@ -1466,7 +1467,7 @@ a_amv_var__vips_addr(enum okeys okey, char const **val){
 	ready = ((n_psonce & n_PSO_STARTED_CONFIG_FILES) != 0);
 	single = (okey != ok_v_from && okey != ok_v_reply_to);
 
-	np = (single ? n_extract_single : lextract)(*val, GEXTRA | GFULL);
+	np = (single ? mx_name_parse_as_one : mx_name_parse)(*val, GIDENT);
 	if(np == NIL){
 jerr:
 		s = n_string_assign_cp(s, V_("invalid address(es): "));
@@ -1477,7 +1478,7 @@ jerr:
 		n_psonce |= n_PSO_VAR_SETUP_VERIFY_NEEDED;
 
 		if(ready){
-			np = usermap(np, TRU1);
+			np = mx_alias_expand_list(np, TRU1);
 			if(np == NIL)
 				goto jerr;
 			if(single && np->n_flink != NIL)
@@ -1485,12 +1486,12 @@ jerr:
 		}
 
 		if(single){
-			if(ready && is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+			if(ready && mx_name_is_invalid(np, mx_EACM_STRICT | mx_EACM_NOLOG | mx_EACM_NONAME))
 				goto jerr;
 			*val = (okey == ok_v_smtp_from) ? np->n_name : np->n_fullname;
 		}else{
 			for(; np != NIL; np = np->n_flink){
-				if(ready && is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+				if(ready && mx_name_is_invalid(np, mx_EACM_STRICT | mx_EACM_NOLOG | mx_EACM_NONAME))
 					goto jerr;
 				if(s->s_len > 0)
 					s = n_string_push_c(s, ',');

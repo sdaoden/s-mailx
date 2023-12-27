@@ -1050,7 +1050,8 @@ maildir_quit(boole hold_sigs_on)
 {
    n_sighdl_t saveint;
    struct cw cw;
-   boole rv, remove;
+   boole volatile remove;
+   boole rv;
    NYD_IN;
 
    if(hold_sigs_on)
