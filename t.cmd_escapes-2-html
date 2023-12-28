@@ -1,10 +1,9 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
-To: mr2@originator, bugstop-commit@five.miles.out,
- 25 added ~t o <ex3@am.ple>
-Cc: is2@a.list, 10 added ~c c <ex2@am.ple>, mr3@originator,
- mister originator1 <mr1@originator>, ex4@am.ple, eximan <ex5@am.ple>
-Bcc: 9 added ~b cc <ex1@am.ple>
+To: mr2@originator, bugstop-commit@five.miles.out, ex3@am.ple
+Cc: is2@a.list, ex2@am.ple, mr3@originator, mr1@originator, ex4@am.ple,
+ ex5@am.ple
+Bcc: ex1@am.ple
 Subject: 24 did new ~s ubject
 In-Reply-To: <20170719132257.766AF781267-2@originator>
 References: <20170719132257.766AF781267-2@originator>
@@ -72,6 +71,7 @@ That's appalling, II.
 14.1: ~f (!posix: injections; headerpick: subject to)
 -------- Original Message --------
 Subject: Bugstop: five miles out 2
+From: mister originator2 <mr2@originator>
 To: bugstop-commit@five.miles.out
 
 That's appalling, II.
@@ -79,13 +79,17 @@ That's appalling, II.
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 -------- Original Message --------
 Subject: Bugstop: five miles out 3
+From: mister originator3 <mr3@originator>
 To: bugstop-commit@five.miles.out
 
 That's appalling, III.
 
-14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+14.3: ~f (!posix: headerpick: subject to from; forward-add-cc adds mr1 full=
+names)
+TODO ~f etc do not honour fullnames!
 -------- Original Message --------
 Subject: Bugstop: five miles out 1
+From: mister originator1 <mr1@originator>
 To: bugstop-commit@five.miles.out
 
 That's appalling, I.
@@ -374,7 +378,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./t3 198/4748
+./t3 202/4917
 i ~w:0/NONE bang-data<>
 shell command output
 shell:0/NONE bang-data<echo shell command output>

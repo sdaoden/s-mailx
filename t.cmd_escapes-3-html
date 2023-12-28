@@ -58,6 +58,7 @@ That's appalling, II.
 14.1: ~f (!posix: injections; headerpick: subject to)
 -------- Original Message --------
 Subject: Bugstop: five miles out 2
+From: mister originator2 <mr2@originator>
 To: bugstop-commit@five.miles.out
 
 That's appalling, II.
@@ -65,13 +66,16 @@ That's appalling, II.
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 -------- Original Message --------
 Subject: Bugstop: five miles out 3
+From: mister originator3 <mr3@originator>
 To: bugstop-commit@five.miles.out
 
 That's appalling, III.
 
-14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+14.3: ~f (!posix: headerpick: subject to from; forward-add-cc adds mr1 fullnames)
+TODO ~f etc do not honour fullnames!
 -------- Original Message --------
 Subject: Bugstop: five miles out 1
+From: mister originator1 <mr1@originator>
 To: bugstop-commit@five.miles.out
 
 That's appalling, I.
