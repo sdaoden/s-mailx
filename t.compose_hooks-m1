@@ -2,7 +2,7 @@ From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Author: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
 From: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
-Sender: <sender@exam.ple>
+Sender: diet spliced <sender@exam.ple>
 To: this-goes@nowhere, diet spliced <To@exam.ple>, <To2@exam.ple>,
  To3@exam.ple
 Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple,
@@ -19,7 +19,7 @@ Reply-To: diet spliced <reply-To@exam.ple>, <reply-To2@exam.ple>,
  reply-To3@exam.ple
 Mail-Followup-To: this-goes@nowhere, diet spliced <To@exam.ple>,
  <To2@exam.ple>, To3@exam.ple, diet spliced <cC@exam.ple>,
- <cC2@exam.ple>, cC3@exam.ple, <sender@exam.ple>
+ <cC2@exam.ple>, cC3@exam.ple, diet spliced <sender@exam.ple>
 freeForm1: diet <freeForm1@exam.ple> spliced
 freeForm1: <freeForm12@exam.ple>
 freeForm1: freeForm13@exam.ple

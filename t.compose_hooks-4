@@ -47,7 +47,7 @@ Mailx-Command ->
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
-To: f1@z, du <f2@z>
+To: f1@z, f2@z
 Cc: ocl@exam.ple
 Bcc: oce@exam.ple
 

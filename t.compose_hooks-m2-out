@@ -100,51 +100,57 @@ ia from 4-13: ok
 501=1=From
 ia from 4-14: ok
 210=1=To Mailx-Raw-To Mailx-Command
-ir (sender) 0-1: ok
+ia sender 1-0: ok
 210=2=Sender 1
-ir sender 1-1: ok
+ia sender 1-1: ok
 506=1=Sender
-ir sender 1-4: ok
+ia sender 1-2.2: ok
 210=1=Sender
-ir sender 1-5: ok
-211=3=Sender sender@exam.ple <sender@exam.ple>
-ir sender 1-6: ok
+ia sender 1-4: ok
+211=3=Sender sender@exam.ple diet spliced <sender@exam.ple>
+ia sender 1-5: ok
 210=1=Sender
-ir sender 2-1: ok
+ia sender 2-1: ok
 501=1=Sender
-ir sender 2-2: ok
+ia sender 2-2: ok
 501=1=Sender
- ir sender 2-3: ok
+ia sender 2-3: ok
 501=1=Sender
-ir sender 2-4: ok
+ia sender 2-4: ok
 210=2=Sender 1
-ir sender 3-1: ok
+ia sender 3-1: ok
 210=1=Sender
-ir sender 3-4: ok
-211=3=Sender sender@exam.ple <sender@exam.ple>
-ir sender 3-5: ok
+ia sender 3-4: ok
+211=3=Sender xsender@exam.ple diet spliced <xsender@exam.ple>
+ia sender 3-5: ok
 210=1=Sender
-ir sender 3-6: ok
+ia sender 3-6: ok
 501=1=Sender
-ir sender 3-9: ok
+ia sender 3-9: ok
 505=1=invalid position: T
-ir sender 3-10: ok
+ia sender 3-10: ok
 501=1=Sender
-ir sender 3-11: ok
+ia sender 3-11: ok
+501=1=Sender
+ia sender 3-12: ok
 210=2=Sender 1
-ir sender 4-1: ok
+ia sender 4-1: ok
 210=1=Sender
-ir sender 4-4: ok
-211=3=Sender sender@exam.ple sender <sender@exam.ple>
-ir sender 4-5: ok
+hea list sender 4-4: ok
+211=3=Sender sender@exam.ple diet <sender@exam.ple>
+ia sender 4-5: ok
+211=3=Sender sender@exam.ple diet <sender@exam.ple>
+ia sender 4-9: ok
 210=1=Sender
-ir sender 4-10: ok
+ia sender 4-10: ok
 501=1=Sender
-ir sender 4-11: ok
+ia sender 4-11: ok
 505=1=invalid position: T
-ir sender 4-12: ok
+ia sender 4-12: ok
 501=1=Sender
-ir sender 4-13: ok
+ia sender 4-13: ok
+501=1=Sender
+ia sender 4-14: ok
 210=1=To Mailx-Raw-To Mailx-Command
 ia To 1-0: ok
 210=2=To 2
@@ -733,7 +739,7 @@ ir subject 4-2: ok
 ir subject 4-3: ok
 210=1=Subject
 ir subject 4-4: ok
-212=2=Subject  subject <subject@exam.ple>  <subject2@exam.ple>  subject3@exam.ple
+212=2=Subject  <subject@exam.ple>  <subject2@exam.ple>  subject3@exam.ple
 ir subject 4-5: ok
 210=2=Subject 1
 ir subject 4-10: ok
