@@ -40,15 +40,15 @@ ia from 1-4: ok
 211=7=From from@exam.ple diet spliced <from@exam.ple> from2@exam.ple <from2@exam.ple> from3@exam.ple from3@exam.ple
 ia from 1-5: ok
 210=1=From To Mailx-Raw-To Mailx-Command
-ir (sender) 0-1: ok
+ia sender 1-0: ok
 210=2=Sender 1
-ir sender 1-1: ok
+ia sender 1-1: ok
 506=1=Sender
-ir sender 1-4: ok
+ia sender 1-2.2: ok
 210=1=Sender
-ir sender 1-5: ok
-211=3=Sender sender@exam.ple <sender@exam.ple>
-ir sender 1-6: ok
+ia sender 1-4: ok
+211=3=Sender sender@exam.ple diet spliced <sender@exam.ple>
+ia sender 1-5: ok
 210=1=From Sender To Mailx-Raw-To Mailx-Command
 ia To 1-0: ok
 210=2=To 2
@@ -247,7 +247,7 @@ attach 2-13: ok
 Message contains:
 Author: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
 From: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
-Sender: <sender@exam.ple>
+Sender: diet spliced <sender@exam.ple>
 To: this-goes@nowhere, diet spliced <To@exam.ple>, <To2@exam.ple>,
  To3@exam.ple
 Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple
