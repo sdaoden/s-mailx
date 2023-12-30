@@ -33,6 +33,7 @@
 #include <su/mem.h>
 #include <su/mem-bag.h>
 #include <su/path.h>
+#include <su/time.h>
 
 #include "mx/attachments.h"
 #include "mx/cmd.h"
@@ -123,7 +124,7 @@ static void a_main_usage(FILE *fp);
 static boole a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt, char const *doc);
 
 static void
-a_main_startup(char const *argv0){
+a_main_startup(char const *argv0){ /* {{{ */
 	struct passwd *pwuid;
 	char *cp;
 	NYD2_IN;
@@ -217,8 +218,19 @@ a_main_startup(char const *argv0){
 		n_group_eid = getegid();
 		if(n_user_id != 0 && (n_user_id != n_user_eid || n_group_id != n_group_eid)){
 			n_err(_("Warning: dropping diverging effective IDs (euid/egid)\n"));
-			setuid(n_user_id);
-			setgid(n_group_id);
+			/* On at least Linux resource exhaust or RLIMIT_NPROC excess could happen */
+			for(doenv = FAL0; setuid(n_user_id) != 0;){
+				if(su_err_by_errno() != su_ERR_AGAIN || doenv)
+					n_panic(_("Cannot change user id"));
+				doenv = TRU1;
+				su_time_msleep(250, FAL0);
+			}
+			for(doenv = FAL0; setgid(n_group_id) != 0;){
+				if(su_err_by_errno() != su_ERR_AGAIN || doenv)
+					n_panic(_("Cannot change group id"));
+				doenv = TRU1;
+				su_time_msleep(250, FAL0);
+			}
 		}
 
 		/* */
@@ -258,7 +270,7 @@ a_main_startup(char const *argv0){
 #endif
 
 	NYD2_OU;
-}
+} /* }}} */
 
 static uz
 a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
