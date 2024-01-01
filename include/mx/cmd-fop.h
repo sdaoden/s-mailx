@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ `fop'.
  *
- * Copyright (c) 2021 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2021 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

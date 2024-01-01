@@ -2,7 +2,7 @@
  *@ MIME-to-display and MIME-from-data.
  * TODO This should be filter, object-dump-to-{wire,user} etc.
  *
- * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

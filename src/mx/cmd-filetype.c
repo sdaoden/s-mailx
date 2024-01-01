@@ -4,7 +4,7 @@
  *@ TODO the toolbox and such stuff in here!
  *@ TODO _FT_ -> _CFT
  *
- * Copyright (c) 2017 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -2,7 +2,7 @@
  *@ Collect input from standard input, handling ~ escapes.
  *@ TODO This needs yet _another_ rewrite. (OnLineCompletedEvent; SU I/O; MIME DOM)
  *
- * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

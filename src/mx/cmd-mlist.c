@@ -4,7 +4,7 @@
  *@ XXX use su_list for the regex stuff?
  *@ TODO _ML -> _CML
  *
- * Copyright (c) 2014 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

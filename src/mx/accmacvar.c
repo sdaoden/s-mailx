@@ -42,7 +42,7 @@
  *@ TODO . Have macro/var counters so we know ++COUNT does not wrap U32_MAX!!
  *@ TODO   (Ie NIL terminated array alloc+set, and such.)
  *
- * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

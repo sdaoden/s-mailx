@@ -2,7 +2,7 @@
  *@ TODO get_device_part, get_dir_part(), get_home(), get_tmp, is_valid, split_components, convert_separators,
  *@ TODO expand_long_name, readlink, canonicalize and/or realpath, and and and
  *
- * Copyright (c) 2021 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2021 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

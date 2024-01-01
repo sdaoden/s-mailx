@@ -3,7 +3,7 @@
  *@ TODO: even though we attach DOS \r\n files as such, we normalize when
  *@ TODO  `write'ing then: t_attachments:cnv-2.5.write
  *
- * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

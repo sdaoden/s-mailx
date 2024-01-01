@@ -6,7 +6,7 @@
  *@ TODO   initialized [better than asserting it is device-based dom]).
  *@ TODO - port C++ memcache
  *
- * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

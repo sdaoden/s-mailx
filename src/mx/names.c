@@ -3,7 +3,7 @@
  *@ XXX Use a su_cs_set for alternates stuff?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause XXX ISC once yank stuff+ changed
  */
 /*
