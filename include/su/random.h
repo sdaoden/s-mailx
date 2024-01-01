@@ -2,7 +2,7 @@
  *@ TODO su_RANDOM_TYPE_VSP should possibly be based on fast key erasure concept
  *@ TODO (reset ARC4 access offsets)
  *
- * Copyright (c) 2001 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -32,7 +32,7 @@
  *@   a_shexp_arith_eval(), and according error stack handling, so that users
  *@   can be given hint where an error occurred.  ("Three stack algorithm.")
  *
- * Copyright (c) 2022 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2022 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -1,6 +1,6 @@
 /*@ Implementation of mem.h: utility funs: generic implementations.
  *
- * Copyright (c) 2019 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
