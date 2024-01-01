@@ -5,7 +5,7 @@
  *@ TODO this should be rewritten as such; reread RFCs first ;>
  *@ TODO Ie, param_create()'s clean_is_ascii argument could still use RFC 2231!!
  *
- * Copyright (c) 2016 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
