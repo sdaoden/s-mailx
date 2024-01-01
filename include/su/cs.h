@@ -1,7 +1,7 @@
 /*@ Anything (locale agnostic: ASCII only) around char and char*.
  *@ TODO optimization option like atomic.h
  *
- * Copyright (c) 2001 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
