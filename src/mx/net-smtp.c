@@ -565,11 +565,13 @@ jsend:
 				f &= ~(a_IN_HEAD | a_IN_BCC);
 			else if((f & a_IN_BCC) && su_cs_is_blank(*nscp->nsc_buf.s))
 				continue;
-			/* We know what we have generated first, so do not look for whitespace
-			 * before the ':' */
-			else if(!su_cs_cmp_case_n(nscp->nsc_buf.s, "bcc:", 4)){
+			/* We know what we have generated first, so do not look for whitespace before the ':' */
+			else if(blen >= 4 && !su_cs_cmp_case_n(nscp->nsc_buf.s, "bcc:", 4)){
+				blen = sizeof("bcc:") -1;
 				f |= a_IN_BCC;
-				continue;
+			}else if(blen >= 11 && !su_cs_cmp_case_n(nscp->nsc_buf.s, "resent-bcc:", 11)){
+				blen = sizeof("resent-bcc:") -1;
+				f |= a_IN_BCC;
 			}else
 				f &= ~a_IN_BCC;
 		}
