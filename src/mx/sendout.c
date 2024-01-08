@@ -1688,10 +1688,14 @@ jewritebcc:
                inskip = FAL0;
                /* (We need _case for resent only);
                 * xxx We do not resent that yet , but place the logic today */
-               if(su_cs_starts_with_case(buf, "bcc:") ||
-                     (resent && su_cs_starts_with_case(buf, "resent-bcc:"))){
+               if(su_cs_starts_with_case(buf, "bcc:")){
                   inskip = TRU1;
-                  continue;
+                  buf[sizeof("bcc:") -1] = '\n';
+                  llen = sizeof("bcc:");
+               }else if(resent && su_cs_starts_with_case(buf, "resent-bcc:")){
+                  inskip = TRU1;
+                  buf[sizeof("resent-bcc:") -1] = '\n';
+                  llen = sizeof("resent-bcc:");
                }
             }
          }

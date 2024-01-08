@@ -6693,10 +6693,10 @@ echo $?/$^ERRNAME
 	}
 
 	t_it 8 -Snomta-bcc-ok
-	cke0 8 0 ./t.mbox '1365032629 292'
+	cke0 8 0 ./t.mbox '821291891 297'
 
 	t_it 9 -Snomta-bcc-ok -Srecord=trec9
-	cke0 9 0 ./t.mbox '1365032629 292'
+	cke0 9 0 ./t.mbox '821291891 297'
 	ck 9-2 - ./trec9 '160206230 221'
 
 	t_it 10 -Srecord=./trec10
@@ -6704,7 +6704,7 @@ echo $?/$^ERRNAME
 	ck 10-2 - ./trec10 '160206230 221'
 
 	t_it 11 -Snomta-bcc-ok -Srecord=trec11_12 -Soutfolder
-	cke0 11 0 ./t.mbox '1365032629 292'
+	cke0 11 0 ./t.mbox '821291891 297'
 	ck 11-2 - ./tfolder/trec11_12 '160206230 221'
 	# That is appends to an MBOX
 	t_it 12 -Srecord=trec11_12 -Soutfolder
@@ -6754,7 +6754,7 @@ echo $?/$^ERRNAME
 		to-long-name-that-causes-wrap@no.3 \
 		to-long-name-that-causes-wrap@no.4 \
 		> ${E0} 2>&1
-	cke0 16 0 ./t.mbox '2175359047 843'
+	cke0 16 0 ./t.mbox '1859311999 848'
 
 	# *mta-bcc-ok* ignored for test://
 	</dev/null ${MAILX} ${ARGS} -S mta=test -S nomta-bcc-ok -s v -Y 'x' -b b@y -b c@z a@x > ./t17 2> ${E0}
