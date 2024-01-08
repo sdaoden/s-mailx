@@ -6,6 +6,7 @@ To: to-long-name-that-causes-wrap@no.1,
 Cc: cc-long-name-that-causes-wrap@no.1,
  cc-long-name-that-causes-wrap@no.2, cc-long-name-that-causes-wrap@no.3,
  cc-long-name-that-causes-wrap@no.4
+Bcc:
 Subject: ubject
 
 Hi!
