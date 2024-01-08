@@ -84,10 +84,10 @@ VAL_PREFIX=/usr/local
 	VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
 	# . of the manual.
 	VAL_MANDIR=${VAL_PREFIX}/share/man
-	# . of the exemplary resource file.
+	# . of the system wide resource file.
 	VAL_SYSCONFDIR=${VAL_PREFIX}/etc
 
-		# The exemplary resource template (within $VAL_SYSCONFDIR).
+		# The system wide resource file (within $VAL_SYSCONFDIR).
 		# Note 1: not overwritten by "make install" if yet exists!
 		VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
 
