@@ -2376,7 +2376,7 @@ mx_go_macro(BITENUM(u32,mx_go_input_flags) gif, char const *name, char **lines, 
 		rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) == 0);
 		a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
 		a_go_ctx->gc_xcall_callee = NIL;
-		su_mem_bag_auto_relax_gut(a_go_ctx->gc_data.gdc_membag);
+		su_mem_bag_auto_snap_gut(a_go_ctx->gc_data.gdc_membag);
 
 		mx_sigs_all_rele();
 	}
@@ -2644,9 +2644,9 @@ c_xcall(void *vp){
 
 			/* Create a relaxation level so we can throw away all memory whenever we `xcall' here */
 			if((outer = (my = gcp)->gc_outer)->gc_flags & a_GO_XCALL_LOOP)
-				su_mem_bag_auto_relax_unroll((gcp = outer)->gc_data.gdc_membag);
+				su_mem_bag_auto_snap_unroll((gcp = outer)->gc_data.gdc_membag);
 			else
-				su_mem_bag_auto_relax_create(outer->gc_data.gdc_membag);
+				su_mem_bag_auto_snap_create(outer->gc_data.gdc_membag);
 
 			outer->gc_flags |= a_GO_XCALL_SEEN;
 			mx_xcall_exchange(my->gc_finalize_arg, &outer->gc_xcall_lopts, &scope);

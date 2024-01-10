@@ -304,7 +304,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 	n_string_gut(&s);
 
 	ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
-	su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, lofi_snap);
+	su_mem_bag_lofi_snap_gut(su_MEM_BAG_SELF, lofi_snap);
 
 	NYD2_OU;
 	return (dmslp != NIL);
