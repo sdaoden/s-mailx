@@ -2351,16 +2351,16 @@ c_verify(void *vp)
 
    a_xtls_ca_flags(store, ok_vlook(smime_ca_flags));
 
-   srelax_hold();
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp;
 
       mp = &message[*ip - 1];
       setdot(mp, FAL0);
       ec |= smime_verify(mp, *ip, NULL, store);
-      srelax();
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
    }
-   srelax_rele();
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    if ((rv = ec) != 0)
       n_exit_status |= su_EX_ERR;

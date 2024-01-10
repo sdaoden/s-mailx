@@ -510,7 +510,7 @@ a_crese_list_reply(void *vp, enum header_flags hf){
    struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    n_pstate_err_no = su_ERR_NONE;
 
    cacp = vp;
@@ -742,14 +742,14 @@ j_lt_redo:
 
 jskip_to_next:
    if(*++msgvec != 0){
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
 
       if(mx_tty_yesorno(NIL, TRU1))
          goto jwork_msg;
    }
 
 jleave:
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    NYD2_OU;
    return (msgvec == NIL ? su_EX_ERR : su_EX_OK);
@@ -912,7 +912,7 @@ jwork_msg:
       recp_base = lextract(cap->ca_arg.ca_str.s, (GTO | GNOT_A_LIST | gf));
 
       if(!(flags & a_TICKED_ONCE))
-         su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+         su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    }
    flags |= a_TICKED_ONCE;
 
@@ -951,7 +951,7 @@ jwork_msg:
       goto jleave;
 
    if(*++msgvec != 0){
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
 
       if(mx_tty_yesorno(NIL, TRU1))
          goto jwork_msg;
@@ -959,7 +959,7 @@ jwork_msg:
 
    rv = su_EX_OK;
 jleave:
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
 j_leave:
    NYD2_OU;
@@ -1023,7 +1023,7 @@ jedar:
          goto jedar;
    }
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for(ip = msgvec; *ip != 0; ++ip){
       struct message *mp;
 
@@ -1042,12 +1042,12 @@ jedar:
       head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
       if(n_resend_msg(cacp->cac_scope, mp, urlp, &head, add_resent) != OKAY){
-         /* n_autorec_relax_gut(); XXX but is handled automatically? */
+         /* n_autorec_snap_gut(); XXX but is handled automatically? */
          goto jleave;
       }
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    n_pstate_err_no = su_ERR_NONE;
    rv = 0;

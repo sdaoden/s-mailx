@@ -138,19 +138,19 @@ writeback(FILE *res, FILE *obuf){ /* TODO errors */
    if(fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for(p = 0, mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
       if((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)){
          ++p;
          if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL, NIL) < 0){
             n_perr(mailname, 0);
-            su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+            su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
             goto jerror;
          }
-         su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+         su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
       }
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    if(res != NIL){
       boole lastnl;
@@ -260,20 +260,20 @@ jemailname:
    }
    ftrunc(obuf);
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    c = 0;
    for(mp = message; mp < &message[msgCount]; ++mp){
       if((mp->m_flag & MDELETED) || !(mp->m_flag & MVALID))
          continue;
       ++c;
       if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL, NIL) < 0){
-         su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+         su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
          n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
          goto jleave;
       }
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    gotcha = (c == 0 && ibuf == NULL);
    if (ibuf != NULL) {
@@ -567,7 +567,7 @@ mx_quit_automove_mbox(boole need_stat_verify){
    if((fs & n_PROTO_MASK) == n_PROTO_FILE)
       n_folder_mbox_prepare_append(obuf, FAL0, NIL);
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
       if(mp->m_flag & MBOX){
          ++mcount;
@@ -583,16 +583,16 @@ mx_quit_automove_mbox(boole need_stat_verify){
 jcopyerr:
 #endif
             n_perr(mbox, 0);
-            su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+            su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
             mx_fs_close(obuf);
             goto jleave;
          }
 
          mp->m_flag |= MBOXED;
-         su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+         su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
       }
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    ftrunc(obuf); /* XXX clears error, order.. */
    if(ferror(obuf)){

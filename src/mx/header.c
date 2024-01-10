@@ -935,7 +935,7 @@ jput_quote_esc:
          }
       }
 
-      n_lofi_snap_unroll(lofi_snap);
+      n_lofi_snap_gut(lofi_snap);
 
       agp->ag_input = n_string_cp(ostp);
       agp->ag_ilen = ostp->s_len;
@@ -2979,7 +2979,7 @@ jleave:
       subp = savestrbuf(out.s, out.l);
    }
 
-   su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, lofi_snap);
+   su_mem_bag_lofi_snap_gut(su_MEM_BAG_SELF, lofi_snap);
 
    NYD_OU;
    return UNCONST(char*,subp);

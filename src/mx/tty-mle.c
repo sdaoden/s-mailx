@@ -4622,7 +4622,7 @@ int
 	if(!(a_tty.tg_flags & a_TTY_FLAGS_INIT))
 		mx_tty_init(FAL0);
 
-	su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+	su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
 
 	STRUCT_ZERO(struct a_tty_line, &tl);
 	tl.tl_goinflags = gif;
@@ -4653,7 +4653,7 @@ int
 	mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
 	a_tty.tg_line = NIL;
 
-	su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+	su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
 	NYD_OU;
 	return S(int,nn);

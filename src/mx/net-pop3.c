@@ -699,7 +699,7 @@ a_pop3_setptr(struct mailbox *mp, struct a_pop3_ctx const *pcp){
       if(!a_pop3_get(mp, message + i, ns))
          goto jleave;
 
-   n_autorec_relax_create();
+   n_autorec_snap_create();
    for(i = 0; UCMP(z, i, <, msgCount); ++i){
       char const *cp;
       struct message *m;
@@ -716,9 +716,9 @@ a_pop3_setptr(struct mailbox *mp, struct a_pop3_ctx const *pcp){
          }
 
       substdate(m);
-      n_autorec_relax_unroll();
+      n_autorec_snap_unroll();
    }
-   n_autorec_relax_gut();
+   n_autorec_snap_gut();
 
    setdot(message, FAL0);
 jleave:

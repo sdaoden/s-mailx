@@ -727,7 +727,7 @@ lextract(char const *line, enum gfield ntype)
       struct n_string s_b, *s;
       BITENUM(u32,n_shexp_state) shs;
 
-      n_autorec_relax_create();
+      n_autorec_snap_create();
       s = n_string_creat_auto(&s_b);
       sin.s = UNCONST(char*,line); /* logical */
       sin.l = UZ_MAX;
@@ -740,7 +740,7 @@ lextract(char const *line, enum gfield ntype)
          su_mem_copy(cp, n_string_cp(s), s->s_len +1);
       }else
          line = cp = su_NIL;
-      n_autorec_relax_gut();
+      n_autorec_snap_gut();
    }
 
    if(line == su_NIL)

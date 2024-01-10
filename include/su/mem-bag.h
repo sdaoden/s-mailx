@@ -100,7 +100,7 @@ struct su_mem_bag{
 	u32 mb_bsz; /* Pool size available to users.. */
 	u32 mb_bsz_wo_gap; /* ..less some GAP */
 #ifdef su_HAVE_MEM_BAG_AUTO
-	sz mb_auto_relax_recur;
+	sz mb_auto_snap_recur;
 	struct su__mem_bag_auto_buf *mb_auto_top;
 	struct su__mem_bag_auto_buf *mb_auto_full;
 	struct su__mem_bag_auto_huge *mb_auto_huge;
@@ -134,7 +134,7 @@ EXPORT struct su_mem_bag *su_mem_bag_fixate(struct su_mem_bag *self);
 
 /*! To be called from the (main)loops upon tick and break-off time to perform debug checking and memory cleanup.
  * If \SELF owns a stack of \r{su_mem_bag_push()}ed objects, these will be forcefully destructed.
- * The cleanup will release all LOFI memory, drop all the relaxation created by \r{su_mem_bag_auto_relax_create()}
+ * The cleanup will release all LOFI memory, drop all the relaxation created by \r{su_mem_bag_auto_snap_create()}
  * and all auto-reclaimed and flux storage that is not covered by r{su_mem_bag_fixate()}.
  * \remarks{Possible \r{su_HAVE_DEBUG} logs via \r{su_LOG_DEBUG}.} */
 EXPORT struct su_mem_bag *su_mem_bag_reset(struct su_mem_bag *self);
@@ -167,15 +167,15 @@ INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
  * Such code should call \c{relax_create()}, successively call \c{relax_unroll()} after a single job has been handled,
  * concluded with a final \c{relax_gut()}.
  * \remarks{Only applies to \SELF or its current \r{su_mem_bag_top()}, does not propagate through the stack.}
- * \remarks{Can be called multiple times: \r{su_mem_bag_auto_relax_unroll()} as well as \r{su_mem_bag_auto_relax_gut()}
+ * \remarks{Can be called multiple times: \r{su_mem_bag_auto_snap_unroll()} as well as \r{su_mem_bag_auto_snap_gut()}
  * only perform real actions when called on the level which called this the first time.} */
-EXPORT struct su_mem_bag *su_mem_bag_auto_relax_create(struct su_mem_bag *self);
+EXPORT struct su_mem_bag *su_mem_bag_auto_snap_create(struct su_mem_bag *self);
 
-/*! See \r{su_mem_bag_auto_relax_create()}. */
-EXPORT struct su_mem_bag *su_mem_bag_auto_relax_gut(struct su_mem_bag *self);
+/*! See \r{su_mem_bag_auto_snap_create()}. */
+EXPORT struct su_mem_bag *su_mem_bag_auto_snap_gut(struct su_mem_bag *self);
 
-/*! See \r{su_mem_bag_auto_relax_create()}. */
-EXPORT struct su_mem_bag *su_mem_bag_auto_relax_unroll(struct su_mem_bag *self);
+/*! See \r{su_mem_bag_auto_snap_create()}. */
+EXPORT struct su_mem_bag *su_mem_bag_auto_snap_unroll(struct su_mem_bag *self);
 
 /*! This is rather internal, but due to the \r{su_mem_bag_alloc_flags} \a{mbaf} maybe handy sometimes.
  * Normally to be used through the macro interface.
@@ -250,14 +250,14 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
  */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-/*! The snapshot can be used in a local context, and many allocations can be freed in one go via \c{lofi_snap_unroll()}.
+/*! The snapshot can be used in a local context, and many allocations can be freed in one go via \c{lofi_snap_gut()}.
  * \remarks{Only applies to \SELF or its current \r{su_mem_bag_top()}, does not propagate through the stack.} */
 EXPORT void *su_mem_bag_lofi_snap_create(struct su_mem_bag *self);
 
 /*! Unroll a taken LOFI snapshot by freeing all its allocations.
  * The \a{cookie} is no longer valid after this operation.
  * This can only be called on the stack level where the snap has been taken. */
-EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie);
+EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_gut(struct su_mem_bag *self, void *cookie);
 
 /*! This is rather internal, but due to the \r{su_mem_bag_alloc_flags} \a{mbaf} maybe handy sometimes.
  * Normally to be used through the macro interface.
@@ -395,14 +395,14 @@ public:
 	mem_bag &top(void) {return (mb_top != NIL) ? *S(mem_bag*,mb_top) : *this;}
 
 #ifdef su_HAVE_MEM_BAG_AUTO
-	/*! \copydoc{su_mem_bag_auto_relax_create()} */
-	mem_bag &auto_relax_create(void) {SELFTHIS_RET(su_mem_bag_auto_relax_create(this));}
+	/*! \copydoc{su_mem_bag_auto_snap_create()} */
+	mem_bag &auto_snap_create(void) {SELFTHIS_RET(su_mem_bag_auto_snap_create(this));}
 
-	/*! \copydoc{su_mem_bag_auto_relax_gut()} */
-	mem_bag &auto_relax_gut(void) {SELFTHIS_RET(su_mem_bag_auto_relax_gut(this));}
+	/*! \copydoc{su_mem_bag_auto_snap_gut()} */
+	mem_bag &auto_snap_gut(void) {SELFTHIS_RET(su_mem_bag_auto_snap_gut(this));}
 
-	/*! \copydoc{su_mem_bag_auto_relax_unroll()} */
-	mem_bag &auto_relax_unroll(void) {SELFTHIS_RET(su_mem_bag_auto_relax_unroll(this));}
+	/*! \copydoc{su_mem_bag_auto_snap_unroll()} */
+	mem_bag &auto_snap_unroll(void) {SELFTHIS_RET(su_mem_bag_auto_snap_unroll(this));}
 
 	/*! \copydoc{su_mem_bag_auto_allocate()} */
 	void *auto_allocate(uz size, uz no=1, BITENUM(u32,alloc_flags) af=alloc_none){
@@ -414,8 +414,8 @@ public:
 	/*! \copydoc{su_mem_bag_lofi_snap_create()} */
 	void *lofi_snap_create(void) {return su_mem_bag_lofi_snap_create(this);}
 
-	/*! \copydoc{su_mem_bag_lofi_snap_unroll()} */
-	mem_bag &lofi_snap_unroll(void *cookie) {SELFTHIS_RET(su_mem_bag_lofi_snap_unroll(this, cookie));}
+	/*! \copydoc{su_mem_bag_lofi_snap_gut()} */
+	mem_bag &lofi_snap_gut(void *cookie) {SELFTHIS_RET(su_mem_bag_lofi_snap_gut(this, cookie));}
 
 	/*! \copydoc{su_mem_bag_lofi_allocate()} */
 	void *lofi_allocate(uz size, uz no=1, BITENUM(u32,alloc_flags) af=alloc_none){

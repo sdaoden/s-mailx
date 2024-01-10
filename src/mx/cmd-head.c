@@ -882,7 +882,7 @@ a_chead_headers(int msgspec) /* TODO rework v15 */
 #ifdef mx_HAVE_COLOUR
       mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
 #endif
-      n_autorec_relax_create();
+      n_autorec_snap_create();
       for(lastmq = NULL, mq = &message[msgCount]; mp < mq; lastmq = mp, ++mp){
          ++mesg;
          if (!visible(mp))
@@ -901,11 +901,11 @@ jdot_unsort:
          }
          ++flag;
          a_chead_print_head(0, mesg, n_stdout, FAL0, FAL0);
-         n_autorec_relax_unroll();
+         n_autorec_snap_unroll();
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
          setdot(lastmq, FAL0);
-      n_autorec_relax_gut();
+      n_autorec_snap_gut();
 #ifdef mx_HAVE_COLOUR
       mx_colour_env_gut();
 #endif
@@ -942,7 +942,7 @@ jdot_unsort:
 #ifdef mx_HAVE_COLOUR
       mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
 #endif
-      n_autorec_relax_create();
+      n_autorec_snap_create();
       for(lastmq = NULL; mp != NULL; lastmq = mp, mp = mq){
          mq = next_in_thread(mp);
          if (visible(mp) &&
@@ -962,12 +962,12 @@ jdot_sort:
             a_chead_print_head(flag, P2UZ(mp - message + 1), n_stdout,
                mb.mb_threaded, TRU1);
             ++flag;
-            n_autorec_relax_unroll();
+            n_autorec_snap_unroll();
          }
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
          setdot(lastmq, FAL0);
-      n_autorec_relax_gut();
+      n_autorec_snap_gut();
 #ifdef mx_HAVE_COLOUR
       mx_colour_env_gut();
 #endif
@@ -1085,12 +1085,12 @@ c_from(void *vp){
 #ifdef mx_HAVE_COLOUR
    mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf);
 #endif
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for(n = 0, ip = msgvec; *ip != 0; ++ip){ /* TODO join into _print_head() */
       a_chead_print_head(S(uz,n++), S(uz,*ip), obuf, mb.mb_threaded, FAL0);
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 #ifdef mx_HAVE_COLOUR
    mx_colour_env_gut();
 #endif
@@ -1119,7 +1119,7 @@ print_headers(int const *msgvec, boole only_marked,
 #ifdef mx_HAVE_COLOUR
    mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
 #endif
-   n_autorec_relax_create();
+   n_autorec_snap_create();
    for(printed = 0; *msgvec != 0; ++msgvec) {
       struct message *mp = message + *msgvec - 1;
       if (only_marked) {
@@ -1129,9 +1129,9 @@ print_headers(int const *msgvec, boole only_marked,
          continue;
       a_chead_print_head(printed++, *msgvec, n_stdout, mb.mb_threaded,
          subject_thread_compress);
-      n_autorec_relax_unroll();
+      n_autorec_snap_unroll();
    }
-   n_autorec_relax_gut();
+   n_autorec_snap_gut();
 #ifdef mx_HAVE_COLOUR
    mx_colour_env_gut();
 #endif

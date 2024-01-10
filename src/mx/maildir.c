@@ -184,15 +184,15 @@ a_maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
       goto jleave;
    _maildir_append(name, NULL, NULL);
 
-   n_autorec_relax_create();
+   n_autorec_snap_create();
    for(i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i){
       if(!a_maildir_readin(name, &message[i])){
          i = -1;
          break;
       }
-      n_autorec_relax_unroll();
+      n_autorec_snap_unroll();
    }
-   n_autorec_relax_gut();
+   n_autorec_snap_gut();
    if(i < 0)
       goto jleave;
 
@@ -556,7 +556,7 @@ a_maildir_update(void){
 
    tsp = mx_time_now(TRU1); /* TODO FAL0, eventloop update! */
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    gotcha = held = modflags = 0;
    for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
       if((n_pstate & n_PS_EDIT) ? ((mp->m_flag & MDELETED) != 0)
@@ -576,9 +576,9 @@ a_maildir_update(void){
             ++modflags;
          }
       }
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    if((gotcha || modflags) && (n_pstate & n_PS_EDIT)){
       fprintf(n_stdout, "%s %s\n",
@@ -1121,7 +1121,7 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
    size = 0;
    tsp = mx_time_now(TRU1); /* TODO -> eventloop */
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for(flag = MNEW, state = a_NLSEP;;){
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1);
 
@@ -1132,7 +1132,7 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
             if((rv = maildir_append1(tsp, name, fp, off1, size, flag, realstat)
                   ) == STOP)
                goto jfree;
-            su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+            su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
             if(fseek(fp, offs + buflen, SEEK_SET) == -1){
                rv = STOP;
                goto jfree;
@@ -1197,7 +1197,7 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
 
    ASSERT(rv == OKAY);
 jfree:
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
    mx_fs_linepool_release(buf, bufsize);
 jleave:
    NYD_OU;
