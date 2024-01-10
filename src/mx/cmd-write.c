@@ -191,7 +191,7 @@ jsend:
    imap_created_mailbox = 0;
 #endif
 
-   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
 
@@ -224,7 +224,7 @@ jsend:
          if(convert == SEND_MBOX)
             n_folder_mbox_prepare_append(obuf, TRU1, NIL);
       }
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
 
       touch(mp);
       if (domark)
@@ -237,7 +237,7 @@ jsend:
       tstats[0] += mstats[0];
       tstats[1] += mp->m_lines;/* TODO won't work, need target! v15!! */
    }
-   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
    fflush(obuf);
 
@@ -248,7 +248,7 @@ jferr:
          file = n_filename_to_repro(file);
       n_perr(file, n_pstate_err_no);
       if (!success)
-         su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+         su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
       success = FAL0;
    }
    if(shell != NIL){

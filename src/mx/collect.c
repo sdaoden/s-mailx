@@ -1004,7 +1004,7 @@ a_coll_forward(char const *ms, int f){
 	rv = 0;
 	fprintf(n_stdout, A_("Interpolating:"));
 
-	su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+	su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
 	for(; *msgvec != 0; ++msgvec){
 		cqc.cqc_mp = &message[*msgvec - 1];
 		touch(cqc.cqc_mp);
@@ -1016,9 +1016,9 @@ a_coll_forward(char const *ms, int f){
 			rv = su_ERR_IO;
 			break;
 		}
-		su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+		su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
 	}
-	su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+	su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
 	fprintf(n_stdout, "\n");
 

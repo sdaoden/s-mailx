@@ -176,7 +176,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
 #endif
 
    rv = 0;
-   n_autorec_relax_create();
+   n_autorec_snap_create();
    for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = &message[*ip - 1];
       touch(mp);
@@ -195,7 +195,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      n_autorec_relax_unroll();
+      n_autorec_snap_unroll();
       if(formfeed){ /* TODO a nicer way to separate piped messages! */
          if(putc('\f', obuf) == EOF){
             rv = 1;
@@ -205,7 +205,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       if (tstats != NULL)
          tstats[0] += mstats[0];
    }
-   n_autorec_relax_gut();
+   n_autorec_snap_gut();
 #ifdef mx_HAVE_COLOUR
    if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
       mx_colour_env_gut();

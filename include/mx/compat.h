@@ -47,16 +47,16 @@
 #define n_free su_MEM_FREE
 
 /* Auto-reclaimed storage TODO v15-compat */
-#define n_autorec_relax_create() \
-      su_mem_bag_auto_relax_create(su_MEM_BAG_SELF)
-#define n_autorec_relax_gut() \
-      su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF)
-#define n_autorec_relax_unroll() \
-      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF)
+#define n_autorec_snap_create() \
+      su_mem_bag_auto_snap_create(su_MEM_BAG_SELF)
+#define n_autorec_snap_gut() \
+      su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF)
+#define n_autorec_snap_unroll() \
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF)
 /* (Even older obsolete names!) TODO v15-compat */
-#define srelax_hold n_autorec_relax_create
-#define srelax_rele n_autorec_relax_gut
-#define srelax n_autorec_relax_unroll
+#define srelax_hold n_autorec_snap_create
+#define srelax_rele n_autorec_snap_gut
+#define srelax n_autorec_snap_unroll
 
 #define n_autorec_alloc su_MEM_BAG_SELF_AUTO_ALLOC
 #define n_autorec_calloc(NO,SZ) su_MEM_BAG_SELF_AUTO_CALLOC_N(SZ, NO)
@@ -67,8 +67,8 @@
 #define n_lofi_free su_MEM_BAG_SELF_LOFI_FREE
 
 #define n_lofi_snap_create() su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF)
-#define n_lofi_snap_unroll(COOKIE) \
-   su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, COOKIE)
+#define n_lofi_snap_gut(COOKIE) \
+   su_mem_bag_lofi_snap_gut(su_MEM_BAG_SELF, COOKIE)
 
 #endif /* mx_COMPAT_H */
 /* s-it-mode */
