@@ -479,7 +479,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
 	}else{
 		BITENUM(u32,n_shexp_state) shs;
 
-		su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+		su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
 		s = n_string_creat_auto(&s_b);
 		sin.s = UNCONST(char*,avop->avo_current_arg);
 		sin.l = UZ_MAX;
@@ -487,7 +487,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
 				n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DSQ),
 				mx_SCOPE_NONE, s, &sin, NIL);
 		if((shs & n_SHEXP_STATE_ERR_MASK) || !(shs & n_SHEXP_STATE_STOP)){
-			su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+			su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 			goto je_S;
 		}
 		ca.ca_arg.ca_str.l = s->s_len;
@@ -501,7 +501,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
 	n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
 	if(s != NIL)
-		su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+		su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 	if(!b && (ok_blook(errexit) || ok_blook(posix))){
 je_S:
 		rv = N_("-S failed to set variable");

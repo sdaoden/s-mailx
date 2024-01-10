@@ -751,7 +751,7 @@ jat_where_default:
       if(ok_blook(allnet))
          flags |= a_ALLNET;
 
-      su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
       for(i = 0; i < msgCount; ++i){
          mp = &message[i];
          mf = mp->m_flag;
@@ -787,9 +787,9 @@ jat_where_default:
             mark(i + 1, f);
             flags |= a_ANY;
          }
-         su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+         su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
       }
-      su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+      su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
 jnamesearch_scpfree:
       if(scp != NIL){

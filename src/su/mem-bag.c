@@ -83,7 +83,7 @@ CTAV(S(u32,su_MEM_BAG_ALLOC_MUSTFAIL) == S(u32,su_MEM_ALLOC_MUSTFAIL));
 struct su__mem_bag_auto_buf{
 	struct su__mem_bag_auto_buf *mbab_last;
 	char *mbab_bot; /* For _fixate(): keep startup memory lingering */
-	char *mbab_relax; /* !NIL: used by _relax_unroll(), not .mbab_bot */
+	char *mbab_snap; /* !NIL: used by _snap_unroll(), not .mbab_bot */
 	char *mbab_caster; /* Point of casting off memory */
 	char mbab_buf[VFIELD_SIZE(0)]; /* MEMBAG_HULL: void*[] */
 };
@@ -327,10 +327,10 @@ su_mem_bag_reset(struct su_mem_bag *self){
 		struct su__mem_bag_auto_buf **mbabpp, *mbabp;
 
 		/* Forcefully gut() an active relaxation */
-		if(self->mb_auto_relax_recur > 0){
+		if(self->mb_auto_snap_recur > 0){
 			DBGX( su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!"); )
-			self->mb_auto_relax_recur = 1;
-			self = su_mem_bag_auto_relax_gut(self);
+			self->mb_auto_snap_recur = 1;
+			self = su_mem_bag_auto_snap_gut(self);
 		}
 
 		/* Simply move buffers away from .mb_auto_full */
@@ -351,7 +351,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 
 			a_membag_free_auto_hulls(tmp->mbab_bot, tmp->mbab_caster);
 			if(tmp->mbab_bot != tmp->mbab_buf){
-				tmp->mbab_relax = NIL;
+				tmp->mbab_snap = NIL;
 				tmp->mbab_caster = tmp->mbab_bot;
 				tmp->mbab_last = *mbabpp;
 				*mbabpp = tmp;
@@ -426,7 +426,7 @@ su_mem_bag_pop(struct su_mem_bag *self, struct su_mem_bag *that_one){
 
 #ifdef su_HAVE_MEM_BAG_AUTO
 struct su_mem_bag *
-su_mem_bag_auto_relax_create(struct su_mem_bag *self){
+su_mem_bag_auto_snap_create(struct su_mem_bag *self){
 	struct su_mem_bag *oself;
 	NYD2_IN;
 	ASSERT(self);
@@ -434,13 +434,13 @@ su_mem_bag_auto_relax_create(struct su_mem_bag *self){
 	if((oself = self)->mb_top != NIL)
 		self = oself->mb_top;
 
-	if(self->mb_auto_relax_recur++ == 0){
+	if(self->mb_auto_snap_recur++ == 0){
 		struct su__mem_bag_auto_buf *mbabp;
 
 		for(mbabp = self->mb_auto_top; mbabp != NIL; mbabp = mbabp->mbab_last)
-			mbabp->mbab_relax = mbabp->mbab_caster;
+			mbabp->mbab_snap = mbabp->mbab_caster;
 		for(mbabp = self->mb_auto_full; mbabp != NIL; mbabp = mbabp->mbab_last)
-			mbabp->mbab_relax = mbabp->mbab_caster;
+			mbabp->mbab_snap = mbabp->mbab_caster;
 	}
 
 	self = oself;
@@ -449,26 +449,26 @@ su_mem_bag_auto_relax_create(struct su_mem_bag *self){
 }
 
 struct su_mem_bag *
-su_mem_bag_auto_relax_gut(struct su_mem_bag *self){
+su_mem_bag_auto_snap_gut(struct su_mem_bag *self){
 	struct su_mem_bag *oself;
 	NYD2_IN;
 	ASSERT(self);
 
 	if((oself = self)->mb_top != NIL)
 		self = oself->mb_top;
-	ASSERT_NYD_EXEC(self->mb_auto_relax_recur > 0, self = oself);
+	ASSERT_NYD_EXEC(self->mb_auto_snap_recur > 0, self = oself);
 
-	if(--self->mb_auto_relax_recur == 0){
+	if(--self->mb_auto_snap_recur == 0){
 		struct su__mem_bag_auto_buf *mbabp;
 
-		self->mb_auto_relax_recur = 1;
-		self = su_mem_bag_auto_relax_unroll(self);
-		self->mb_auto_relax_recur = 0;
+		self->mb_auto_snap_recur = 1;
+		self = su_mem_bag_auto_snap_unroll(self);
+		self->mb_auto_snap_recur = 0;
 
 		for(mbabp = self->mb_auto_top; mbabp != NIL; mbabp = mbabp->mbab_last)
-			mbabp->mbab_relax = NIL;
+			mbabp->mbab_snap = NIL;
 		for(mbabp = self->mb_auto_full; mbabp != NIL; mbabp = mbabp->mbab_last)
-			mbabp->mbab_relax = NIL;
+			mbabp->mbab_snap = NIL;
 	}
 
 	self = oself;
@@ -477,7 +477,7 @@ su_mem_bag_auto_relax_gut(struct su_mem_bag *self){
 }
 
 struct su_mem_bag *
-su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
+su_mem_bag_auto_snap_unroll(struct su_mem_bag *self){
 	/* The purpose of relaxation is to reset the casters, *not* to give back
 	 * memory to the system.  Presumably in some kind of iteration, it would be
 	 * counterproductive to give the system allocator a chance to waste time */
@@ -487,9 +487,9 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 
 	if((oself = self)->mb_top != NIL)
 		self = oself->mb_top;
-	ASSERT_NYD_EXEC(self->mb_auto_relax_recur > 0, self = oself);
+	ASSERT_NYD_EXEC(self->mb_auto_snap_recur > 0, self = oself);
 
-	if(self->mb_auto_relax_recur == 1){
+	if(self->mb_auto_snap_recur == 1){
 		struct su__mem_bag_auto_buf **pp, *mbabp, *p;
 
 		/* Buffers in the full list may become usable again.. */
@@ -498,7 +498,7 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 
 			/* ..if either they are not covered by relaxation, or if they have
 			 * been relaxed with "sufficient" buffer size available */
-			if(p->mbab_relax == NIL || p->mbab_relax <= &p->mbab_buf[self->mb_bsz_wo_gap]){
+			if(p->mbab_snap == NIL || p->mbab_snap <= &p->mbab_buf[self->mb_bsz_wo_gap]){
 				p->mbab_last = self->mb_auto_top;
 				self->mb_auto_top = p;
 			}else{
@@ -509,9 +509,9 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 		*pp = NIL;
 
 		for(mbabp = self->mb_auto_top; mbabp != NIL; mbabp = mbabp->mbab_last){
-			a_membag_free_auto_hulls(((mbabp->mbab_relax != NIL) ? mbabp->mbab_relax : mbabp->mbab_bot),
+			a_membag_free_auto_hulls(((mbabp->mbab_snap != NIL) ? mbabp->mbab_snap : mbabp->mbab_bot),
 				mbabp->mbab_caster);
-			mbabp->mbab_caster = (mbabp->mbab_relax != NIL) ? mbabp->mbab_relax : mbabp->mbab_bot;
+			mbabp->mbab_caster = (mbabp->mbab_snap != NIL) ? mbabp->mbab_snap : mbabp->mbab_bot;
 		}
 	}
 
@@ -578,7 +578,7 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, BITENUM(u32,su
 			if(mbabp == NIL)
 				goto jleave;
 			rv = mbabp->mbab_bot = top = mbabp->mbab_buf;
-			mbabp->mbab_relax = NIL;
+			mbabp->mbab_snap = NIL;
 			mbabp->mbab_caster = cp = &top[chunksz];
 			if(LIKELY(cp <= (top += self->mb_bsz_wo_gap))){
 				mbabp->mbab_last = self->mb_auto_top;
@@ -668,7 +668,7 @@ su_mem_bag_lofi_snap_create(struct su_mem_bag *self){
 }
 
 struct su_mem_bag *
-su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
+su_mem_bag_lofi_snap_gut(struct su_mem_bag *self, void *cookie){
 	struct su__mem_bag_lofi_chunk *mblcp;
 	struct su_mem_bag *oself;
 	NYD2_IN;
@@ -681,7 +681,7 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 #ifdef su_HAVE_DEBUG
 		if(mblcp == NIL){
 			su_log_write(su_LOG_DEBUG,
-				"su_mem_bag_lofi_snap_unroll(%p): no such snap exists: non-debug crash!", oself);
+				"su_mem_bag_lofi_snap_gut(%p): no such snap exists: non-debug crash!", oself);
 			break;
 		}
 #endif
