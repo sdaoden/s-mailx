@@ -8631,7 +8631,7 @@ t_iconv_mainbody() { #{{{
 	ck0 2 - ${EX}
 
 	printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://t.mbox \
-		-S charset-7bit=us-ascii -S charset-8bit=us-ascii \
+		-S charset-7bit=us-ascii -S charset-8bit=us-ascii -Snomime-force-sendout \
 		-s '–' over-the@rain.bow >${E0} 2>${EX}
 	ck_exx 3
 	ck 3 - ./t.mbox '2571458951 252'
@@ -8675,7 +8675,7 @@ t_mime_force_sendout() { #{{{
 	printf 'ha' > ./.tsba
 	printf '' > ./t.mbox
 
-	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
+	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo -Snomime-force-sendout \
 		over-the@rain.bow > ${EX} 2>&1
 	ck0 1 4 ./t.mbox '3007987737 110'
 
@@ -8683,7 +8683,7 @@ t_mime_force_sendout() { #{{{
 		over-the@rain.bow > ${E0} 2>&1
 	cke0 2 0 ./t.mbox '1866273282 219'
 
-	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
+	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo -Snomime-force-sendout \
 		-a ./.tmba over-the@rain.bow > ${EX} 2>&1
 	ck 3 4 ./t.mbox '1866273282 219' '483826185 119'
 
@@ -8691,7 +8691,7 @@ t_mime_force_sendout() { #{{{
 		-a ./.tmba over-the@rain.bow > ${E0} 2>&1
 	cke0 4 0 ./t.mbox '4275772439 882'
 
-	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
+	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo -Snomime-force-sendout \
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${EX} 2>&1
 	ck 5 4 ./t.mbox '4275772439 882' '483826185 119'
 
@@ -8699,7 +8699,7 @@ t_mime_force_sendout() { #{{{
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${E0} 2>&1
 	cke0 6 0 ./t.mbox '3249858209 1735'
 
-	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
+	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo -Snomime-force-sendout \
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${EX} 2>&1
 	ck 7 4 ./t.mbox '3249858209 1735' '3007987737 110'
 
