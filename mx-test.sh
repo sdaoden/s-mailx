@@ -2754,52 +2754,65 @@ __EOT
 	t_epilog "${@}"
 } #}}}
 
-t_posix_abbrev() { #{{{
+t_posix_compat() { #{{{
 	t_prolog "${@}"
 
 	#{{{ In POSIX C181 standard order
-	</dev/null ${MAILX} ${ARGS} \
-		-Y 'echon alias/a\ ; ? a; echon group/g\ ; ?g' \
-		-Y 'echon alternates/alt\ ; ? alt' \
-		-Y 'echon chdir/ch\ ; ? ch' \
-		-Y 'echon copy/c\ ; ? c; echon Copy/C\ ; ?C' \
-		-Y 'echon delete/d\ ; ? d' \
-		-Y 'echon discard/di\ ; ? di; echon ignore/ig\ ; ?ig' \
-		-Y 'echon echo/ec\ ; ? ec' \
-		-Y 'echon edit/e\ ; ? e' \
-		-Y 'echon exit/ex\ ; ? ex; echon xit/x\ ; ?x' \
-		-Y 'echon file/fi\ ; ? fi; echon folder/fold\ ; ?	fold' \
-		-Y 'echon followup/fo\ ; ? fo; echon Followup/F\ ; ?F' \
-		-Y 'echon from/f\ ; ? f' \
-		-Y 'echon headers/h\ ; ? h' \
-		-Y 'echon help/hel\ ; ? hel' \
-		-Y 'echon hold/ho\ ; ? ho; echon preserve/pre\ ; ? pre' \
-		-Y 'echon if/i\ ; ? i; echon else/el\ ; ? el; echon endif/en\ ; ? en' \
-		-Y 'echon list/l\ ; ? l' \
-		-Y 'echon mail/m\ ; ? m' \
-		-Y 'echon mbox/mb\ ; ? mb' \
-		-Y 'echon next/n\ ; ? n' \
-		-Y 'echon pipe/pi\ ; ? pi' \
-		-Y 'echon Print/P\ ; ? P; echon Type/T\ ; ? T' \
-		-Y 'echon print/p\ ; ? p; echon type/t\ ; ? t' \
-		-Y 'echon quit/q\ ; ? q' \
-		-Y 'echon Reply/R\ ; ? R' \
-		-Y 'echon reply/r\ ; ? r' \
-		-Y 'echon retain/ret\ ; ? ret' \
-		-Y 'echon save/s\ ; ? s; echon Save/S\ ; ? S' \
-		-Y 'echon set/se\ ; ? se' \
-		-Y 'echon shell/sh\ ; ? sh' \
-		-Y 'echon size/si\ ; ? si' \
-		-Y 'echon source/so\ ; ? so' \
-		-Y 'echon touch/tou\ ; ? tou' \
-		-Y 'echon unalias/una\ ; ? una' \
-		-Y 'echon undelete/u\ ; ? u' \
-		-Y 'echon unset/uns\ ; ? uns' \
-		-Y 'echon visual/v\ ; ? v' \
-		-Y 'echon write/w\ ; ? w' \
-		2>${E0} | ${sed} -e 's/:.*$//' > ./t1
+	<< '__EOT' ${MAILX} ${ARGS} 2>${E0} | ${sed} -e 's/:.*$//' > ./tabbrev
+echon alias/a\ ; ? a; echon group/g\ ; ?g
+echon alternates/alt\ ; ? alt
+echon chdir/ch\ ; ? ch
+echon copy/c\ ; ? c; echon Copy/C\ ; ?C
+echon delete/d\ ; ? d
+echon discard/di\ ; ? di; echon ignore/ig\ ; ?ig
+echon echo/ec\ ; ? ec
+echon edit/e\ ; ? e
+echon exit/ex\ ; ? ex; echon xit/x\ ; ?x
+echon file/fi\ ; ? fi; echon folder/fold\ ; ?	fold
+echon followup/fo\ ; ? fo; echon Followup/F\ ; ?F
+echon from/f\ ; ? f
+echon headers/h\ ; ? h
+echon help/hel\ ; ? hel
+echon hold/ho\ ; ? ho; echon preserve/pre\ ; ? pre
+echon if/i\ ; ? i; echon else/el\ ; ? el; echon endif/en\ ; ? en
+echon list/l\ ; ? l
+echon mail/m\ ; ? m
+echon mbox/mb\ ; ? mb
+echon next/n\ ; ? n
+echon pipe/pi\ ; ? pi
+echon Print/P\ ; ? P; echon Type/T\ ; ? T
+echon print/p\ ; ? p; echon type/t\ ; ? t
+echon quit/q\ ; ? q
+echon Reply/R\ ; ? R
+echon reply/r\ ; ? r
+echon retain/ret\ ; ? ret
+echon save/s\ ; ? s; echon Save/S\ ; ? S
+echon set/se\ ; ? se
+echon shell/sh\ ; ? sh
+echon size/si\ ; ? si
+echon source/so\ ; ? so
+echon touch/tou\ ; ? tou
+echon unalias/una\ ; ? una
+echon undelete/u\ ; ? u
+echon unset/uns\ ; ? uns
+echon visual/v\ ; ? v
+echon write/w\ ; ? w
+__EOT
 	#}}}
-	cke0 1 0 ./t1 '1012680481 968'
+	cke0 abbrev 0 ./tabbrev '1012680481 968'
+
+	# keep in sync with manual and okeys enum
+	</dev/null ${MAILX} -:/ -Sdotlock-disable -X '
+var allnet asksub askbcc askcc autoprint # a
+var bang cmd crt debug dot escape flipr folder # b-f
+var header hold ignore ignoreeof indentprefix # g-i
+var keep keepsave metoo outfolder # j-o
+var page prompt quiet record # p-r
+var save screen sendwait showto Sign sign # s
+var toplines # t-z
+xit
+' > ./tvardefs 2>${E0}
+	cke0 vardefs 0 ./tvardefs '4044980853 597'
 
 	t_epilog "${@}"
 } #}}}
@@ -15233,7 +15246,7 @@ t_all() { #{{{
 	jspawn input_inject_semicolon_seq
 	jspawn wysh
 	jspawn commandalias # test now, save space later on!
-	jspawn posix_abbrev
+	jspawn posix_compat
 	jsync
 
 	# Basics (variables, program logic, arg stuff etc.: all here)
