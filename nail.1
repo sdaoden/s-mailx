@@ -975,7 +975,7 @@ $ echo bla | \*(xX -S expandaddr -s test ./mbox.mbox
 $ echo bla | \*(xX -Sexpandaddr -stest '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \*(xX -:/ -Smta=test \e
     --set expandaddr=fail,-all,+addr,failinvaddr \e
-    -Sttycharset-detect -S mime-force-sendout -S fullnames \e
+    -Sttycharset-detect -S fullnames \e
     -s test -. 'Imagine John <cold@turk.ey>'
 .Ed
 .
@@ -1038,7 +1038,7 @@ to specify variables:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(xX -:/ \e
-    -Sttycharset=utf-8 -Smime-force-sendout \e
+    -Sttycharset-detect \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-allmechs,plain \e
     -S from=scriptreply@exam.ple \e
@@ -1065,8 +1065,8 @@ includes
 .Ql ,+iconv, ,
 .Va iconv-disable
 not set) invalid (according to input character set) input causes errors:
-.Va mime-force-sendout
-classifies input as binary data as a last resort, and allows message
+.Va mime-force-sendout ,
+as a last resort, classifies input as binary data, and allows message
 creation to succeed.
 (Such content can be inspected either by installing a
 .Va pipe-TYPE/SUBTYPE
@@ -1690,10 +1690,9 @@ in
 .Ev DEAD .
 However, sending of non-convertible data as
 .Ql application/octet-stream
-binary content can be forced with
-.Va mime-force-sendout :
-like this recipients still have the option to inspect message content
-(for example via
+binary content can be enforced with
+.Va mime-force-sendout
+(recipients then may inspect content for example via
 .Va mime-counter-evidence ) .
 .
 .Pp
@@ -11130,15 +11129,19 @@ a decoding step.
 .
 .Mx
 .It Va mime-force-sendout
-\*(BO\*(OP Whenever it is not acceptable to fail sending out messages
-because of non-convertible character content this variable may be set.
-It will, as a last resort, classify the part content as
-.Ql application/octet-stream .
+\*(BO\*(OP When failing to send out messages because of non-convertible
+character content is not acceptible setting this will, as a last resort,
+classify data as
+.Ql application/octet-stream ;
+the receiver can then still inspect the data (even automatically via
+.Va mime-counter-evidence ) .
 Refer to the section
 .Sx "Character sets"
 for the complete picture of character set conversion, and
 .Sx "HTML mail and MIME attachments"
 for how to internally or externally handle part content.
+Does not apply to header content, like filenames.
+Set by default.
 .
 .Mx
 .It Va mimetypes-load-control
