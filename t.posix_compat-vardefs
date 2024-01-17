@@ -1,0 +1,33 @@
+#boolean; unset: allnet
+set asksub
+#boolean; unset: askbcc
+#boolean; unset: askcc
+#boolean; unset: autoprint
+#boolean; unset: bang
+#unset: cmd
+#unset: crt
+#boolean; unset: debug
+#boolean; unset: dot
+set escape=~
+#boolean; unset: flipr
+#unset: folder
+set header
+set hold
+#boolean; unset: ignore
+#boolean; unset: ignoreeof
+set indentprefix=$'\t'
+set keep
+set keepsave
+#boolean; unset: metoo
+#boolean; unset: outfolder
+#boolean; unset: page
+set prompt='? '
+#boolean; unset: quiet
+#unset: record
+set save
+#unset: screen
+set sendwait=''
+#boolean; unset: showto
+#unset: Sign
+#unset: sign
+set toplines=5
