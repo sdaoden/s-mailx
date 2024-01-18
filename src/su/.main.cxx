@@ -40,6 +40,7 @@ NSPC_USE(su)
 
 #define a_ERR() do {log::write(log::alert, "%u\n", __LINE__); ++a_errors;} while(0)
 
+static char const *argv0;
 static uz a_errors;
 
 static void a_abc(void);
@@ -51,7 +52,7 @@ static void a_cs_dict(void);
 static void a_icodec(void);
 static void a_md(void);
 static void a_mem_bag(void);
-static void a_path_cs(void);
+static void a_path(void);
 static void a_prime(void);
 static void a_random(void);
 static void a_re(void);
@@ -60,7 +61,10 @@ static void a_time(void);
 static void a_utf(void);
 
 int
-main(void){ // {{{
+main(int argc, char **argv){ // {{{
+	UNUSED(argc);
+	argv0 = argv[0];
+
 	state::create(state::create_all, "SU@C++", (S(u32,state::debug) | S(u32,log::debug)), state::err_nopass);
 
 	if(log::get_show_level())
@@ -97,7 +101,7 @@ main(void){ // {{{
 
 	a_icodec();
 	a_mem_bag();
-	a_path_cs();
+	a_path();
 	a_random();
 	a_re();
 	a_sort();
@@ -2308,9 +2312,43 @@ a_mem_bag(void){ // TODO only instantiation test yet
 }
 // }}}
 
-// path_cs {{{
+// path {{{
+static void a_path__info(void);
+static void a_path__string(void);
+
 static void
-a_path_cs(void){
+a_path(void){
+	a_path__info();
+	a_path__string();
+}
+
+static void
+a_path__info(void){
+	path::info pi;
+
+	if(!pi.stat(argv0))
+		a_ERR();
+	else if(!pi.lstat(argv0))
+		a_ERR();
+	else{
+		if(pi.descriptive_char() != '\0')
+			a_ERR();
+		if(!pi.is_reg())
+			a_ERR();
+		if(pi.size() > pi.blocks() * pi.blksize())
+			a_ERR();
+
+		if(!pi.atime().is_valid())
+			a_ERR();
+		if(!pi.mtime().is_valid())
+			a_ERR();
+		if(!pi.ctime().is_valid())
+			a_ERR();
+	}
+}
+
+static void
+a_path__string(void){
 	// Tests from POSIX manual
 	char buf[80];
 	char const *bp;
