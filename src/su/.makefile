@@ -73,6 +73,7 @@ CSRC = atomic.c \
 			cs-find.c cs-rfind.c cs-tbox.c cs-tools.c \
 		cs-dict.c \
 	icodec-dec.c icodec-enc.c \
+		imf.c \
 	md.c md-siphash.c \
 		mem-alloc.c mem-tools.c \
 		mem-bag.c \

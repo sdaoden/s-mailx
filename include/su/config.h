@@ -51,6 +51,7 @@
 # define su_HAVE_NSPC
 /*# define su_HAVE_DEBUG*/
 /*# define su_HAVE_DEVEL*/
+# define su_HAVE_IMF
 /*# define su_HAVE_MEM_BAG_AUTO*/
 # define su_HAVE_MEM_BAG_LOFI
 /*# define su_HAVE_MEM_CANARIES_DISABLE*/
@@ -75,6 +76,7 @@
 #  define su_NYD_ENABLE
 #  define su_NYD2_ENABLE
 # endif
+# define su_HAVE_IMF
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
 # ifdef mx_HAVE_EXTERNAL_MEM_CHECK
@@ -94,7 +96,7 @@ struct mx_go_data_ctx;
 struct su_mem_bag;
 struct su__mem_bag_mx {struct su_mem_bag *mbm_bag;};
 extern struct mx_go_data_ctx *mx_go_data;
-# define su_MEM_BAG_SELF (su_R(struct su__mem_bag_mx*,mx_go_data)->mbm_bag)
+# define su_MEM_BAG_SELF (R(struct su__mem_bag_mx*,mx_go_data)->mbm_bag)
 /*# define su_MEM_BAG_SELF_ALLOC_FLAGS su_MEM_BAG_ALLOC_MUSTFAIL*/
 
 #else /* su_USECASE_MX */
