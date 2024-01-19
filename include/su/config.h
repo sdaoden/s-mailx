@@ -51,7 +51,7 @@
 # define su_HAVE_NSPC
 /*# define su_HAVE_DEBUG*/
 /*# define su_HAVE_DEVEL*/
-# define su_HAVE_MEM_BAG_AUTO
+/*# define su_HAVE_MEM_BAG_AUTO*/
 # define su_HAVE_MEM_BAG_LOFI
 /*# define su_HAVE_MEM_CANARIES_DISABLE*/
 # define su_HAVE_MD
