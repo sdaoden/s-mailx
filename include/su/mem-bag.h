@@ -355,11 +355,14 @@ NSPC_BEGIN(su)
 class mem_bag;
 
 /* mem_bag {{{ */
+class imf;
+
 /*!
  * \ingroup MEM_BAG
  * C++ variant of \r{MEM_BAG} (\r{su/mem-bag.h})
  */
 class EXPORT mem_bag : private su_mem_bag{
+	friend class imf;
 	su_CLASS_NO_COPY(mem_bag);
 public:
 	/*! \copydoc{su_mem_bag_alloc_flags} */
