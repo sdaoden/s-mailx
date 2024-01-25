@@ -89,6 +89,7 @@
 
 #undef ALIGNOF
 #undef ALIGN_P
+#undef ALIGN_PAGE
 #undef ALIGN_Z_OVER
 #undef ALIGN_Z
 #undef ALIGN_Z_PZ
