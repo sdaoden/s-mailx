@@ -663,6 +663,9 @@ do{\
 	su_R(DTYPE,su_IS_POW2(su_ALIGNOF(OTYPE)) ? su_ROUND_UP2(su_R(su_up,MEM), su_ALIGNOF(OTYPE))\
 			: su_ROUND_UP(su_R(su_up,MEM), su_ALIGNOF(OTYPE)))
 
+/*! Align to \r{su_PAGE_SIZE}. */
+#define su_ALIGN_PAGE(X) su_ROUND_UP2(su_S(su_uz,X), su_PAGE_SIZE)
+
 /* Roundup/align an integer;  Note: POW2 asserted in POD section below! */
 /*! Overalign an integer value so it cannot cause problems for anything not using special alignment directives. */
 #define su_ALIGN_Z_OVER(X) su_ROUND_UP2(su_S(su_uz,X), 2 * su__ZAL_L)
@@ -984,12 +987,14 @@ do{\
 #define su_UNUSED(X) ((void)(X))
 
 #if (su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
- /*! Variable-type size (with byte array at end). */
+ /*! Declare a variable-size array in a type (that is byte array as last field).
+  * If \a{X} is 0, \r{su_ALIGN_Z()} of 1 is used, if \a{X} is negative it is subtracted from that value,
+  * otherwise \a{X} is used as-is. */
 # define su_VFIELD_SIZE(X)
  /*! Variable-type size (with byte array at end). */
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
-# define su_VFIELD_SIZE(X) ((X) == 0 ? sizeof(su_uz) : (su_S(su_sz,X) < 0 ? sizeof(su_uz) - su_ABS(X) : su_S(su_uz,X)))
+# define su_VFIELD_SIZE(X) ((X) == 0 ? su_ALIGN_Z(1) : (su_S(su_sz,X) < 0 ? su_ALIGN_Z(1) - su_ABS(X) : su_S(su_uz,X)))
 # define su_VSTRUCT_SIZEOF(T,F) (sizeof(T) - su_FIELD_SIZEOF(T, F))
 #endif
 
