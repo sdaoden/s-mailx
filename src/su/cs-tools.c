@@ -38,11 +38,11 @@ su_cs_cmp(char const *cp1, char const *cp2){
 	ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
 	for(;;){
-		s32 c1, c2;
+		char c1;
 
-		c1 = *cp1++;
-		c2 = *cp2++;
-		if((rv = c1 - c2) != 0 || c1 == '\0')
+		rv = c1 = *cp1++;
+		rv -= *cp2++;
+		if(rv != 0 || c1 == '\0')
 			break;
 	}
 
@@ -58,11 +58,11 @@ su_cs_cmp_n(char const *cp1, char const *cp2, uz n){
 	ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
 	for(rv = 0; n != 0; --n){
-		s32 c1, c2;
+		char c1;
 
-		c1 = *cp1++;
-		c2 = *cp2++;
-		if((rv = c1 - c2) != 0 || c1 == '\0')
+		rv = c1 = *cp1++;
+		rv -= *cp2++;
+		if(rv != 0 || c1 == '\0')
 			break;
 	}
 
