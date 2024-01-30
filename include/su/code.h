@@ -1825,7 +1825,11 @@ typedef void (*su_del_fun)(void *self);
 typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 
 /*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is \e less \e than \a{b}, 0 on equality, and a
- * value greater than 0 if \a{a} is \e greater \e than \a{b}. */
+ * value greater than 0 if \a{a} is \e greater \e than \a{b}.
+ *
+ * \remarks{When comparing signed integers \c{a - b} subtraction will give wrong results if \c{a} is the type's
+ * minimum value, therefore using \c{(a < b) ? -1 : (a > b)} is advisable.}
+ */
 typedef sz (*su_cmp_fun)(void const *a, void const *b);
 
 /*! Create a hash that reproducibly represents \SELF. */
@@ -2435,7 +2439,9 @@ NSPC_END(su)
  * \brief Collections
  *
  * In \SU, and by default, collections learn how to deal with managed objects through \r{su_toolbox} objects.
- * (For behaviour peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
+ * When creating instances which own the objects they manage, the \r{su_toolbox} and at least its members
+ * \r{su_toolbox::tb_clone}, \r{su_toolbox::tb_del} and \r{su_toolbox::tb_assign} are asserted.
+ * (For general behaviour peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
  *
  * The C++ variants deduce many more things, and automatically, through (specializations of) \r{type_traits},
  * \r{type_toolbox}, and \r{auto_type_toolbox}.
