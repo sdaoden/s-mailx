@@ -740,7 +740,7 @@ mx_b64_enc_calc_size(uz len){
 	if(len >= UZ_MAX / 4)
 		len = UZ_MAX;
 	else{
-		len = (len * 4) / 3;
+		len = ((len +3) * 4) / 3;
 		len += (((len / mx_B64_ENC_INPUT_PER_LINE) + 1) * 3);
 		len += 2 + 1; /* CRLF, \0 */
 	}
