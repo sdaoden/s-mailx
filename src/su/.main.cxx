@@ -51,7 +51,7 @@ static void a_abc(void);
 static void a_atomic(void);
 static void a_avopt(void);
 static void a_boswap(void);
-//static void a_cs(void); FIXME
+static void a_cs(void);
 static void a_cs_dict(void);
 static void a_icodec(void);
 static void a_imf(void);
@@ -93,10 +93,11 @@ main(int argc, char **argv){ // {{{
 
 	a_atomic();
 
-	/// Basics (isolated)
+	/// Basics (isolated (but for mem))
 
 	a_avopt();
 	a_boswap();
+	a_cs();
 	a_md();
 	a_prime();
 	a_time();
@@ -463,6 +464,153 @@ a_boswap(void){
 
 #undef a_X
 }
+// }}}
+
+// cs TODO only fewest things checked yet!! {{{
+static void a_cs__sep(void);
+static void a_cs__squeeze(void);
+static void a_cs__trim(void);
+
+#undef a_X
+#define a_X(S) mem::copy(buf, S, sizeof(S)); cp = buf;
+
+static void
+a_cs(void){
+	a_cs__sep();
+	a_cs__squeeze();
+	a_cs__trim();
+}
+
+static void
+a_cs__sep(void){
+	char *cp, *arg, buf[80];
+
+	u32 i;
+#undef a_Y
+#define a_Y(X) \
+	a_X("a,b,c");++i;\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "a")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "b")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "c")) a_ERRI(i);\
+	if(cp != NIL) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg != NIL) a_ERRI(i);\
+	\
+	a_X("  ,,,  a , , , , , ,   ,    b   , ,  c,,,,,        ,,,");++i;\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "a")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "b")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "c")) a_ERRI(i);\
+	if(cp == NIL) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg != NIL) a_ERRI(i);\
+	if(cp != NIL) a_ERRI(i);\
+	\
+	a_X("a,b,c,");++i;\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "a")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "b")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "c")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "")) a_ERRI(i);\
+	if(cp != NIL) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg != NIL) a_ERRI(i);\
+
+	i = 0;
+	a_Y(sep);
+	i = 0;
+	a_Y(sep_escable);
+#undef a_Y
+
+	a_X("a,b\\,c");
+	arg = cs::sep_escable(&cp, ',', FAL0);
+	if(arg == NIL) a_ERR();
+	else if(cs::cmp(arg, "a")) a_ERR();
+	arg = cs::sep_escable(&cp, ',', FAL0);
+	if(arg == NIL) a_ERR();
+	else if(cs::cmp(arg, "b,c")) a_ERR();
+	if(cp != NIL) a_ERR();
+	arg = cs::sep_escable(&cp, ',', TRU1);
+	if(arg != NIL) a_ERR();
+}
+
+static void
+a_cs__squeeze(){
+	char *cp, buf[80];
+
+	a_X(" \t \t \n \t one\n\r two \t \n \t \r ");
+	if(cs::cmp(cs::squeeze(cp), " one two "))
+		a_ERR();
+
+	a_X("one two");
+	if(cs::cmp(cs::squeeze(cp), "one two"))
+		a_ERR();
+
+	a_X(" one two");
+	if(cs::cmp(cs::squeeze(cp), " one two"))
+		a_ERR();
+
+	a_X("  one two");
+	if(cs::cmp(cs::squeeze(cp), " one two"))
+		a_ERR();
+
+	a_X("one two ");
+	if(cs::cmp(cs::squeeze(cp), "one two "))
+		a_ERR();
+
+	a_X("one two  ");
+	if(cs::cmp(cs::squeeze(cp), "one two "))
+		a_ERR();
+}
+
+static void
+a_cs__trim(){
+	char *cp, buf[80];
+
+	a_X(" \t \t \n \t one\n\r \t \n \t \r ");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("one");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X(" one");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("  one");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("one ");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("one  ");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+}
+
+#undef a_X
 // }}}
 
 // cs_dict {{{

@@ -227,6 +227,49 @@ su_cs_sep_escable_c(char **iolist, char sep, boole ignore_empty){
 	return base;
 }
 
+char *
+su_cs_squeeze(char *cp){
+	uz wscnt;
+	char *cp_base, *dst, c;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp != NIL, cp_base = NIL);
+
+	dst = cp_base = cp;
+
+	for(wscnt = 0; (c = *cp++) != '\0';){
+		if(!su_cs_is_space(c))
+			wscnt = 0;
+		else if(wscnt++ != 0)
+			continue;
+		else
+			c = ' ';
+		*dst++ = c;
+	}
+	*dst = '\0';
+
+	NYD_OU;
+	return cp_base;
+}
+
+char *
+su_cs_trim(char *cp){
+	char *cp_base;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp != NIL, cp_base = NIL);
+
+	while(su_cs_is_space(*cp))
+		++cp;
+
+	cp_base = cp;
+
+	cp += su_cs_len(cp);
+	while(cp > cp_base && su_cs_is_space(*--cp))
+		*cp = '\0';
+
+	NYD_OU;
+	return cp_base;
+}
+
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
