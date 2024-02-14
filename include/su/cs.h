@@ -293,6 +293,10 @@ EXPORT char *su_cs_sep_c(char **iolist, char sep, boole ignore_empty);
  * itself, only those which escape \a{sep} characters will be stripped from the result string.} */
 EXPORT char *su_cs_sep_escable_c(char **iolist, char sep, boole ignore_empty);
 
+/*! Squeeze any successive whitespace to single SPace.
+ * Returns \a{cp} again, and also see \r{su_cs_trim()}. */
+EXPORT char *su_cs_squeeze(char *cp);
+
 /*! Is \a{x} the starting (sub)string of \a{cp}? */
 EXPORT boole su_cs_starts_with(char const *cp, char const *x);
 
@@ -304,6 +308,10 @@ EXPORT boole su_cs_starts_with_case(char const *cp, char const *x);
 
 /*! Is \a{x} the starting (sub)string of \a{cp}, case-insensitively? */
 EXPORT boole su_cs_starts_with_case_n(char const *cp, char const *x, uz n);
+
+/*! Remove any whitespace from the front and end of \a{cp}.
+ * Returns new first byte, and also see \r{su_cs_squeeze()}. */
+EXPORT char *su_cs_trim(char *cp);
 
 /*! Map to lowercase equivalent, or return unchanged.
  * For convenience values beyond \c{char} are supported (e.g., \c{EOF}), they are returned unchanged. */
@@ -512,6 +520,9 @@ public:
 		return su_cs_sep_escable_c(iolist, sep, ignore_empty);
 	}
 
+	/*! \copydoc{su_cs_squeeze()} */
+	static char *squeeze(char *cp) {return su_cs_squeeze(cp);}
+
 	/*! \copydoc{su_cs_starts_with()} */
 	static boole starts_with(char const *cp, char const *x) {return su_cs_starts_with(cp, x);}
 
@@ -523,6 +534,9 @@ public:
 
 	/*! \copydoc{su_cs_starts_with_case_n()} */
 	static boole starts_with_case(char const *cp, char const *x, uz n) {return su_cs_starts_with_case_n(cp, x, n);}
+
+	/*! \copydoc{su_cs_trim()} */
+	static char *trim(char *cp) {return su_cs_trim(cp);}
 
 	/*! \copydoc{su_cs_to_lower()} */
 	static s32 to_lower(s32 c) {return su_cs_to_lower(c);}
