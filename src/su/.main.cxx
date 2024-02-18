@@ -246,8 +246,7 @@ a_avopt(void){
 		"-#A ",
 		"--",
 		"-#A",
-		"Hello, world",
-		NIL
+		"Hello, world"
 	}, * const a_lines[] = {
 		"resource-files=a-a",
 		"resource-files a-a",
@@ -265,7 +264,7 @@ a_avopt(void){
 	avox.setup(NELEM(a_argv), a_argv, a_sopts, a_lopts);
 
 	//
-	if(avox.argc() != 14)
+	if(avox.argc() != 13)
 		a_ERR();
 	for(s32 i = 0; (i = avox.parse()) != avox.state_done;){
 		switch(i){
@@ -274,7 +273,7 @@ a_avopt(void){
 			break;
 
 		case -3:
-			if(avox.argc() != 13 && avox.argc() != 11)
+			if(avox.argc() != 12 && avox.argc() != 10)
 				a_ERR();
 			if(avox.current_opt() != -3)
 				a_ERR();
@@ -283,17 +282,17 @@ a_avopt(void){
 			break;
 
 		case 'A':
-			if(avox.argc() != 10 && avox.argc() != 4)
+			if(avox.argc() != 9 && avox.argc() != 3)
 				a_ERR();
 			if(avox.current_opt() != 'A')
 				a_ERR();
-			if((avox.argc() == 9 && cs::cmp(avox.current_arg(), "a-b")) &&
-					(avox.argc() == 3 && cs::cmp(avox.current_arg(), " ")))
+			if((avox.argc() == 8 && cs::cmp(avox.current_arg(), "a-b")) &&
+					(avox.argc() == 2 && cs::cmp(avox.current_arg(), " ")))
 				a_ERR();
 			break;
 
 		case '#':
-			if(avox.argc() != 8 && avox.argc() != 4)
+			if(avox.argc() != 7 && avox.argc() != 3)
 				a_ERR();
 			if(avox.current_opt() != '#')
 				a_ERR();
@@ -302,7 +301,7 @@ a_avopt(void){
 			break;
 
 		case -10:
-			if(avox.argc() != 7)
+			if(avox.argc() != 6)
 				a_ERR();
 			if(avox.current_opt() != -10)
 				a_ERR();
@@ -312,22 +311,22 @@ a_avopt(void){
 
 		case avopt::state_err_opt:
 			{char const *emsg = avopt::fmt_err_opt; UNUSED(emsg);}
-			if(avox.argc() != 9 && avox.argc() != 6 && avox.argc() != 5)
+			if(avox.argc() != 8 && avox.argc() != 5 && avox.argc() != 4)
 				a_ERR();
-			if((avox.argc() == 9 && avox.current_err_opt() != a_argv[4]) &&
+			if((avox.argc() == 8 && avox.current_err_opt() != a_argv[4]) &&
 					(avox.argc() == 6 && avox.current_err_opt() != a_argv[7]) &&
 					(avox.argc() == 5 && avox.current_err_opt() != a_argv[8]))
 				a_ERR();
 			break;
 		}
 	}
-	if(avox.argc() != 3)
+	if(avox.argc() != 2)
+		a_ERR();
+	if(NELEM(a_argv) != 13)
 		a_ERR();
 	if(avox.argv()[0] != a_argv[11])
 		a_ERR();
 	if(avox.argv()[1] != a_argv[12])
-		a_ERR();
-	if(avox.argv()[2] != a_argv[13] || avox.argv()[2] != NIL)
 		a_ERR();
 	if(avox.current_opt() != avox.state_stop)
 		a_ERR();
@@ -349,11 +348,17 @@ a_avopt(void){
 			break;
 
 		case 'A':
-			if(la != &a_lines[2])
-				a_ERR();
-			if(avo.current_opt() != 'A')
-				a_ERR();
-			if(cs::cmp(avo.current_arg(), "a-b"))
+			if(la == &a_lines[2]){
+				if(avo.current_opt() != 'A')
+					a_ERR();
+				if(cs::cmp(avo.current_arg(), "a-b"))
+					a_ERR();
+			}else if(la == &a_lines[3]){
+				if(avo.current_opt() != 'A')
+					a_ERR();
+				if(avo.current_arg()[0] != '\0')
+					a_ERR();
+			}else
 				a_ERR();
 			break;
 
@@ -376,11 +381,7 @@ a_avopt(void){
 			break;
 
 		case avopt::state_err_arg:
-			{char const *emsg = avopt::fmt_err_arg; UNUSED(emsg);}
-			if(la != &a_lines[3])
-				a_ERR();
-			if(avo.current_err_opt() != *la)
-				a_ERR();
+			a_ERR(); /* empty arg allowed */
 			break;
 
 		case avopt::state_err_opt:
@@ -389,6 +390,67 @@ a_avopt(void){
 				a_ERR();
 			if(avo.current_err_opt() != *la)
 				a_ERR();
+			break;
+		}
+	}
+
+	//
+
+	static char const
+		* const a_lopts2[] = {"account:;A", NIL},
+		* const a_argv2[] = {"--account=A", "--account=B", "--account=", "--account", "C"},
+		* const a_lines2[] = {"account=A", "account B", "account", "account  ", NIL};
+
+	avox.setup(NELEM(a_argv2), a_argv2, NIL, a_lopts2);
+	avo.setup(0, NIL, NIL, a_lopts2);
+
+	//
+	if(avox.argc() != 5)
+		a_ERR();
+	for(s32 i = 0; (i = avox.parse()) != avox.state_done;){
+		switch(i){
+		case 'A':
+			if(avox.argc() == 4){
+				if(avox.current_arg()[0] != 'A' || avox.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(avox.argc() == 3){
+				if(avox.current_arg()[0] != 'B' || avox.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(avox.argc() == 2){
+				if(avox.current_arg()[0] != '\0')
+					a_ERR();
+			}else if(avox.argc() == 0){
+				if(avox.current_arg()[0] != 'C' || avox.current_arg()[1] != '\0')
+					a_ERR();
+			}else
+				a_ERR();
+			break;
+		default:
+			a_ERR();
+			break;
+		}
+	}
+
+	for(char const * const *la = a_lines2; *la != NIL; ++la){
+		switch(avo.parse_line(*la)){
+		case 'A':
+			if(la == &a_lines2[0]){
+				if(avo.current_arg()[0] != 'A' || avo.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(la == &a_lines2[1]){
+				if(avo.current_arg()[0] != 'B' || avo.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(la == &a_lines2[2]){
+				if(avo.current_arg()[0] != '\0')
+					a_ERR();
+			}else if(la == &a_lines2[3]){
+				if(avo.current_arg()[0] != '\0')
+					a_ERR();
+			}else
+				a_ERR();
+			break;
+		default:
+			a_ERR();
 			break;
 		}
 	}
