@@ -111,6 +111,8 @@ struct su_mem_bag{
 #endif
 };
 
+EXPORT struct su_mem_bag *su__mem_bag_reset(struct su_mem_bag *self, boole quiet);
+
 /*! \a{bsz} is a buffer size hint used to space memory chunk pool buffers,
  * which thus also defines the maximum size of chunks which are served (less some internal management overhead).
  * If \a{bsz} is 0 then two pages (\r{su_PAGE_SIZE}) are used (to accommodate the use case of page allocations),
@@ -136,8 +138,11 @@ EXPORT struct su_mem_bag *su_mem_bag_fixate(struct su_mem_bag *self);
  * If \SELF owns a stack of \r{su_mem_bag_push()}ed objects, these will be forcefully destructed.
  * The cleanup will release all LOFI memory, drop all the relaxation created by \r{su_mem_bag_auto_snap_create()}
  * and all auto-reclaimed and flux storage that is not covered by r{su_mem_bag_fixate()}.
- * \remarks{Possible \r{su_HAVE_DEBUG} logs via \r{su_LOG_DEBUG}.} */
-EXPORT struct su_mem_bag *su_mem_bag_reset(struct su_mem_bag *self);
+ * \remarks{Possible \r{su_HAVE_DEBUG} logs occur via \r{su_LOG_DEBUG}.} */
+INLINE struct su_mem_bag *su_mem_bag_reset(struct su_mem_bag *self){
+	ASSERT_RET(self != NIL, NIL);
+	return su__mem_bag_reset(self, FAL0);
+}
 
 /*! Push the initialized bag \a{that_one} onto the bag stack layer of \SELF.
  * \a{that_one} will be used to serve memory until \r{su_mem_bag_pop()} or \r{su_mem_bag_reset()} is called.
