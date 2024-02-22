@@ -222,6 +222,91 @@ a_membag_free_lofi_hulls(void *vp, char *maxp){
 #endif /* su_HAVE_MEM_BAG_LOFI */
 
 struct su_mem_bag *
+su__mem_bag_reset(struct su_mem_bag *self, boole quiet){
+	NYD_IN;
+	ASSERT(self);
+	UNUSED(quiet);
+
+	/* C99 */{
+		struct su_mem_bag *mbp;
+
+		while((mbp = self->mb_top) != NIL){
+			self->mb_top = mbp->mb_outer;
+			su_mem_bag_gut(mbp);
+		}
+	}
+
+#ifdef su_HAVE_MEM_BAG_AUTO
+	/* C99 */{
+		struct su__mem_bag_auto_buf **mbabpp, *mbabp;
+
+		/* Forcefully gut() an active relaxation */
+		if(self->mb_auto_snap_recur > 0){
+			DBGX(
+				if(!quiet)
+					su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!");
+			)
+			self->mb_auto_snap_recur = 1;
+			self = su_mem_bag_auto_snap_gut(self);
+		}
+
+		/* Simply move buffers away from .mb_auto_full */
+		for(mbabpp = &self->mb_auto_full; (mbabp = *mbabpp) != NIL;){
+			*mbabpp = mbabp->mbab_last;
+			mbabp->mbab_last = self->mb_auto_top;
+			self->mb_auto_top = mbabp;
+		}
+
+		/* Then give away all buffers which are not _fixate()d */
+		mbabp = *(mbabpp = &self->mb_auto_top);
+		*mbabpp = NIL;
+		while(mbabp != NIL){
+			struct su__mem_bag_auto_buf *tmp;
+
+			tmp = mbabp;
+			mbabp = mbabp->mbab_last;
+
+			a_membag_free_auto_hulls(tmp->mbab_bot, tmp->mbab_caster);
+			if(tmp->mbab_bot != tmp->mbab_buf){
+				tmp->mbab_snap = NIL;
+				tmp->mbab_caster = tmp->mbab_bot;
+				tmp->mbab_last = *mbabpp;
+				*mbabpp = tmp;
+			}else
+				su_FREE(tmp);
+		}
+
+		/* Huge allocations simply vanish */
+		/* C99 */{
+			struct su__mem_bag_auto_huge **mbahpp, *mbahp;
+
+			for(mbahpp = &self->mb_auto_huge; (mbahp = *mbahpp) != NIL;){
+				*mbahpp = mbahp->mbah_last;
+				a_membag_free_auto_huge_hull(mbahp->mbah_buf);
+				su_FREE(mbahp);
+			}
+		}
+	}
+#endif /* su_HAVE_MEM_BAG_AUTO */
+
+#ifdef su_HAVE_MEM_BAG_LOFI
+	if(self->mb_lofi_top != NIL){
+		DBGX(
+			if(!quiet)
+				su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(%p): still has LOFI memory!", self);
+		)
+		do
+			self = a_membag_lofi_free_top(self);
+		while(self->mb_lofi_top != NIL);
+	}
+#endif /* su_HAVE_MEM_BAG_LOFI */
+
+	NYD_OU;
+	return self;
+}
+
+
+struct su_mem_bag *
 su_mem_bag_create(struct su_mem_bag *self, uz bsz){
 	NYD_IN;
 	ASSERT(self);
@@ -249,7 +334,7 @@ su_mem_bag_gut(struct su_mem_bag *self){
 	DBGX( if(self->mb_top != NIL)
 		su_log_write(su_LOG_DEBUG, "su_mem_bag_gut(%p): has bag stack!", self); )
 
-	self = su_mem_bag_reset(self);
+	self = su__mem_bag_reset(self, TRU1);
 
 	/* _fixate()d auto-reclaimed memory will still linger now */
 #ifdef su_HAVE_MEM_BAG_AUTO
@@ -305,84 +390,6 @@ su_mem_bag_fixate(struct su_mem_bag *self){
 
 	self = oself;
 	NYD2_OU;
-	return self;
-}
-
-struct su_mem_bag *
-su_mem_bag_reset(struct su_mem_bag *self){
-	NYD_IN;
-	ASSERT(self);
-
-	/* C99 */{
-		struct su_mem_bag *mbp;
-
-		while((mbp = self->mb_top) != NIL){
-			self->mb_top = mbp->mb_outer;
-			su_mem_bag_gut(mbp);
-		}
-	}
-
-#ifdef su_HAVE_MEM_BAG_AUTO
-	/* C99 */{
-		struct su__mem_bag_auto_buf **mbabpp, *mbabp;
-
-		/* Forcefully gut() an active relaxation */
-		if(self->mb_auto_snap_recur > 0){
-			DBGX( su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!"); )
-			self->mb_auto_snap_recur = 1;
-			self = su_mem_bag_auto_snap_gut(self);
-		}
-
-		/* Simply move buffers away from .mb_auto_full */
-		for(mbabpp = &self->mb_auto_full; (mbabp = *mbabpp) != NIL;){
-			*mbabpp = mbabp->mbab_last;
-			mbabp->mbab_last = self->mb_auto_top;
-			self->mb_auto_top = mbabp;
-		}
-
-		/* Then give away all buffers which are not _fixate()d */
-		mbabp = *(mbabpp = &self->mb_auto_top);
-		*mbabpp = NIL;
-		while(mbabp != NIL){
-			struct su__mem_bag_auto_buf *tmp;
-
-			tmp = mbabp;
-			mbabp = mbabp->mbab_last;
-
-			a_membag_free_auto_hulls(tmp->mbab_bot, tmp->mbab_caster);
-			if(tmp->mbab_bot != tmp->mbab_buf){
-				tmp->mbab_snap = NIL;
-				tmp->mbab_caster = tmp->mbab_bot;
-				tmp->mbab_last = *mbabpp;
-				*mbabpp = tmp;
-			}else
-				su_FREE(tmp);
-		}
-
-		/* Huge allocations simply vanish */
-		/* C99 */{
-			struct su__mem_bag_auto_huge **mbahpp, *mbahp;
-
-			for(mbahpp = &self->mb_auto_huge; (mbahp = *mbahpp) != NIL;){
-				*mbahpp = mbahp->mbah_last;
-				a_membag_free_auto_huge_hull(mbahp->mbah_buf);
-				su_FREE(mbahp);
-			}
-		}
-	}
-#endif /* su_HAVE_MEM_BAG_AUTO */
-
-#ifdef su_HAVE_MEM_BAG_LOFI
-	if(self->mb_lofi_top != NIL){
-		DBGX( su_log_write(su_LOG_DEBUG,
-			"su_mem_bag_reset(%p): still has LOFI memory!", self); )
-		do
-			self = a_membag_lofi_free_top(self);
-		while(self->mb_lofi_top != NIL);
-	}
-#endif /* su_HAVE_MEM_BAG_LOFI */
-
-	NYD_OU;
 	return self;
 }
 
