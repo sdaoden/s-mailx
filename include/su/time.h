@@ -177,17 +177,17 @@ INLINE struct su_timespec *su_timespec_sub(struct su_timespec *self, struct su_t
  * \remarks{Signed 64-bit constant.} */
 #define su_TIME_EPOCH_MAX su_S64_C(0x1D30BE2E1FF)
 
-#define su_TIME_MIN_SECS 60u /*!< \_ */
+#define su_TIME_MIN_SECS 60ul /*!< \_ */
 
-#define su_TIME_HOUR_MINS 60u /*!< \_ */
+#define su_TIME_HOUR_MINS 60ul /*!< \_ */
 #define su_TIME_HOUR_SECS (su_TIME_MIN_SECS * su_TIME_HOUR_MINS) /*!< \_ */
 
-#define su_TIME_DAY_HOURS 24u /*!< \_ */
+#define su_TIME_DAY_HOURS 24ul /*!< \_ */
 #define su_TIME_DAY_MINS (su_TIME_HOUR_MINS * su_TIME_DAY_HOURS) /*!< \_ */
 #define su_TIME_DAY_SECS (su_TIME_HOUR_SECS * su_TIME_DAY_HOURS) /*!< \_ */
 
-#define su_TIME_YEAR_GREGORIAN 1752u /*!< \_ */
-#define su_TIME_YEAR_DAYS 365u /*!< \_ */
+#define su_TIME_YEAR_GREGORIAN 1752ul /*!< \_ */
+#define su_TIME_YEAR_DAYS 365ul /*!< \_ */
 
 #define su_TIME_JDN_EPOCH 2440588ul /*!< Julian-Day-Number of UNIX epoch. */
 
