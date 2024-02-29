@@ -56,7 +56,7 @@ SUFS = -fPIE \
 	-fstrict-aliasing -fstrict-overflow \
 	-fstack-protector-strong \
 	-D_FORTIFY_SOURCE=3 \
-	-fcf-protection=full \
+	$$(x=$$(uname -m); [ "$${x}" != "$${x\#x86*}" ] && echo -fcf-protection=full) \
 	\
 #	-DHAVE_SANITIZER \
 #		-fsanitize=undefined \
