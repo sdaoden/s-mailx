@@ -389,7 +389,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 # endif
 #endif
 
-#ifndef OPENSSL_NO_SHA
+#if !defined OPENSSL_NO_SHA || !defined OPENSSL_NO_SHA1
    {"SHA1\0", &EVP_sha1},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1
