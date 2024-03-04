@@ -137,7 +137,7 @@ jnext:
 				force = (res[1] != '\0');
 				res = a_fexpand_findmail((force ? &res[1] : ok_vlook(LOGNAME)), force);
 				if(force)
-					goto jislocal;
+					goto jleave_local_test;
 			}
 			goto jnext;
 		case '#':
@@ -150,7 +150,7 @@ jnext:
 				goto jleave;
 			}
 			res = prevfile;
-			goto jislocal;
+			goto jleave_local_test;
 		case '&':
 			if(res[1] == '\0')
 				res = ok_vlook(MBOX);
@@ -161,57 +161,56 @@ jnext:
 	}
 
 #ifdef mx_HAVE_IMAP
-	if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NIL) == PROTO_IMAP)
+	if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NIL) == PROTO_IMAP){
 		res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
-#endif
-
-	/* POSIX: if *folder* unset or null, "+" shall be retained */
-	if(!(fcp->fc_fexpm & mx_FEXP_NFOLDER) && *res == '+' && *(cp = n_folder_query()) != '\0')
-		res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
-
-	/* Do some meta expansions */
-	if((fcp->fc_fexpm & (mx_FEXP_NSHELL | mx_FEXP_NVAR)) != mx_FEXP_NVAR){
-		boole doexp;
-
 		if(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE))
-			doexp = TRU1;
-		else{
+			goto jlocal_err;
+		fcp->fc_fexpm |= mx_FEXP_NTILDE | mx_FEXP_NGLOB;
+		/* TODO could be proto mismatch with protbase(mailname); we need URL objects, too */
+	}else
+#endif
+	{
+		/* POSIX: if *folder* unset or null, "+" shall be retained */
+		if(!(fcp->fc_fexpm & mx_FEXP_NFOLDER) && *res == '+' && *(cp = n_folder_query()) != '\0')
+			res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
+			/* xxx haveproto (mismatch)? */
+
+		/* Do some meta expansions? */
+		if(!(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE))){
 			cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
 			switch(which_protocol(cp, TRU1, FAL0, NIL)){
 			case n_PROTO_EML:
 			case n_PROTO_FILE:
 			case n_PROTO_MAILDIR:
-				doexp = TRU1;
 				break;
 			default:
-				doexp = FAL0;
+				fcp->fc_fexpm &= ~(mx_FEXP_NTILDE | mx_FEXP_NGLOB);
 				break;
 			}
 		}
+	}
 
-		if(doexp){
-			struct str shin;
-			struct n_string shou, *shoup;
+	if((fcp->fc_fexpm & (mx_FEXP_NSHELL | mx_FEXP_NVAR)) != mx_FEXP_NVAR){
+		struct str shin;
+		struct n_string shou, *shoup;
 
-			/* XXX when backtick eval ++ prepend proto if haveproto!? */
-			shin.s = UNCONST(char*,res);
-			shin.l = UZ_MAX;
-			shoup = n_string_creat_auto(&shou);
-			for(;;){
-				BITENUM(u32,n_shexp_state) shs;
+		/* XXX when backtick eval ++ prepend proto if haveproto!? */
+		shin.s = UNCONST(char*,res);
+		shin.l = UZ_MAX;
+		shoup = n_string_creat_auto(&shou);
+		for(;;){
+			BITENUM(u32,n_shexp_state) shs;
 
-				/* TODO shexp: take care: not include backtick eval once avail! */
-				shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-							n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
-						mx_SCOPE_NONE, shoup, &shin, NIL);
-				if(shs & n_SHEXP_STATE_STOP)
-					break;
-			}
-			res = n_string_cp(shoup);
-			/*shoup = n_string_drop_ownership(shoup);*/
-
-			/* XXX haveproto?  might have changed?!? */
+			/* TODO shexp: take care: not include backtick eval once avail! */
+			shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+						n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
+					mx_SCOPE_NONE, shoup, &shin, NIL);
+			if(shs & n_SHEXP_STATE_STOP)
+				break;
 		}
+		res = n_string_cp(shoup);
+		/*shoup = n_string_drop_ownership(shoup);*/
+		/* XXX haveproto? might have changed?!? */
 	}
 
 	if(!(fcp->fc_fexpm & mx_FEXP_NTILDE) && res[0] == '~')
@@ -234,7 +233,7 @@ jnext:
 		res = fcp->fc_res[0];
 	}
 
-jislocal:
+jleave_local_test:
 	if(res != NIL && haveproto)
 		res = savecat(savestrbuf(proto.s, proto.l), res);
 
@@ -252,6 +251,9 @@ jislocal:
 			}
 			/* FALLTHRU */
 		default:
+#ifdef mx_HAVE_IMAP
+jlocal_err:
+#endif
 			n_err(_("Not a local file or directory: %s\n"), n_shexp_quote_cp(fcp->fc_name, FAL0));
 			res = NIL;
 			eno = su_ERR_INVAL;
