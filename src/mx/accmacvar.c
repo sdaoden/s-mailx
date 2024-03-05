@@ -1138,6 +1138,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 	ok = TRU1;
 	emsg = NIL;
 
+	/* NOTE: in SET_PRE nothing real may be set, as FROZEN checks happen thereafter!  (See customhdr for a thing) */
 	if(avvm == a_AMV_VIP_SET_PRE){
 		switch(okey){
 		default:
@@ -1164,9 +1165,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 				}
 			}
 			break;
-		case ok_v_replyto:
-			n_OBSOLETE("*replyto*: please set *reply-to*, doing it for you");
-			FALLTHRU
+		case ok_v_replyto: FALLTHRU /* log in SET_POST! */
 		case ok_v_from: FALLTHRU
 		case ok_v_sender: FALLTHRU
 		case ok_v_smtp_from: FALLTHRU
@@ -1327,6 +1326,10 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			if(!(n_pstate & n_PS_ROOT))
 				n_PS_ROOT_BLOCK(ok_bset(POSIXLY_CORRECT));
 			break;
+		case ok_v_replyto:
+			n_OBSOLETE("*replyto*: please set *reply-to*, doing it for you");
+			ok_vset(reply_to, *val);
+			break;
 		case ok_b_skipemptybody:
 			n_poption |= n_PO_E_FLAG;
 			break;
@@ -1414,6 +1417,10 @@ jfolder_clear:
 			if(!(n_pstate & n_PS_ROOT))
 				n_PS_ROOT_BLOCK(ok_bclear(POSIXLY_CORRECT));
 			break;
+		case ok_v_replyto:
+			n_OBSOLETE("*replyto*: please unset *reply-to*, doing it for you");
+			ok_vclear(reply_to);
+			break;
 		case ok_b_skipemptybody:
 			n_poption &= ~n_PO_E_FLAG;
 			break;
@@ -1488,9 +1495,6 @@ jerr:
 				s = n_string_push_cp(s, np->n_fullname);
 			}
 			*val = n_string_cp(s);
-
-			if(okey == ok_v_replyto) /* v15-compat */
-				n_PS_ROOT_BLOCK(ok_vset(reply_to, *val));
 		}
 	}
 
