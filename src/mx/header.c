@@ -3527,6 +3527,11 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
          goto jerr;
       }
 
+   if(heap == TRUM1){
+      hfp = R(struct n_header_field*,-1);
+      goto jleave;
+   }
+
    i = VSTRUCT_SIZEOF(struct n_header_field,hf_dat) + hname.l +1 + bl +1;
    *hflp = hfp = heap ? su_ALLOC(i) : su_AUTO_ALLOC(i);
    hfp->hf_next = NIL;
