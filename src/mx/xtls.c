@@ -2202,8 +2202,10 @@ jleave:
    SSL_CTX_free(ctxp);
 
 j_leave:
+#ifdef a_XTLS_CRYPTO_FETCH
    if(free_md)
       EVP_MD_free(UNCONST(EVP_MD*,fprnt_mdp));
+#endif
 
    NYD_OU;
    return (sop->s_tls != NIL);
