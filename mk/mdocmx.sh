@@ -152,7 +152,7 @@ while :; do
 	tmpfile="${tmpdir}/mdocmx-${i}.mx"
 	(
 		set -C
-		: > "${tmpfile}"
+		> "${tmpfile}"
 	) >/dev/null 2>&1 && break
 	i=`expr ${i} + 1`
 	if [ ${i} -gt ${max} ]; then
