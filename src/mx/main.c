@@ -601,7 +601,13 @@ a_main_usage(FILE *fp){
 		su_mem_set(buf, ' ', i);
 	buf[i] = '\0';
 
-	fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"), su_program, n_uagent, ok_vlook(version));
+	/* C99 */{
+		boole isne;
+
+		isne = (su_cs_cmp(su_program, n_uagent) != 0);
+		fprintf(fp, _("%s (%s%s%s): send and receive Internet mail\n"),
+			su_program, (isne ? n_uagent : su_empty), (isne ? " " : su_empty), ok_vlook(version));
+	}
 	if(fp != n_stderr)
 		putc('\n', fp);
 
