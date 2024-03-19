@@ -330,6 +330,7 @@ FL void n_err(char const *format, ...);
 FL void n_errx(boole allow_multiple, char const *format, ...);
 FL void n_verr(char const *format, void *vlp);
 FL void n_verrx(boole allow_multiple, char const *format, void *vlp);
+FL void n_err_on_fork(void); /* TODO ugly hack */
 /* Hook for SU */
 FL void n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len);
 
