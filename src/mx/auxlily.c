@@ -534,9 +534,15 @@ n_verr(char const *format, void *vlp){
 }
 
 FL void
+n_err_on_fork(void){ /* TODO ugly hack */
+	a_aux_err_head = a_aux_err_tail = NIL;
+}
+
+FL void
 n_verrx(boole allow_multiple, char const *format, void *vlp){/*XXX sigcondom TODO MONSTER! */
 	/* Unhappy: too complicated, too slow; should possibly print repitition
 	 * count more often, but be aware of n_PS_ERRORS_NEED_PRINT_ONCE docu */
+	/* *VERY* unhappy: possibly one of the worst pieces of code i have ever written! */
 #ifdef mx_HAVE_COLOUR
 	static uz c5recur; /* *termcap* recursion */
 #endif
