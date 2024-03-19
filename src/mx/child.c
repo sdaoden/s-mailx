@@ -470,6 +470,8 @@ jkid:
 	/* Strip tty bits, our children will not care from our point of view */
 	n_psonce &= ~(n_PSO_TTYANY | n_PSO_INTERACTIVE);
 
+	n_err_on_fork(); /* XXX ugly on-fork hacks */
+
 	/* Close the unused end of the control pipe right now */
 	if(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL)
 		close(S(int,ccp->cc__cpipe[0]));
