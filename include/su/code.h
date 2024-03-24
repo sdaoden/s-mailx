@@ -144,7 +144,7 @@
   * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
  /*! \r{IMF} support available?
-  * Requires one of \r{su_HAVE_MEM_BAG_LOFI} or \r{su_HAVE_MEM_BAG_AUTO}. */
+  * Requires \r{su_HAVE_MEM_BAG} (one of \r{su_HAVE_MEM_BAG_LOFI} or \r{su_HAVE_MEM_BAG_AUTO}). */
 # define su_HAVE_IMF
  /*! \r{MD} support available?
   * If so, always included are
