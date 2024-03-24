@@ -1997,13 +1997,23 @@ a_icodec(void){
 C_DECL_BEGIN
 //void su_imf_table_dump(void);
 C_DECL_END
+
+static void a_imf_addr(void);
+static void a_imf_tok(void);
 #endif
 
 static void
 a_imf(void){
 #ifdef su_HAVE_IMF
 //	su_imf_table_dump(); return;
+	a_imf_addr();
+	a_imf_tok();
+#endif // su_HAVE_IMF
+}
 
+#ifdef su_HAVE_IMF
+static void
+a_imf_addr(void){ // {{{
 	struct a_ha{
 		s32 rv;
 		u32 mode;
@@ -2011,7 +2021,7 @@ a_imf(void){
 		char const *dat;
 		char const *rp;
 		u32 rse[5]; // status/err
-	} const hat[] = { //{{{
+	} const hat[] = { // {{{
 # if 1
 		{0, imf::mode_none, 1,
 			"ba@by",
@@ -2194,7 +2204,7 @@ a_imf(void){
 			"(Empty list)(start)Hidden recipients  :(nobody(that I know))  ;",
 			"Hidden recipients\0\0\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
-		{imf::err_addr_spec, imf::mode_none, 1,
+		{imf::err_content, imf::mode_none, 1,
 			"Undisclosed recipients:;x@y",
 			"Undisclosed recipients\0\0\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
@@ -2203,7 +2213,7 @@ a_imf(void){
 			"Undisclosed recipients\0\0\0\0\0"
 			"\0\0x\0y\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
-		{imf::err_addr_spec, imf::mode_none, 1,
+		{imf::err_content, imf::mode_none, 1,
 			"Undisclosed recipients:;<x@y>",
 			"Undisclosed recipients\0\0\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
@@ -2264,37 +2274,52 @@ a_imf(void){
 			{imf::state_group_start | imf::state_group, imf::state_group, imf::state_group,
 				imf::state_group_end | imf::state_group,}},
 
-		{imf::err_addr_spec, imf::mode_none, 0, "<user>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<user>", "", {0,}},
 		{0, imf::mode_ok_addr_spec_no_domain, 1, "<user>", "\0\0user\0\0\0", {imf::state_addr_spec_no_domain,}},
+
+		// stop_early with some things from above
+		{0, imf::mode_stop_early, 2,
+			"Undisclosed recipients:;,<x@y>" /*test hack*/" ,,",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_stop_early, 1,
+			"A \"Group\":ba@by;,Bum <m@e.r>,rose:l<o@v.e>;",
+			"\"A Group\"\0\0ba\0by\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_stop_early, 1,
+			"\"Joe & \t\n \t \n \n \n \n\t\n\t\n\tJ. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
+			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0",
+			{0,}},
 
 		// pure errors
 
 		{-err::nodata, imf::mode_none, 0, "", "", {0,}},
 		{-err::nodata, imf::mode_none, 0, "         ", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "A Group:", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "d", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "A Group:", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "d", "", {0,}},
 
 		//
-		{imf::err_addr_spec, imf::mode_none, 1,
+		{imf::err_content, imf::mode_none, 1,
 			"(a) John (b) <e@s.t> ,(c) <joe@x.y (d)",
 			"\0John\0e\0s.t\0a b\0",
 			{0,}},
-		{imf::err_addr_spec, imf::mode_none, 1,
+		{imf::err_content, imf::mode_none, 1,
 			"(a) John (b) <e@s.t> ,(c) @x.y (d)",
 			"\0John\0e\0s.t\0a b\0",
 			{0,}},
-		{imf::err_addr_spec, imf::mode_none, 1,
+		{imf::err_content, imf::mode_none, 1,
 			"(a) John (b) <e@s.t> ,(c) <@x.y> (d)",
 			"\0John\0e\0s.t\0a b\0",
 			{0,}},
-		{imf::err_addr_spec, imf::mode_none, 2,
+		{imf::err_content, imf::mode_none, 2,
 			"(a) John (b) <e@s.t> ,<z@x.y>,@x.y",
 			"\0John\0e\0s.t\0a b\0"
 			"\0\0z\0x.y\0\0",
 			{0,}},
 
 		// double group start
-		{imf::err_addr_spec, imf::mode_none, 1,
+		{imf::err_content, imf::mode_none, 1,
 			"A Group(Some people)\n        :Chris Jones <c@public.example(.host of Chris)>,\n \t\t  "
 				" : Chris Jones2 <c@(Chris's host.)public.example>,   (  void comment  ) , "
 				"\t \n\tjoe@example.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
@@ -2303,12 +2328,12 @@ a_imf(void){
 			{imf::state_group_start | imf::state_group,}},
 
 		// missing list sep
-		{imf::err_addr_spec, imf::mode_none, 0, "e@s.t joe@x.y", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "<e@s.t> joe@x.y", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "<e@s.t> <joe@x.y>", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "John <e@s.t> <joe@x.y>", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "John <e@s.t> (c) <joe@x.y>", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "(c) John (c) <e@s.t> (c) <joe@x.y> (c)", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "e@s.t joe@x.y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<e@s.t> joe@x.y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<e@s.t> <joe@x.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "John <e@s.t> <joe@x.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "John <e@s.t> (c) <joe@x.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "(c) John (c) <e@s.t> (c) <joe@x.y> (c)", "", {0,}},
 		// ok
 		{0, imf::mode_none, 2,
 			"(a) John (b) <e@s.t> (c), <joe@x.y> (d)",
@@ -2327,26 +2352,26 @@ a_imf(void){
 			{0,}},
 
 		// missing group list sep
-		{imf::err_addr_spec, imf::mode_none, 2,
+		{imf::err_content, imf::mode_none, 2,
 			"A Group:T <e@s.t>,joe@x.y; x@y.z",
 			"A Group\0T\0e\0s.t\0\0"
 			"\0\0joe\0x.y\0\0",
 			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
 		// same
-		{imf::err_addr_spec, imf::mode_none, 2,
+		{imf::err_content, imf::mode_none, 2,
 			"A Group:T <e@s.t>,joe@x.y,; x@y.z",
 			"A Group\0T\0e\0s.t\0\0"
 			"\0\0joe\0x.y\0\0",
 			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
 
 		// group close wrong place
-		{imf::err_addr_spec, imf::mode_none, 0,
+		{imf::err_content, imf::mode_none, 0,
 			"A Group:T <e@s.t;>   ,joe@x.y,; x@y.z",
 			"",
 			{0,}},
 
 		// incompl. addresses
-		{imf::err_addr_spec, imf::mode_none, 2,
+		{imf::err_content, imf::mode_none, 2,
 			"A Group:T <e@s.t>,joe@x.  ;y, x@y.z",
 			"A Group\0T\0e\0s.t\0\0"
 			"\0\0joe\0x.\0\0",
@@ -2395,7 +2420,7 @@ a_imf(void){
 				imf::state_relax | imf::err_group_display_name_empty | imf::err_group_open,}},
 
 		//
-		{imf::err_addr_spec, imf::mode_none, 0,
+		{imf::err_content, imf::mode_none, 0,
 			"John <e@s.t",
 			"",
 			{0,}},
@@ -2416,9 +2441,9 @@ a_imf(void){
 		{imf::err_dquote, imf::mode_relax, 0, "a \"b@c", "", {0,}},
 
 		// devilish
-		{imf::err_addr_spec, imf::mode_none, 0, "ma@li@cio.us", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "Boo <ma@li@cio.us>", "", {0,}},
-		{imf::err_addr_spec, imf::mode_none, 0, "Boo@m <a@d>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "ma@li@cio.us", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "Boo <ma@li@cio.us>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "Boo@m <a@d>", "", {0,}},
 		// ok
 		{0, imf::mode_none, 1,
 			"Boo\"@\"m <a@d>",
@@ -2456,8 +2481,13 @@ a_imf(void){
 			imf::addr *xap;
 			u32 j;
 
-			if(hat[i].rv == 0 && *ep != '\0')
-				a_ERRIS(i, hat[i].dat);
+			if(hat[i].rv == 0){
+				if(*ep != '\0'){
+					if(!(hat[i].mode & imf::mode_stop_early))
+						a_ERRIS(i, hat[i].dat);
+				}else if(hat[i].mode & imf::mode_stop_early)
+					a_ERRIS(i, hat[i].dat);
+			}
 
 			for(j = 0, xap = ap; xap != NIL; ++j, xap = xap->next()){
 			}
@@ -2476,12 +2506,16 @@ a_imf(void){
 					a_ERRIS(i, ep);
 				else if(cs::cmp(ep, ap->group_display_name(), l))
 					a_ERRIS(i, ep);
+				else if(ap->group_display_name()[ap->group_display_name_len()] != '\0')
+					a_ERRIS(i, ep);
 
 				ep += ++l;
 				l = cs::len(ep);
 				if(l != ap->display_name_len())
 					a_ERRIS(i, ep);
 				else if(cs::cmp(ep, ap->display_name(), l))
+					a_ERRIS(i, ep);
+				else if(ap->display_name()[ap->display_name_len()] != '\0')
 					a_ERRIS(i, ep);
 
 				ep += ++l;
@@ -2490,6 +2524,8 @@ a_imf(void){
 					a_ERRIS(i, ep);
 				else if(cs::cmp(ep, ap->locpar(), l))
 					a_ERRIS(i, ep);
+				else if(ap->locpar()[ap->locpar_len()] != '\0')
+					a_ERRIS(i, ep);
 
 				ep += ++l;
 				l = cs::len(ep);
@@ -2497,12 +2533,16 @@ a_imf(void){
 					a_ERRIS(i, ep);
 				else if(cs::cmp(ep, ap->domain(), l))
 					a_ERRIS(i, ep);
+				else if(ap->domain()[ap->domain_len()] != '\0')
+					a_ERRIS(i, ep);
 
 				ep += ++l;
 				l = cs::len(ep);
 				if(l != ap->comm_len())
 					a_ERRIS(i, ep);
 				else if(cs::cmp(ep, ap->comm(), l))
+					a_ERRIS(i, ep);
+				else if(ap->comm()[ap->comm_len()] != '\0')
 					a_ERRIS(i, ep);
 
 				ep += ++l;
@@ -2521,8 +2561,182 @@ a_imf(void){
 	}
 
 	mb.reset();
+} // }}}
+
+static void
+a_imf_tok(void){ // {{{
+	struct a_ha{
+		s32 rv;
+		u32 mode;
+		u32 rno;
+		u32 msea[5];
+		char const *dat;
+		char const *rp;
+	} const hat[] = { // {{{
+# if 1
+		{0, imf::mode_none, 1, {0,},
+			"hello",
+			"hello\0"},
+		{0, imf::mode_none, 1, {0,},
+			"(one)(two)hello(3)",
+			"hello\0"},
+		{0, imf::mode_tok_comment, 3, {imf::state_comment, 0, imf::state_comment,},
+			"(one)(two)hello(3)",
+			"one two\0" "hello\0" "3\0"},
+		{0, imf::mode_tok_comment, 3, {imf::state_comment, 0, imf::state_comment,},
+			"   ( one  ) \t (\ttwo \t\t)\t\thello\t\t(\t3\t)\t",
+			"one two\0" "hello\0" "3\0"},
+
+		{imf::err_content, imf::mode_none, 1, {0,},
+			"  (one) hello (two) ; au1 ",
+			"hello\0"},
+		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
+			"  (one) hello (two) ; au2 ",
+			"hello\0" "au2\0"},
+		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
+			"  (one) hello (two) ;;;; ;\t;  au3 \t  ",
+			"hello\0" "au3\0"},
+		{0, imf::mode_tok_semicolon, 3, {0, imf::state_semicolon,},
+			"  (one) hello (two) you;;;; ;\t;  au4 \t  ",
+			"hello\0" "you\0" "au4\0"},
+
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment, 4,
+				{imf::state_comment, 0, imf::state_comment | imf::state_semicolon, 0,},
+			"  (one) hello (two) ; au ",
+			"one\0" "hello\0" "two\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment, 5,
+				{imf::state_comment, 0, imf::state_comment, imf::state_semicolon, 0,},
+			"  (one) hello (two) you; au ",
+			"one\0" "hello\0" "two\0" "you\0" "au\0"},
+
+		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
+			"  \"this is a long,   looong quoted one \"-/hey;au",
+			"\"this is a long, looong quoted one-/hey\"\0"  "au\0"},
+		{0, imf::mode_tok_semicolon, 3, {0, imf::state_semicolon,},
+			"  \"this is a long, looong quoted one\"-/ hey  ;   au",
+			"\"this is a long, looong quoted one-/\"\0"  "hey\0"  "au\0"},
+		{0, imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+			"  \"this is a long, looong   quoted one \";hey;au",
+			"\"this is a long, looong quoted one\"\0"  "hey\0"  "au\0"},
+		{0, imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+			"  \"this is a long, looong   quoted one\"    ;    hey      ;     au",
+			"\"this is a long, looong quoted one\"\0"  "hey\0"  "au\0"},
+
+		{imf::err_content, imf::mode_tok_semicolon, 1, {0,},
+			" \"quo\"te.\", baby\"-d'ya\"\\ \"know?;BUM  ;  MER",
+			"\"quote\"\0"},
+		{imf::err_content, imf::mode_tok_semicolon, 1, {0,},
+			" \"quo.\"te.",
+			"\"quo.te\"\0"},
+		{0, imf::mode_ok_dot_atext | imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+			" \"quo.\"te.\", baby\"-d'ya\"\\ \"know?;BUM  ;  MER",
+			"\"quo.te., baby-d'ya\\ know?\"\0"  "BUM\0"  "MER\0"},
+
+		{0, imf::mode_tok_semicolon, 0, {0,},
+			" ; ; ; ",
+			""},
+		{0, imf::mode_tok_semicolon, 0, {0,},
+			" \"\"; () ; ; ",
+			""},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3,
+			{imf::state_semicolon, imf::state_semicolon, imf::state_semicolon,},
+			" ; ; ; ",
+			"\0"  "\0"  "\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3,
+			{imf::state_semicolon, imf::state_semicolon, imf::state_semicolon,},
+			" \"\"; () ; ; ",
+			"\0"  "\0"  "\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 5,
+				{imf::state_semicolon, imf::state_semicolon, imf::state_semicolon,
+					imf::state_semicolon,},
+			"  h1 ;; ;\t;  aux \t  ",
+			"h1\0" "\0" "\0" "\0" "aux\0"},
+
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment | imf::mode_stop_early, 1, {imf::state_comment,},
+			"  (c1) ha1 (two) you; au ",
+			"c1\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_stop_early, 1, {0,},
+			"  (c2) ha2 (two) you; au ",
+			"ha2\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_stop_early, 1, {imf::state_semicolon,},
+			"  (c3) ha3 (two) ; au ",
+			"ha3\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment | imf::mode_stop_early, 1,
+				{imf::state_comment | imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"c4\0"},
+# endif
+	}; // }}}
+
+	mem_bag mb;
+
+	for(uz i = 0; i < NELEM(hat); ++i){
+		void *snap;
+		if(i & 1)
+			snap = imf::snap_create(*&mb);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			snap = mb.lofi_snap_create();
+# else
+			mb.auto_snap_create();
+# endif
+		}
+
+		char const *ep;
+		imf::shtok *tp;
+		s32 se = imf::parse_struct_header(*&tp, hat[i].dat, hat[i].mode, *&mb, &ep);
+		if(se != hat[i].rv)
+			a_ERRIS(i, hat[i].dat);
+		else{
+			imf::shtok *xtp;
+			u32 j;
+
+			if(hat[i].rv == 0){
+				if(*ep != '\0'){
+					if(!(hat[i].mode & imf::mode_stop_early))
+						a_ERRIS(i, hat[i].dat);
+				}else if(hat[i].mode & imf::mode_stop_early)
+					a_ERRIS(i, hat[i].dat);
+			}
+
+			for(j = 0, xtp = tp; xtp != NIL; ++j, xtp = xtp->next()){
+			}
+			if(j != hat[i].rno)
+				a_ERRIS(i, hat[i].dat);
+
+			ep = hat[i].rp;
+			for(j = 0; tp != NIL; ++j, tp = tp->next()){
+				uz l;
+
+				if(hat[i].msea[j] != tp->mse())
+					a_ERRIS(i, ep);
+
+				l = cs::len(ep);
+				if(l != tp->len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, tp->dat(), l))
+					a_ERRIS(i, ep);
+				else if(tp->dat()[tp->len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+			}
+		}
+
+		if(i & 1)
+			imf::snap_gut(*&mb, snap);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			mb.lofi_snap_gut(snap);
+# else
+			mb.auto_snap_gut();
+# endif
+		}
+	}
+
+	mb.reset();
+} // }}}
 #endif // su_HAVE_IMF
-}
 // }}}
 
 // md {{{
