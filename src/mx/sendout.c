@@ -420,7 +420,8 @@ jedraft:
          goto jxerr;
    }
 
-   sic.sic_encfp_input = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY);
+   sic.sic_encfp_input = mx_fs_open(fstcp->fstc_filename,
+         n_real_good_or_bad(mx_FS_O_RDONLY, mx_FS_O_RDWR));
    if(sic.sic_encfp_input == NIL)
       sic.sic_eno = su_err();
 
@@ -675,7 +676,7 @@ jiter:
       s64 off, len;
       struct mx_attachment *ap;
 
-      ftrunc_x_tell(sicp->sic_encfp, off);
+      ftrunc_x_fflush_tell(sicp->sic_encfp, off);
       if(off == -1){
          if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
             sicp->sic_eno = su_ERR_IO;
@@ -724,7 +725,7 @@ jiter:
             }
          }
 
-         ftrunc_x_tell(sicp->sic_encfp, len);
+         ftrunc_x_fflush_tell(sicp->sic_encfp, len);
 
          if(len == -1){
             if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)

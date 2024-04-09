@@ -84,29 +84,26 @@ struct quoteflt;
  *
  *    if the file is not already at EOF, and the file is one capable of
  *    seeking, the file offset of the underlying open file description shall
- *    be set to the file position of the stream */
-#if !su_OS_OPENBSD &&\
-   defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+ *    be set to the file position of the stream
+ *
+ * TODO Sometimes it will simply not work out, as O_RDONLY FPs may overoptimize
+ * TODO so much that it cannot be helped but by opening a file O_RDWR: use
+ * TODO good_or_bad() until we have our own I/O! */
+#if !su_OS_OPENBSD && defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+# define n_real_good_or_bad(X,Y) X
 # define n_real_seek(FP,OFF,WH) (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF)
-# define really_rewind(stream,rv) \
-do{\
-   if((rv = (fseek(stream, 0L, SEEK_SET) == -1))) rv = errno;\
-   clearerr(stream);\
-   fflush(stream);\
-}while(0)
-
 #else
+# define n_real_good_or_bad(X,Y) Y
 # define n_real_seek(FP,OFF,WH) \
-   (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF &&\
-      lseek(fileno(FP), OFF, WH) != -1)
-# define really_rewind(stream, rv) \
-do{\
-   if((rv = (fseek(stream, 0L, SEEK_SET) == -1))) rv = errno;\
-   clearerr(stream);\
-   fflush(stream);\
-   lseek(fileno(stream), 0, SEEK_SET);\
-}while(0)
+   (fseek(FP, OFF, WH) != -1 && (fflush(FP), clearerr(FP), TRU1) &&\
+    lseek(fileno(FP), OFF, WH) != -1)
 #endif
+
+#define really_rewind(FP,RV) \
+do{\
+   RV = n_real_seek(FP, 0, SEEK_SET) ? 0 : errno;\
+   clearerr(FP);\
+}while(0)
 
 /* fflush() and rewind() */
 #define fflush_rewind(stream) \
@@ -116,9 +113,10 @@ do{\
 }while(0)
 
 /**/
-#define ftrunc_x_tell(FP,OFF) \
+#define ftrunc_x_fflush_tell(FP,OFF) \
 do{\
    fflush(FP);\
+   clearerr(FP);\
    OFF = ftell(FP);\
 }while(0)
 #define ftrunc_x_trunc(FP,OFF,RES) \
@@ -130,7 +128,7 @@ do{\
 do{\
    int a__res;\
    off_t a__off;\
-   ftrunc_x_tell(FP, a__off);\
+   ftrunc_x_fflush_tell(FP, a__off);\
    ftrunc_x_trunc(FP, a__off, a__res);\
    UNUSED(a__res);\
 }while(0)
