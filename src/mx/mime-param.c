@@ -1,5 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of mime-param.h.
+ *@ TODO even without 2231 we need "" quotes only for specials/space!! REVISE!
+ *@ TODO (Though it seems some mailers have problems without, especially boundary param?)
+ *@ TODO this should be rewritten as such; reread RFCs first ;>
+ *@ TODO Ie, param_create()'s clean_is_ascii argument could still use RFC 2231!!
  *@ TODO - even without 2231 we need "" quotes only for specials/space!! REVISE!
  *@ TODO   (Though it seems some mailers have problems without, especially boundary param?)
  *@ TODO - this should be rewritten as such; reread RFCs first ;>
