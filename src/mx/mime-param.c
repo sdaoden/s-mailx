@@ -64,7 +64,8 @@ struct a_mpm_builder {
 	u32 mpb_csx_len; /* longer of .mpb_cs[78] (IFF in outermost level) TODO yet only cs8 */
 	u32 mpb_buf_len; /* Usable result of this level in .mpb_buf */
 	boole mpb_is_enc; /* Level requires encoding.. */
-	boole mpb_is_8bit__TODO; /* ..and 8-bit charset *//* TODO */
+	/*boole mpb_is_8bit__TODO; *//* ..and 8-bit charset *//* TODO */
+	boole mpb_is_quote; /* ..*instead* (secondary test) requires quoting */
 	boole mpb_is_utf8; /* .mpb_cs8 is UTF-8 */
 	s8 mpb_rv;
 	char const *mpb_name;
@@ -589,8 +590,9 @@ a_mpm_create(struct a_mpm_builder *self){
 	enum a_flags{
 		a_NONE = 0,
 		a_ISENC = 1u<<0,
-		a_HADRAW = 1u<<1,
-		a_RAW = 1u<<2
+		a_QUOTE = 1u<<1,
+		a_HADRAW = 1u<<2,
+		a_RAW = 1u<<3
 	};
 
 	struct a_mpm_builder next;
@@ -610,6 +612,7 @@ jneed_enc:
 	self->mpb_buf = bp = bp_lanoenc = buf;
 	self->mpb_buf_len = 0;
 	self->mpb_is_enc = ((f & a_ISENC) != 0);
+	self->mpb_is_quote = ((f & a_QUOTE) != 0); /* (only secondary tested, after .mpb_is_enc) */
 	vb_lanoenc = vb = self->mpb_value;
 	vl = self->mpb_value_len;
 
@@ -628,13 +631,22 @@ jneed_enc:
 	ASSERT(PCMP(&bp_max[4 * 3], <=, bp_xmax)); /* UTF-8 extra pad, below */
 
 	for(f &= a_ISENC; vl > 0;){
+		boole is8, rfcvt;
 		union {char c; u8 uc;} u;
 
 		u.c = *vb;
+		is8 = (u.uc > 0x7F);
+		if(LIKELY(!is8)){
+			rfcvt = a_mpm_rfc2231_value_tab[u.uc];
+			/*f |= a_RAW;*/
+		}else{
+			UNINIT(rfcvt, 0);
+			/*f &= ~a_RAW;*/
+		}
 		f |= a_RAW;
 
 		if(!(f & a_ISENC)){
-			if(u.uc > 0x7F || su_cs_is_cntrl(u.c)){ /* XXX reject _is_cntrl? */
+			if(UNLIKELY(is8 || rfcvt == -1)){ /* XXX reject _is_cntrl? */
 				/* We need to percent encode this character, possibly changing overall strategy, but
 				 * anyway the one of this level, possibly rendering invalid any output byte we yet have
 				 * produced here.  Instead of throwing away that work just recurse if some fancy magic
@@ -648,19 +660,23 @@ jneed_enc:
 				goto jneed_enc;
 			}
 
-			if(u.uc == '"' || u.uc == '\\'){
-				f ^= a_RAW;
-				bp[0] = '\\';
-				bp[1] = u.c;
-				bp += 2;
-			}
-		}else if(u.uc > 0x7F){
+			if(rfcvt == 1){
+				f |= a_QUOTE;
+				if(u.uc == '"' || u.uc == '\\'){
+					f ^= a_RAW;
+					bp[0] = '\\';
+					bp[1] = u.c;
+					bp += 2;
+				}
+			}else
+				ASSERT(u.uc != '"' && u.uc != '\\');
+		}else if(is8){
 jpercent:
 			f ^= a_RAW;
 			bp[0] = '%';
 			n_c_to_hex_base16(bp + 1, u.c);
 			bp += 3;
-		}else switch(a_mpm_rfc2231_value_tab[u.uc]){
+		}else switch(rfcvt){
 		case 0: break;
 		case 1: goto jpercent;
 		default:
@@ -715,6 +731,7 @@ jpercent:
 
 	/* That level made the great and completed encoding.	Build result */
 	self->mpb_is_enc = ((f & a_ISENC) != 0);
+	self->mpb_is_quote = ((f & a_QUOTE) != 0);
 	self->mpb_buf_len = P2UZ(bp - buf);
 	a_mpm__join(self);
 
@@ -749,7 +766,7 @@ static void
 a_mpm__join(struct a_mpm_builder *head){
 	enum a_flags{
 		a_NONE = 0,
-		a_ISENC = 1u<<0,
+		a_ISENC_START = 1u<<0,
 		a_ISQUOTE = 1u<<1,
 		a_ISCONT = 1u<<2
 	};
@@ -769,14 +786,14 @@ a_mpm__join(struct a_mpm_builder *head){
 
 		i += np->mpb_buf_len + np->mpb_name_len + sizeof(" *999*=\"\";\n") -1;
 		if(np->mpb_is_enc)
-			f |= a_ISENC;
+			f |= a_ISENC_START;
 
 		tmp = np->mpb_next;
 		np->mpb_next = head;
 		head = np;
 		np = tmp;
 	}
-	if(f & a_ISENC)
+	if(f & a_ISENC_START)
 		i += head->mpb_csx_len; /* sizeof("''") -1 covered by \"\" above */
 	ASSERT_INJ( len_max = i; )
 	head->mpb_rv = TRU1;
@@ -812,7 +829,7 @@ a_mpm__join(struct a_mpm_builder *head){
 			ll += P2UZ(cp - cpo);
 		}
 
-		if((f & a_ISENC) || np->mpb_is_enc){
+		if((f & a_ISENC_START) || np->mpb_is_enc){
 			*cp++ = '*';
 			++ll;
 		}
@@ -820,15 +837,15 @@ a_mpm__join(struct a_mpm_builder *head){
 		++ll;
 
 		/* Value part */
-		if(f & a_ISENC){
-			f &= ~a_ISENC;
+		if(f & a_ISENC_START){
+			f ^= a_ISENC_START;
 			su_mem_copy(cp, np->mpb_cs8, i = np->mpb_csx_len);
 			cp += i;
 			cp[0] = '\'';
 			cp[1] = '\'';
 			cp += 2;
 			ll += i + 2;
-		}else if(!np->mpb_is_enc){
+		}else if(!np->mpb_is_enc /*TODO <> PARAM_QUOTE && np->mpb_is_quote*/){
 			f |= a_ISQUOTE;
 			*cp++ = '"';
 			++ll;
