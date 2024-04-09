@@ -119,6 +119,9 @@
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
+/* And MIME parameters which use RFC 2231 splitting, maximum recursion level */
+#define MIME_PARAM_RFC2231_LIMIT 999
+
 /* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) <> su_path! */
 /* POSIX 2008/Cor 1-2013 defines for
  * - _POSIX_PATH_MAX a minimum of 256

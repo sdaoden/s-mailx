@@ -1,9 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of mime-param.h.
- *@ TODO even without 2231 we need "" quotes only for specials/space!! REVISE!
- *@ TODO (Though it seems some mailers have problems without, especially boundary param?)
- *@ TODO this should be rewritten as such; reread RFCs first ;>
- *@ TODO Ie, param_create()'s clean_is_ascii argument could still use RFC 2231!!
+ *@ TODO - even without 2231 we need "" quotes only for specials/space!! REVISE!
+ *@ TODO   (Though it seems some mailers have problems without, especially boundary param?)
+ *@ TODO - this should be rewritten as such; reread RFCs first ;>
+ *@ TODO   Ie, param_create()'s clean_is_ascii argument could still use RFC 2231!!
  *
  * Copyright (c) 2016 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -65,14 +65,15 @@ struct a_mpm_builder {
 	u32 mpb_csx_len; /* longer of .mpb_cs[78] (IFF in outermost level) TODO yet only cs8 */
 	u32 mpb_buf_len; /* Usable result of this level in .mpb_buf */
 	boole mpb_is_enc; /* Level requires encoding.. */
-	boole mpb_is_8bit__TODO; /* ..and 8-bit charset *//* TODO */
+	/*boole mpb_is_8bit__TODO; *//* ..and 8-bit charset *//* TODO */
+	boole mpb_is_quote; /* ..*instead* (secondary test) requires quoting */
 	boole mpb_is_utf8; /* .mpb_cs8 is UTF-8 */
 	s8 mpb_rv;
 	char const *mpb_name;
 	char const *mpb_value; /* Remains of, once the level was entered */
 	char const *mpb_cs8; /* 8-bit charset */
 	/*char const *mpb_cs7;*/ /* 7-bit charset */
-	char *mpb_buf; /* Pointer to on-stack buffer */
+	char *mpb_buf; /* LOFI_ALLOC() */
 };
 
 /* RFC 2045, 5.1.:
@@ -153,7 +154,7 @@ static s8 a_mpm_value_trim(struct str *result, char const *start, char const **e
 static char *a_mpm_rfc2231_param_parse(char const *param, uz plen, char const *hbp);
 static boole a_mpm__rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const **emsg);
 
-/* Recursive parameter builder.	Note we have a magic limit of 999 levels.
+/* Recursive parameter builder.
  * Prepares a portion of output in self->mpb_buf; once >mpb_value is worked completely the deepmost level joins the
  * result into >mpb_result and unrolls the stack. */
 static void a_mpm_create(struct a_mpm_builder *self);
@@ -320,7 +321,7 @@ jumpin:
 				nobuf[i] = '\0';
 
 				if((su_idec_uz_cp(&i, nobuf, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)
-						) || i >= 999){
+						) || i >= MIME_PARAM_RFC2231_LIMIT){
 					emsg = N_("invalid continuation sequence number");
 					goto jerr;
 				}
@@ -587,55 +588,70 @@ jhex_putc:
 
 static void
 a_mpm_create(struct a_mpm_builder *self){
+#define a_BUF_LEN MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)
+
 	enum a_flags{
 		a_NONE = 0,
 		a_ISENC = 1u<<0,
-		a_HADRAW = 1u<<1,
-		a_RAW = 1u<<2
+		a_QUOTE = 1u<<1,
+		a_HADRAW = 1u<<2,
+		a_RAW = 1u<<3
 	};
-
-	struct a_mpm_builder next;
-	/* Do not use MIME_LINELEN_(MAX|LIMIT) stack buffer sizes: normally we will not exceed plain MIME_LINELEN, so
+	/* Do not use MIME_LINELEN_(MAX|LIMIT) buffer sizes: normally we will not exceed plain MIME_LINELEN, so
 	 * that this would be a factor 10 wastage.  On the other hand we may excess _LINELEN to avoid breaking up
-	 * possible multibyte sequences until sizeof(buf) is reached, but since we (a) do not support stateful
+	 * possible multibyte sequences until a_BUF_LEN is reached, but since we (a) do not support stateful
 	 * encodings and (b) will try to synchronize on UTF-8 this problem is scarce, possibly even artificial */
-	char buf[MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)], *bp, *bp_max, *bp_xmax, *bp_lanoenc;
+	char *bp, *bp_max, *bp_xmax, *bp_lanoenc;
 	char const *vb, *vb_lanoenc;
 	uz vl;
 	BITENUM(u32,a_flags) f;
 	NYD2_IN;
-	LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
+	LCTA(a_BUF_LEN >= MIME_LINELEN * 2, "Buffer to small for operation");
 
+jrestart:
+	self->mpb_buf = su_LOFI_ALLOC(a_BUF_LEN);
 	f = self->mpb_is_enc ? a_ISENC : a_NONE;
 jneed_enc:
-	self->mpb_buf = bp = bp_lanoenc = buf;
+	bp = bp_lanoenc = self->mpb_buf;
 	self->mpb_buf_len = 0;
 	self->mpb_is_enc = ((f & a_ISENC) != 0);
+	self->mpb_is_quote = ((f & a_QUOTE) != 0); /* (only secondary tested, after .mpb_is_enc) */
 	vb_lanoenc = vb = self->mpb_value;
 	vl = self->mpb_value_len;
 
 	/* Configure bp_max to fit in SHOULD, bp_xmax to extent */
-	bp_max = (buf + MIME_LINELEN) - (1 + self->mpb_name_len + sizeof("*999*='';") -1 + 2);
-	bp_xmax = (buf + sizeof(buf)) - (1 + self->mpb_name_len + sizeof("*999*='';") -1 + 2);
+	bp_max = &self->mpb_buf[MIME_LINELEN] -
+			(1 + self->mpb_name_len + sizeof("*" STRING(MIME_PARAM_RFC2231_LIMIT) "*='';") -1 + 2);
+	bp_xmax = &self->mpb_buf[a_BUF_LEN] -
+			(1 + self->mpb_name_len + sizeof("*" STRING(MIME_PARAM_RFC2231_LIMIT) "*='';") -1 + 2);
 
 	if((f & a_ISENC) && self->mpb_level == 0){
 		bp_max -= self->mpb_csx_len;
 		bp_xmax -= self->mpb_csx_len;
 	}
-	if(PCMP(bp_max, <=, &buf[sizeof("Hunky Dory")])){
+	if(PCMP(bp_max, <=, &self->mpb_buf[sizeof("Hunky Dory")])){
 		DVLDBG( n_alert("a_mpm_create(): Hunky Dory!"); )
-		bp_max = &buf[MIME_LINELEN >> 1]; /* And then it is SHOULD, anyway */
+		bp_max = &self->mpb_buf[MIME_LINELEN >> 1]; /* And then it is SHOULD, anyway */
 	}
 	ASSERT(PCMP(&bp_max[4 * 3], <=, bp_xmax)); /* UTF-8 extra pad, below */
 
 	for(f &= a_ISENC; vl > 0;){
+		boole is8, rfcvt;
 		union {char c; u8 uc;} u;
 
 		u.c = *vb;
+		is8 = (u.uc > 0x7F);
+		if(LIKELY(!is8)){
+			rfcvt = a_mpm_rfc2231_value_tab[u.uc];
+			/*f |= a_RAW;*/
+		}else{
+			UNINIT(rfcvt, 0);
+			/*f &= ~a_RAW;*/
+		}
 		f |= a_RAW;
 
 		if(!(f & a_ISENC)){
-			if(u.uc > 0x7F || su_cs_is_cntrl(u.c)){ /* XXX reject _is_cntrl? */
+			if(UNLIKELY(is8 || rfcvt == -1)){ /* XXX reject _is_cntrl? */
 				/* We need to percent encode this character, possibly changing overall strategy, but
 				 * anyway the one of this level, possibly rendering invalid any output byte we yet have
 				 * produced here.  Instead of throwing away that work just recurse if some fancy magic
@@ -643,25 +659,29 @@ jneed_enc:
 				/* *However*, many tested MUAs fail to deal with parameters that are split across "too
 				 * many" fields, including ones that misread RFC 2231 to allow only one digit, i.e.,
 				 * a maximum of ten.  (Plain wrong, but that will not help their users) */
-				if(P2UZ(bp - buf) > /*10 (strawberry) COMPAT*/MIME_LINELEN>>1)
+				if(P2UZ(bp - self->mpb_buf) > /*10 (strawberry) COMPAT*/MIME_LINELEN>>1)
 					goto jrecurse;
 				f |= a_ISENC;
 				goto jneed_enc;
 			}
 
-			if(u.uc == '"' || u.uc == '\\'){
-				f ^= a_RAW;
-				bp[0] = '\\';
-				bp[1] = u.c;
-				bp += 2;
-			}
-		}else if(u.uc > 0x7F){
+			if(rfcvt == 1){
+				f |= a_QUOTE;
+				if(u.uc == '"' || u.uc == '\\'){
+					f ^= a_RAW;
+					bp[0] = '\\';
+					bp[1] = u.c;
+					bp += 2;
+				}
+			}else
+				ASSERT(u.uc != '"' && u.uc != '\\');
+		}else if(is8){
 jpercent:
 			f ^= a_RAW;
 			bp[0] = '%';
 			n_c_to_hex_base16(bp + 1, u.c);
 			bp += 3;
-		}else switch(a_mpm_rfc2231_value_tab[u.uc]){
+		}else switch(rfcvt){
 		case 0: break;
 		case 1: goto jpercent;
 		default:
@@ -693,8 +713,8 @@ jpercent:
 		if(bp <= bp_max)
 			continue;
 
-		if((f & a_HADRAW) && (PCMP(bp - bp_lanoenc, <=, bp_lanoenc - buf) ||
-				(!self->mpb_is_utf8 && P2UZ(bp_lanoenc - buf) >= (MIME_LINELEN >> 2)))){
+		if((f & a_HADRAW) && (PCMP(bp - bp_lanoenc, <=, bp_lanoenc - self->mpb_buf) ||
+				(!self->mpb_is_utf8 && P2UZ(bp_lanoenc - self->mpb_buf) >= (MIME_LINELEN >> 2)))){
 			bp = bp_lanoenc;
 			vl += P2UZ(vb - vb_lanoenc);
 			vb = vb_lanoenc;
@@ -716,41 +736,45 @@ jpercent:
 
 	/* That level made the great and completed encoding.	Build result */
 	self->mpb_is_enc = ((f & a_ISENC) != 0);
-	self->mpb_buf_len = P2UZ(bp - buf);
+	self->mpb_is_quote = ((f & a_QUOTE) != 0);
+	self->mpb_buf_len = P2UZ(bp - self->mpb_buf);
 	a_mpm__join(self);
 
 jleave:
 	NYD2_OU;
 	return;
 
-	/* Need to recurse, take care not to excess magical limit of 999 levels */
+	/* Need to recurse */
 jrecurse:
-	if(self->mpb_level == 999){
+	if(self->mpb_level == MIME_PARAM_RFC2231_LIMIT){
 		/*if (n_poption & n_PO_D_V)*/
 			n_err(_("Message RFC 2231 parameters nested too deeply!\n"));
 		goto jleave;
+	}else{
+		struct a_mpm_builder *next;
+
+		self->mpb_is_enc = ((f & a_ISENC) != 0);
+		self->mpb_buf_len = P2UZ(bp - self->mpb_buf);
+
+		next = su_LOFI_TCALLOC(struct a_mpm_builder, 1);
+		next->mpb_next = self;
+		next->mpb_level = self->mpb_level + 1;
+		next->mpb_name_len = self->mpb_name_len;
+		next->mpb_value_len = vl;
+		next->mpb_is_utf8 = self->mpb_is_utf8;
+		next->mpb_name = self->mpb_name;
+		next->mpb_value = vb;
+		self = next;
+		goto jrestart;
 	}
-
-	self->mpb_is_enc = ((f & a_ISENC) != 0);
-	self->mpb_buf_len = P2UZ(bp - buf);
-
-	STRUCT_ZERO(struct a_mpm_builder, &next);
-	next.mpb_next = self;
-	next.mpb_level = self->mpb_level + 1;
-	next.mpb_name_len = self->mpb_name_len;
-	next.mpb_value_len = vl;
-	next.mpb_is_utf8 = self->mpb_is_utf8;
-	next.mpb_name = self->mpb_name;
-	next.mpb_value = vb;
-	a_mpm_create(&next);
-	goto jleave;
+#undef a_BUF_LEN
 }
 
 static void
 a_mpm__join(struct a_mpm_builder *head){
 	enum a_flags{
 		a_NONE = 0,
-		a_ISENC = 1u<<0,
+		a_ISENC_START = 1u<<0,
 		a_ISQUOTE = 1u<<1,
 		a_ISCONT = 1u<<2
 	};
@@ -768,16 +792,16 @@ a_mpm__join(struct a_mpm_builder *head){
 	for(i = 0, np = head, head = NIL; np != NIL;){
 		struct a_mpm_builder *tmp;
 
-		i += np->mpb_buf_len + np->mpb_name_len + sizeof(" *999*=\"\";\n") -1;
+		i += np->mpb_buf_len + np->mpb_name_len + sizeof(" *" STRING(MIME_PARAM_RFC2231_LIMIT) "*=\"\";\n") -1;
 		if(np->mpb_is_enc)
-			f |= a_ISENC;
+			f |= a_ISENC_START;
 
 		tmp = np->mpb_next;
 		np->mpb_next = head;
 		head = np;
 		np = tmp;
 	}
-	if(f & a_ISENC)
+	if(f & a_ISENC_START)
 		i += head->mpb_csx_len; /* sizeof("''") -1 covered by \"\" above */
 	ASSERT_INJ( len_max = i; )
 	head->mpb_rv = TRU1;
@@ -813,7 +837,7 @@ a_mpm__join(struct a_mpm_builder *head){
 			ll += P2UZ(cp - cpo);
 		}
 
-		if((f & a_ISENC) || np->mpb_is_enc){
+		if((f & a_ISENC_START) || np->mpb_is_enc){
 			*cp++ = '*';
 			++ll;
 		}
@@ -821,15 +845,15 @@ a_mpm__join(struct a_mpm_builder *head){
 		++ll;
 
 		/* Value part */
-		if(f & a_ISENC){
-			f &= ~a_ISENC;
+		if(f & a_ISENC_START){
+			f ^= a_ISENC_START;
 			su_mem_copy(cp, np->mpb_cs8, i = np->mpb_csx_len);
 			cp += i;
 			cp[0] = '\'';
 			cp[1] = '\'';
 			cp += 2;
 			ll += i + 2;
-		}else if(!np->mpb_is_enc){
+		}else if(!np->mpb_is_enc /*TODO <> PARAM_QUOTE && np->mpb_is_quote*/){
 			f |= a_ISQUOTE;
 			*cp++ = '"';
 			++ll;
@@ -851,7 +875,7 @@ a_mpm__join(struct a_mpm_builder *head){
 		++ll;
 
 		i = ll;
-		i += np->mpb_name_len + np->mpb_buf_len + sizeof(" *999*=\"\";\n") -1;
+		i += np->mpb_name_len + np->mpb_buf_len + sizeof(" *" STRING(MIME_PARAM_RFC2231_LIMIT) "*=\"\";\n") -1;
 		if(i >= MIME_LINELEN){
 			head->mpb_rv = TRUM1;
 			*cp++ = '\n';
@@ -905,7 +929,7 @@ mx_mime_param_get(char const *param, char const *headerbody){ /* TODO rewr. */
 				rv = xval.s;
 
 				/* We do have a result, but some (elder) software (S-nail <v14.8) will use RFC 2047
-				 * encoded words in	parameter values, too */
+				 * encoded words in parameter values, too */
 				/* TODO Automatically check whether the value seems to be RFC 2047
 				 * TODO encwd. -- instead use *rfc2047_parameters* like mutt(1)? */
 				if((p = su_cs_find(rv, "=?")) != NIL && su_cs_find(p, "?=") != NIL){
@@ -973,8 +997,14 @@ mx_mime_param_create(boole clean_is_ascii, struct str *result, char const *name,
 	ASSERT(!su_cs_cmp(name, n_iconv_norm_name(name, TRU1)));
 	top.mpb_is_utf8 = n_iconv_name_is_utf8(name);
 	top.mpb_is_enc = !clean_is_ascii && !mpccp->mpcc_cs_7bit_is_ascii;
+	/* C99 */{
+		void *lofi_snap;
 
-	a_mpm_create(&top);
+		lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
+		a_mpm_create(&top);
+		su_mem_bag_lofi_snap_gut(su_MEM_BAG_SELF, lofi_snap);
+	}
+
 jleave:
 	NYD_OU;
 	return top.mpb_rv;
