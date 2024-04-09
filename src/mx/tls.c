@@ -520,7 +520,7 @@ c_tls(void *vp){
 
 #ifndef mx_HAVE_NET
    n_err(_("tls: fingerprint: no +sockets in *features*\n"));
-   n_pstate_err_no = su_ERR_OPNOTSUPP;
+   n_pstate_err_no = su_ERR_NOTSUP;
    rv = NIL;
    goto jleave;
 

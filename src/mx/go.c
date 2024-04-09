@@ -366,7 +366,7 @@ jrestart:
 	if(UNLIKELY(*cp == '>')){
 		if((ccp = a_go_evaluate__vput(&line, &vput, scope_pp, FAL0)) != NIL){
 			rv = -1;
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 		scope_vput = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
 		flags &= ~a__SCOPE_MASK;
@@ -413,7 +413,7 @@ jrestart:
 		if(!su_cs_cmp_case(word, "pp")){
 			if(!(flags & a__SCOPE_MASK)){
 				ccp = N_("`pp' command modifier senseless without scope");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 			scope_pp = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
 			flags &= ~a__SCOPE_MASK;
@@ -538,7 +538,7 @@ jrestart:
 		if(scope_pp != mx_SCOPE_NONE && (a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO &&
 				!(n_pstate & n_PS_COMPOSE_MODE)){
 			ccp = N_("cannot use scope modifier in this context");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 		if(!mx_cmd_eval(eval_cnt, scope_pp, &line, word)){
 			flags |= a_NO_ERRNO;
@@ -677,7 +677,7 @@ jwhite:
 		/* Back to defcmd problem: we cannot truly tell bogus with an (dryrun) `eval' on the line, either */
 		if(UNLIKELY((flags & a_IS_EMPTY) && s->s_len != 0 && eval_cnt == 0)){
 			ccp = N_("default command (with arguments) unsupported here and now");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 		goto jret0;
 	} /* }}} */
@@ -699,54 +699,54 @@ jwhite:
 	if(UNLIKELY(!(n_psonce & n_PSO_STARTED))){
 		if((cdp->cd_caflags & mx_CMD_ARG_SC) && !(n_psonce & n_PSO_STARTED_CONFIG)){
 			ccp = N_("cannot be used during startup (pre -X)");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 		if(cdp->cd_caflags & mx_CMD_ARG_S){
 			ccp = N_("cannot be used during startup");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 	}
 	if(cdp->cd_caflags & mx_CMD_ARG_R){
 		if(n_pstate & n_PS_COMPOSE_MODE){
 			/* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
 			ccp = N_("compose mode can be entered once only");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 		/* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
 		 * TODO n_PS_ROBOT; see a.._may_yield_control()! */
 		if((n_pstate & n_PS_ROBOT) && !mx_go_may_yield_control()){
 			ccp = N_("cannot be used in this program state");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 	}
 	if(!(cdp->cd_caflags & mx_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
 		ccp = N_("cannot be used in a hook running in a child process");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_NO_HOOK) && (n_pstate & n_PS_HOOK_MASK)){
 		ccp = N_("cannot be used within an event hook");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG)){
 		ccp = N_("can only be used in interactive or batch mode");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
 		ccp = N_("cannot be used while sending");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	/* */
 	if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
 		ccp = N_("needs an active mailbox");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_NEEDMAC) && ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO)){
 		ccp = N_("can only be used in a macro");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
 		ccp = N_("cannot be used in read-only mailbox");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	if(UNLIKELY(cdp->cd_caflags & mx_CMD_ARG_OBS) &&/* XXX Remove! -> within cmd! */
 			!su_state_has(su_STATE_REPRODUCIBLE)){
@@ -777,7 +777,7 @@ jwhite:
 		case mx_CMD_ARG_TYPE_STRING:
 		case mx_CMD_ARG_TYPE_RAWLIST:
 			ccp = N_("`wysh' command modifier not supported");
-			goto jeopnotsupp;
+			goto jenotsup;
 		}
 	}
 	/* }}}*/
@@ -791,29 +791,29 @@ jwhite:
 		if(scope_cmd == mx_SCOPE_LOCAL){
 			if(!(cdp->cd_caflags & mx_CMD_ARG_L)){
 				ccp = N_("command modifier `local' not supported");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 			if(notmac && !(cdp->cd_caflags & mx_CMD_ARG_L_NOMAC)){
 				ccp = N_("cannot use `local' modifier in this context");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 		}else if(scope_cmd == mx_SCOPE_OUR){
 			if(!(cdp->cd_caflags & mx_CMD_ARG_O)){
 				ccp = N_("command modifier `our' not supported");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 			if(notmac){
 				ccp = N_("cannot use `our' modifier in this context");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 		}else{
 			if(!(cdp->cd_caflags & mx_CMD_ARG_G)){
 				ccp = N_("command modifier `global' not supported");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 			if(notmac){
 				ccp = N_("cannot use `global' modifier in this context");
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 		}
 	}
@@ -821,7 +821,7 @@ jwhite:
 	/* We may have done that already, but now we really have to */
 	if((scope_pp | scope_vput) != mx_SCOPE_NONE && (a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
 		ccp = N_("cannot use pp/vput scope modifiers in this context");
-		goto jeopnotsupp;
+		goto jenotsup;
 	}
 	/* }}} */
 
@@ -830,11 +830,11 @@ jwhite:
 		if(UNLIKELY(!(cdp->cd_caflags & mx_CMD_ARG_V))){
 			ccp = N_("> (+ obsolete vput): command modifier not supported");/* v15-compat */
 			rv = -1;
-			goto jeopnotsupp;
+			goto jenotsup;
 		}else if(!(flags & a_VPUT_VAR)){ /* TODO v15-compat: plain "vput" support */
 			if((ccp = a_go_evaluate__vput(&line, &vput, scope_pp, TRU1)) != NIL){
 				rv = -1;
-				goto jeopnotsupp;
+				goto jenotsup;
 			}
 		}
 	}
@@ -1100,14 +1100,14 @@ jret:
 	NYD_OU;
 	return (rv == 0);
 
-jeopnotsupp:
+jenotsup:
 	gecp->gec_hist_flags = a_GO_HIST_NONE;
 	n_err("%s%s%s: %s%s%s\n", n_ERROR, (cdp != NIL ? ": " : su_empty), (cdp != NIL ? cdp->cd_name : su_empty),
 		V_(ccp), (*line.s != '\0' ? ": " : su_empty),
 		(*line.s != '\0' ? n_shexp_quote_cp(line.s, FAL0) : su_empty));
 	if(cdp != NIL)
 		mx_cmd_print_synopsis(cdp, NIL);
-	nerrn = su_ERR_OPNOTSUPP;
+	nerrn = su_ERR_NOTSUP;
 	ASSERT(rv == 1 || rv == -1);
 	goto jleave;
 } /* }}} */
