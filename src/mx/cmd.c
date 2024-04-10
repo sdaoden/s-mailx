@@ -145,7 +145,7 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 
 			switch(flags & mx__CMD_ARG_DESC_TYPE_MASK){
 			default:
-				rv = n_string_push_cp(rv, _("AUA"));
+				break;
 			case mx_CMD_ARG_DESC_SHEXP:
 				rv = n_string_push_cp(rv, _("(shell-)token"));
 				break;
