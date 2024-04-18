@@ -11,7 +11,7 @@ if [ -z "${__MAKE_CONFIG_UP}" ] && [ -d /usr/xpg4 ]; then
 	PATH=/usr/xpg4/bin:${PATH}
 	export __MAKE_CONFIG_UP PATH
 
-	if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ]; then
+	if [ "x${SHELL}" = x ] || [ "x${SHELL}" = x/bin/sh ]; then
 		SHELL=/usr/xpg4/bin/sh
 		export SHELL
 		echo >&2 'SunOS/Solaris, redirecting through $SHELL=/usr/xpg4/bin/sh'
