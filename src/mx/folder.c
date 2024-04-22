@@ -625,7 +625,7 @@ jlogname:
       /* FALLTHRU */
    case PROTO_FILE:
       if(name[1] == '\0' && name[0] == '-'){
-         if(fm ^ (FEDIT_RDONLY | FEDIT_MAIN)){
+         if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){
             n_err(_("Standard input \"-\" only works for -f "
                "command line option, read-only\n"));
             goto jem1;
