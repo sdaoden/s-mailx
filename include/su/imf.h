@@ -74,6 +74,10 @@ struct su_imf_shtok;
  * @{
  */
 
+/* Whether we shall use a table lookup for char classification.
+ * If value is S8_MAX we save array space with increased code size, with U8_MAX we simply lookup bytes */
+#define su__IMF_TABLE_SIZE su_U8_MAX
+
 /*! Shares bit range with \r{su_imf_state} and \r{su_imf_err}. */
 enum su_imf_mode{
 	su_IMF_MODE_NONE, /*!< Nothing (this is 0). */
@@ -165,6 +169,25 @@ enum su_imf_err{
 			su_IMF_ERR_CONTENT
 };
 
+/* Classification bits for su_imf_c_*() series */
+enum su_imf_c_class{
+	su_IMF_C_ALPHA = 1u<<0,
+	su_IMF_C_DIGIT = 1u<<1,
+	su_IMF_C_VCHAR = 1u<<2,
+	su_IMF_C_ATEXT = 1u<<3,
+	su_IMF_C_CTEXT = 1u<<4,
+	su_IMF_C_DTEXT = 1u<<5,
+	su_IMF_C_QTEXT = 1u<<6,
+	su_IMF_C_SPECIAL = 1u<<7,
+	su_IMF_C_NO_WS_CTL = 1u<<8,
+
+	su_IMF_C_CR = 1u<<9,
+	su_IMF_C_DQUOTE = 1u<<10,
+	su_IMF_C_HT = 1u<<11,
+	su_IMF_C_LF = 1u<<12,
+	su_IMF_C_SP = 1u<<13
+};
+
 /*! Parsed address structure; all buffers are accessible and \NUL terminated. */
 struct su_imf_addr{
 	struct su_imf_addr *imfa_next; /*!< In case of address lists and/or groups. */
@@ -189,6 +212,8 @@ struct su_imf_shtok{
 	u32 imfsht_len; /*!< Length of \c{imfsht_dat}. */
 	char imfsht_dat[VFIELD_SIZE(0)];
 };
+
+EXPORT_DATA u16 const su__imf_c_tbl[su__IMF_TABLE_SIZE + 1];
 
 /*! Create a snap for the bag type \r{IMF} uses; see \r{su_imf_parse_addr_header()}. */
 INLINE void *su_imf_snap_create(struct su_mem_bag *membp){
@@ -249,6 +274,57 @@ EXPORT s32 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header
  * The same result allocation scheme as for \r{su_imf_parse_addr_header()} is used. */
 EXPORT s32 su_imf_parse_struct_header(struct su_imf_shtok **shtpp, char const *header, BITENUM(u32,su_imf_mode) mode,
 		struct su_mem_bag *membp, char const **endptr_or_nil);
+
+#undef a_X
+#if su__IMF_TABLE_SIZE == U8_MAX
+# define a_X(X,Y) ((su__imf_c_tbl[S(u8,X)] & (Y)) != 0)
+#elif su__IMF_TABLE_SIZE == S8_MAX
+# define a_X(X,Y) (S(u8,X) <= S8_MAX && (su__imf_c_tbl[S(u8,X)] & (Y)) != 0)
+#else
+# error su__IMF_TABLE_SIZE must be U8_MAX or S8_MAX
+#endif
+
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_ALPHA(char c) {return a_X(c, su_IMF_C_ALPHA);}
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_DIGIT(char c) {return a_X(c, su_IMF_C_DIGIT);}
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_VCHAR(char c) {return a_X(c, su_IMF_C_VCHAR);}
+/*! \_ */
+SINLINE boole su_imf_c_atext(char c) {return a_X(c, su_IMF_C_ATEXT);}
+/*! \_ */
+SINLINE boole su_imf_c_ctext(char c) {return a_X(c, su_IMF_C_CTEXT);}
+/*! \_ */
+SINLINE boole su_imf_c_dtext(char c) {return a_X(c, su_IMF_C_DTEXT);}
+/*! \_ */
+SINLINE boole su_imf_c_qtext(char c) {return a_X(c, su_IMF_C_QTEXT);}
+/*! \_ */
+SINLINE boole su_imf_c_special(char c) {return a_X(c, su_IMF_C_SPECIAL);}
+/*! \_ */
+SINLINE boole su_imf_c_obs_NO_WS_CTL(char c) {return a_X(c, su_IMF_C_NO_WS_CTL);}
+
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_CR(char c) {return a_X(c, su_IMF_C_CR);}
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_DQUOTE(char c) {return a_X(c, su_IMF_C_DQUOTE);}
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_HT(char c) {return a_X(c, su_IMF_C_HT);}
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_LF(char c) {return a_X(c, su_IMF_C_LF);}
+/*! (RFC 5234, B.1. Core Rules.) */
+SINLINE boole su_imf_c_SP(char c) {return a_X(c, su_IMF_C_SP);}
+
+/*! (RFC 5234, B.1. Core Rules; \r{su_imf_c_SP()} or \r{su_imf_c_HT()}.) */
+SINLINE boole su_imf_c_WSP(char c) {return (a_X(c, su_IMF_C_SP | su_IMF_C_HT));}
+/*! Any of \r{su_imf_c_SP()},, \r{su_imf_c_HT()}, \r{su_imf_c_LF()} or \r{su_imf_c_CR()}. */
+SINLINE boole su_imf_c_ANY_WSP(char c) {return (a_X(c, su_IMF_C_SP | su_IMF_C_HT | su_IMF_C_LF | su_IMF_C_CR));}
+
+/*! Is \a{c2} a valid second byte of a RFC 5322 quoted-pair? */
+SINLINE boole su_imf_c_quoted_pair_c2(char c2){ /* NIL unsupported (manual) */
+	return (a_X(c2, su_IMF_C_VCHAR | su_IMF_C_SP | su_IMF_C_HT | su_IMF_C_NO_WS_CTL | su_IMF_C_LF | su_IMF_C_CR));
+}
+
+#undef a_X
 /*! @} *//* }}} */
 
 C_DECL_END
@@ -424,6 +500,44 @@ public:
 		return su_imf_parse_struct_header(R(su_imf_shtok**,&shtpp), header, mode, S(struct su_mem_bag*,&membp),
 			endptr_or_nil);
 	}
+
+	/*! \r{su_imf_c_ALPHA()} */
+	static boole c_ALPHA(char c) {return su_imf_c_ALPHA(c);}
+	/*! \r{su_imf_c_DIGIT()} */
+	static boole c_DIGIT(char c) {return su_imf_c_DIGIT(c);}
+	/*! \r{su_imf_c_VCHAR()} */
+	static boole c_VCHAR(char c) {return su_imf_c_VCHAR(c);}
+	/*! \r{su_imf_c_atext()} */
+	static boole c_atext(char c) {return su_imf_c_atext(c);}
+	/*! \r{su_imf_c_ctext()} */
+	static boole c_ctext(char c) {return su_imf_c_ctext(c);}
+	/*! \r{su_imf_c_dtext()} */
+	static boole c_dtext(char c) {return su_imf_c_dtext(c);}
+	/*! \r{su_imf_c_qtext()} */
+	static boole c_qtext(char c) {return su_imf_c_qtext(c);}
+	/*! \r{su_imf_c_special()} */
+	static boole c_special(char c) {return su_imf_c_special(c);}
+	/*! \r{su_imf_c_obs_NO_WS_CTL()} */
+	static boole c_obs_NO_WS_CTL(char c) {return su_imf_c_obs_NO_WS_CTL(c);}
+
+	/*! \r{su_imf_c_CR()} */
+	static boole c_CR(char c) {return su_imf_c_CR(c);}
+	/*! \r{su_imf_c_DQUOTE()} */
+	static boole c_DQUOTE(char c) {return su_imf_c_DQUOTE(c);}
+	/*! \r{su_imf_c_HT()} */
+	static boole c_HT(char c) {return su_imf_c_HT(c);}
+	/*! \r{su_imf_c_LF()} */
+	static boole c_LF(char c) {return su_imf_c_LF(c);}
+	/*! \r{su_imf_c_SP()} */
+	static boole c_SP(char c) {return su_imf_c_SP(c);}
+
+	/*! \r{su_imf_c_WSP()} */
+	static boole c_WSP(char c) {return su_imf_c_WSP(c);}
+	/*! \r{su_imf_c_ANY_WSP()} */
+	static boole c_ANY_WSP(char c) {return su_imf_c_ANY_WSP(c);}
+
+	/*! \r{su_imf_c_quoted_pair_c2()} */
+	static boole c_quoted_pair_c2(char c) {return su_imf_c_quoted_pair_c2(c);}
 };
 /* }}} */
 

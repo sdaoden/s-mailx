@@ -2008,6 +2008,45 @@ a_imf(void){
 //	su_imf_table_dump(); return;
 	a_imf_addr();
 	a_imf_tok();
+
+	// rather only "symbol exists" for _c_*() series
+	if(!imf::c_ALPHA('a'))
+		a_ERR();
+	if(!imf::c_DIGIT('1'))
+		a_ERR();
+	if(!imf::c_VCHAR('*'))
+		a_ERR();
+	if(!imf::c_atext('!'))
+		a_ERR();
+	if(!imf::c_ctext('!'))
+		a_ERR();
+	if(!imf::c_dtext('!'))
+		a_ERR();
+	if(!imf::c_qtext('!'))
+		a_ERR();
+	if(!imf::c_special('('))
+		a_ERR();
+	if(!imf::c_obs_NO_WS_CTL('\033'))
+		a_ERR();
+
+	if(!imf::c_CR('\015'))
+		a_ERR();
+	if(!imf::c_DQUOTE('"'))
+		a_ERR();
+	if(!imf::c_HT('\011'))
+		a_ERR();
+	if(!imf::c_LF('\012'))
+		a_ERR();
+	if(!imf::c_SP('\040'))
+		a_ERR();
+
+	if(!imf::c_WSP('\011'))
+		a_ERR();
+	if(!imf::c_ANY_WSP('\015'))
+		a_ERR();
+
+	if(!imf::c_quoted_pair_c2('\033'))
+		a_ERR();
 #endif // su_HAVE_IMF
 }
 
