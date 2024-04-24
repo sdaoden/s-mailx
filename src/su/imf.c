@@ -50,12 +50,6 @@ NSPC_USE(su)
 # error Needs one of su_HAVE_MEM_BAG_LOFI and su_HAVE_MEM_BAG_AUTO
 #endif
 
-/* Whether we shall use a table lookup for char classification.
- * If value is S8_MAX we save array space with increased code size, with U8_MAX we simply lookup bytes */
-#ifndef a_IMF_TABLE_DUMP
-# define a_IMF_TABLE_USE U8_MAX
-#endif
-
 /* Internet Message Format ABNF (of relevant fields) from RFC 5234 and RFC 5322 {{{
  *
  * RFC 5234, B.1.  Core Rules:
@@ -144,26 +138,6 @@ NSPC_USE(su)
  *   - obs-utext only WITHOUT NUL.
  * }}} */
 
-#if defined a_IMF_TABLE_DUMP || defined a_IMF_TABLE_USE
-enum a_imf_c_class{
-	a_IMF_C_ALPHA = 1u<<0,
-	a_IMF_C_DIGIT = 1u<<1,
-	a_IMF_C_VCHAR = 1u<<2,
-	a_IMF_C_ATEXT = 1u<<3,
-	a_IMF_C_CTEXT = 1u<<4,
-	a_IMF_C_DTEXT = 1u<<5,
-	a_IMF_C_QTEXT = 1u<<6,
-	a_IMF_C_SPECIAL = 1u<<7,
-	a_IMF_C_NO_WS_CTL = 1u<<8,
-
-	a_IMF_C_CR = 1u<<9,
-	a_IMF_C_DQUOTE = 1u<<10,
-	a_IMF_C_HT = 1u<<11,
-	a_IMF_C_LF = 1u<<12,
-	a_IMF_C_SP = 1u<<13
-};
-#endif
-
 /* Address context: whenever an address was parsed su_imf_addr is created and this is reset */
 struct a_imf_actx{
 	struct a_imf_x{
@@ -183,11 +157,241 @@ struct a_imf_actx{
 	char ac_dat[VFIELD_SIZE(0)]; /* Storage for any text (single chunk struct) */
 };
 
+/* Returns TRU1 if at least 1 WSP was skipped over, TRUM1 if *any* ws was seen, ie: it moved */
+static boole a_imf_skip_FWS(struct a_imf_actx *acp);
+
+/* Returns TRUM1 if FWS was parsed *outside* of comments */
+static boole a_imf_s_CFWS(struct a_imf_actx *acp);
+
+/* ASSERTs "at a_imf_c_DQUOTE()".  Skips to after the closing DQUOTE().
+ * Places but leading or trailing FWS++ normalized to single SP in *buf.
+ * Returns NIL on invalid content / missing closing quote error (unless relaxed), ptr to after written byte otherwise */
+static char *a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf);
+
+/**/
+static void a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp);
+
+/* _s_ and _skip_ series {{{ */
+static boole
+a_imf_skip_FWS(struct a_imf_actx *acp){ /* {{{ */
+	char const *cp;
+	boole rv;
+	NYD2_IN;
+
+	rv = FAL0;
+	cp = acp->ac_.hd;
+
+	/* As documented (adjust on change) do not classify, skip follow-up lines' leading whitespace, IF ANY */
+	for(;; ++cp){
+		char c;
+
+#if 1
+		if(su_imf_c_ANY_WSP((c = *cp))){
+			if(su_imf_c_WSP(c))
+				rv = TRU1;
+		}
+#else
+		if(su_imf_c_WSP((c = *cp))
+			rv = TRU1;
+		else if(su_imf_c_LF(c)){
+		}else if(su_imf_c2_CRLF(c, cp[1]))
+			++cp;
+#endif
+		else
+			break;
+	}
+
+	if(cp != acp->ac_.hd){
+		acp->ac_.hd = cp;
+		if(!rv)
+			rv = TRUM1;
+	}
+
+	NYD2_OU;
+	return rv;
+} /* }}} */
+
+static boole
+a_imf_s_CFWS(struct a_imf_actx *acp){ /* {{{ */
+	char const *xcp;
+	uz lvl;
+	boole rv, any;
+	NYD2_IN;
+
+	UNINIT(any, FAL0);
+	for(rv = TRU1, lvl = 0;; acp->ac_.hd = xcp){
+		char c;
+
+		if(a_imf_skip_FWS(acp) == TRU1){
+			if(lvl == 0)
+				rv = TRUM1;
+			else if(any < FAL0)
+				any = TRU2;
+		}
+
+		c = *(xcp = acp->ac_.hd);
+		++xcp;
+
+		if(UNLIKELY(lvl == 0)){
+			if(c != '(')
+				break;
+			any = (acp->ac_.comm > 0);
+			++lvl;
+			continue;
+		}else switch(c){
+		case ')':
+			--lvl;
+			continue;
+		case '(':
+			++lvl;
+			continue;
+		case '\0':
+jerr:
+			if(acp->ac_.mse & su_IMF_MODE_RELAX)
+				acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_ERR_COMMENT;
+			else{
+				acp->ac_.mse |= su_IMF_ERR_RELAX | su_IMF_ERR_COMMENT;
+				rv = FAL0;
+			}
+			goto jleave;
+		}
+
+		for(;;){
+			if(su_imf_c_ctext(c) || /* obs-ctext */su_imf_c_obs_NO_WS_CTL(c)){
+			}else if(c == '\\' && su_imf_c_quoted_pair_c2(*xcp))
+				++xcp;
+			else
+				break;
+			c = *xcp++;
+		}
+
+		if(UNLIKELY(--xcp == acp->ac_.hd))
+			goto jerr;
+		else{
+			uz i;
+
+			i = P2UZ(xcp - acp->ac_.hd);
+			if(any > FAL0)
+				acp->ac_comm[acp->ac_.comm++] = ' ';
+			any = TRUM1;
+			su_mem_copy(&acp->ac_comm[acp->ac_.comm], acp->ac_.hd, i);
+			acp->ac_.comm += S(u32,i);
+		}
+	}
+
+jleave:
+	NYD2_OU;
+	return rv;
+} /* }}} */
+
+static char *
+a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf){ /* {{{ */
+	boole any, lastws;
+	NYD2_IN;
+	ASSERT(su_imf_c_DQUOTE(*acp->ac_.hd));
+
+	for(lastws = any = FAL0, ++acp->ac_.hd;;){
+		char c;
+		char const *xcp;
+
+		if(a_imf_skip_FWS(acp) == TRU1 && any){
+			*buf++ = ' ';
+			lastws = TRU1;
+		}
+
+		xcp = acp->ac_.hd;
+
+		while(su_imf_c_qtext(c = *acp->ac_.hd)){
+			*buf++ = c;
+			++acp->ac_.hd;
+		}
+		any = (xcp != acp->ac_.hd);
+		if(any){
+			lastws = FAL0;
+			continue;
+		}
+
+		for(;;){
+			if(acp->ac_.hd[0] != '\\' || !su_imf_c_quoted_pair_c2(c = acp->ac_.hd[1]))
+				break;
+			buf[0] = '\\';
+			buf[1] = c;
+			buf += 2;
+			acp->ac_.hd += 2;
+		}
+		any = (xcp != acp->ac_.hd);
+		if(any){
+			lastws = FAL0;
+			continue;
+		}
+
+		if(su_imf_c_DQUOTE(*acp->ac_.hd)){
+			if(lastws)
+				--buf;
+			++acp->ac_.hd;
+		}else{
+			acp->ac_.mse |= su_IMF_ERR_DQUOTE;
+			buf = NIL;
+		}
+		break;
+	}
+
+	NYD2_OU;
+	return buf;
+} /* }}} */
+/* }}} */
+
+/* misc {{{ */
+static void
+a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp){ /* {{{ */
+	struct su_imf_addr *ap;
+	u32 i;
+	NYD2_IN;
+
+	i = VSTRUCT_SIZEOF(struct su_imf_addr,imfa_dat) +
+			acp->ac_.group_display_name +1 + acp->ac_.display_name +1 +
+			acp->ac_.locpar +1 + acp->ac_.domain +1 + acp->ac_.comm +1;
+
+	ap = a_IMF_ALLOC(membp, i);
+	**appp = ap;
+	*appp = &ap->imfa_next;
+
+	ap->imfa_next = NIL;
+	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_MASK;
+
+	ap->imfa_group_display_name = ap->imfa_dat;
+	if((ap->imfa_group_display_name_len = i = acp->ac_.group_display_name) > 0)
+		su_mem_copy(ap->imfa_group_display_name, acp->ac_group_display_name, i);
+	ap->imfa_group_display_name[i++] = '\0';
+
+	ap->imfa_display_name = &ap->imfa_group_display_name[i];
+	if((ap->imfa_display_name_len = i = acp->ac_.display_name) > 0)
+		su_mem_copy(ap->imfa_display_name, acp->ac_display_name, i);
+	ap->imfa_display_name[i++] = '\0';
+
+	ap->imfa_locpar = &ap->imfa_display_name[i];
+	if((ap->imfa_locpar_len = i = acp->ac_.locpar) > 0)
+		su_mem_copy(ap->imfa_locpar, acp->ac_locpar, i);
+	ap->imfa_locpar[i++] = '\0';
+
+	ap->imfa_domain = &ap->imfa_locpar[i];
+	if((ap->imfa_domain_len = i = acp->ac_.domain) > 0)
+		su_mem_copy(ap->imfa_domain, acp->ac_domain, i);
+	ap->imfa_domain[i++] = '\0';
+
+	ap->imfa_comm = &ap->imfa_domain[i];
+	if((ap->imfa_comm_len = i = acp->ac_.comm) > 0)
+		su_mem_copy(ap->imfa_comm, acp->ac_comm, i);
+	ap->imfa_comm[i++] = '\0';
+
+	NYD2_OU;
+} /* }}} */
+/* }}} */
+
 /* Created by table_dump() */
-#ifdef a_IMF_TABLE_USE
-# undef a_X
-# define a_X(X) CONCAT(a_IMF_C_, X)
-static u16 const a_imf_c_tbl[a_IMF_TABLE_USE + 1] = { /* {{{ */
+#undef a_X
+#define a_X(X) CONCAT(su_IMF_C_, X)
+ u16 const su__imf_c_tbl[su__IMF_TABLE_SIZE + 1] = { /* {{{ */
 	0,
 	a_X(NO_WS_CTL) | 0,
 	a_X(NO_WS_CTL) | 0,
@@ -317,316 +521,7 @@ static u16 const a_imf_c_tbl[a_IMF_TABLE_USE + 1] = { /* {{{ */
 	a_X(VCHAR) | a_X(ATEXT) | a_X(CTEXT) | a_X(DTEXT) | a_X(QTEXT) | 0,
 	a_X(NO_WS_CTL) | 0,
 }; /* }}} */
-# undef a_X
-#endif /* a_IMF_TABLE_USE */
-
-/* _c_  and _c2_ (inline), _s_ and _skip_.  Surrounding CFWS also needs to be handled by caller */
-
-/* Returns TRU1 if at least 1 WSP was skipped over, TRUM1 if *any* ws was seen, ie: it moved */
-static boole a_imf_skip_FWS(struct a_imf_actx *acp);
-
-/* Returns TRUM1 if FWS was parsed *outside* of comments */
-static boole a_imf_s_CFWS(struct a_imf_actx *acp);
-
-/* ASSERTs "at a_imf_c_DQUOTE()".  Skips to after the closing DQUOTE().
- * Places but leading or trailing FWS++ normalized to single SP in *buf.
- * Returns NIL on invalid content / missing closing quote error (unless relaxed), ptr to after written byte otherwise */
-static char *a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf);
-
-/* misc */
-
-/* */
-static void a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp);
-
-/* _c_ and _c2_ {{{ */
-#ifdef a_IMF_TABLE_USE
-# if a_IMF_TABLE_USE == U8_MAX
-#  define a_IMF_C_IS(X,Y) ((a_imf_c_tbl[S(u8,X)] & (Y)) != 0)
-# elif a_IMF_TABLE_USE == S8_MAX
-#  define a_IMF_C_IS(X,Y) (S(u8,X) <= S8_MAX && (a_imf_c_tbl[S(u8,X)] & (Y)) != 0)
-# else
-#  error a_IMF_TABLE_USE must be U8_MAX or S8_MAX
-# endif
-
-SINLINE boole a_imf_c_CR(char c) {return a_IMF_C_IS(c, a_IMF_C_CR);}
-SINLINE boole a_imf_c_DQUOTE(char c) {return a_IMF_C_IS(c, a_IMF_C_DQUOTE);}
-SINLINE boole a_imf_c_HT(char c) {return a_IMF_C_IS(c, a_IMF_C_HT);}
-SINLINE boole a_imf_c_LF(char c) {return a_IMF_C_IS(c, a_IMF_C_LF);}
-SINLINE boole a_imf_c_SP(char c) {return a_IMF_C_IS(c, a_IMF_C_SP);}
-
-SINLINE boole a_imf_c_ALPHA(char c) {return a_IMF_C_IS(c, a_IMF_C_ALPHA);}
-SINLINE boole a_imf_c_DIGIT(char c) {return a_IMF_C_IS(c, a_IMF_C_DIGIT);}
-SINLINE boole a_imf_c_VCHAR(char c) {return a_IMF_C_IS(c, a_IMF_C_VCHAR);}
-SINLINE boole a_imf_c_atext(char c) {return a_IMF_C_IS(c, a_IMF_C_ATEXT);}
-SINLINE boole a_imf_c_ctext(char c) {return a_IMF_C_IS(c, a_IMF_C_CTEXT);}
-SINLINE boole a_imf_c_dtext(char c) {return a_IMF_C_IS(c, a_IMF_C_DTEXT);}
-SINLINE boole a_imf_c_qtext(char c) {return a_IMF_C_IS(c, a_IMF_C_QTEXT);}
-SINLINE boole a_imf_c_special(char c) {return a_IMF_C_IS(c, a_IMF_C_SPECIAL);}
-SINLINE boole a_imf_c_obs_NO_WS_CTL(char c) {return a_IMF_C_IS(c, a_IMF_C_NO_WS_CTL);}
-
-SINLINE boole a_imf_c_WSP(char c) {return (a_IMF_C_IS(c, a_IMF_C_SP | a_IMF_C_HT));}
-SINLINE boole a_imf_c_ANY_WSP(char c) {return (a_IMF_C_IS(c, a_IMF_C_SP | a_IMF_C_HT | a_IMF_C_LF | a_IMF_C_CR));}
-
-SINLINE boole a_imf_c_quoted_pair_c2(char c2){ /* NIL unsupported (manual) */
-	return (a_IMF_C_IS(c2, a_IMF_C_VCHAR | a_IMF_C_SP|a_IMF_C_HT | a_IMF_C_NO_WS_CTL | a_IMF_C_LF | a_IMF_C_CR));
-}
-
-# undef a_IMF_C_IS
-#else /* ifdef a_IMF_TABLE_USE */
-SINLINE boole a_imf_c_CR(char c) {return (c == 0x0D);}
-SINLINE boole a_imf_c_DQUOTE(char c) {return (c == 0x22);}
-SINLINE boole a_imf_c_HT(char c) {return (c == 0x09);}
-SINLINE boole a_imf_c_LF(char c) {return (c == 0x0A);}
-SINLINE boole a_imf_c_SP(char c) {return (c == 0x20);}
-
-SINLINE boole a_imf_c_ALPHA(char c) {return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A));}
-SINLINE boole a_imf_c_DIGIT(char c) {return (c >= 0x30 && c <= 0x39);}
-SINLINE boole a_imf_c_VCHAR(char c) {return (c >= 0x21 && c <= 0x7E);}
-SINLINE boole a_imf_c_atext(char c){
-	return (a_imf_c_ALPHA(c) || a_imf_c_DIGIT(c) ||
-			c == '!' || c == '#' || c == '$' || c == '%' || c == '&' || c == '\'' || c == '*' ||
-			c == '+' || c == '-' || c == '/' || c == '=' || c == '?' || c == '^' || c == '_' || c == '`' ||
-			c == '{' || c == '|' || c == '}' || c == '~');
-}
-SINLINE boole a_imf_c_ctext(char c) {return ((c >= 33 && c <= 39) || (c >= 42 && c <= 91) || (c >= 93 && c <= 126));}
-SINLINE boole a_imf_c_dtext(char c) {return ((c >= 33 && c <= 90) || (c >= 94 && c <= 126));}
-SINLINE boole a_imf_c_qtext(char c) {return (c == 33 || (c >= 35 && c <= 91) || (c >= 93 && c <= 126));}
-SINLINE boole a_imf_c_special(char c){
-	return (c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' || c == ':' || c == ';' ||
-			c == '@' || c == '\\' || c == ',' || c == '.' || a_imf_c_DQUOTE(c));
-}
-SINLINE boole a_imf_c_obs_NO_WS_CTL(char c){
-	return (c >= 1 && c <= 8) || (c == 11 || c == 12) || (c >= 14 && c <= 31) || (c == 127);
-}
-
-SINLINE boole a_imf_c_WSP(char c) {return (a_imf_c_SP(c) || a_imf_c_HT(c));}
-SINLINE boole a_imf_c_ANY_WSP(char c) {return (a_imf_c_SP(c) || a_imf_c_HT(c) || a_imf_c_LF(c) || a_imf_c_CR(c));}
-SINLINE boole a_imf_c_quoted_pair_c2(char c2){ /* NIL unsupported (manual) */
-	return (a_imf_c_VCHAR(c2) || a_imf_c_ANY_WSP(c2) ||
-			(/*c2 == '\0' ||*/a_imf_c_obs_NO_WS_CTL(c2) /*|| a_imf_c_LF(c2)*/ /*|| a_imf_c_CR(c2)*/));
-}
-#endif /* !ifdef a_IMF_TABLE_USE) */
-
-SINLINE boole a_imf_c_obs_ctext(char c) {return a_imf_c_obs_NO_WS_CTL(c);}
-SINLINE boole a_imf_c2_CRLF(char c1, char c2) {return a_imf_c_CR(c1) && a_imf_c_LF(c2);}
-/* }}} */
-
-/* _s_ and _skip_ series {{{ */
-static boole
-a_imf_skip_FWS(struct a_imf_actx *acp){ /* {{{ */
-	char const *cp;
-	boole rv;
-	NYD2_IN;
-
-	rv = FAL0;
-	cp = acp->ac_.hd;
-
-	/* As documented (adjust on change) do not classify, skip follow-up lines' leading whitespace, IF ANY */
-	for(;; ++cp){
-		char c;
-
-#if 1
-		if(a_imf_c_ANY_WSP((c = *cp))){
-			if(a_imf_c_WSP(c))
-				rv = TRU1;
-		}
-#else
-		if(a_imf_c_WSP((c = *cp))
-			rv = TRU1;
-		else if(a_imf_c_LF(c)){
-		}else if(a_imf_c2_CRLF(c, cp[1]))
-			++cp;
-#endif
-		else
-			break;
-	}
-
-	if(cp != acp->ac_.hd){
-		acp->ac_.hd = cp;
-		if(!rv)
-			rv = TRUM1;
-	}
-
-	NYD2_OU;
-	return rv;
-} /* }}} */
-
-static boole
-a_imf_s_CFWS(struct a_imf_actx *acp){ /* {{{ */
-	char const *xcp;
-	uz lvl;
-	boole rv, any;
-	NYD2_IN;
-
-	UNINIT(any, FAL0);
-	for(rv = TRU1, lvl = 0;; acp->ac_.hd = xcp){
-		char c;
-
-		if(a_imf_skip_FWS(acp) == TRU1){
-			if(lvl == 0)
-				rv = TRUM1;
-			else if(any < FAL0)
-				any = TRU2;
-		}
-
-		c = *(xcp = acp->ac_.hd);
-		++xcp;
-
-		if(UNLIKELY(lvl == 0)){
-			if(c != '(')
-				break;
-			any = (acp->ac_.comm > 0);
-			++lvl;
-			continue;
-		}else switch(c){
-		case ')':
-			--lvl;
-			continue;
-		case '(':
-			++lvl;
-			continue;
-		case '\0':
-jerr:
-			if(acp->ac_.mse & su_IMF_MODE_RELAX)
-				acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_ERR_COMMENT;
-			else{
-				acp->ac_.mse |= su_IMF_ERR_RELAX | su_IMF_ERR_COMMENT;
-				rv = FAL0;
-			}
-			goto jleave;
-		}
-
-		for(;;){
-			if(a_imf_c_ctext(c) || a_imf_c_obs_ctext(c)){
-			}else if(c == '\\' && a_imf_c_quoted_pair_c2(*xcp))
-				++xcp;
-			else
-				break;
-			c = *xcp++;
-		}
-
-		if(UNLIKELY(--xcp == acp->ac_.hd))
-			goto jerr;
-		else{
-			uz i;
-
-			i = P2UZ(xcp - acp->ac_.hd);
-			if(any > FAL0)
-				acp->ac_comm[acp->ac_.comm++] = ' ';
-			any = TRUM1;
-			su_mem_copy(&acp->ac_comm[acp->ac_.comm], acp->ac_.hd, i);
-			acp->ac_.comm += S(u32,i);
-		}
-	}
-
-jleave:
-	NYD2_OU;
-	return rv;
-} /* }}} */
-
-static char *
-a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf){ /* {{{ */
-	boole any, lastws;
-	NYD2_IN;
-	ASSERT(a_imf_c_DQUOTE(*acp->ac_.hd));
-
-	for(lastws = any = FAL0, ++acp->ac_.hd;;){
-		char c;
-		char const *xcp;
-
-		if(a_imf_skip_FWS(acp) == TRU1 && any){
-			*buf++ = ' ';
-			lastws = TRU1;
-		}
-
-		xcp = acp->ac_.hd;
-
-		while(a_imf_c_qtext(c = *acp->ac_.hd)){
-			*buf++ = c;
-			++acp->ac_.hd;
-		}
-		any = (xcp != acp->ac_.hd);
-		if(any){
-			lastws = FAL0;
-			continue;
-		}
-
-		for(;;){
-			if(acp->ac_.hd[0] != '\\' || !a_imf_c_quoted_pair_c2(c = acp->ac_.hd[1]))
-				break;
-			buf[0] = '\\';
-			buf[1] = c;
-			buf += 2;
-			acp->ac_.hd += 2;
-		}
-		any = (xcp != acp->ac_.hd);
-		if(any){
-			lastws = FAL0;
-			continue;
-		}
-
-		if(a_imf_c_DQUOTE(*acp->ac_.hd)){
-			if(lastws)
-				--buf;
-			++acp->ac_.hd;
-		}else{
-			acp->ac_.mse |= su_IMF_ERR_DQUOTE;
-			buf = NIL;
-		}
-		break;
-	}
-
-	NYD2_OU;
-	return buf;
-} /* }}} */
-/* }}} */
-
-/* misc {{{ */
-static void
-a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp){ /* {{{ */
-	struct su_imf_addr *ap;
-	u32 i;
-	NYD2_IN;
-
-	i = VSTRUCT_SIZEOF(struct su_imf_addr,imfa_dat) +
-			acp->ac_.group_display_name +1 + acp->ac_.display_name +1 +
-			acp->ac_.locpar +1 + acp->ac_.domain +1 + acp->ac_.comm +1;
-
-	ap = a_IMF_ALLOC(membp, i);
-	**appp = ap;
-	*appp = &ap->imfa_next;
-
-	ap->imfa_next = NIL;
-	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_MASK;
-
-	ap->imfa_group_display_name = ap->imfa_dat;
-	if((ap->imfa_group_display_name_len = i = acp->ac_.group_display_name) > 0)
-		su_mem_copy(ap->imfa_group_display_name, acp->ac_group_display_name, i);
-	ap->imfa_group_display_name[i++] = '\0';
-
-	ap->imfa_display_name = &ap->imfa_group_display_name[i];
-	if((ap->imfa_display_name_len = i = acp->ac_.display_name) > 0)
-		su_mem_copy(ap->imfa_display_name, acp->ac_display_name, i);
-	ap->imfa_display_name[i++] = '\0';
-
-	ap->imfa_locpar = &ap->imfa_display_name[i];
-	if((ap->imfa_locpar_len = i = acp->ac_.locpar) > 0)
-		su_mem_copy(ap->imfa_locpar, acp->ac_locpar, i);
-	ap->imfa_locpar[i++] = '\0';
-
-	ap->imfa_domain = &ap->imfa_locpar[i];
-	if((ap->imfa_domain_len = i = acp->ac_.domain) > 0)
-		su_mem_copy(ap->imfa_domain, acp->ac_domain, i);
-	ap->imfa_domain[i++] = '\0';
-
-	ap->imfa_comm = &ap->imfa_domain[i];
-	if((ap->imfa_comm_len = i = acp->ac_.comm) > 0)
-		su_mem_copy(ap->imfa_comm, acp->ac_comm, i);
-	ap->imfa_comm[i++] = '\0';
-
-	NYD2_OU;
-} /* }}} */
-/* }}} */
+#undef a_X
 
 s32
 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u32,su_imf_mode) mode, /* {{{ */
@@ -662,7 +557,7 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 	/* C99 */{
 		uz i;
 
-		while(a_imf_c_ANY_WSP(*header))
+		while(su_imf_c_ANY_WSP(*header))
 			++header;
 		i = su_cs_len(header);
 		if(i == 0){
@@ -765,7 +660,7 @@ jaddr_create:
 			}
 		}
 
-		if(!(f & a_STAGE_DOMAIN) && a_imf_c_DQUOTE(*acp->ac_.hd)){
+		if(!(f & a_STAGE_DOMAIN) && su_imf_c_DQUOTE(*acp->ac_.hd)){
 			char *ncp;
 
 			f |= a_ANY | a_QUOTE;
@@ -788,7 +683,7 @@ jaddr_create:
 		}
 
 		xcp = acp->ac_.hd;
-		while(a_imf_c_atext(*acp->ac_.hd))
+		while(su_imf_c_atext(*acp->ac_.hd))
 			++acp->ac_.hd;
 		if(xcp != acp->ac_.hd){
 			/* MUST be display-name or local-part */
@@ -820,9 +715,9 @@ jpushany:
 				for(;;){
 					a_imf_skip_FWS(acp); /* XXX Postel: CFWS()? */
 					c = *acp->ac_.hd++;
-					if(a_imf_c_dtext(c) || a_imf_c_obs_NO_WS_CTL(c))
+					if(su_imf_c_dtext(c) || su_imf_c_obs_NO_WS_CTL(c))
 						cp[l++] = c;
-					else if(c == '\\' && a_imf_c_quoted_pair_c2(*acp->ac_.hd)){
+					else if(c == '\\' && su_imf_c_quoted_pair_c2(*acp->ac_.hd)){
 						cp[l++] = c;
 						cp[l++] = *acp->ac_.hd++;
 					}else if(c == ']')
@@ -1085,7 +980,7 @@ su_imf_parse_struct_header(struct su_imf_shtok **shtpp, char const *header, BITE
 
 	*(shtpp_base = shtpp) = NIL;
 
-	while(a_imf_c_ANY_WSP(*header))
+	while(su_imf_c_ANY_WSP(*header))
 		++header;
 
 	i = su_cs_len(header);
@@ -1153,7 +1048,7 @@ jtoken_next:
 
 			start = acp->ac_.hd;
 
-			if(a_imf_c_DQUOTE(*acp->ac_.hd)){
+			if(su_imf_c_DQUOTE(*acp->ac_.hd)){
 				/* Remove quotes, they are "not [a] semantical[ly] part" */
 				char *cp;
 
@@ -1167,7 +1062,7 @@ jtoken_next:
 					acp->ac_.mse |= su_IMF_STATE_GROUP; /* gross hack: misuse bit for "quotes" */
 			}
 
-			while(a_imf_c_atext((c = *acp->ac_.hd))){
+			while(su_imf_c_atext((c = *acp->ac_.hd))){
 				acp->ac_comm[i++] = c;
 				++acp->ac_.hd;
 			}
@@ -1255,9 +1150,36 @@ j_leave:
 	return rv;
 } /* }}} */
 
+/* imf_table_dump {{{ */
 #ifdef a_IMF_TABLE_DUMP
+SINLINE boole a_imf_c_ALPHA(char c) {return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A));}
+SINLINE boole a_imf_c_DIGIT(char c) {return (c >= 0x30 && c <= 0x39);}
+SINLINE boole a_imf_c_VCHAR(char c) {return (c >= 0x21 && c <= 0x7E);}
+SINLINE boole a_imf_c_atext(char c){
+	return (a_imf_c_ALPHA(c) || a_imf_c_DIGIT(c) ||
+			c == '!' || c == '#' || c == '$' || c == '%' || c == '&' || c == '\'' || c == '*' ||
+			c == '+' || c == '-' || c == '/' || c == '=' || c == '?' || c == '^' || c == '_' || c == '`' ||
+			c == '{' || c == '|' || c == '}' || c == '~');
+}
+SINLINE boole a_imf_c_ctext(char c) {return ((c >= 33 && c <= 39) || (c >= 42 && c <= 91) || (c >= 93 && c <= 126));}
+SINLINE boole a_imf_c_dtext(char c) {return ((c >= 33 && c <= 90) || (c >= 94 && c <= 126));}
+SINLINE boole a_imf_c_qtext(char c) {return (c == 33 || (c >= 35 && c <= 91) || (c >= 93 && c <= 126));}
+SINLINE boole a_imf_c_special(char c){
+	return (c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' || c == ':' || c == ';' ||
+			c == '@' || c == '\\' || c == ',' || c == '.' || a_imf_c_DQUOTE(c));
+}
+SINLINE boole a_imf_c_obs_NO_WS_CTL(char c){
+	return (c >= 1 && c <= 8) || (c == 11 || c == 12) || (c >= 14 && c <= 31) || (c == 127);
+}
+
+SINLINE boole a_imf_c_CR(char c) {return (c == 0x0D);}
+SINLINE boole a_imf_c_DQUOTE(char c) {return (c == 0x22);}
+SINLINE boole a_imf_c_HT(char c) {return (c == 0x09);}
+SINLINE boole a_imf_c_LF(char c) {return (c == 0x0A);}
+SINLINE boole a_imf_c_SP(char c) {return (c == 0x20);}
+
 void
-su_imf_table_dump(void){ /* {{{ */
+su_imf_table_dump(void){
 	char c;
 
 	for(c = '\0';;){
