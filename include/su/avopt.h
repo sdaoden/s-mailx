@@ -97,6 +97,10 @@ struct su_avopt;
  *
  * For example, the long option \c{account}, which can be specified as \c{--account myself} or \c{--account=myself} on
  * the command line, is then expected on a line on its own as \c{account myself} or \c{account=myself}.
+ *
+ * \remarks{The variant without equal-sign is possibly more user-friendly, because \c{x = y} is usally an error (value
+ * is \c{= y}), whereas \c{x  y} is not (value is \c{y}).
+ * Leading value whitespace is only possible in the former syntax, however.}
  * }\li{
  * With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} of short and long option strings are checked for notational errors.
  * If long options map to existing short options, it is verified their "takes argument" state is identical.
@@ -133,7 +137,7 @@ struct su_avopt;
  *				fprintf(n_stdout, "\nLong options:\n");
  *				su_avopt_dump_doc(&avo, &a_main_dump_doc, su_S(su_up,n_stdout));
  *			}
- *			 exit(0);
+ *			exit(0);
  *		case '#':
  *			n_var_setup_batch_mode();
  *			break;
