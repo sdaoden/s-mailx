@@ -536,7 +536,7 @@ do{\
 # define su_CC_MEM_ZERO(X,Y) do{\
 	su_uz su____l__ = Y;\
 	void *su____op__ = X;\
-	su_u8 *su____bp__ = su_S(su_u8*,su____op__);\
+	char *su____bp__ = su_S(char*,su____op__);\
 	while(su____l__-- > 0)\
 		*su____bp__++ = 0;\
 }while(0)
