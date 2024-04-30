@@ -12,16 +12,20 @@ CXX?=c++
 ARFLAGS=rv
 
 # c89,c99,c11,c17,c2x
-SUFLVLC=-std=c89
+SUFLVLC=-std=c99
 # c++98,c++11,c++14,c++17,c++20,c++2b
 SUFLVLCXX=-std=c++98
-SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL -Dsu_NYD_ENABLE
-#SUFDEVEL=
-SUFOPT=-O1 -g
-#SUFOPT=-DNDEBUG -O2
-SULDF=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed,--enable-new-dtags -pie -fPIE
-SULDFOPT=
-#SULDFOPT=-Wl,-O1,--sort-common
+SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL -Dsu_NYD_ENABLE -g
+#SUFDEVEL=-DNDEBUG
+SUFOPT?=-O1
+#SUFOPT?=-O2
+SULDF_SUN=
+SULDF_X=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--enable-new-dtags -fPIE -pie
+SULDF=$$(x=$$(uname); [ "$${x}" = "$${x\#Sun*}" ] && echo "$(SULDF_X)" || echo "$(SULDF_SUN)")
+SULDFOPT_SUN=
+SULDFOPT_X=
+#SULDFOPT_X=-Wl,-O1 -Wl,--sort-common
+SULDFOPT=$$(x=$$(uname); [ "$${x}" = "$${x\#Sun*}" ] && echo "$(SULDFOPT_X)" || echo "$(SULDFOPT_SUN)")
 SUSTRIP=
 #SUSTRIP=strip
 
@@ -36,7 +40,8 @@ SUF_GEN_CONFIG_LIST = \
 	su__HAVE_STAT_BLOCKS su__HAVE_STAT_TIMESPEC \
 	su__HAVE_UTIMENSAT \
 
-SUF = -D_GNU_SOURCE $(SUFDEVEL)
+# _GNU_SOURCE for anything, __EXTENSIONS__ for SunOS/Solaris
+SUF = -D_GNU_SOURCE -D__EXTENSIONS__ $(SUFDEVEL)
 
 SUFWW = #-Weverything -Wno-unsafe-buffer-usage -Wno-format-nonliteral
 SUFW = -W -Wall -pedantic $(SUFWW) \
@@ -128,9 +133,9 @@ test: all
 	./.main
 
 $(CONFIG):
-	CC="$(CC)" SRCDIR=`dirname \`pwd\``/ TARGET="$(@)" awk="$(awk)" \
+	CC="$(CC)" SRCDIR=$$(dirname $$(pwd))/ TARGET="$(@)" awk="$(awk)" \
 		$(SHELL) ../../mk/su-make-errors.sh compile_time
-	echo '#define su_PAGE_SIZE '"`$(getconf) PAGESIZE`" >> $(@)
+	echo '#define su_PAGE_SIZE '"$$($(getconf) PAGESIZE)" >> $(@)
 	xxx="$(SUF)";\
 	if [ "$${xxx##*su_HAVE_DEBUG}" != "$$xxx" ]; then \
 		printf '#ifndef su_HAVE_DEBUG\n# define su_HAVE_DEBUG\n#endif\n' >> $(@);\
