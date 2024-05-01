@@ -137,12 +137,14 @@
 
  /*! Enables a few code check paths and debug-only structure content and function arguments: it creates additional
   * API, and even causes a different ABI.
-  * (Code assertions are disabled via the standardized NDEBUG compiler preprocessor variable.) */
+  * (Code assertions are disabled via the standardized \c{NDEBUG} compiler preprocessor variable.) */
 # define su_HAVE_DEBUG
  /*! Enable developer mode: it creates additional API, and even causes a different ABI.
   * Expensive in size and runtime development code paths, like extensive memory tracing and lingering, otherwise
   * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
+ /*! Regardless of \c{NDEBUG}, \r{su_HAVE_DEBUG} and \r{su_HAVE_DEVEL}: expand \r{su_UNINIT()}. */
+# define su_HAVE_UNINIT
  /*! \r{IMF} support available?
   * Requires \r{su_HAVE_MEM_BAG} (one of \r{su_HAVE_MEM_BAG_LOFI} or \r{su_HAVE_MEM_BAG_AUTO}). */
 # define su_HAVE_IMF
@@ -978,7 +980,7 @@ do{\
 #define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))
 
 /* Avoid "may be used uninitialized" warnings */
-#if (defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || defined DOXYGEN
+#if !defined su_HAVE_UNINIT && ((defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || defined DOXYGEN)
 # define su_UNINIT(N,V) su_S(void,0) /*!< \_ */
 # define su_UNINIT_DECL(V) /*!< \_ */
 #else
