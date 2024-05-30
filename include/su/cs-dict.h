@@ -205,6 +205,7 @@ INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
 }
 
 /*! Current size of the node management array.
+ * Correlates with \r{su_cs_dict_set_min_size()}.
  * (Might be of interest to re \r{su_cs_dict_balance()} with \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
 INLINE u32 su_cs_dict_size(struct su_cs_dict const *self){
 	ASSERT(self);
@@ -219,7 +220,7 @@ INLINE u32 su_cs_dict_min_size(struct su_cs_dict const *self){
 }
 
 /*! Set the minimum size of the node management array.
- * If set the array will not be (re)sized to a size smaller than this.
+ * If set the array will not be (re)sized to a size smaller than this, except by \r{su_cs_dict_clear()}.
  * \remarks{\a{nmsize} cannot be larger than 0xB947 (a large 16-bit prime).} */
 INLINE struct su_cs_dict *su_cs_dict_set_min_size(struct su_cs_dict *self, u32 nmsize){
 	ASSERT(self);
@@ -309,7 +310,7 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self, struct
 }
 
 /*! Resize management table to accommodate for \a{xcount} elements.
- * Calculates new size as via \r{su_cs_dict_set_threshold()}.
+ * Calculates new size as via \r{su_cs_dict_set_threshold()}, taking \r{su_cs_dict_set_min_size()} into account.
  * The \r{su_CS_DICT_FROZEN} state is ignored, but can avoid an automatic resize upon the next insertion
  * (or removal with \r{su_CS_DICT_AUTO_SHRINK}).
  * Returns -1 if no action was performed, \ERR{NONE} upon successful resize,

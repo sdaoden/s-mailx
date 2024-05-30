@@ -905,11 +905,16 @@ jleave:
 
 struct a_T *
 a_T_PUBSYM(balance)(struct a_T *self){
+	u32 xcount;
 	NYD_IN;
 	ASSERT(self);
 
+	xcount = self->a_T_F(count);
+	if(xcount == 0)
+		xcount += (self->a_T_F(min_size) != 0);
+
 	self->a_T_F(flags) &= ~a_T_PUBNAME(FROZEN);
-	(void)a_FUN(check_resize)(self, TRU1, self->a_T_F(count));
+	(void)a_FUN(check_resize)(self, TRU1, xcount);
 
 	NYD_OU;
 	return self;
