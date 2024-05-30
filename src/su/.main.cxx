@@ -789,6 +789,25 @@ a_cs_dict_(u16 addflags){ // {{{
 		k[2] = "K3";
 
 		a_cs_dict__case(&cd, k);
+
+		// And test min_size() / balance()!
+		cd.clear();
+		if(!cd.is_empty())
+			a_ERR();
+		if(cd.size() != 0)
+			a_ERR();
+		if(cd.balance().size() != 0)
+			a_ERR();
+
+		if(cd.set_min_size(3).min_size() != 3)
+			a_ERR();
+		cd.insert(k[0], "v1");
+		if(cd.is_empty())
+			a_ERR();
+		if(cd.clear().size() != 0)
+			a_ERR();
+		if(cd.balance().size() < 3)
+			a_ERR();
 	}
 
 	/// Let's do some flag stuff and "big data"
