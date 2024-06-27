@@ -313,7 +313,6 @@ jshort:
 
 jleave:
    self->avo_curr = curr;
-   self->avo_current_opt = rv;
    self->avo_current_opt =
          (rv != su_AVOPT_STATE_DONE || !(flags & a_AVOPT_STOP)) ? rv
             : su_AVOPT_STATE_STOP;
