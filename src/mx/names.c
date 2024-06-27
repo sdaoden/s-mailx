@@ -1128,10 +1128,12 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
    NYD_IN;
 
    rv = 0;
-   key = (argv = vp)[0];
 
-   if(a_nm_alias_dp != NIL)
-      su_cs_dict_view_setup(&dv, a_nm_alias_dp);
+   if(a_nm_alias_dp == NIL)
+      goto jleave;
+
+   key = (argv = vp)[0];
+   su_cs_dict_view_setup(&dv, a_nm_alias_dp);
 
    do{
       if(key[1] == '\0' && key[0] == '*'){
@@ -1160,6 +1162,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
       }
    }while((key = *++argv) != NIL);
 
+jleave:
    NYD_OU;
    return rv;
 }

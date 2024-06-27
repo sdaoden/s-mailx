@@ -2281,7 +2281,8 @@ c_addrcodec(void *vp){
       ++cp;
 
    trims.l = su_cs_len(trims.s = n_UNCONST(cp));
-   cp = savestrbuf(n_str_trim(&trims, n_STR_TRIM_BOTH)->s, trims.l);
+   n_str_trim(&trims, n_STR_TRIM_BOTH);
+   cp = savestrbuf(trims.s, trims.l);
    if(trims.l <= UZ_MAX / 4)
          trims.l <<= 1;
    s = n_string_reserve(s, trims.l);
