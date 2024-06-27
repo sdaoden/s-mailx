@@ -20,8 +20,9 @@ have been signed with the OpenPGP signing subkey EEC8C2FF of key
   steffen@sdaoden.eu  /  1883A0DD
   (EE19 E1C1 F2F7 054F 8D39  54D8 3089 64B5 1883 A0DD)
 
-Release balls and OpenPGP signatures (.asc) are accessible via
-\https?://ftp.sdaoden.eu, also the key steffen.asc (+ GnuPG WKD).
+available on some OpenPGP key servers, my website (also WKD),
+and download area (\https://ftp.sdaoden.eu/steffen.asc;
+there is also \https://ftp.sdaoden.eu/steffen.asc.asc ..).
 Inline copies of the signatures are at the end of this message.
 
 -----CHECKSUMS-----
