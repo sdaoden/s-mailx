@@ -104,30 +104,7 @@ ChangeLog
 
 - Like anyone else we now deal with argc==0 aka CVE-2021-4034.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (28):
-096665105b mk/make-release.inc: try to use tar(1) --format=pax (Paul Eggert)
-b2bfa82a00 Fix expandargv=restrict (since 2017-01-15!)..
-7ea98f69b7 FIX MTA args after -- for non-send-only mode!..
-b6736900e8 mx-test.sh: change UTF-8 locale order AGAIN!
-294ed7f97c imap_response_parse(): stop overbalancing untagged responses (Madou
-        Mad)
-c4b7512fb6 THANKS: Madou Mad
-9352ebfe6e FIX/tweak previous, add a_imap_res__untagged() (Madou Mad)
-561e078c1c Reproducibility detection a_main_setup_vars() -> a_main_startup()..
-14c4dbf89c mx_fs_open_any(): FIX !fs_file_load() crash (since nail 10.08,
-        2004-06-28)..
-13e06c8fe1 mx_smime_split(): fix *FILE** "return" upon error return..
-3dd2f43372 main(): work nicely with argc==0 (after reading CVE-2021-4034)
-0386c021d3 ps-dotlock: call setgid(), too (actually Paride Legovini)
-987f73fad5 a_termios_sig_adjust(): fix "unshare -f mailx" ^C<RET>^C crash
-f336d267fb mime.types: move .xsl from xml to xslt+xml (Jesse Alama)
-b45c897315 THANKS: Jesse Alama
-d53396df1e mime_fromhdr(): FIX crash in crafted mail (since ~2013)..
-aca800c3af mx_mime_display_from_header(): FIX previous
-7a7e48cb36 n_iconv_open(): FIX: name normalization can fail!
+git(1) shortlog: Steffen Nurpmeso (28)
 
 v14.9.23 ("Tits look ahead for winter"), 2021-11-11
 ---------------------------------------------------
