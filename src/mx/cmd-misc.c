@@ -217,22 +217,32 @@ a_cmisc_read(void * volatile vp, boole atifs){
          if(trim.l == 0 || (atifs && n_str_trim_ifs(&trim, FAL0)->l == 0))
             break;
 
-         /* The last variable gets the remaining line less trailing IFS-WS */
          if(atifs){
-            if(argv[1] == NIL){
-jitall:
-               s = n_string_assign_buf(s, trim.s, trim.l);
-               trim.l = 0;
-            }else for(cp = trim.s, i = 1;; ++cp, ++i){
+            for(cp = trim.s, i = 1;; ++cp, ++i){
                if(su_cs_find_c(ifs, *cp) != NIL){
+                  /* POSIX says for read(1) (with -r):
+                   * If there are fewer vars than fields, the last var shall be
+                   * set to a value comprising the following elements:
+                   *   . The field that corresponds to the last var in the
+                   *     normal assignment sequence described above
+                   *   . The delimiter(s) that follow the field corresponding
+                   *     to the last var
+                   *   . The remaining fields and their delimiters, with
+                   *     trailing IFS white space ignored */
+                  if(argv[1] == NIL && trim.l - i != 0)
+                     goto jitall;
                   s = n_string_assign_buf(s, trim.s, i - 1);
                   trim.s += i;
                   trim.l -= i;
                   break;
                }
 
-               if(i == trim.l)
-                  goto jitall;
+               if(i == trim.l){
+jitall:
+                  s = n_string_assign_buf(s, trim.s, trim.l);
+                  trim.l = 0;
+                  break;
+               }
             }
          }else{
             s = n_string_trunc(s, 0);

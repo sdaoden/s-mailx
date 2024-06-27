@@ -496,7 +496,7 @@ mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
 
 boole
 mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
-   enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1};
+   enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2};
 
    struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
@@ -736,12 +736,16 @@ jredo:
                   mx_CMD_ARG_DESC_GREEDY_JOIN) &&
                (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP)))
             f |= a_GREEDYJOIN;
+         f |= a_REDID;
          goto jredo;
       }
    }
 
 jloop_break:
-   if(cad_idx < cadp->cad_no){
+   ASSERT(cad_idx < cadp->cad_no || !(f & a_REDID) ||
+      ((f & a_REDID) && cad_idx + 1 == cadp->cad_no &&
+       (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY)));
+   if(!(f & a_REDID) && cad_idx < cadp->cad_no){
       if(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
          goto jerr;
    }else if(!(f & a_STOPLOOP) && shin.l > 0){

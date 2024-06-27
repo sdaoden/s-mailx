@@ -301,15 +301,19 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
       n_err(_("alias: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
       slp_next = NIL;
       ccp = name;
-      goto jlinkin;
+      goto jmay_linkin;
    }
 
    slp_next = slp_base =
    slp = S(struct n_strlist const*,su_cs_dict_lookup(a_nm_alias_dp, name));
 
    if(slp == NIL){
-      ccp = name;
-      goto jlinkin;
+jmay_linkin:
+      if(metoo || !mx_name_is_metoo(name, FAL0)){
+         ccp = name;
+         goto jlinkin;
+      }
+      goto jleave;
    }
    do{ /* while(slp != NIL); */
       slp_next = slp->sl_next;
@@ -326,9 +330,9 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
          continue;
       }
 
-      /* Here we should allow to expand to itself if only person in alias */
+      /* XXX Historical: should allow expand to self if only person in alias */
       if(metoo || slp_base->sl_next == NIL ||
-            !a_nm_is_same_name(slp->sl_dat, logname, NIL)){
+            !mx_name_is_metoo(slp->sl_dat, FAL0)){
          /* Use .n_name if .n_fullname is not set */
          if(*(ccp = &slp->sl_dat[slp->sl_len + 2]) == '\0')
             ccp = slp->sl_dat;
@@ -346,6 +350,7 @@ jlinkin:
       }
    }while((slp = slp_next) != NIL);
 
+jleave:
    NYD2_OU;
    return nlist;
 }
@@ -1123,10 +1128,12 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
    NYD_IN;
 
    rv = 0;
-   key = (argv = vp)[0];
 
-   if(a_nm_alias_dp != NIL)
-      su_cs_dict_view_setup(&dv, a_nm_alias_dp);
+   if(a_nm_alias_dp == NIL)
+      goto jleave;
+
+   key = (argv = vp)[0];
+   su_cs_dict_view_setup(&dv, a_nm_alias_dp);
 
    do{
       if(key[1] == '\0' && key[0] == '*'){
@@ -1155,6 +1162,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
       }
    }while((key = *++argv) != NIL);
 
+jleave:
    NYD_OU;
    return rv;
 }
@@ -1342,7 +1350,7 @@ mx_alternates_remove(struct mx_name *np, boole keep_single){
 }
 
 boole
-mx_name_is_mine(char const *name){
+mx_name_is_metoo(char const *name, boole check_reply_to){
    struct su_cs_dict_view dv;
    struct mx_name *xp;
    NYD_IN;
@@ -1364,22 +1372,22 @@ mx_name_is_mine(char const *name){
       if(a_nm_is_same_name(xp->n_name, name, NIL))
          goto jleave;
 
-   /* C99 */{
-      char const *v15compat;
+   if(check_reply_to){
+         char const *v15compat;
 
-      if((v15compat = ok_vlook(replyto)) != NULL){
-         n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
-         for(xp = lextract(v15compat, GEXTRA | GSKIN); xp != NULL;
-               xp = xp->n_flink)
-            if(a_nm_is_same_name(xp->n_name, name, NIL))
-               goto jleave;
-      }
+         if((v15compat = ok_vlook(replyto)) != NULL){
+            n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+            for(xp = lextract(v15compat, GEXTRA | GSKIN); xp != NULL;
+                  xp = xp->n_flink)
+               if(a_nm_is_same_name(xp->n_name, name, NIL))
+                  goto jleave;
+         }
+
+      for(xp = lextract(ok_vlook(reply_to), GEXTRA | GSKIN); xp != NULL;
+            xp = xp->n_flink)
+         if(a_nm_is_same_name(xp->n_name, name, NIL))
+            goto jleave;
    }
-
-   for(xp = lextract(ok_vlook(reply_to), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink)
-      if(a_nm_is_same_name(xp->n_name, name, NIL))
-         goto jleave;
 
    if((xp = n_extract_single(ok_vlook(sender), GEXTRA)) != NIL &&
          a_nm_is_same_name(xp->n_name, name, NIL))

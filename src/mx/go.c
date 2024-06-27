@@ -157,9 +157,9 @@ enum a_go_hist_flags{
 struct a_go_eval_ctx{
    struct str gec_line; /* The terminated data to _evaluate() */
    u32 gec_line_size; /* May be used to store line memory size */
+   boole gec_have_ln_aq; /* fs_linepool_aquire()d */
    boole gec_ever_seen; /* Has ever been used (main_loop() only) */
    boole gec_ignerr; /* Implicit `ignerr' prefix */
-   u8 gec__dummy[1];
    u8 gec_hist_flags; /* enum a_go_hist_flags */
    char const *gec_hist_cmd; /* If a_GO_HIST_ADD only, cmd and args */
    char const *gec_hist_args;
@@ -469,7 +469,7 @@ jrestart:
          flags |= a_NOALIAS;
 
       if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NULL){
-         uz i;
+         uz i, j;
 
          if(s != NULL){
             s = n_string_push_cp(s, word);
@@ -478,10 +478,13 @@ jrestart:
          }
 
          /* And join arguments onto alias expansion */
-         alias_name = word;
          i = strlen(alias_exp);
+         j = su_cs_len(word);
          cp = line.s;
-         line.s = n_autorec_alloc(i + 1 + line.l +1);
+         alias_name = line.s = n_autorec_alloc(j +1 + i + 1 + line.l +1);
+         su_mem_copy(line.s, word, j);
+         line.s[j++] = '\0';
+         line.s += j;
          su_mem_copy(line.s, alias_exp, i);
          if(line.l > 0){
             line.s[i++] = ' ';
@@ -494,12 +497,21 @@ jrestart:
    }
 
    if((cdp = mx_cmd_firstfit(word)) == NIL){
-      if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
+      boole isskip;
+
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
+      isskip = ((flags & a_IS_SKIP) != 0);
+
+      /* TODO as long as `define' takes over input and consumes until }
+       * TODO ie we do not have on-line-completed-event or however we do it,
+       * TODO we must ignore "a closing }" here */
+      if(isskip && word[0] == '}' && word[1] == '\0')
+         goto jret0;
+      if(!isskip || (n_poption & n_PO_D_VVV))
          n_err(_("%s: unknown command%s\n"),
             prstr(word), ((flags & a_IS_SKIP)
                ? _(" (ignored due to `if' condition)") : su_empty));
-      gecp->gec_hist_flags = a_GO_HIST_NONE;
-      if(flags & a_IS_SKIP)
+      if(isskip)
          goto jret0;
       nerrn = su_ERR_NOSYS;
       goto jleave;
@@ -1414,6 +1426,12 @@ n_go_main_loop(void){ /* FIXME */
       interrupts = 0;
       DVL(su_nyd_reset_level(1);)
 
+      /* (Interruption) */
+      if(gec.gec_have_ln_aq){
+         gec.gec_have_ln_aq = FAL0;
+         mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
+      }
+
       if(gec.gec_ever_seen)
          /* TODO too expensive, just do the membag (++?) here.
           * TODO in fact all other conditions would be an error, no? */
@@ -1505,6 +1523,7 @@ n_go_main_loop(void){ /* FIXME */
       n_pstate |= n_PS_ERRORS_NEED_PRINT_ONCE;
 
       mx_fs_linepool_aquire(&gec.gec_line.s, &gec.gec_line.l);
+      gec.gec_have_ln_aq = TRU1;
       gec.gec_line_size = S(u32,gec.gec_line.l);
       /* C99 */{
          boole histadd;
@@ -1524,7 +1543,6 @@ n_go_main_loop(void){ /* FIXME */
       gec.gec_line.l = S(u32,n);
 
       if(n < 0){
-         mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
          if(!(n_pstate & n_PS_ROBOT) &&
                (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
                ++eofcnt < 4){
@@ -1570,14 +1588,15 @@ n_go_main_loop(void){ /* FIXME */
                : n_GO_INPUT_NONE)));
       }
 
-      mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
-
       if((n_psonce & n_PSO_EXIT_MASK) || !rv)
          break;
    }
 
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
       (rv ? 0 : a_GO_CLEANUP_ERROR));
+
+   if(gec.gec_have_ln_aq)
+      mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
    mx_fs_linepool_cleanup(TRU1);
 
    mx_sigs_all_rele();

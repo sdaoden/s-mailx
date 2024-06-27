@@ -365,7 +365,8 @@ mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
       _8BIT       = 1<<(_RND_SHIFT+2),    /* High bit set */
       _ENCODE     = 1<<(_RND_SHIFT+3),    /* Need encoding */
       _ENC_B64    = 1<<(_RND_SHIFT+4),    /* - let it be base64 */
-      _OVERLONG   = 1<<(_RND_SHIFT+5)     /* Temporarily raised limit */
+      _IF_ENC_NO_B64 = 1u<<(_RND_SHIFT+5), /* - NO! MUST NOT be base64 */
+      _OVERLONG = 1u<<(_RND_SHIFT+6)     /* Temporarily raised limit */
    } flags;
    char const *cset7, *cset8, *wbot, *upper, *wend, *wcur;
    u32 cset7_len, cset8_len;
@@ -443,6 +444,9 @@ mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
             break;
          if ((uc)*wend & 0x80)
             flags |= _8BIT;
+         /* pure RFC 5322 need to parse these plain */
+         else if(*wend == '"' || *wend == '(' || *wend == ')')
+            flags |= _IF_ENC_NO_B64;
       }
 
       /* Decide whether the range has to become encoded or not */
@@ -458,7 +462,9 @@ j_beejump:
          flags |= _ENCODE;
          /* Use base64 if requested or more than 50% -37.5-% of the bytes of
           * the string need to be encoded */
-         if ((flags & _NO_QP) || j >= i >> 1)/*(i >> 2) + (i >> 3))*/
+         if(flags & _IF_ENC_NO_B64)
+            flags &= ~_ENC_B64;
+         else if ((flags & _NO_QP) || j >= i >> 1)/*(i >> 2) + (i >> 3))*/
             flags |= _ENC_B64;
       }
       su_DBG( if (flags & _8BIT) ASSERT(flags & _ENCODE); )

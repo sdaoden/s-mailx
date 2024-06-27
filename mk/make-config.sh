@@ -2502,6 +2502,7 @@ feat_yes NET &&
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h> /* FD_ZERO() SunOS 5.9, at least */
 #include <unistd.h>
 # include <errno.h>
 int main(void){
@@ -2751,9 +2752,6 @@ int nonempty;
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-#ifdef OPENSSL_NO_TLS1 /* TODO only deduced from OPENSSL_NO_SSL[23]! */
-# error We need TLSv1.
-#endif
 int main(void){
    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
 
@@ -2772,10 +2770,6 @@ int main(void){
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
-#if defined OPENSSL_NO_SSL3 &&\
-      defined OPENSSL_NO_TLS1 /* TODO only deduced from OPENSSL_NO_SSL[23]! */
-# error We need one of SSLv3 and TLSv1.
-#endif
 int main(void){
    SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
 

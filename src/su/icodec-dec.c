@@ -320,9 +320,10 @@ jeover:
 j_maxval:
    if(rv & su_IDEC_MODE_SIGNED_TYPE)
       res = (rv & su_IDEC_STATE_SEEN_MINUS) ? S(u64,S64_MIN) : S(u64,S64_MAX);
-   else
+   else{
       res = U64_MAX;
-   rv &= ~su_IDEC_STATE_SEEN_MINUS;
+      rv &= ~S(u32,su_IDEC_STATE_SEEN_MINUS);
+   }
    goto jleave;
 }
 

@@ -911,7 +911,8 @@ FL boole n_header_match(struct message *mp, struct search_expr const *sep);
  * Return the (standard) header name, or NULL */
 FL char const *n_header_is_known(char const *name, uz len);
 
-/* Add a custom header to the given list, in auto-reclaimed or heap memory */
+/* Add a custom header to the given list, in auto-reclaimed or heap memory;
+ * if heap is TRUM1 then only check state; hflp can be NIL, then! */
 FL boole n_header_add_custom(struct n_header_field **hflp, char const *dat,
             boole heap);
 

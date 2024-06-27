@@ -1880,8 +1880,11 @@ j_var_look_buf:
 jleave:
    ASSERT(!(state & a_COOKIE));
    if((flags & n_SHEXP_PARSE_DRYRUN) && store != NULL){
-      store = n_string_push_buf(store, input->s, P2UZ(ib - input->s));
-      rv |= n_SHEXP_STATE_OUTPUT;
+      i = P2UZ(ib - input->s);
+      if(i > 0){
+         store = n_string_push_buf(store, input->s, i);
+         rv |= n_SHEXP_STATE_OUTPUT;
+      }
    }
 
    if(state & a_CHOP_ONE)

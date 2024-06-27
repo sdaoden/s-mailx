@@ -170,7 +170,7 @@ EXPORT struct mx_name *mx_alternates_remove(struct mx_name *np,
       boole keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
-EXPORT boole mx_name_is_mine(char const *name);
+EXPORT boole mx_name_is_metoo(char const *name, boole check_reply_to);
 
 #include <su/code-ou.h>
 #endif /* mx_NAMES_H */

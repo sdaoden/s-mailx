@@ -139,9 +139,9 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
       _NONE       = 0,
       _ISDOT      = 1<<0,
       _ISTO       = 1<<1,
-      _IFMT       = 1<<2,
+      a_IFMT      = 1<<2,
       _LOOP_MASK  = (1<<4) - 1,
-      _SFMT       = 1<<4,        /* It is 'S' */
+      a_SFMT      = 1<<4,        /* It is 'S' */
       /* For the simple byte-based counts in wleft and n we sometimes need
        * adjustments to compensate for additional bytes of UTF-8 sequences */
       _PUTCB_UTF8_SHIFT = 5,
@@ -185,7 +185,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
             subjlen -= n;
          }
          if (*fp == 'i')
-            flags |= _IFMT;
+            flags |= a_IFMT;
 
          if (*fp == '\0')
             break;
@@ -431,7 +431,7 @@ jmlist: /* v15compat */
          }
          break;
       case 'S':
-         flags |= _SFMT;
+         flags |= a_SFMT;
          /*FALLTHRU*/
       case 's':
          if (n == 0)
@@ -442,18 +442,18 @@ jmlist: /* v15compat */
             subjlen = wleft;
          if (UCMP(32, ABS(n), >, subjlen))
             n = (n < 0) ? -subjlen : subjlen;
-         if (flags & _SFMT)
+         if (flags & a_SFMT)
             n -= (n < 0) ? -2 : 2;
          if (n == 0)
             break;
          if (subjline == NULL)
-            subjline = a_chead__subject(mp, (threaded && (flags & _IFMT)),
+            subjline = a_chead__subject(mp, (threaded && (flags & a_IFMT)),
                   subject_thread_compress, yetprinted);
          if (subjline == (char*)-1) {
             n = fprintf(f, "%*s", n, n_empty);
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
-            n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
+            n = fprintf(f, ((flags & a_SFMT) ? "\"%s\"" : "%s"),
                   colalign(subjline, ABS(n), n, &wleft));
             if (n < 0)
                wleft = 0;

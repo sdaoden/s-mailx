@@ -156,8 +156,8 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip,
    unlink(lname);
 
    /* If the number of links was two (one for the unique file and one for
-    * the lock), we've won the race */
-   if(stb.st_nlink != 2)
+    * the lock), we have won the race; also for one: encfs etc create unique */
+   if(stb.st_nlink > 2)
       rv = mx_FILE_DOTLOCK_STATE_EXIST;
 jleave:
    return rv;

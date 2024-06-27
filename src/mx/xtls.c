@@ -108,10 +108,13 @@ su_EMPTY_FILE()
   /* SSL_CONF_CTX and _OP_NO_SSL_MASK were both introduced with 1.0.2!?! */
 # ifndef SSL_OP_NO_SSL_MASK
 #  define SSL_OP_NO_SSL_MASK \
-   (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
-   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2 |\
-   SSL_OP_NO_TLSv1_3)
+   ( SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | \
+   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2 | \
+   SSL_OP_NO_TLSv1_3 )
 # endif
+
+CTA(SSL_OP_NO_SSL_MASK != 0,
+   "One of _SSLv[23], _TLSv1, _TLSv1_[123] is needed");
 
 # ifndef SSL2_VERSION
 #  define SSL2_VERSION 0
@@ -159,6 +162,14 @@ su_EMPTY_FILE()
 #endif
 
 #if mx_HAVE_XTLS >= 0x30000
+   /* OpenSSL 3.0: algorithm providers are dynamic and lazily resolved,
+    * so anything "implicitly fetched" (crypto(7)) may fail later on.
+    * As pre 3.0.0 was only "implicit" it is a complicated backward-incompat-
+    * ible mess (internal lazy fetching is then a single line of code) */
+# define a_XTLS_CRYPTO_FETCH
+# define a_XTLS__NFETCH_INJ(X)
+# define a_XTLS__JFETCH jfetch
+
 # define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
    SSL_CTX_load_verify_file(CTXP, FILE)
 # define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
@@ -174,6 +185,10 @@ su_EMPTY_FILE()
 # define a_xtls_SSL_get_peer_certificate__FREE(CERT)
 
 #else
+# undef a_XTLS_CRYPTO_FETCH
+# define a_XTLS__NFETCH_INJ(X) X
+# define a_XTLS__JFETCH jleave
+
 # define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
    SSL_CTX_load_verify_locations(CTXP, FILE, NIL)
 # define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
@@ -295,6 +310,7 @@ static struct a_xtls_protocol const a_xtls_protocols[] = {
 static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_AES
 # define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_128_cbc /* According RFC 5751 */
+# define a_XTLS_SMIME_DEFAULT_CIPHER_S "AES128"
    {"AES128", &EVP_aes_128_cbc},
    {"AES256", &EVP_aes_256_cbc},
    {"AES192", &EVP_aes_192_cbc},
@@ -302,6 +318,7 @@ static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_DES
 # ifndef a_XTLS_SMIME_DEFAULT_CIPHER
 #  define a_XTLS_SMIME_DEFAULT_CIPHER EVP_des_ede3_cbc
+#  define a_XTLS_SMIME_DEFAULT_CIPHER_S "DES3"
 # endif
    {"DES3", &EVP_des_ede3_cbc},
    {"DES", &EVP_des_cbc},
@@ -432,8 +449,8 @@ static boole a_xtls_parse_asn1_time(ASN1_TIME const *atp,
                char *bdat, uz blen);
 static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
-static boole a_xtls_digest_find(char const *name, EVP_MD const **mdp,
-               char const **normalized_name_or_null);
+static boole a_xtls_digest_find(boole fingerprint, char const *name,
+      EVP_MD const **mdp, char const **normalized_name_or_nil, boole *freeit);
 
 /* *smime-ca-flags*, *tls-ca-flags* */
 static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
@@ -453,16 +470,17 @@ static boole a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
 
 static int        smime_verify(struct message *m, int n,
                      a_XTLS_STACKOF(X509) *chain, X509_STORE *store);
-static EVP_CIPHER const * _smime_cipher(char const *name);
+static EVP_CIPHER const *a_xtls_smime_cipher(char const *name, boole *freeit);
+
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
                      boole dowarn, char const **match, boole fallback_from);
-static char const * _smime_sign_include_certs(char const *name);
-static boole     _smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
-                     char const *cfiles, char const *addr);
+static char const *a_xtls_smime_sign_include_certs(char const *name);
+static boole a_xtls_smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
+      char const *cfiles, char const *addr);
 static EVP_MD const *a_xtls_smime_sign_digest(char const *name,
-                        char const **digname);
+      char const **digname, boole *freeit);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
@@ -572,9 +590,17 @@ a_xtls_init(void){
    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
       OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 # ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-         | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
+#  ifdef OPENSSL_INIT_ADD_ALL_CIPHERS
+         | OPENSSL_INIT_ADD_ALL_CIPHERS
+#  endif
+#  ifdef OPENSSL_INIT_ADD_ALL_DIGESTS
+         | OPENSSL_INIT_ADD_ALL_DIGESTS
+#  endif
 # endif
-      , NULL);
+# ifdef OPENSSL_INIT_NO_LOAD_CONFIG
+         | OPENSSL_INIT_NO_LOAD_CONFIG
+# endif
+      , NIL);
 #else
    SSL_load_error_strings();
    SSL_library_init();
@@ -740,44 +766,64 @@ jleave:
 }
 
 static boole
-a_xtls_digest_find(char const *name,
-      EVP_MD const **mdp, char const **normalized_name_or_null){
+a_xtls_digest_find(boole fingerprint, char const *name, EVP_MD const **mdp,
+      char const **normalized_name_or_nil, boole *freeit){
    uz i;
-   char *nn;
    NYD2_IN;
 
+   *freeit = FAL0;
+
+   if(name == NIL){
+      name = fingerprint ? a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S
+            : a_XTLS_SMIME_DEFAULT_DIGEST_S;
+      a_XTLS__NFETCH_INJ(*mdp = fingerprint
+            ? a_XTLS_FINGERPRINT_DEFAULT_DIGEST()
+            : a_XTLS_SMIME_DEFAULT_DIGEST();)
+      goto a_XTLS__JFETCH;
+   }
+
    /* C99 */{
-      char *cp, c;
+      char *cp, *nn, c;
 
       i = su_cs_len(name);
-      nn = cp = n_lofi_alloc(i +1);
+      nn = cp = su_LOFI_ALLOC(i +1);
       while((c = *name++) != '\0')
          *cp++ = su_cs_to_upper(c);
       *cp = '\0';
-
-      if(normalized_name_or_null != NULL)
-         *normalized_name_or_null = savestrbuf(nn, P2UZ(cp - nn));
+      name = savestrbuf(nn, P2UZ(cp - nn));
+      su_LOFI_FREE(nn);
    }
 
    for(i = 0; i < NELEM(a_xtls_digests); ++i)
-      if(!su_cs_cmp(a_xtls_digests[i].xd_name, nn)){
-         *mdp = (*a_xtls_digests[i].xd_fun)();
-         goto jleave;
+      if(!su_cs_cmp(a_xtls_digests[i].xd_name, name)){
+         a_XTLS__NFETCH_INJ(*mdp = (*a_xtls_digests[i].xd_fun)();)
+         name = a_xtls_digests[i].xd_name;
+         goto a_XTLS__JFETCH;
       }
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-   if((*mdp = EVP_get_digestbyname(nn)) != NULL)
+#if defined mx_HAVE_TLS_ALL_ALGORITHMS && !defined a_XTLS_CRYPTO_FETCH
+   if((*mdp = EVP_get_digestbyname(name)) != NIL)
       goto jleave;
 #endif
 
-   n_err(_("Invalid message digest: %s\n"), n_shexp_quote_cp(nn, FAL0));
-   *mdp = NULL;
+#ifdef a_XTLS_CRYPTO_FETCH
+a_XTLS__JFETCH:
+   if((*mdp = EVP_MD_fetch(NIL, name, NIL)) != NIL){
+      *freeit = TRU1;
+      goto jleave;
+   }
+#endif
+
+   n_err(_("Invalid message digest: %s\n"), n_shexp_quote_cp(name, FAL0));
+   *mdp = NIL;
+
 jleave:
-   n_lofi_free(nn);
+   if(normalized_name_or_nil != NIL)
+         *normalized_name_or_nil = name;
 
    NYD2_OU;
-   return (*mdp != NULL);
+   return (*mdp != NIL);
 }
 
 static void
@@ -1516,43 +1562,55 @@ jleave:
 }
 
 static EVP_CIPHER const *
-_smime_cipher(char const *name)
-{
+a_xtls_smime_cipher(char const *name, boole *freeit){
    EVP_CIPHER const *cipher;
    char *vn;
    char const *cp;
    uz i;
    NYD_IN;
 
-   vn = n_lofi_alloc(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
-   snprintf(vn, (int)i, "smime-cipher-%s", name);
-   cp = n_var_vlook(vn, FAL0);
-   n_lofi_free(vn);
+   *freeit = FAL0;
 
-   if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
-      cipher = a_XTLS_SMIME_DEFAULT_CIPHER();
-      goto jleave;
+   vn = su_LOFI_ALLOC(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
+   snprintf(vn, S(int,i), "smime-cipher-%s", name);
+   cp = n_var_vlook(vn, FAL0);
+   su_LOFI_FREE(vn);
+
+   if(cp == NIL && (cp = ok_vlook(smime_cipher)) == NIL){
+      a_XTLS__NFETCH_INJ(cipher = a_XTLS_SMIME_DEFAULT_CIPHER();)
+      cp = a_XTLS_SMIME_DEFAULT_CIPHER_S;
+      goto a_XTLS__JFETCH;
    }
-   cipher = NULL;
+   cipher = NIL;
 
    for(i = 0; i < NELEM(a_xtls_ciphers); ++i)
       if(!su_cs_cmp_case(a_xtls_ciphers[i].xc_name, cp)){
-         cipher = (*a_xtls_ciphers[i].xc_fun)();
-         goto jleave;
+         a_XTLS__NFETCH_INJ(cipher = (*a_xtls_ciphers[i].xc_fun)();)
+         cp = a_xtls_ciphers[i].xc_name;
+         goto a_XTLS__JFETCH;
       }
 #ifndef OPENSSL_NO_AES
-   for (i = 0; i < NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
-      if (!su_cs_cmp_case(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
+   for(i = 0; i < NELEM(a_xtls_smime_ciphers_obs); ++i)/* TODO v15-compat */
+      if(!su_cs_cmp_case(a_xtls_smime_ciphers_obs[i].xc_name, cp)){
          n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
-         cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();
-         goto jleave;
+         a_XTLS__NFETCH_INJ(cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();)
+         cp = a_xtls_smime_ciphers_obs[i].xc_name;
+         goto a_XTLS__JFETCH;
       }
 #endif
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-   if((cipher = EVP_get_cipherbyname(cp)) != NULL)
+#if defined mx_HAVE_TLS_ALL_ALGORITHMS && !defined a_XTLS_CRYPTO_FETCH
+   if((cipher = EVP_get_cipherbyname(cp)) != NIL)
       goto jleave;
+#endif
+
+#ifdef a_XTLS_CRYPTO_FETCH
+a_XTLS__JFETCH:
+   if((cipher = EVP_CIPHER_fetch(NIL, cp, NIL)) != NIL){
+      *freeit = TRU1;
+      goto jleave;
+   }
 #endif
 
    n_err(_("Invalid S/MIME cipher(s): %s\n"), cp);
@@ -1669,7 +1727,7 @@ jerr:
 }
 
 static char const *
-_smime_sign_include_certs(char const *name)
+a_xtls_smime_sign_include_certs(char const *name)
 {
    char const *rv;
    NYD_IN;
@@ -1697,7 +1755,7 @@ jleave:
 }
 
 static boole
-_smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
+a_xtls_smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
    char const *cfiles, char const *addr)
 {
    X509 *tmp;
@@ -1739,47 +1797,47 @@ jerr:
 }
 
 static EVP_MD const *
-a_xtls_smime_sign_digest(char const *name, char const **digname){
-   EVP_MD const *digest;
+a_xtls_smime_sign_digest(char const *name, char const **digname,
+      boole *freeit){
+   EVP_MD const *md;
    char const *cp;
    NYD2_IN;
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
-   if(name != NULL){
+   if(name != NIL){
       struct mx_name *np;
 
-      for(np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink){
+      for(np = lextract(name, GTO | GSKIN); np != NIL; np = np->n_flink){
          int vs;
          char *vn;
 
-         vn = n_lofi_alloc(vs = su_cs_len(np->n_name) + 30);
+         vn = su_LOFI_ALLOC(vs = su_cs_len(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-digest-%s", np->n_name);
-         if((cp = n_var_vlook(vn, FAL0)) == NULL){
+         if((cp = n_var_vlook(vn, FAL0)) == NIL){
             snprintf(vn, vs, "smime-sign-message-digest-%s",np->n_name);/*v15*/
             cp = n_var_vlook(vn, FAL0);
          }
-         n_lofi_free(vn);
-         if(cp != NULL)
+         su_LOFI_FREE(vn);
+
+         if(cp != NIL)
             goto jhave_name;
       }
    }
 
-   if((cp = ok_vlook(smime_sign_digest)) != NULL ||
-         (cp = ok_vlook(smime_sign_message_digest)/* v15 */) != NULL)
-jhave_name:
-      if(a_xtls_digest_find(cp, &digest, digname)){
-#ifndef PKCS7_PARTIAL
-         n_err(_("WARNING: old OpenSSL version, *smime-sign-digest*=%s "
-            "ignored!\n"), digname);
-#endif
-         goto jleave;
-      }
+   if((cp = ok_vlook(smime_sign_digest)) != NIL)
+      goto jhave_name;
+   cp = ok_vlook(smime_sign_message_digest)/* v15 */;
 
-   digest = a_XTLS_SMIME_DEFAULT_DIGEST();
-   *digname = a_XTLS_SMIME_DEFAULT_DIGEST_S;
-jleave:
+jhave_name:
+   if(a_xtls_digest_find(FAL0, cp, &md, digname, freeit)){
+#ifndef PKCS7_PARTIAL
+      n_err(_("ALERT: old OpenSSL version, *smime-sign-digest*=%s ignored\n"),
+         *digname);
+#endif
+   }
+
    NYD2_OU;
-   return digest;
+   return md;
 }
 
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
@@ -1938,7 +1996,10 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;
    char const *fprnt, *fprnt_namep;
+   boole free_md;
    NYD_IN;
+
+   free_md = FAL0;
 
    a_xtls_init();
    n_tls_set_verify_level(urlp); /* TODO should come in via URL! */
@@ -1951,14 +2012,12 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
    fprnt_namep = NULL;
    fprnt_mdp = NULL;
 
-   if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
+   if(fprnt != NIL || urlp->url_cproto == CPROTO_CERTINFO ||
          (n_poption & n_PO_D_V)){
-      if((fprnt_namep = xok_vlook(tls_fingerprint_digest, urlp,
-            OXM_ALL)) == NULL ||
-            !a_xtls_digest_find(fprnt_namep, &fprnt_mdp, &fprnt_namep)){
-         fprnt_mdp = a_XTLS_FINGERPRINT_DEFAULT_DIGEST();
-         fprnt_namep = a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S;
-      }
+      fprnt_namep = xok_vlook(tls_fingerprint_digest, urlp, OXM_ALL);
+      if(!a_xtls_digest_find(TRU1, fprnt_namep, &fprnt_mdp, &fprnt_namep,
+            &free_md))
+         goto j_leave;
    }
 
    if((ctxp = SSL_CTX_new(mx_XTLS_CLIENT_METHOD())) == NULL){
@@ -2079,7 +2138,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
 
             /* For the sake of `tls cert(chain|ificate)', this too */
 
-            /*if((certs = SSL_get_peer_cert_chain(sop->s_tls)) != NIL){*/
+            /*if((certs = SSL_get_peer_cert_chain(sop->s_tls)) != NIL)*/
             if((certs = a_xtls_SSL_get_verified_chain(sop->s_tls)) != NIL){
                if((biop = BIO_new(BIO_s_mem())) != NIL){
                   xcp = NIL;
@@ -2141,14 +2200,21 @@ jleave:
    /* We're fully setup: since we don't reuse the SSL_CTX (pooh) keep it local
     * and free it right now -- it is reference counted by sp->s_tls.. */
    SSL_CTX_free(ctxp);
+
 j_leave:
+#ifdef a_XTLS_CRYPTO_FETCH
+   if(free_md)
+      EVP_MD_free(UNCONST(EVP_MD*,fprnt_mdp));
+#endif
+
    NYD_OU;
-   return (sop->s_tls != NULL);
+   return (sop->s_tls != NIL);
+
 jerr2:
    SSL_free(sop->s_tls);
-   sop->s_tls = NULL;
+   sop->s_tls = NIL;
 jerr1:
-   if(confp != NULL)
+   if(confp != NIL)
       a_xtls_conf_finish(&confp, TRU1);
    goto jleave;
 }
@@ -2237,53 +2303,59 @@ jleave:
 }
 
 FL FILE *
-smime_sign(FILE *ip, char const *addr)
-{
-   FILE *rv, *sfp, *fp, *bp, *hp;
-   X509 *cert = NULL;
-   a_XTLS_STACKOF(X509) *chain = NIL;
-   EVP_PKEY *pkey = NULL;
+smime_sign(FILE *ip, char const *addr){
    BIO *bb, *sb;
    PKCS7 *pkcs7;
-   EVP_MD const *md;
    char const *name;
-   boole bail = FAL0;
+   a_XTLS_STACKOF(X509) *chain;
+   X509 *cert;
+   EVP_PKEY *pkey;
+   FILE *rv, *sfp, *fp, *bp, *hp;
+   EVP_MD const *md;
+   boole bail, free_md;
    NYD_IN;
 
    /* TODO smime_sign(): addr should vanish, it is either *from* aka *sender*
     * TODO or what we parsed as From:/Sender: from a template.  This latter
     * TODO should set *from* / *sender* in a scope, we should use *sender*:
     * TODO *sender* should be set to the real *from*! */
-   ASSERT(addr != NULL);
-   rv = sfp = fp = bp = hp = NULL;
+   ASSERT(addr != NIL);
+   bail = free_md = FAL0;
+   UNINIT(md, NIL);
+   rv = sfp = fp = bp = hp = NIL;
+   pkey = NIL;
+   cert = NIL;
+   chain = NIL;
 
    a_xtls_init();
 
-   if ((fp = smime_sign_cert(addr, NIL, 1, NIL, FAL0)) == NIL)
+   if((fp = smime_sign_cert(addr, NIL, 1, NIL, FAL0)) == NIL)
       goto jleave;
 
-   if ((pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb,
-         savecat(addr, ".smime-cert-key"))) == NULL) {
+   if((pkey = PEM_read_PrivateKey(fp, NIL, &ssl_password_cb,
+         savecat(addr, ".smime-cert-key"))) == NIL){
       ssl_gen_err(_("Error reading private key from"));
       goto jleave;
    }
 
    rewind(fp);
-   if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb,
-         savecat(addr, ".smime-cert-cert"))) == NULL) {
+
+   if((cert = PEM_read_X509(fp, NIL, &ssl_password_cb,
+         savecat(addr, ".smime-cert-cert"))) == NIL){
       ssl_gen_err(_("Error reading signer certificate from"));
       goto jleave;
    }
-   mx_fs_close(fp);
-   fp = NULL;
 
-   if ((name = _smime_sign_include_certs(addr)) != NULL &&
-         !_smime_sign_include_chain_creat(&chain, name,
+   mx_fs_close(fp);
+   fp = NIL;
+
+   if((name = a_xtls_smime_sign_include_certs(addr)) != NIL &&
+         !a_xtls_smime_sign_include_chain_creat(&chain, name,
             savecat(addr, ".smime-include-certs")))
       goto jleave;
 
-   name = NULL;
-   if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
+   name = NIL;
+   if((md = a_xtls_smime_sign_digest(addr, &name, &free_md)) == NIL)
       goto jleave;
 
    if((sfp = mx_fs_tmp_open("smimesign", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
@@ -2296,18 +2368,18 @@ smime_sign(FILE *ip, char const *addr)
    if(!mx_smime_split(ip, &hp, &bp, -1, FAL0))
       goto jleave;
 
-   sb = NULL;
-   pkcs7 = NULL;
+   sb = NIL;
+   pkcs7 = NIL;
 
-   if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
-         (sb = BIO_new_fp(sfp, BIO_NOCLOSE)) == NULL) {
+   if((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NIL ||
+         (sb = BIO_new_fp(sfp, BIO_NOCLOSE)) == NIL){
       ssl_gen_err(_("Error creating BIO signing objects"));
       bail = TRU1;
       goto jerr;
    }
 
 #ifdef PKCS7_PARTIAL
-   if((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb,
+   if((pkcs7 = PKCS7_sign(NULL, NIL, chain, bb,
          (PKCS7_DETACHED | PKCS7_PARTIAL))) == NIL){
       ssl_gen_err(_("Error creating the PKCS#7 signing object"));
       bail = TRU1;
@@ -2332,31 +2404,32 @@ smime_sign(FILE *ip, char const *addr)
    }
 #endif /* !PKCS7_PARTIAL */
 
-   if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
+   if(PEM_write_bio_PKCS7(sb, pkcs7) == 0){
       ssl_gen_err(_("Error writing signed S/MIME data"));
       bail = TRU1;
       /*goto jerr*/
    }
+
 jerr:
-   if (pkcs7 != NULL)
+   if(pkcs7 != NIL)
       PKCS7_free(pkcs7);
-   if (sb != NULL)
+   if(sb != NIL)
       BIO_free(sb);
-   if (bb != NULL)
+   if(bb != NIL)
       BIO_free(bb);
-   if (!bail) {
+   if(!bail){
       rewind(bp);
       fflush_rewind(sfp);
       rv = smime_sign_assemble(hp, bp, sfp, name);
-      hp = bp = sfp = NULL;
+      hp = bp = sfp = NIL;
    }
 
 jleave:
-   if (chain != NULL)
+   if(chain != NIL)
       sk_X509_pop_free(chain, X509_free);
-   if (cert != NULL)
+   if(cert != NIL)
       X509_free(cert);
-   if (pkey != NULL)
+   if(pkey != NIL)
       EVP_PKEY_free(pkey);
    if(fp != NIL)
       mx_fs_close(fp);
@@ -2366,6 +2439,11 @@ jleave:
       mx_fs_close(bp);
    if(sfp != NIL)
       mx_fs_close(sfp);
+#ifdef a_XTLS_CRYPTO_FETCH
+   if(free_md)
+      EVP_MD_free(UNCONST(EVP_MD*,md));
+#endif
+
    NYD_OU;
    return rv;
 }
@@ -2380,10 +2458,10 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    a_XTLS_STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
    char *certfile;
-   boole bail;
+   boole bail, free_cipher;
    NYD_IN;
 
-   bail = FAL0;
+   bail = free_cipher = FAL0;
    rv = yp = fp = bp = hp = NULL;
 
    if((certfile = fexpand(xcertfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
@@ -2392,7 +2470,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
 
    a_xtls_init();
 
-   if ((cipher = _smime_cipher(to)) == NULL)
+   if((cipher = a_xtls_smime_cipher(to, &free_cipher)) == NIL)
       goto jleave;
 
    if((fp = mx_fs_open(certfile, "r")) == NIL){
@@ -2466,6 +2544,11 @@ jleave:
       mx_fs_close(bp);
    if(hp != NIL)
       mx_fs_close(hp);
+#ifdef a_XTLS_CRYPTO_FETCH
+   if(free_cipher)
+      EVP_CIPHER_free(UNCONST(EVP_CIPHER*,cipher));
+#endif
+
    NYD_OU;
    return rv;
 }

@@ -985,30 +985,16 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
             ok = FAL0;
          break;
       case ok_v_customhdr:{
-         char const *vp;
-         char *buf;
-         struct n_header_field *hflp, **hflpp, *hfp;
+         char const *ccp;
+         char *cp;
 
-         buf = savestr(*val);
-         hflp = NIL;
-         hflpp = &hflp;
-
-         while((vp = su_cs_sep_escable_c(&buf, ',', TRU1)) != NULL){
-            if(!n_header_add_custom(hflpp, vp, TRU1)){
+         cp = savestr(*val);
+         while((ccp = su_cs_sep_escable_c(&cp, ',', TRU1)) != NIL){
+            if(!n_header_add_custom(NIL, ccp, TRUM1)){
                emsg = N_("Invalid *customhdr* entry: %s\n");
-               break;
+               goto jerr;
             }
-            hflpp = &(*hflpp)->hf_next;
          }
-
-         hflpp = (emsg == NIL) ? &n_customhdr_list : &hflp;
-         while((hfp = *hflpp) != NULL){
-            *hflpp = hfp->hf_next;
-            n_free(hfp);
-         }
-         if(emsg)
-            goto jerr;
-         n_customhdr_list = hflp;
          }break;
       case ok_v_from:
       case ok_v_sender:{
@@ -1130,6 +1116,21 @@ jefrom:
             "doing this for you");
          n_PS_ROOT_BLOCK(ok_vset(bind_inter_byte_timeout, *val));
          break;
+      case ok_v_customhdr:{
+         char const *ccp;
+         struct n_header_field *hflp, **hflpp;
+         char *cp;
+
+         cp = savestr(*val);
+         hflp = NIL;
+         hflpp = &hflp;
+
+         while((ccp = su_cs_sep_escable_c(&cp, ',', TRU1)) != NIL){
+            (void)n_header_add_custom(hflpp, ccp, TRU1);
+            hflpp = &(*hflpp)->hf_next;
+         }
+         n_customhdr_list = hflp;
+         }break;
       case ok_b_debug:
          n_poption |= n_PO_D;
          su_log_set_level(su_LOG_DEBUG);

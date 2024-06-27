@@ -6,6 +6,68 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.25 ("Lubimy Gorod"), 2024-06-27
+-------------------------------------
+
+Credits, in order of commit appearance: Mingli Yu, Chet Ramey,
+John Holder, klu, Χάρης Καραχριστιανίδης
+(Haris Karachristianides), and Bob Beck.
+
+We welcome Mingli Yu, John Holder, klu, Χάρης Καραχριστιανίδης,
+and Bob Beck in THANKS.
+Also Coverity.com was added to THANKS, it really finds things;
+this was due.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Can now deal with new reSSL that drops TLSv1.0 and TLSv1.1.
+  (Bob Beck)
+
+ChangeLog
+^^^^^^^^^
+
+- Properly deals with backward-incompatible OpenSSL 3.0 "lazy"
+  fetching errors, ie, use EVP_CIPHER_fetch() when available,
+  instead of continue to use EVP_get_cipherbyname(), etc.
+
+- Fixes for mailcap %{X} expansion.  (Χάρης Καραχριστιανίδης)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (47):
+c5544b66c3 su_INLINE: gcc: only GNU specifics after -Og report by Mingli Yu
+38336506d1 THANKS: Mingli Yu
+2d7e3c71e1 a_cmisc_read(): FIX previous: just be compatible to read(1) -r!
+919ea0a759 a_vexpr_numeric(): for /,%, avoid lvh=S64_MIN, rhv=-1 (Chet
+        Ramey)..
+00c264c02c su_idec(): FIX: signed negative overflow would return S64_MAX
+d3b4c9076a a_go_evaluate(): (fix): in a whiteout, do not log lonely "}"..
+74e3b99973 a_mt_classify_round(): (hack) do encode CRLF (John Holder)..
+1eafba1da7 THANKS: John Holder
+c255acb6ce a_chead__hprf(): fix cygwin compilation (klu)
+0179a6259d THANKS: klu
+1c5bf4d807 TLS: deal with (bwdic!) OpenSSL 3.0 "lazy" fetching mess
+f4574c5b7d a_colour_mux(): HORRIBLE FIX! Assign correct pointer (Χάρης
+        Καραχριστιανίδης)..
+1fae172c2b THANKS: Χάρης Καραχριστιανίδης
+1a64c33728 a_mailcap_expand_formats(): FIX %{X}: skip X}! (Χάρης
+        Καραχριστιανίδης)..
+49612b70df FIX *metoo* handling (oooh.. since 2014!)..
+7f7efb4ad8 reSSL drops TLSv1.0 and TLSv1.1, be compatible (Bob Beck)
+a76a1c5cb2 THANKS: Bob Beck
+1a6060990e n_header_add_custom(): fix body NUL termination..
+2dab8c5afa a_sendout_infix(): *mime-force-sendout*: no infloop on header iconv
+        fail
+a1e7d60aa1 a_go_evaluate(): FIX: alias memchunk override for one-letter
+        aliases
+e02b24a3cb FIX: *customhdr* <-> -S freezing bug..
+99ac5a54b2 su_avopt_parse(): CID 1549189 (already fixed on [next])
+a34dedd4ab c_unalias(): CID 1549188 (!)
+61326ff63e c_addrcodec(): CID 1549184 (not on [next])
+69965def14 THANKS: Coverity.com (overdue)
+
 v14.9.24 ("Black ships ate the sky"), 2022-03-26
 ------------------------------------------------
 
@@ -42,30 +104,7 @@ ChangeLog
 
 - Like anyone else we now deal with argc==0 aka CVE-2021-4034.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (28):
-096665105b mk/make-release.inc: try to use tar(1) --format=pax (Paul Eggert)
-b2bfa82a00 Fix expandargv=restrict (since 2017-01-15!)..
-7ea98f69b7 FIX MTA args after -- for non-send-only mode!..
-b6736900e8 mx-test.sh: change UTF-8 locale order AGAIN!
-294ed7f97c imap_response_parse(): stop overbalancing untagged responses (Madou
-        Mad)
-c4b7512fb6 THANKS: Madou Mad
-9352ebfe6e FIX/tweak previous, add a_imap_res__untagged() (Madou Mad)
-561e078c1c Reproducibility detection a_main_setup_vars() -> a_main_startup()..
-14c4dbf89c mx_fs_open_any(): FIX !fs_file_load() crash (since nail 10.08,
-        2004-06-28)..
-13e06c8fe1 mx_smime_split(): fix *FILE** "return" upon error return..
-3dd2f43372 main(): work nicely with argc==0 (after reading CVE-2021-4034)
-0386c021d3 ps-dotlock: call setgid(), too (actually Paride Legovini)
-987f73fad5 a_termios_sig_adjust(): fix "unshare -f mailx" ^C<RET>^C crash
-f336d267fb mime.types: move .xsl from xml to xslt+xml (Jesse Alama)
-b45c897315 THANKS: Jesse Alama
-d53396df1e mime_fromhdr(): FIX crash in crafted mail (since ~2013)..
-aca800c3af mx_mime_display_from_header(): FIX previous
-7a7e48cb36 n_iconv_open(): FIX: name normalization can fail!
+git(1) shortlog: Steffen Nurpmeso (28)
 
 v14.9.23 ("Tits look ahead for winter"), 2021-11-11
 ---------------------------------------------------

@@ -828,7 +828,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
          n_iconv_close(iconvd);
       /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
-      if(/*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
+      if(!force && /*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
             (err = su_err_no()) != su_ERR_NONE)
          goto jiconv_err;
@@ -2288,7 +2288,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * XXX S-nail thus violates POSIX, as has been pointed out correctly by
     * XXX Martin Neitzel, but logic and usability of POSIX standards is
     * XXX sometimes disputable: go for user friendliness */
-   to = n_namelist_vaporise_head(hp, TRU1, ((quote != NULL &&
+   to = n_namelist_vaporise_head(hp, FAL0, ((quote != NULL &&
             (msf & n_MAILSEND_IS_FWD) == 0) || !ok_blook(posix)),
          (EACM_NORMAL | EACM_DOMAINCHECK |
             (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),

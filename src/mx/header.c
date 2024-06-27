@@ -2281,7 +2281,8 @@ c_addrcodec(void *vp){
       ++cp;
 
    trims.l = su_cs_len(trims.s = n_UNCONST(cp));
-   cp = savestrbuf(n_str_trim(&trims, n_STR_TRIM_BOTH)->s, trims.l);
+   n_str_trim(&trims, n_STR_TRIM_BOTH);
+   cp = savestrbuf(trims.s, trims.l);
    if(trims.l <= UZ_MAX / 4)
          trims.l <<= 1;
    s = n_string_reserve(s, trims.l);
@@ -2301,7 +2302,8 @@ c_addrcodec(void *vp){
          s = n_string_push_c(s, c);
       }
 
-      if((np = n_extract_single(cp = n_string_cp(s), GTO | GFULL)) != NULL)
+      if((np = n_extract_single(cp = n_string_cp(s), GTO | GFULL)) != NIL &&
+            (np->n_flags & mx_NAME_ADDRSPEC_ISADDR))
          cp = np->n_fullname;
       else{
          n_pstate_err_no = su_ERR_INVAL;
@@ -2342,7 +2344,8 @@ c_addrcodec(void *vp){
             (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
          struct mx_name *np;
 
-         if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
+         if((np = n_extract_single(cp, GTO | GFULL)) != NIL &&
+               (np->n_flags & mx_NAME_ADDRSPEC_ISADDR)){
             s8 mltype;
 
             cp = np->n_name;
@@ -3082,7 +3085,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 
    if((np = lextract(cp, GFULL | GSKIN)) != NULL){
       if(is_to_or_null != NULL && ok_blook(showto) &&
-            np->n_flink == NULL && mx_name_is_mine(np->n_name)){
+            np->n_flink == NULL && mx_name_is_metoo(np->n_name, TRU1)){
          if((cp = hfield1("to", mp)) != NULL &&
                (np2 = lextract(cp, GFULL | GSKIN)) != NULL){
             np = np2;
@@ -3519,20 +3522,33 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
    bl = S(u32,su_cs_len(cp));
    while(bl > 0 && su_cs_is_space(cp[bl - 1]))
       --bl;
-   for(i = bl++; i-- != 0;)
+   for(i = bl; i-- != 0;)
       if(su_cs_is_cntrl(cp[i])){
          cp = N_("Invalid custom header: contains control characters: %s\n");
          goto jerr;
       }
 
-   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + hname.l +1 + bl +1;
-   *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
-   hfp->hf_next = NULL;
+   if(heap == TRUM1){
+      hfp = R(struct n_header_field*,-1);
+      goto jleave;
+   }
+
+   i = VSTRUCT_SIZEOF(struct n_header_field,hf_dat) + hname.l +1 + bl +1;
+   *hflp = hfp = heap ? su_ALLOC(i) : su_AUTO_ALLOC(i);
+   hfp->hf_next = NIL;
    hfp->hf_nl = hname.l;
-   hfp->hf_bl = bl - 1;
-   su_mem_copy(hfp->hf_dat, hname.s, hname.l);
-      hfp->hf_dat[hname.l++] = '\0';
-      su_mem_copy(&hfp->hf_dat[hname.l], cp, bl);
+   hfp->hf_bl = bl;
+   /* C99 */{
+      char *xp;
+
+      xp = hfp->hf_dat;
+      su_mem_copy(xp, hname.s, hname.l);
+      xp[hname.l] = '\0';
+      xp += ++hname.l;
+      if(bl > 0)
+         su_mem_copy(xp, cp, bl);
+      xp[bl] = '\0';
+   }
 
 jleave:
    NYD_OU;

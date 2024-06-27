@@ -592,9 +592,20 @@ makembox(void) /* TODO oh my god (also error reporting) */
       }
       mx_fs_close(obuf);
 
-      if((c = open(mbox, (O_WRONLY | O_CREAT | mx_O_NOXY_BITS | O_TRUNC), 0666)
-            ) != -1)
-         close(c);
+      /* C99 */{
+         char const *xmbox;
+
+         /* Strip possible protocol prefix; this is a backport "hack".
+          * It should all be an object-based "VFS" thing, anyway */
+         xmbox = mbox;
+         if(su_cs_cmp_case_n(xmbox, "mbox://", sizeof("mbox://") -1) == 0)
+            xmbox += sizeof("mbox://") -1;
+
+         if((c = open(xmbox, (O_WRONLY | O_CREAT | mx_O_NOXY_BITS | O_TRUNC),
+               0666)) != -1)
+            close(c);
+      }
+
       if((obuf = mx_fs_open_any(mbox, "r+", &fs)) == NIL){
          n_perr(mbox, 0);
          mx_fs_close(ibuf);
