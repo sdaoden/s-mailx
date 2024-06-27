@@ -368,6 +368,10 @@ mx_child_fork(struct mx_child_ctx *ccp){
 		goto jleave;
 	}
 
+	/* TODO It is actually very bad to block all the signals for such a long
+	 * TODO time, especially when taking into account on what is done in here */
+	mx_sigs_all_hold(SIGCHLD, 0);
+
 	cep = su_TCALLOC(struct a_child_ent, 1);
 
 	/* Does this child take the terminal? */
@@ -378,10 +382,6 @@ mx_child_fork(struct mx_child_ctx *ccp){
 			cep->ce_tios = TRU1;
 		}
 	}
-
-	/* TODO It is actually very bad to block all the signals for such a long
-	 * TODO time, especially when taking into account on what is done in here */
-	mx_sigs_all_hold(SIGCHLD, 0);
 
 	nlp = a_child_manager_cleanup();
 
