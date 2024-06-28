@@ -21,9 +21,7 @@ cd ..
 
 : ${UPLOAD:=steffen@vpn.sdaoden.eu:/var/www/localhost/downloads}
 
-: ${MAILX:='s-nail -Snofollowup-to -Sreply-to=mailx \
-	-a ~/src/www.git/steffen.asc -a ~/src/www.git/steffen@sdaoden.eu.pem \
-	-Ssmime-sign -Sno-on-compose-leave'}
+: ${MAILX:='s-nail -Snofollowup-to -Sreply-to=mailx -a ~/src/www.git/steffen.asc -Ssmime-sign'}
 : ${ACCOUNT:=ich}
 : ${MAILBCC:=mailx-announce-bcc}
 : ${MAILTO:=mailx-announce}
