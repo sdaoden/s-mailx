@@ -215,7 +215,7 @@ enum n_header_extract_flags{
 
    n_HEADER_EXTRACT_COMPOSE_MODE = 1u<<8, /* Extracting during compose mode */
    /* Prefill the recipient with the already existing content of the given
-    * struct header arguent */
+    * struct header argument */
    n_HEADER_EXTRACT_PREFILL_RECIPIENTS = 1u<<9,
    /* Understand and ignore shell-style comments */
    n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS = 1u<<10,
