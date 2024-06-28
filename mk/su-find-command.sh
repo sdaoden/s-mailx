@@ -13,7 +13,7 @@
 #@ _However_, in order to support prefilled variables like "awk='busybox awk'"
 #@ spaces in command names found via path search are not supported.
 #@ That is to say that we take user-prefilled variable names with spaces as
-#@ granted, and actively fail to find commands with spaces ourselfs; like this
+#@ granted, and actively fail to find commands with spaces ourself; like this
 #@ users of these functions can simply say: $VAR args, not "$VAR" args.
 #
 # 2017 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.

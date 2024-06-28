@@ -587,7 +587,7 @@ FL boole mx_collect_input_loop(void);
 
 /* Set up editing on the given filename.
  * If the first character of name is %, we are considered to be editing the
- * file, otherwise we are reading our mail which has signficance for mbox and
+ * file, otherwise we are reading our mail which has significance for mbox and
  * so forth */
 FL int         setfile(char const *name, enum fedit_mode fm);
 

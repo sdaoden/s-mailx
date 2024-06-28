@@ -133,7 +133,7 @@ done
 
 . ./mk-config.env
 
-# Re-exxec ourselfs with the "correct" $SHELL, if not already.
+# Re-exxec ourselves with the "correct" $SHELL, if not already.
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
 	MAILX__CC_TEST_RUNNING=y
 	export MAILX__CC_TEST_RUNNING
@@ -208,7 +208,7 @@ export RAWMAILX MAILX
 # We want an UTF-8 locale, and HONOURS_READONLY_NOT {{{
 if [ -n "${CHECK}${RUN_TEST}" ]; then
 	if [ -z "${UTF8_LOCALE}" ]; then
-		# Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
+		# Try ourselves via nl_langinfo(CODESET) first (requires a new version)
 		if command -v "${RAWMAILX}" >/dev/null 2>&1 && (</dev/null ${RAWMAILX} -:/ -#) >/dev/null 2>&1; then
 			echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
 			# C,POSIX last due to faulty localedef(1) result of GNU C lib 2.3[24]
@@ -10739,11 +10739,11 @@ __EOT
 	ck 5 0 ./t5 '917782413 299'
 	cke0 6 - ./t6 '3604001424 44'
 
-	# And more, with/out -r (and that Sender: vanishs as necessary)
+	# And more, with/out -r (and that Sender: vanishes as necessary)
 	# TODO -r should be the Sender:, which should automatically propagate to
 	# TODO From: if possible and/or necessary.  It should be possible to
-	# TODO suppres -r stuff from From: and Sender:, but fallback to special -r
-	# TODO arg as appropriate.
+	# TODO suppress -r stuff from From: and Sender:, but fallback to special
+	# TODO -r arg as appropriate.
 	# TODO For now we are a bit messy
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t7 -s '-Sfrom + -r ++ test' \
@@ -13220,7 +13220,7 @@ t_pipe_handlers() { #{{{
 					> ./t5 2>${E0}
 		cke0 5 0 ./t5 '604845616 663'
 
-		# Fill in ourselfs, test auto-deletion
+		# Fill in ourselves, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t6.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \

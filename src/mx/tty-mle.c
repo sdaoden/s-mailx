@@ -331,7 +331,7 @@ struct a_tty_bind_tree{
 	struct a_tty_bind_tree *tbt_children; /* Sequence continues.. here */
 	struct a_tty_bind_tree *tbt_parent;
 	struct a_tty_bind_ctx *tbt_bind; /* NIL for intermediates */
-	wchar_t tbt_char; /* acter this level represents */
+	wchar_t tbt_char; /* -acter this level represents */
 	boole tbt_ismbseq; /* Is a follow-up character of a "multibyte" sequence */
 	u8 tbt__dummy[3];
 };

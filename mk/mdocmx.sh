@@ -445,7 +445,7 @@ function mx_enable(){
 		}
 	}
 
-	# If we generate the TOC ourselfs better ensure the string mx-toc-name!
+	# If we generate the TOC ourself better ensure the string mx-toc-name!
 	# mdocml.bsd.lv (mandoc(1)) does not offer any ".if !d NAME" way, so..
 	# But even otherwise we need it, since mandoc(1) complains about unknown
 	# \*[] strings in quoted strings, and we *may* have a ".Mx -toc" anyway!
