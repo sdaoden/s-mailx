@@ -850,10 +850,6 @@ _cc_flags_generic() {
 
 ## - >8 - <<OS/CC | SUPPORT FUNS>> - 8< - ##
 
-## Notes:
-## - Heirloom sh(1) (and same origin) have _sometimes_ problems with ': >'
-##   redirection, so use "printf '' >" instead
-
 ## Very first: we undergo several states regarding I/O redirection etc.,
 ## but need to deal with option updates from within all.  Since all the
 ## option stuff should be above the scissor line, define utility functions
@@ -1070,8 +1066,8 @@ option_join_rc() {
 option_cleanup() { # xxx i think we could "merge this" .. away??
 	# Set booleans to 0 or 1, or require, set _feats_cleanup_done=1
 	${rm} -f ${newenv} ${newmk}
-	printf '' > ${newenv}
-	printf '' > ${newmk}
+	> ${newenv}
+	> ${newmk}
 
 	exec 7<&0 <${tmp}
 	while read line; do
