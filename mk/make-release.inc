@@ -206,20 +206,25 @@ big_balls() {
 		umask 0022
 
 		# Repack with standard tar(1) to avoid new-style headers
+		tarm= tarfmt=
+		${tar} -m -c -f "${TMPDIR}/${PROGRAM}-${REL}.dat" /dev/null >/dev/null 2>&1 && tarm=-m
+		${tar} --format=pax -c -f "${TMPDIR}/${PROGRAM}-${REL}.dat" /dev/null >/dev/null 2>&1 &&
+			tarfmt=--format=pax
+		${rm} -f "${TMPDIR}/${PROGRAM}-${REL}.dat"
+
+		#
 		${git} archive --format=tar --prefix="${PROGRAM}-${REL}/" v${REL}.ar |
-			( cd "${TMPDIR}" && ${tar} -x -f - )
+			( cd "${TMPDIR}" && ${tar} -x ${tarm} -f - )
 		cd "${TMPDIR}"
 
 		# And use a portable format by default; ustar from 1988 is ok for us,
 		# but pax/posix from 2001 is even more forgiving and future aware
-		fmt=
-		${tar} --format=pax --version >/dev/null 2>&1 && fmt=--format=pax
-		${tar} -c ${fmt} -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
+		${tar} -c ${tarfmt} -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
 		< "${PROGRAM}-${REL}.tar" ${plzip} -9 > "${PROGRAM}-${REL}.tar.lz"
 		< "${PROGRAM}-${REL}.tar" ${gzip} -9 > "${PROGRAM}-${REL}.tar.gz"
 		${rm} "${PROGRAM}-${REL}.tar"
 
-		printf '' > "${PROGRAM}-${REL}.cksum"
+		> "${PROGRAM}-${REL}.cksum"
 		${openssl} blake2s256 -help </dev/null >/dev/null 2>&1 && blakes=y || blakes=
 		${openssl} blake2b512 -help </dev/null >/dev/null 2>&1 && blakeb=y || blakeb=
 		${openssl} sha256 "${PROGRAM}-${REL}.tar.lz" >> "${PROGRAM}-${REL}.cksum"
@@ -252,7 +257,7 @@ announcement_prepare() {
 	if $(${git} cat-file -e ${relbrname}:NEWS 2>/dev/null); then
 		${git} show ${relbrname}:NEWS > "${TMPDIR}/.${PROGRAM}-${REL}.news"
 	else
-		printf '' > "${TMPDIR}/.${PROGRAM}-${REL}.news"
+		> "${TMPDIR}/.${PROGRAM}-${REL}.news"
 	fi
 
 	{ echo "${relmsg}"; echo; } > "${TMPDIR}/${PROGRAM}-${REL}.txt"
