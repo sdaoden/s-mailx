@@ -2028,7 +2028,7 @@ a_imf(void){
 	a_imf_addr();
 	a_imf_tok();
 
-	// rather only "symbol exists" for _c_*() series
+	// rather only "symbol exists" for _c_*() series {{{
 	if(!imf::c_ALPHA('a'))
 		a_ERR();
 	if(!imf::c_DIGIT('1'))
@@ -2066,6 +2066,7 @@ a_imf(void){
 
 	if(!imf::c_quoted_pair_c2('\033'))
 		a_ERR();
+	// }}}
 #endif // su_HAVE_IMF
 }
 
@@ -2101,6 +2102,15 @@ a_imf_addr(void){ // {{{
 		{0, imf::mode_none, 1,
 			"ba@[]",
 			"\0\0ba\0[]\0",
+			{imf::state_domain_literal,}},
+
+		{0, imf::mode_none, 1,
+			"ba@[ff02::3]",
+			"\0\0ba\0[ff02::3]\0",
+			{imf::state_domain_literal,}},
+		{0, imf::mode_none, 1,
+			"ba@   [ F f 0 2  : \t : 3   ]   ",
+			"\0\0ba\0[Ff02::3]\0",
 			{imf::state_domain_literal,}},
 
 		{0, imf::mode_none, 1,
@@ -2182,6 +2192,16 @@ a_imf_addr(void){ // {{{
 			"\"Dr  .  Z\" <x@y>",
 			"\0\"Dr . Z\"\0x\0y\0\0",
 			{0,}},
+
+		{0, imf::mode_none, 1,
+			"\"\" Dr Z <x@y>",
+			"\0Dr Z\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"\" \"Dr. Z\" <x@y>",
+			"\0\"Dr. Z\"\0x\0y\0\0",
+			{0,}},
+
 		{0, imf::mode_none, 1,
 			"\"Full Name\" <foo@example.com>",
 			"\0\"Full Name\"\0foo\0example.com\0\0",
@@ -2680,6 +2700,25 @@ a_imf_tok(void){ // {{{
 			"  \"this is a long, looong   quoted one\"    ;    hey      ;     au",
 			"\"this is a long, looong quoted one\"\0"  "hey\0"  "au\0"},
 
+		{0, imf::mode_none, 1, {0,},
+			" \"\"\"\"\"\"hello\"\"",
+			"hello\0"},
+		{0, imf::mode_tok_empty, 1, {0,},
+			" \"\"\"\"hello\"\"",
+			"hello\0"},
+		{0, imf::mode_none, 1, {0,},
+			" \"\"\"\"\"\" hello \"\"  ",
+			"hello\0"},
+		{0, imf::mode_tok_empty, 3, {0,},
+			" \"\" hello \"\"    ",
+			"\0" "hello\0" "\0"},
+		{0, imf::mode_tok_empty, 3, {0,},
+			" \"\"\"\"\"\" hello \"\"    ",
+			"\0" "hello\0" "\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 4, {0, imf::state_semicolon, 0, 0},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0" "hello\0" "\0" "\"au\"\0"},
+
 		{imf::err_content, imf::mode_tok_semicolon, 1, {0,},
 			" \"quo\"te.\", baby\"-d'ya\"\\ \"know?;BUM  ;  MER",
 			"\"quote\"\0"},
@@ -2723,6 +2762,32 @@ a_imf_tok(void){ // {{{
 				{imf::state_comment | imf::state_semicolon,},
 			"  (c4); ha4 (two) ; au ",
 			"c4\0"},
+
+		{0, imf::mode_stop_early, 1, {0,},
+			" \"\" hello \"\" ; \"au\" ",
+			"hello\0"},
+		{0, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0"},
+		{imf::err_content, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" ; hello \"\" \"au\" ",
+			"\0"},
+
+		{0, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" hello \"\" x",
+			"hello\0"},
+		{0, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_stop_early, 1, {imf::state_semicolon,},
+			" \"\"  ; hello \"\" \"au\" ",
+			"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_stop_early, 1, {imf::state_semicolon,},
+			" \"\"; hello \"\" \"au\" ",
+			"\0"},
 # endif
 	}; // }}}
 

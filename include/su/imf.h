@@ -100,10 +100,11 @@ enum su_imf_mode{
 	 * Multiple tokens may still be generated (in between semicolons).
 	 * For structured header( token)s. */
 	su_IMF_MODE_TOK_SEMICOLON = 1u<<4,
-	/*! Allow empty tokens in conjunction with \r{su_IMF_MODE_TOK_SEMICOLON}.
+	/*! Allow empty tokens (mostly in conjunction with \r{su_IMF_MODE_TOK_SEMICOLON}).
 	 * As whitespace is skipped over, and empty (or ignored) comments and quoted-strings do not generate output,
 	 * a semantically meaningful semicolon (for example in the \c{Authentication-Results} header) will not generate
 	 * a token until this flag is set.
+	 * If set, an empty quoted-string does generate an (unquoted) output token.
 	 * For structured header( token)s. */
 	su_IMF_MODE_TOK_EMPTY = 1u<<5,
 
@@ -255,7 +256,7 @@ EXPORT s32 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header
 
 /*! Parse a (possibly multiline) structured header field body.
  * This is interpreted as a mix of \c{CFWS} and \c{phrase} tokens.
- * If \c{quoted-string} is parsed within \c{phrase}, the entire result token will be (re-)quoted as such.
+ * If (a non-empty) \c{quoted-string} is parsed within \c{phrase}, the entire result token will be (re-)quoted as such.
  * With \r{su_IMF_MODE_OK_DOT_ATEXT} RFC 5322 \c{phrase} is assumed to contain \c{dot-atom-text}, not \c{atext}.
  * With \r{su_IMF_MODE_TOK_COMMENT} comments create result tokens instead of being discarded:
  * adjacent comments are joined, and results do not contain the parenthesis, for example \c{(a (b)) (c)}
