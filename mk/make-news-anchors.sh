@@ -46,8 +46,9 @@ BEGIN{hot = 0}
 	any = 0
 	res = ""
 	s = $0
-	while(match(s, /(^|\(|[[:space:]]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-#\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#(\?|[0-9]+)?/))
-	{
+	while(match(s, "(^|\(|[[:space:]]+)" \
+			"(\"[^\"]+\"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-#\/:_.[:alnum:]]+|\$[_[:alnum:]]+)" \
+			"#(\?|[0-9]+)?")){
 		any = 1
 		pre = (RSTART > 1) ? substr(s, 1, RSTART - 1) : ""
 		mat = substr(s, RSTART, RLENGTH)
