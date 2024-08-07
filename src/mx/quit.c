@@ -538,13 +538,16 @@ mx_quit_automove_mbox(boole need_stat_verify){
    boole rv;
    NYD_IN;
 
-   if(need_stat_verify){
-      rv = TRU1;
+   rv = TRU1;
 
+   if(need_stat_verify){
       if(mb.mb_perm == 0 || (n_pstate & n_PS_EDIT))
          goto jleave;
 
       a_quit_holdbits();
+
+      if(*_mboxname == '\0')
+         goto jleave;
 
       for(mp = message;; ++mp){
          if(PCMP(mp, ==, &message[msgCount]))
@@ -552,7 +555,8 @@ mx_quit_automove_mbox(boole need_stat_verify){
          if(mp->m_flag & MBOX)
             break;
       }
-   }
+   }else if(*_mboxname == '\0')
+      goto jleave;
 
    rv = FAL0;
    mbox = _mboxname;
