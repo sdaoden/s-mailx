@@ -661,9 +661,11 @@ jaddr_create:
 		}
 
 		if(!(f & a_STAGE_DOMAIN) && su_imf_c_DQUOTE(*acp->ac_.hd)){
+			/* Set a_QUOTE only if non-empty quote seen */
+			u32 j;
 			char *ncp;
 
-			f |= a_ANY | a_QUOTE;
+			f |= a_ANY /*| a_QUOTE*/;
 			if((f & (a_STAGE_ANGLE | a_STAGE_DOMAIN | a_WS)) == a_WS){
 				cp[l++] = ' ';
 				f |= a_WS_SEEN;
@@ -678,7 +680,11 @@ jaddr_create:
 				rv = (acp->ac_.mse & su_IMF_ERR_MASK);
 				goto jleave;
 			}
-			l += P2UZ(ncp - xcp);
+			j = S(u32,P2UZ(ncp - xcp));
+			if(j > 0){
+				f |= a_QUOTE;
+				l += j;
+			}
 			continue;
 		}
 
@@ -975,8 +981,6 @@ su_imf_parse_struct_header(struct su_imf_shtok **shtpp, char const *header, BITE
 	struct su_imf_shtok **shtpp_base, *shtp;
 	NYD_IN;
 	ASSERT_EXEC((mode & ~su__IMF_MODE_STRUCT_MASK) == 0, mode &= su__IMF_MODE_STRUCT_MASK);
-	ASSERT_EXEC((mode & su_IMF_MODE_TOK_SEMICOLON) || !(mode & su_IMF_MODE_TOK_EMPTY),
-		mode &= ~su_IMF_MODE_TOK_EMPTY);
 
 	*(shtpp_base = shtpp) = NIL;
 
@@ -1021,11 +1025,19 @@ jtoken_next:
 
 	/* In order to correlate semicolon to h1 in "(c1) h1 (c2);" without TOK_COMMENT we need to delay STOP_EARLY */
 	for(rv = su_IMF_ERR_CONTENT; *acp->ac_.hd != '\0';){
-		char const *start;
-		boole any;
+		enum{
+			a_NONE,
+			a_ANY = 1u<<0,
+			a_ANY_EMPTY_QUOTE = 1u<<1,
+			a_QUOTE = 1u<<2,
+			a_QUOTE_EMPTY = 1u<<3
+		};
 
-		any = FAL0;
+		u32 f;
+		char const *start;
+
 		start = acp->ac_.hd;
+		f = a_NONE;
 
 		if(!a_imf_s_CFWS(acp)){
 			rv = (acp->ac_.mse & (su_IMF_ERR_RELAX | su_IMF_ERR_MASK));
@@ -1041,15 +1053,18 @@ jtoken_next:
 			acp->ac_.comm = 0;
 		}
 
-		any = (start != acp->ac_.hd);
+		if(start != acp->ac_.hd)
+			f |= a_ANY;
 
 		for(i = 0;;){
 			char c;
 
 			start = acp->ac_.hd;
+			f &= ~a_QUOTE_EMPTY;
 
 			if(su_imf_c_DQUOTE(*acp->ac_.hd)){
 				/* Remove quotes, they are "not [a] semantical[ly] part" */
+				u32 j;
 				char *cp;
 
 				cp = a_imf_s_quoted_string(acp, &acp->ac_comm[i]);
@@ -1057,9 +1072,9 @@ jtoken_next:
 					rv = (acp->ac_.mse & su_IMF_ERR_MASK);
 					goto jleave;
 				}
-				i += P2UZ(cp - &acp->ac_comm[i]);
-				if(i > 0)
-					acp->ac_.mse |= su_IMF_STATE_GROUP; /* gross hack: misuse bit for "quotes" */
+				j = S(u32,P2UZ(cp - &acp->ac_comm[i]));
+				f |= (j == 0) ? a_ANY_EMPTY_QUOTE | a_QUOTE_EMPTY : a_QUOTE;
+				i += j;
 			}
 
 			while(su_imf_c_atext((c = *acp->ac_.hd))){
@@ -1075,8 +1090,11 @@ jtoken_next:
 			}
 
 			if(start == acp->ac_.hd){
-				if(i == 0)
-					break;
+				if(i == 0){
+					if(!(f & a_QUOTE_EMPTY) || !(mode & su_IMF_MODE_TOK_EMPTY))
+						break;
+					f |= a_QUOTE;
+				}
 				if((mode & su_IMF_MODE_STOP_EARLY) && shtp != NIL)
 					goto jdone;
 				acp->ac_.comm = S(u32,i);
@@ -1105,7 +1123,12 @@ jtoken_next:
 				acp->ac_.mse |= su_IMF_STATE_SEMICOLON;
 				goto jtoken_create;
 			}
-		}else if(!any)
+		}else if(f & a_ANY_EMPTY_QUOTE){
+			if(shtp != NIL && (mode & su_IMF_MODE_STOP_EARLY))
+				goto jdone;
+			if(mode & su_IMF_MODE_TOK_EMPTY)
+				goto jtoken_create;
+		}else if(!(f & a_ANY))
 			goto jleave;
 		continue;
 
@@ -1118,17 +1141,17 @@ jtoken_create:
 		shtpp = &shtp->imfsht_next;
 
 		shtp->imfsht_next = NIL;
-		shtp->imfsht_mse = (acp->ac_.mse & ~(su__IMF_MODE_STRUCT_MASK | su_IMF_STATE_GROUP));
+		shtp->imfsht_mse = (acp->ac_.mse & ~su__IMF_MODE_STRUCT_MASK);
 
 		/* C99 */{
 			char *cp;
 
 			cp = shtp->imfsht_dat;
-			if(acp->ac_.mse & su_IMF_STATE_GROUP)
+			if(f & a_QUOTE)
 				*cp++ = '"';
 			su_mem_copy(cp, acp->ac_comm, acp->ac_.comm);
 			cp += acp->ac_.comm;
-			if(acp->ac_.mse & su_IMF_STATE_GROUP)
+			if(f & a_QUOTE)
 				*cp++ = '"';
 			*cp = '\0';
 
