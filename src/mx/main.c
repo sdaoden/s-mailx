@@ -1244,20 +1244,22 @@ jleave_full:/* C99 */{
 		n_psonce &= ~n_PSO_EXIT_MASK; /* (macro call->event loop shall run) */
 		mx_account_leave();
 
-		if(n_psonce & n_PSO_INTERACTIVE){
-			mx_tty_destroy((opsonce & n_PSO_XIT) != 0);
-#ifdef mx_HAVE_TCAP
-			mx_termcap_destroy();
-#endif
-		}
-
 		if((ccp = ok_vlook(on_program_exit)) != NIL){
+			mb.mb_type = MB_VOID; /* TODO object, and should already be NIL here! */
+			mb.mb_perm = 0;
 			n_psonce &= ~n_PSO_EXIT_MASK; /* (macro call->event loop shall run) */
 			temporary_on_xy_hook_caller("on-program-exit", ccp, FAL0);
 		}
 
 		n_exit_status = i;
 		n_psonce = opsonce;
+
+		if(n_psonce & n_PSO_INTERACTIVE){
+			mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+#ifdef mx_HAVE_TCAP
+			mx_termcap_destroy();
+#endif
+		}
 	}
 
 jleave:

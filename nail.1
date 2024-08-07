@@ -11694,7 +11694,10 @@ or
 .Ic quit ,
 or because the send mode is done.
 .Sy Note:
-this runs late and so terminal settings etc. are already teared down.
+this runs very late, without active
+.Ic account
+or
+.Ic folder .
 .
 .Mx
 .It Va on-resend-cleanup

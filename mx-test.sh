@@ -11516,19 +11516,57 @@ t_on_main_loop_tick() { #{{{
 t_on_program_exit() { #{{{
 	t_prolog "${@}"
 
-	${MAILX} ${ARGS} -X 'define x {' -X 'echo jay' -X '}' -X x -Son-program-exit=x > ./t1 2>${E0}
+	${MAILX} ${ARGS} -Son-program-exit=x -X 'define x {' -X 'ec jay' -X '}' -X x > ./t1 2>${E0}
 	cke0 1 0 ./t1 '2820891503 4'
 
-	${MAILX} ${ARGS} -X 'define x {' -X 'echo jay' -X '}' -X q -Son-program-exit=x > ./t2 2>${E0}
+	${MAILX} ${ARGS} -Son-program-exit=x -X 'define x {' -X 'ec jay' -X '}' -X q > ./t2 2>${E0}
 	cke0 2 0 ./t2 '2820891503 4'
 
-	</dev/null ${MAILX} ${ARGS} -X 'define x {' -X 'echo jay' -X '}' -Son-program-exit=x > ./t3 2>${E0}
+	</dev/null ${MAILX} -Son-program-exit=x ${ARGS} -X 'define x {' -X 'ec jay' -X '}' > ./t3 2>${E0}
 	cke0 3 0 ./t3 '2820891503 4'
 
-	</dev/null ${MAILX} ${ARGS} -X 'define x {' -X 'echo jay' -X '}' -Son-program-exit=x \
+	</dev/null ${MAILX} ${ARGS} -X 'define x {' -X 'ec jay' -X '}' -Son-program-exit=x \
 		 -Smta=test://t5 -s subject -. hey@you > ./t4 2>${E0}
 	cke0 4 0 ./t4 '2820891503 4'
 	ck 5 - ./t5 '561900352 118'
+
+	echo xit 3 | ${MAILX} ${ARGS} -Son-program-exit=x \
+		-X 'define x {' -X 'ec a' -X mlist -X 'xit 4' -X 'ec b' -X '}' \
+		> ./t6 2>${E0}
+	cke0 6 3 ./t6 '4276659861 31'
+
+	</dev/null ${MAILX} ${ARGS} -Son-program-exit=x \
+		-X 'define x {' -X 'ec a' -X 'xit 4' -X 'ec b' -X '}' \
+		 -Smta=test://t8 -s subject -. hey@you > ./t7 2>${E0}
+	cke0 7 0 ./t7 '2418082923 2'
+	ck 8 - ./t8 '561900352 118'
+
+	gm sub s1 to 1 from 1 body b1 > ./t.mbox
+
+	${MAILX} ${ARGS} -Son-program-exit=x -Rf \
+		-X 'define x {' -X 'ec a' -X h -X 'xit 4' -X 'ec b' -X '}' \
+		-Y x3 -Y 'ec c' \
+		t.mbox > ./t9 2>${EX}
+	ck 9 3 ./t9 '2418082923 2' '2121229457 60'
+
+	</dev/null ${MAILX} ${ARGS} -Son-program-exit=x -Sescape=! \
+		-X 'define x {' -X 'ec a' -X headers -X 'xit 4' -X 'ec b' -X '}' \
+		-Y '!:x5' -Y 'echo c' \
+		-Smta=test://t11 -s subject -. hey@you > ./t10 2>${EX}
+	ck 10 5 ./t10 '2418082923 2' '2121229457 60'
+	[ -f ./t11 ]; ck_exx 11
+
+	${MAILX} ${ARGS} -Son-program-exit=x -Sescape=! \
+		-X 'define x {' -X 'echo a' -X h -X 'xit 4' -X 'ec b' -X '}' \
+		-Y \
+'mail h@y
+!:x7
+!.
+ec c
+' \
+		-Smta=test://t13 > ./t12 2>${EX}
+	ck 12 7 ./t12 '2418082923 2' '2121229457 60'
+	[ -f ./t13 ]; ck_exx 13
 
 	t_epilog "${@}"
 } #}}}
