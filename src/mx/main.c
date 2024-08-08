@@ -102,8 +102,7 @@ static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
 /* Setup some variables which we require to be valid / verified */
 static void a_main_setup_vars(void);
 
-/* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading the system mailbox, and open up the
- * right stuff */
+/* Reading mail.  Decide whether we are editing a mailbox or reading the system mailbox, and open up the right stuff */
 static int a_main_rcv_mode(struct a_main_ctx *mcp);
 
 /* Interrupt printing of the headers */
