@@ -5194,10 +5194,21 @@ The latter deletes the given macro,
 .Ql *
 discards all existing ones.
 Deletion, including self-deletion, is always possible.
-The former lists all or only the given macro(s),
-with two arguments it defines or replaces a macro.
+The former lists all or only the given macro(s);
+with two arguments, left curly bracket
+.Ql {
+being second, it defines or replaces a macro, formed of all lines until
+a right curly bracket
+.Ql }
+is seen.
 Macro names are free-form but must form a single token
 .Pf ( Sx "Shell-style argument quoting" ) .
+.Sy Remarks:
+\*(ID macros cannot be defined in
+.Sx "Compose mode" ,
+neither can local (inner) macros, and the closing
+.Ql }
+must be placed on a line of its own.
 .
 .Pp
 .Mx -ix Macro

@@ -878,7 +878,9 @@ a_amv_mac_def(char const *name, BITENUM(u32,a_amv_mac_flags) amf){
 	amp = NIL;
 
 	/* TODO We should have our input state machine which emits Line events, and hook different consumers dependent
-	 * TODO on content, as stated in i think go.c: like so local macros etc. become possible (from input side) */
+	 * TODO on content, as stated in i think go.c: like so local macros etc. become possible (from input side).
+	 * TODO Also things like 'define d { a; b;c; }' would be very cool: we have some kind of "if 0" whiteout
+	 * TODO scanning in a_go_evaluate(), if "that had a special mode", and also treat lone } as "end that" .. */
 	/* Read in the lines which form the macro content */
 	for(ll_tail = ll_head = NIL, line_cnt = maxlen = 0;;){
 		u32 leaspc;
@@ -900,8 +902,8 @@ a_amv_mac_def(char const *name, BITENUM(u32,a_amv_mac_flags) amf){
 				++leaspc;
 			else
 				break;
-		for(; n.ui > 0 && su_cs_is_space(cp[n.ui - 1]); --n.ui)
-			;
+		for(; n.ui > 0 && su_cs_is_space(cp[n.ui - 1]); --n.ui){
+		}
 		if(n.ui == 0)
 			continue;
 
@@ -3096,7 +3098,12 @@ c_define(void *v){
 		goto jleave;
 	}
 
-	rv = (a_amv_mac_def(args[0], a_AMV_MF_NONE) == FAL0);
+	if(!(n_pstate & n_PS_COMPOSE_MODE))
+		rv = (a_amv_mac_def(args[0], a_AMV_MF_NONE) == FAL0);
+	else{
+		n_err(_("define: cannot define a macro in compose mode: %s\n"), args[0]); /* TODO see amv_mac_def() */
+		rv = su_EX_ERR;
+	}
 
 jleave:
 	NYD_OU;
