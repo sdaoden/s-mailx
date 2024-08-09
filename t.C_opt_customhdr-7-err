@@ -1,0 +1,4 @@
+s-nail: Invalid custom header: contains control characters: $'c1:\n\t\tb1'
+s-nail: Invalid *customhdr* entry: $'c1:\n\t\tb1,\n\t\tc2: b2'
+s-nail: Assignment of variable aborted: customhdr
+reproducible_build: No message, no subject; hope that's ok
