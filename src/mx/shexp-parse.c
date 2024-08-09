@@ -361,6 +361,7 @@ a_shexp_parse_quote(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 					spcp->spc_res_state |= n_SHEXP_STATE_CHANGE;
 					break;
 
+				case 'a': c = '\a'; spcp->spc_res_state |= n_SHEXP_STATE_CHANGE; break;
 				case 'b': c = '\b'; spcp->spc_res_state |= n_SHEXP_STATE_CHANGE; break;
 				case 'f': c = '\f'; spcp->spc_res_state |= n_SHEXP_STATE_CHANGE; break;
 				case 'n': c = '\n'; spcp->spc_res_state |= n_SHEXP_STATE_CHANGE; break;
