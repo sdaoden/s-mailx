@@ -381,7 +381,9 @@ jobreaper_start() {
 
 		if [ -n "${JOBMON}" ]; then
 			( set -m ) </dev/null >/dev/null 2>&1 || JOBMON=
-		else
+		fi
+
+		if [ -z "${JOBMON}" ]; then
 			printf >&2 '%s! $JOBMON: $SHELL %s incapable, disabled!%s\n' \
 				"${COLOR_ERR_ON}" "${SHELL}" "${COLOR_ERR_OFF}"
 			printf >&2 '%s!  No process groups available, killed tests may leave process "zombies"!%s\n' \
