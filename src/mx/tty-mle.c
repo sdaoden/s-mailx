@@ -796,8 +796,12 @@ a_tty_hist_load(boole feedback){ /* {{{ */
 		if(llen == 0 || cp[0] == '#')
 			continue;
 
-		if(UNLIKELY(version == 0) && (version = su_cs_cmp(cp, a_TTY_HIST_MARKER) ? 1 : 2) != 1)
-			continue;
+		if(UNLIKELY(version == 0)){
+			version = su_cs_cmp(cp, a_TTY_HIST_MARKER) ? 1 : 2;
+			if(version != 1)
+				continue;
+			n_OBSOLETE(_("Legacy *history-file*, please `history save' to update version!"));/*v15-compat*/
+		}
 
 		/* C99 */{
 			BITENUM(u32,mx_go_input_flags) gif;
