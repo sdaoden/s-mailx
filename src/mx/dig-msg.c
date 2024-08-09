@@ -452,24 +452,36 @@ jcmd_insert:{ /* {{{ */
 	 * TODO which differentiate in between structured and unstructured
 	 * TODO header fields etc., a little workaround */
 	struct mx_name *xnp;
-	s8 aerr;
 	char const *mod_suff;
 	enum expand_addr_check_mode eacm;
 	enum gfield ntype;
 	boole mult_ok;
+	s8 aerr;
 
 	if(args == NIL || a3p == NIL)
 		goto jecmd;
 	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
-	/* Strip [\r\n] which would render a body invalid XXX all controls? */
+	/* Strip [\r\n] which would render a body invalid; plus \t */
 	/* C99 */{
 		char c;
 
-		for(cp = a3p->ca_arg.ca_str.s; (c = *cp) != '\0'; ++cp)
-			if(c == '\n' || c == '\r')
-				*UNCONST(char*,cp) = ' ';
+		aerr = 0;
+		for(cp = a3p->ca_arg.ca_str.s; (c = *cp) != '\0'; ++cp){
+			if(c == '\t' || c == '\n' || c == '\r')
+				c = ' ';
+			else if(su_cs_is_cntrl(c)){
+				aerr = 1;
+				c = '?';
+			}else
+				continue;
+			*UNCONST(char*,cp) = c;
+		}
+		if(aerr){
+			cp = a3p->ca_arg.ca_str.s;
+			goto j501cp;
+		}
 	}
 
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_subj)){
