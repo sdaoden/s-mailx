@@ -8721,6 +8721,11 @@ The second argument specifies the subcommand to apply, one of:
 .It Cm insert
 Create a new or another instance of the header given in the third token,
 with the content value as given in the fourth token.
+(Tabulators, line feeds and carriage-returns, aka
+.Ql \et ,
+.Ql \en ,
+.Ql \er
+are normalized to space; other control characters cause error.)
 Returns
 .Ql 501
 if the header name is invalid, or if content extraction fails to succeed,

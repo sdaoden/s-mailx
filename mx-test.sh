@@ -11493,7 +11493,7 @@ xit
 		' -Rf eml://- >./t8 2>${E0}
 	cke0 8 0 ./t8 '3776893695 101'
 
-	#
+	#{{{
 	</dev/null ${MAILX} ${ARGS} -Y '#
 commandalias x \ec '"'"'--- $?/$^ERRNAME, '"'"'
 ec ==1
@@ -11522,7 +11522,27 @@ dig 1 h headerp t; dig 1 h; dig r 1;x 35
 xit
 
 		' -f t6-7.eml >./t9 2>${E0}
+	#}}}
 	cke0 9 0 ./t9 '1340411131 884'
+
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t10 -Sescape=! >./t11 2>${E0}
+ec in
+mail l@d
+!s This subject is
+This body is
+!:digmsg - header insert h1 $'b\n1\t\a2\n'
+!:ec ^#=$^# ^0<$^0> ^1<$^1> $?/$^ERRNAME
+!^^ h i h2 $'b\n31\t\a4\n'
+!:ec ^#=$^# ^0<$^0> ^1<$^1> $?/$^ERRNAME
+!^ h i h2 $'b\n5\t\a6\n'
+!:ec 501
+!^^ h i h2 $'b\n7\t8\n'
+!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!.
+ec ou
+__EOT
+	cke0 10 0 ./t10 '2918013860 146'
+	ck 11 - ./t11 '2967121016 122'
 
 	t_epilog "${@}"
 } #}}}
