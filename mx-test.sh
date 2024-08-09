@@ -8795,6 +8795,35 @@ t_C_opt_customhdr() { #{{{
 	${cat} ./t2-x >> ./t2
 	cke0 2 0 ./t2 '544085062 1086'
 
+	</dev/null ${MAILX} ${ARGS} -Smta=test://t4 \
+		-C 'C1 : 
+ B
+ 1' \
+		-C 'C2:B2' \
+		x@y >./t3 2>${EX}
+	ck 3 64 t3 '4294967295 0' '546006383 120'
+	[ -f ./t4 ]; ck_exx 4
+
+	</dev/null ${MAILX} ${ARGS} -Smta=test://t6 -S errexit \
+		-C 'C1 : B 1' \
+		-C 'C2:B2' \
+		-S customhdr='c1:
+		b1,
+		c2: b2' \
+		x@y >./t5 2>${EX}
+	ck 5 64 t5 '4294967295 0' '1542667489 222'
+	[ -f ./t6 ]; ck_exx 6
+
+	</dev/null ${MAILX} ${ARGS} -Smta=test://t8 \
+		-C 'C1 : B 1' \
+		-C 'C2:B2' \
+		-S customhdr='c1:
+		b1,
+		c2: b2' \
+		x@y >./t7 2>${EX}
+	ck 7 0 t7 '4294967295 0' '1263691576 247'
+	ck 8 - t8 '3715667956 112'
+
 	t_epilog "${@}"
 }
 #}}}
