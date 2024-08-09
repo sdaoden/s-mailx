@@ -839,10 +839,12 @@ main(int argc, char *argv[]){
 			break;
 		case 'h':
 		case -1:
-			a_main_usage(n_stdout);
-			if(i < 0){
-				fprintf(n_stdout, "\nLong options:\n");
-				(void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,n_stdout));
+			if(!su_state_has(su_STATE_REPRODUCIBLE)){
+				a_main_usage(n_stdout);
+				if(i < 0){
+					fprintf(n_stdout, "\nLong options:\n");
+					(void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,n_stdout));
+				}
 			}
 			goto jleave;
 		case 'i':
@@ -993,7 +995,8 @@ jusage:
 				if(emsg != NIL)
 					n_err("%s\n", V_(emsg));
 			}
-			a_main_usage(n_stderr);
+			if(!su_state_has(su_STATE_REPRODUCIBLE))
+				a_main_usage(n_stderr);
 			n_exit_status = su_EX_USAGE;
 			goto jleave;
 		}
