@@ -237,7 +237,8 @@ FL boole n_var_okclear(enum okeys okey);
  * it will also cause obsoletion messages only for doing lookup (once).
  * _vexplode() is to be used by the shell expansion stuff when encountering
  * $@/$^@ in double-quotes, in order to provide sh(1)ell compatible behaviour;
- * it returns whether there are any elements in argv (*cookie).
+ * it returns whether there are any elements in argv (*cookie): TRUM1 is
+ * returned if all elements are empty strings.
  * Calling vset with val==NIL is a clear request */
 FL char const *n_var_vlook(char const *vokey, boole try_getenv);
 FL boole n_var_vexplode(void const **cookie, boole rset);

@@ -4172,6 +4172,7 @@ n_var_vlook(char const *vokey, boole try_getenv){
 
 FL boole
 n_var_vexplode(void const **cookie, boole rset){
+	boole rv;
 	struct a_amv_pospar *appp;
 	NYD2_IN;
 
@@ -4183,18 +4184,26 @@ n_var_vexplode(void const **cookie, boole rset){
 	}else
 		appp = !rset ? &a_amv_pospar : &a_amv_resset;
 
-	if(appp->app_count == 0)
+	if(appp->app_count == 0){
 		*cookie = NIL;
-	else{
+		rv = FAL0;
+	}else{
 		char **cpp;
 
 		*cookie = cpp = su_AUTO_TALLOC(char*, appp->app_count +1);
 		su_mem_copy(cpp, &appp->app_dat[appp->app_idx], sizeof(char*) * appp->app_count);
 		cpp[appp->app_count] = NIL;
+
+		rv = TRUM1;
+		for(; *cpp != NIL; ++cpp)
+			if(**cpp != '\0'){
+				rv = TRU1;
+				break;
+			}
 	}
 
 	NYD2_OU;
-	return (*cookie != NIL);
+	return rv;
 }
 
 FL boole
