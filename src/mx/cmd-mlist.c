@@ -168,7 +168,8 @@ a_ml_mux(boole subscribe, char const **argv){
 					goto jset_data;
 				}else if(!subscribe){
 jelisted:
-					n_err(_("%s: already listed: %s\n"), cmd, n_shexp_quote_cp(key, FAL0));
+					if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+						n_err(_("%s: already listed: %s\n"), cmd, n_shexp_quote_cp(key, FAL0));
 					notrv = TRU1;
 				}else{
 					u.flags |= TRU1;
