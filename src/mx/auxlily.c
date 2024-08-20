@@ -385,7 +385,7 @@ jredo:
 			), idna_utf8,
 			n_string_resize(n_string_trunc(out, 0), ilen)->s_dat, ilen)){
 	case idn_buffer_overflow:
-		ilen += HOST_NAME_MAX +1;
+		ilen += 255 +1;
 		goto jredo;
 	case idn_success:
 		rv = TRU1;
