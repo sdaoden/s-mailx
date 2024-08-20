@@ -68,7 +68,7 @@ INLINE boole su_timespec_is_valid(struct su_timespec const *self){
 	return (self->ts_sec >= 0 && self->ts_nano >= 0 && self->ts_nano < su_TIMESPEC_SEC_NANOS);
 }
 
-/*! \copydoc{su_cmp_fun()} */
+/*! \cd{su_cmp_fun()} */
 INLINE sz su_timespec_cmp(struct su_timespec const *self, struct su_timespec const *tp){
 	s64 x;
 	ASSERT_RET(self != NIL, -(tp != NIL));
@@ -310,19 +310,19 @@ public:
 	class spec;
 
 	/* spec {{{ */
-	/*! \copydoc{TIMESPEC} */
+	/*! \cd{TIMESPEC} */
 	class spec : private su_timespec{
 		friend class path;
 //		friend class path::info;
 		friend class time;
 	public:
-		/*! \copydoc{su_TIMESPEC_SEC_MILLIS} */
+		/*! \cd{su_TIMESPEC_SEC_MILLIS} */
 		static sz const sec_millis = su_TIMESPEC_SEC_MILLIS;
 
-		/*! \copydoc{su_TIMESPEC_SEC_MICROS} */
+		/*! \cd{su_TIMESPEC_SEC_MICROS} */
 		static sz const sec_micros = su_TIMESPEC_SEC_MICROS;
 
-		/*! \copydoc{su_TIMESPEC_SEC_NANOS} */
+		/*! \cd{su_TIMESPEC_SEC_NANOS} */
 		static sz const sec_nanos = su_TIMESPEC_SEC_NANOS;
 
 		/*! \_ */
@@ -344,86 +344,86 @@ public:
 		/*! \_ */
 		spec &operator=(spec const &t) {return assign(t);}
 
-		/*! \copydoc{su_timespec::ts_sec} */
+		/*! \cd{su_timespec::ts_sec} */
 		s64 sec(void) const {return ts_sec;}
 
-		/*! \copydoc{su_timespec::ts_sec} */
+		/*! \cd{su_timespec::ts_sec} */
 		spec &sec(s64 sec) {ts_sec = sec; return *this;}
 
-		/*! \copydoc{su_timespec::ts_nano} */
+		/*! \cd{su_timespec::ts_nano} */
 		sz nano(void) const {return ts_nano;}
 
-		/*! \copydoc{su_timespec::ts_sec} */
+		/*! \cd{su_timespec::ts_sec} */
 		spec &nano(sz nano) {ts_nano = nano; return *this;}
 
-		/*! \copydoc{su_timespec_current()} */
+		/*! \cd{su_timespec_current()} */
 		spec &current(void) {SELFTHIS_RET(su_timespec_current(this));}
 
-		/*! \copydoc{su_timespec_is_valid()} */
+		/*! \cd{su_timespec_is_valid()} */
 		boole is_valid(void) const {return su_timespec_is_valid(this);}
 
-		/*! \copydoc{su_timespec_cmp()} */
+		/*! \cd{su_timespec_cmp()} */
 		sz cmp(spec const &t) const {return su_timespec_cmp(this, &t);}
 
-		/*! \copydoc{su_timespec_is_EQ()} */
+		/*! \cd{su_timespec_is_EQ()} */
 		boole operator==(spec const &t) const {return su_timespec_is_EQ(this, &t);}
 
-		/*! \copydoc{su_timespec_is_NE()} */
+		/*! \cd{su_timespec_is_NE()} */
 		boole operator!=(spec const &t) const {return su_timespec_is_NE(this, &t);}
 
-		/*! \copydoc{su_timespec_is_LT()} */
+		/*! \cd{su_timespec_is_LT()} */
 		boole operator<(spec const &t) const {return su_timespec_is_LT(this, &t);}
 
-		/*! \copydoc{su_timespec_is_LE()} */
+		/*! \cd{su_timespec_is_LE()} */
 		boole operator<=(spec const &t) const {return su_timespec_is_LE(this, &t);}
 
-		/*! \copydoc{su_timespec_is_GE()} */
+		/*! \cd{su_timespec_is_GE()} */
 		boole operator>=(spec const &t) const {return su_timespec_is_GE(this, &t);}
 
-		/*! \copydoc{su_timespec_is_GT()} */
+		/*! \cd{su_timespec_is_GT()} */
 		boole operator>(spec const &t) const {return su_timespec_is_GT(this, &t);}
 
-		/*! \copydoc{su_timespec_add()} */
+		/*! \cd{su_timespec_add()} */
 		spec &add(spec const &t) {SELFTHIS_RET(su_timespec_add(this, &t));}
 
-		/*! \copydoc{su_timespec_add()} */
+		/*! \cd{su_timespec_add()} */
 		spec &operator+=(spec const &t) {return add(t);}
 
-		/*! \copydoc{su_timespec_sub()} */
+		/*! \cd{su_timespec_sub()} */
 		spec &sub(spec const &t) {SELFTHIS_RET(su_timespec_sub(this, &t));}
 
-		/*! \copydoc{su_timespec_add()} */
+		/*! \cd{su_timespec_add()} */
 		spec &operator-=(spec const &t) {return sub(t);}
 	};
 	/* }}} */
 
 	/* utils {{{ */
-	/*! \copydoc{su_TIME_EPOCH_MAX} */
+	/*! \cd{su_TIME_EPOCH_MAX} */
 	static s64 const epoch_max = su_TIME_EPOCH_MAX;
 
-	/*! \copydoc{su_TIME_MIN_SECS} */
+	/*! \cd{su_TIME_MIN_SECS} */
 	static uz const min_secs = su_TIME_MIN_SECS;
 
-	/*! \copydoc{su_TIME_HOUR_MINS} */
+	/*! \cd{su_TIME_HOUR_MINS} */
 	static uz const hour_mins = su_TIME_HOUR_MINS;
-	/*! \copydoc{su_TIME_HOUR_SECS} */
+	/*! \cd{su_TIME_HOUR_SECS} */
 	static uz const hour_secs = su_TIME_HOUR_SECS;
 
-	/*! \copydoc{su_TIME_DAY_HOURS} */
+	/*! \cd{su_TIME_DAY_HOURS} */
 	static uz const day_hours = su_TIME_DAY_HOURS;
-	/*! \copydoc{su_TIME_DAY_SECS} */
+	/*! \cd{su_TIME_DAY_SECS} */
 	static uz const day_secs = su_TIME_DAY_SECS;
 
-	/*! \copydoc{su_TIME_YEAR_GREGORIAN} */
+	/*! \cd{su_TIME_YEAR_GREGORIAN} */
 	static uz const year_gregorian = su_TIME_YEAR_GREGORIAN;
 
-	/*! \copydoc{su_TIME_YEAR_DAYS} */
+	/*! \cd{su_TIME_YEAR_DAYS} */
 	static uz const year_days = su_TIME_YEAR_DAYS;
 
-	/*! \copydoc{su_TIME_JDN_EPOCH} */
+	/*! \cd{su_TIME_JDN_EPOCH} */
 	static uz const jdn_epoch = su_TIME_JDN_EPOCH;
 
-	/*! \copydoc{su_time_weekdays} */
+	/*! \cd{su_time_weekdays} */
 	enum weekdays{
 		weekday_sunday = su_TIME_WEEKDAY_SUNDAY, /*!< \_ */
 		weekday_monday = su_TIME_WEEKDAY_MONDAY, /*!< \_ */
@@ -434,7 +434,7 @@ public:
 		weekday_saturday = su_TIME_WEEKDAY_SATURDAY /*!< \_ */
 	};
 
-	/*! \copydoc{su_time_months} */
+	/*! \cd{su_time_months} */
 	enum months{
 		month_january = su_TIME_MONTH_JANUARY, /*!< \_ */
 		month_february = su_TIME_MONTH_FEBRUARY, /*!< \_ */
@@ -450,27 +450,27 @@ public:
 		month_december = su_TIME_MONTH_DECEMBER /*!< \_ */
 	};
 
-	/*! \copydoc{su_TIME_WEEKDAY_IS_VALID()} */
+	/*! \cd{su_TIME_WEEKDAY_IS_VALID()} */
 	static boole weekday_is_valid(uz m) {return su_TIME_WEEKDAY_IS_VALID(m);}
 
-	/*! \copydoc{su_time_weekday_names_abbrev}
+	/*! \cd{su_time_weekday_names_abbrev}
 	 * \ASSERT{\NIL, \a m is not valid} */
 	static char const *weekday_name_abbrev(uz m){
 		ASSERT_RET(weekday_is_valid(m), NIL);
 		return su_time_weekday_names_abbrev[m];
 	}
 
-	/*! \copydoc{su_TIME_MONTH_IS_VALID()} */
+	/*! \cd{su_TIME_MONTH_IS_VALID()} */
 	static boole month_is_valid(uz m) {return su_TIME_MONTH_IS_VALID(m);}
 
-	/*! \copydoc{su_time_month_names_abbrev}
+	/*! \cd{su_time_month_names_abbrev}
 	 * \ASSERT{\NIL, \a m is not valid} */
 	static char const *month_name_abbrev(uz m){
 		ASSERT_RET(month_is_valid(m), NIL);
 		return su_time_month_names_abbrev[m];
 	}
 
-	/*! \copydoc{su_time_epoch_to_gregor()} */
+	/*! \cd{su_time_epoch_to_gregor()} */
 	static boole epoch_to_gregor(s64 epsec, u32 *yp, u32 *mp, u32 *dp,
 			u32 *hourp_or_nil=NIL, u32 *minp_or_nil=NIL, u32 *secp_or_nil=NIL){
 		ASSERT_RET(yp != NIL, FAL0);
@@ -479,15 +479,15 @@ public:
 		return su_time_epoch_to_gregor(epsec, yp, mp, dp, hourp_or_nil, minp_or_nil, secp_or_nil);
 	}
 
-	/*! \copydoc{su_time_gregor_to_epoch()} */
+	/*! \cd{su_time_gregor_to_epoch()} */
 	static s64 gregor_to_epoch(u32 y, u32 m, u32 d, u32 hour=0, u32 min=0, u32 sec=0){
 		return su_time_gregor_to_epoch(y, m, d, hour, min, sec);
 	}
 
-	/*! \copydoc{su_time_gregor_to_jdn()} */
+	/*! \cd{su_time_gregor_to_jdn()} */
 	static uz gregor_to_jdn(u32 y, u32 m, u32 d) {return su_time_gregor_to_jdn(y, m, d);}
 
-	/*! \copydoc{su_time_jdn_to_gregor()} */
+	/*! \cd{su_time_jdn_to_gregor()} */
 	static void jdn_to_gregor(uz jdn, u32 *yp, u32 *mp, u32 *dp){
 		ASSERT_RET_VOID(yp != NIL);
 		ASSERT_RET_VOID(mp != NIL);
@@ -495,13 +495,13 @@ public:
 		su_time_jdn_to_gregor(jdn, yp, mp, dp);
 	}
 
-	/*! \copydoc{su_time_year_is_leap()} */
+	/*! \cd{su_time_year_is_leap()} */
 	static boole year_is_leap(u32 y) {return su_time_year_is_leap(y);}
 
-	/*! \copydoc{su_time_msleep()} */
+	/*! \cd{su_time_msleep()} */
 	static uz msleep(uz millis, boole ignint=TRU1) {return su_time_msleep(millis, ignint);}
 
-	/*! \copydoc{su_time_nsleep()} */
+	/*! \cd{su_time_nsleep()} */
 	static s32 nsleep(spec const *dur, spec *rem_or_nil=NIL) {return su_time_nsleep(dur, rem_or_nil);}
 	/* }}} */
 };

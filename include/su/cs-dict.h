@@ -181,7 +181,7 @@ EXPORT void su_cs_dict_gut(struct su_cs_dict *self);
 /*! Assign \a{t}; return 0 on success, or, also dependend on \r{su_CS_DICT_ERR_PASS} (of \a{t}), a \r{su_err_number}.
  * (Also see \r{su_clone_fun}.)
  * \remarks{The element order of \SELF and \a{t} may not be identical.}
- * \copydoc{su_assign_fun} */
+ * \cd{su_assign_fun} */
 EXPORT s32 su_cs_dict_assign(struct su_cs_dict *self, struct su_cs_dict const *t);
 
 /*! Different to \r{su_cs_dict_assign()} only assigns elements of \a{t},
@@ -586,18 +586,18 @@ class cs_dict : private su_cs_dict{
 	};
 
 public:
-	/*! \copydoc{su_cs_dict_flags} */
+	/*! \cd{su_cs_dict_flags} */
 	enum flags{ // owns is template arg
 		f_none, /*!< This is 0. */
-		f_prime_spaced = su_CS_DICT_PRIME_SPACED, /*!< \copydoc{su_CS_DICT_PRIME_SPACED} */
-		f_auto_shrink = su_CS_DICT_AUTO_SHRINK, /*!< \copydoc{su_CS_DICT_AUTO_SHRINK} */
-		f_frozen = su_CS_DICT_FROZEN, /*!< \copydoc{su_CS_DICT_FROZEN} */
-		f_head_resort = su_CS_DICT_HEAD_RESORT, /*!< \copydoc{su_CS_DICT_HEAD_RESORT} */
-		f_strong = su_CS_DICT_STRONG, /*!< \copydoc{su_CS_DICT_STRONG} */
-		f_case = su_CS_DICT_CASE, /*!< \copydoc{su_CS_DICT_CASE} */
-		f_data_space_raw = su_CS_DICT_DATA_SPACE_RAW, /*!< \copydoc{su_CS_DICT_DATA_SPACE_RAW} */
-		f_err_pass = su_CS_DICT_ERR_PASS, /*!< \copydoc{su_CS_DICT_ERR_PASS} */
-		f_nil_is_valid_object = su_CS_DICT_NIL_IS_VALID_OBJECT, /*!< \copydoc{su_CS_DICT_NIL_IS_VALID_OBJECT} */
+		f_prime_spaced = su_CS_DICT_PRIME_SPACED, /*!< \cd{su_CS_DICT_PRIME_SPACED} */
+		f_auto_shrink = su_CS_DICT_AUTO_SHRINK, /*!< \cd{su_CS_DICT_AUTO_SHRINK} */
+		f_frozen = su_CS_DICT_FROZEN, /*!< \cd{su_CS_DICT_FROZEN} */
+		f_head_resort = su_CS_DICT_HEAD_RESORT, /*!< \cd{su_CS_DICT_HEAD_RESORT} */
+		f_strong = su_CS_DICT_STRONG, /*!< \cd{su_CS_DICT_STRONG} */
+		f_case = su_CS_DICT_CASE, /*!< \cd{su_CS_DICT_CASE} */
+		f_data_space_raw = su_CS_DICT_DATA_SPACE_RAW, /*!< \cd{su_CS_DICT_DATA_SPACE_RAW} */
+		f_err_pass = su_CS_DICT_ERR_PASS, /*!< \cd{su_CS_DICT_ERR_PASS} */
+		f_nil_is_valid_object = su_CS_DICT_NIL_IS_VALID_OBJECT, /*!< \cd{su_CS_DICT_NIL_IS_VALID_OBJECT} */
 		f_nilisvalo = su_CS_DICT_NILISVALO /*!< Alias for \r{f_nil_is_valid_object}. */
 	};
 
@@ -628,7 +628,7 @@ public:
 	/*! \r{CS_DICT_VIEW} (\r{su/cs-dict.h}) */
 	typedef NSPC(su)view_assoc_unidir_const<view_traits, gview> view_const;
 
-	/*! \copydoc{su_cs_dict_create()} */
+	/*! \cd{su_cs_dict_create()} */
 	cs_dict(type_toolbox const *ttbox=NIL, u16 flags=f_none){
 		ASSERT(!OWNS || (ttbox != NIL && ttbox->ttb_clone != NIL && ttbox->ttb_del != NIL && ttbox->ttb_assign != NIL));
 		flags &= su__CS_DICT_CREATE_MASK & ~su_CS_DICT_OWNS;
@@ -637,92 +637,92 @@ public:
 		su_cs_dict_create(this, flags, R(su_toolbox const*,ttbox));
 	}
 
-	/*! \copydoc{su_cs_dict_create_copy()} */
+	/*! \cd{su_cs_dict_create_copy()} */
 	SHADOW cs_dict(cs_dict const &t) {su_cs_dict_create_copy(this, &t);}
 
-	/*! \copydoc{su_cs_dict_gut()} */
+	/*! \cd{su_cs_dict_gut()} */
 	~cs_dict(void) {su_cs_dict_gut(this);}
 
-	/*! \copydoc{su_cs_dict_assign()} */
+	/*! \cd{su_cs_dict_assign()} */
 	s32 assign(cs_dict const &t) {return su_cs_dict_assign(this, &t);}
 
 	/*! \r{assign()} */
 	SHADOW cs_dict &operator=(cs_dict const &t) {SELFTHIS_RET(assign(t));}
 
-	/*! \copydoc{su_cs_dict_assign_elems()} */
+	/*! \cd{su_cs_dict_assign_elems()} */
 	s32 assign_elems(cs_dict const &t) {return su_cs_dict_assign_elems(this, &t);}
 
-	/*! \copydoc{su_cs_dict_clear()} */
+	/*! \cd{su_cs_dict_clear()} */
 	cs_dict &clear(void) {SELFTHIS_RET(su_cs_dict_clear(this));}
 
-	/*! \copydoc{su_cs_dict_clear_elems()} */
+	/*! \cd{su_cs_dict_clear_elems()} */
 	cs_dict &clear_elems(void) {SELFTHIS_RET(su_cs_dict_clear_elems(this));}
 
-	/*! \copydoc{su_cs_dict_swap()} */
+	/*! \cd{su_cs_dict_swap()} */
 	cs_dict &swap(cs_dict &t) {SELFTHIS_RET(su_cs_dict_swap(this, &t));}
 
-	/*! \copydoc{su_cs_dict_count()} */
+	/*! \cd{su_cs_dict_count()} */
 	u32 count(void) const {return csd_count;}
 
 	/*! Whether \r{count()} is 0. */
 	boole is_empty(void) const {return (count() == 0);}
 
-	/*! \copydoc{su_cs_dict_size()} */
+	/*! \cd{su_cs_dict_size()} */
 	u32 size(void) const {return csd_size;}
 
-	/*! \copydoc{su_cs_dict_min_size()} */
+	/*! \cd{su_cs_dict_min_size()} */
 	u32 min_size(void) const {return csd_min_size;}
 
-	/*! \copydoc{su_cs_dict_set_min_size()} */
+	/*! \cd{su_cs_dict_set_min_size()} */
 	cs_dict &set_min_size(u32 nmsize) {SELFTHIS_RET(su_cs_dict_set_min_size(this, nmsize));}
 
-	/*! \copydoc{su_cs_dict_flags()}
+	/*! \cd{su_cs_dict_flags()}
 	 * \remarks{Since \c{OWNS} is a template argument that flag is stripped.} */
 	u16 flags(void) const {return (su_cs_dict_flags(this) & ~su_CS_DICT_OWNS);}
 
-	/*! \copydoc{su_cs_dict_add_flags()} */
+	/*! \cd{su_cs_dict_add_flags()} */
 	cs_dict &add_flags(u16 flags) {SELFTHIS_RET(su_cs_dict_add_flags(this, flags & ~su_CS_DICT_OWNS));}
 
-	/*! \copydoc{su_cs_dict_clear_flags()} */
+	/*! \cd{su_cs_dict_clear_flags()} */
 	cs_dict &clear_flags(u16 flags) {SELFTHIS_RET(su_cs_dict_clear_flags(this, flags & ~su_CS_DICT_OWNS));}
 
-	/*! \copydoc{su_cs_dict_threshold()} */
+	/*! \cd{su_cs_dict_threshold()} */
 	u8 threshold(void) const {return su_cs_dict_threshold(this);}
 
-	/*! \copydoc{su_cs_dict_set_threshold()} */
+	/*! \cd{su_cs_dict_set_threshold()} */
 	cs_dict &set_threshold(u8 thresh) {SELFTHIS_RET(su_cs_dict_set_threshold(this, thresh));}
 
-	/*! \copydoc{su_cs_dict_data_space()} */
+	/*! \cd{su_cs_dict_data_space()} */
 	uz data_space(void) const {return su_cs_dict_data_space(this);}
 
-	/*! \copydoc{su_cs_dict_set_data_space()} */
+	/*! \cd{su_cs_dict_set_data_space()} */
 	cs_dict &set_data_space(uz dspc){
 		ASSERT_RET(!OWNS, *this);
 		ASSERT_RET(is_empty(), *this);
 		SELFTHIS_RET(su_cs_dict_set_data_space(this, dspc));
 	}
 
-	/*! \copydoc{su_cs_dict_toolbox()} */
+	/*! \cd{su_cs_dict_toolbox()} */
 	type_toolbox const *toolbox(void) const {return R(type_toolbox const*,su_cs_dict_toolbox(this));}
 
-	/*! \copydoc{su_cs_dict_set_toolbox()} */
+	/*! \cd{su_cs_dict_set_toolbox()} */
 	cs_dict &set_toolbox(type_toolbox const *tbox_or_nil){
 		SELFTHIS_RET(su_cs_dict_set_toolbox(this, R(su_toolbox const*,tbox_or_nil)));
 	}
 
-	/*! \copydoc{su_cs_dict_resize()} */
+	/*! \cd{su_cs_dict_resize()} */
 	s32 resize(u32 xcount) {return su_cs_dict_resize(this, xcount);}
 
-	/*! \copydoc{su_cs_dict_balance()} */
+	/*! \cd{su_cs_dict_balance()} */
 	cs_dict &balance(void) {SELFTHIS_RET(su_cs_dict_balance(this));}
 
-	/*! \copydoc{su_cs_dict_has_key()} */
+	/*! \cd{su_cs_dict_has_key()} */
 	boole has_key(char const *key) const{
 		ASSERT_RET(key != NIL, FAL0);
 		return su_cs_dict_has_key(this, key);
 	}
 
-	/*! \copydoc{su_cs_dict_lookup()} */
+	/*! \cd{su_cs_dict_lookup()} */
 	tp lookup(char const *key){
 		ASSERT_RET(key != NIL, NIL);
 		return type_traits::to_tp(su_cs_dict_lookup(this, key));
@@ -740,25 +740,25 @@ public:
 	/*! \r{lookup()} */
 	tp_const operator[](char const *key) const {return lookup(key);}
 
-	/*! \copydoc{su_cs_dict_insert()} */
+	/*! \cd{su_cs_dict_insert()} */
 	s32 insert(char const *key, tp_const value){
 		ASSERT_RET(key != NIL, 0);
 		return su_cs_dict_insert(this, key, type_traits::to_vp(value));
 	}
 
-	/*! \copydoc{su_cs_dict_replace()} */
+	/*! \cd{su_cs_dict_replace()} */
 	s32 replace(char const *key, tp_const value){
 		ASSERT_RET(key != NIL, 0);
 		return su_cs_dict_replace(this, key, type_traits::to_vp(value));
 	}
 
-	/*! \copydoc{su_cs_dict_remove()} */
+	/*! \cd{su_cs_dict_remove()} */
 	boole remove(char const *key){
 		ASSERT_RET(key != NIL, FAL0);
 		return su_cs_dict_remove(this, key);
 	}
 
-	/*! \copydoc{su_cs_dict_statistics()} */
+	/*! \cd{su_cs_dict_statistics()} */
 	void statistics(void) const {su_cs_dict_statistics(this);}
 };
 /* }}} */

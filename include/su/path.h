@@ -284,7 +284,7 @@ public:
 	class info;
 
 	/* info {{{ */
-	/*! \copydoc{PATHINFO} */
+	/*! \cd{PATHINFO} */
 	class info : private su_pathinfo{
 		// friend of time::spec
 	public:
@@ -306,82 +306,82 @@ public:
 		/*! \_ */
 		info &operator=(info const &t) {return assign(t);}
 
-		/*! \copydoc{su_pathinfo_stat()} */
+		/*! \cd{su_pathinfo_stat()} */
 		boole stat(char const *path) {return su_pathinfo_stat(this, path);}
 
-		/*! \copydoc{su_pathinfo_lstat()} */
+		/*! \cd{su_pathinfo_lstat()} */
 		boole lstat(char const *path) {return su_pathinfo_lstat(this, path);}
 
-		/*! \copydoc{su_pathinfo_fstat()} */
+		/*! \cd{su_pathinfo_fstat()} */
 		boole fstat(sz fd) {return su_pathinfo_fstat(this, fd);}
 
-		/*! \copydoc{su_pathinfo_descriptive_char()} */
+		/*! \cd{su_pathinfo_descriptive_char()} */
 		char descriptive_char(void) const {return su_pathinfo_descriptive_char(this);}
 
-		/*! \copydoc{su_pathinfo::pi_flags}.
+		/*! \cd{su_pathinfo::pi_flags}.
 		 * In C++ you better use specific checks like \r{is_dir()}. */
 		u32 flags(void) const {return pi_flags;}
 
-		boole is_blk(void) const {return su_pathinfo_is_blk(this);} /*!< \copydoc{su_pathinfo_is_blk()} */
-		boole is_chr(void) const {return su_pathinfo_is_chr(this);} /*!< \copydoc{su_pathinfo_is_chr()} */
-		boole is_dir(void) const {return su_pathinfo_is_dir(this);} /*!< \copydoc{su_pathinfo_is_dir()} */
-		boole is_fifo(void) const {return su_pathinfo_is_fifo(this);} /*!< \copydoc{su_pathinfo_is_fifo()} */
-		boole is_lnk(void) const {return su_pathinfo_is_lnk(this);} /*!< \copydoc{su_pathinfo_is_lnk()} */
-		boole is_reg(void) const {return su_pathinfo_is_reg(this);} /*!< \copydoc{su_pathinfo_is_reg()} */
-		boole is_sock(void) const {return su_pathinfo_is_sock(this);} /*!< \copydoc{su_pathinfo_is_sock()} */
+		boole is_blk(void) const {return su_pathinfo_is_blk(this);} /*!< \cd{su_pathinfo_is_blk()} */
+		boole is_chr(void) const {return su_pathinfo_is_chr(this);} /*!< \cd{su_pathinfo_is_chr()} */
+		boole is_dir(void) const {return su_pathinfo_is_dir(this);} /*!< \cd{su_pathinfo_is_dir()} */
+		boole is_fifo(void) const {return su_pathinfo_is_fifo(this);} /*!< \cd{su_pathinfo_is_fifo()} */
+		boole is_lnk(void) const {return su_pathinfo_is_lnk(this);} /*!< \cd{su_pathinfo_is_lnk()} */
+		boole is_reg(void) const {return su_pathinfo_is_reg(this);} /*!< \cd{su_pathinfo_is_reg()} */
+		boole is_sock(void) const {return su_pathinfo_is_sock(this);} /*!< \cd{su_pathinfo_is_sock()} */
 
 		boole is_sticky(void) const {return (pi_flags & iopf_svtx) != 0;} /*!< Has sticky bit set? */
 		boole is_setgid(void) const {return (pi_flags & iopf_sgid) != 0;} /*!< Is SETGID? */
 		boole is_setuid(void) const {return (pi_flags & iopf_suid) != 0;} /*!< Is SETUID? */
 
-		uz nlink(void) const {return pi_nlink;} /*!< \copydoc{su_pathinfo::pi_nlink} */
-		u64 ino(void) const {return pi_ino;} /*!< \copydoc{su_pathinfo::pi_ino} */
-		u64 dev(void) const {return pi_dev;} /*!< \copydoc{su_pathinfo::pi_dev} */
-		u64 rdev(void) const {return pi_rdev;} /*!< \copydoc{su_pathinfo::pi_rdev} */
-		uz uid(void) const {return pi_uid;} /*!< \copydoc{su_pathinfo::pi_uid} */
-		uz gid(void) const {return pi_gid;} /*!< \copydoc{su_pathinfo::pi_gid} */
-		u64 blocks(void) const {return pi_blocks;} /*!< \copydoc{su_pathinfo::pi_blocks} */
-		uz blksize(void) const {return pi_blksize;} /*!< \copydoc{su_pathinfo::pi_blksize} */
-		u64 size(void) const {return pi_size;} /*!< \copydoc{su_pathinfo::pi_size} */
+		uz nlink(void) const {return pi_nlink;} /*!< \cd{su_pathinfo::pi_nlink} */
+		u64 ino(void) const {return pi_ino;} /*!< \cd{su_pathinfo::pi_ino} */
+		u64 dev(void) const {return pi_dev;} /*!< \cd{su_pathinfo::pi_dev} */
+		u64 rdev(void) const {return pi_rdev;} /*!< \cd{su_pathinfo::pi_rdev} */
+		uz uid(void) const {return pi_uid;} /*!< \cd{su_pathinfo::pi_uid} */
+		uz gid(void) const {return pi_gid;} /*!< \cd{su_pathinfo::pi_gid} */
+		u64 blocks(void) const {return pi_blocks;} /*!< \cd{su_pathinfo::pi_blocks} */
+		uz blksize(void) const {return pi_blksize;} /*!< \cd{su_pathinfo::pi_blksize} */
+		u64 size(void) const {return pi_size;} /*!< \cd{su_pathinfo::pi_size} */
 
-		/*! \copydoc{su_pathinfo::pi_atime} */
+		/*! \cd{su_pathinfo::pi_atime} */
 		time::spec const &atime(void) const {return S(time::spec const&,*&pi_atime);}
 
-		/*! \copydoc{su_pathinfo::pi_mtime} */
+		/*! \cd{su_pathinfo::pi_mtime} */
 		time::spec const &mtime(void) const {return S(time::spec const&,*&pi_mtime);}
 
-		/*! \copydoc{su_pathinfo::pi_ctime} */
+		/*! \cd{su_pathinfo::pi_ctime} */
 		time::spec const &ctime(void) const {return S(time::spec const&,*&pi_ctime);}
 	};
 	/* }}} */
 
-	static boole const is_dev_style = su_PATH_IS_DEV_STYLE; /*!< \copydoc{su_PATH_IS_DEV_STYLE} */
+	static boole const is_dev_style = su_PATH_IS_DEV_STYLE; /*!< \cd{su_PATH_IS_DEV_STYLE} */
 
-	static char const sep_c = su_PATH_SEP_C; /*!< \copydoc{su_PATH_SEP_C} */
-	static char const list_sep_c = su_PATH_LIST_SEP_C; /*!< \copydoc{su_PATH_LIST_SEP_C} */
+	static char const sep_c = su_PATH_SEP_C; /*!< \cd{su_PATH_SEP_C} */
+	static char const list_sep_c = su_PATH_LIST_SEP_C; /*!< \cd{su_PATH_LIST_SEP_C} */
 
-	static char const sep[sizeof su_path_sep]; /*!< \copydoc{su_path_sep} */
-	static char const list_sep[sizeof su_path_list_sep]; /*!< \copydoc{su_path_list_sep} */
+	static char const sep[sizeof su_path_sep]; /*!< \cd{su_path_sep} */
+	static char const list_sep[sizeof su_path_list_sep]; /*!< \cd{su_path_list_sep} */
 
-	static char const current[sizeof su_PATH_CURRENT]; /*!< \copydoc{su_path_current} */
-	static char const null[sizeof su_PATH_NULL]; /*!< \copydoc{su_path_null} */
-	static char const root[sizeof su_PATH_ROOT]; /*!< \copydoc{su_path_root} */
+	static char const current[sizeof su_PATH_CURRENT]; /*!< \cd{su_path_current} */
+	static char const null[sizeof su_PATH_NULL]; /*!< \cd{su_path_null} */
+	static char const root[sizeof su_PATH_ROOT]; /*!< \cd{su_path_root} */
 
 	// string
 
-	/*! \copydoc{su_path_basename()} */
+	/*! \cd{su_path_basename()} */
 	static char const *basename(char *path){
 		ASSERT_RET(path != NIL, NIL);
 		return su_path_basename(path);
 	}
 
-	/*! \copydoc{su_path_dirname()} */
+	/*! \cd{su_path_dirname()} */
 	static char const *dirname(char *path){
 		ASSERT_RET(path != NIL, NIL);
 		return su_path_dirname(path);
 	}
 
-	/*! \copydoc{su_path_is_absolute()} */
+	/*! \cd{su_path_is_absolute()} */
 	static boole is_absolute(char const *path){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_is_absolute(path);
@@ -389,39 +389,39 @@ public:
 
 	// physical
 
-	/*! \copydoc{su_path_access()} */
+	/*! \cd{su_path_access()} */
 	static boole access(char const *path, BITENUM(u32,iopf_access) mode){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_access(path, mode);
 	}
 
-	/*! \copydoc{su_path_fchmod()} */
+	/*! \cd{su_path_fchmod()} */
 	static boole fchmod(sz fd, u32 permprot) {return su_path_fchmod(fd, permprot);}
 
-	/*! \copydoc{su_path_is_a_tty()} */
+	/*! \cd{su_path_is_a_tty()} */
 	static boole is_a_tty(sz fd) {return su_path_is_a_tty(fd);}
 
-	/*! \copydoc{su_path_link()} */
+	/*! \cd{su_path_link()} */
 	static boole link(char const *dst, char const *src){
 		ASSERT_RET(dst != NIL, FAL0);
 		ASSERT_RET(src != NIL, FAL0);
 		return su_path_link(dst, src);
 	}
 
-	/*! \copydoc{su_path_max_filename()} */
+	/*! \cd{su_path_max_filename()} */
 	static uz max_filename(char const *path=NIL) {return su_path_max_filename(path);}
 
-	/*! \copydoc{su_path_max_pathname()} */
+	/*! \cd{su_path_max_pathname()} */
 	static uz max_pathname(char const *path=NIL) {return su_path_max_pathname(path);}
 
-	/*! \copydoc{su_path_mkdir()} */
+	/*! \cd{su_path_mkdir()} */
 	static boole mkdir(char const *path, BITENUM(u32,iopf_permission) perm=iopf_perm_mask,
 			boole recursive=FAL0, u32 estate=state::none){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_mkdir(path, perm, recursive, estate);
 	}
 
-	/*! \copydoc{su_path_rename()} */
+	/*! \cd{su_path_rename()} */
 	static boole rename(char const *dst, char const *src){
 		ASSERT_RET(dst != NIL, FAL0);
 		ASSERT_RET(src != NIL, FAL0);
@@ -429,26 +429,26 @@ public:
 	}
 
 #if defined su_HAVE_PATH_RM_AT || defined DOXYGEN
-	/*! \copydoc{su_path_rm_at()} */
+	/*! \cd{su_path_rm_at()} */
 	static boole rm_at(sz dirfd, char const *path, BITENUM(u32,iopf_at) flags=iopf_at_none){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_rm_at(dirfd, path, flags);
 	}
 #endif
 
-	/*! \copydoc{su_path_rmdir()} */
+	/*! \cd{su_path_rmdir()} */
 	static boole rmdir(char const *path){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_rmdir(path);
 	}
 
-	/*! \copydoc{su_path_touch()} */
+	/*! \cd{su_path_touch()} */
 	static boole touch(char const *path, time::spec const *tsp){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_touch(path, S(struct su_timespec const*,tsp));
 	}
 
-	/*! \copydoc{su_path_umask()} */
+	/*! \cd{su_path_umask()} */
 	static u32 umask(BITENUM(u32,iopf_permission) perm) {return su_path_umask(perm);}
 };
 /* }}} */

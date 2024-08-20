@@ -124,14 +124,14 @@ class EXPORT utf8{
 	su_CLASS_NO_COPY(utf8);
 public:
 	enum{
-		buffer_size = su_UTF8_BUFFER_SIZE /*!< \copydoc{su_UTF8_BUFFER_SIZE} */
+		buffer_size = su_UTF8_BUFFER_SIZE /*!< \cd{su_UTF8_BUFFER_SIZE} */
 	};
 
-	static char const name[sizeof su_UTF8_NAME]; /*!< \copydoc{su_utf8_name} */
-	static char const name_lower[sizeof su_UTF8_NAME_LOWER]; /*!< \copydoc{su_utf8_name_lower} */
-	static char const replacer[sizeof su_UTF8_REPLACER]; /*!< \copydoc{su_utf8_replacer} */
+	static char const name[sizeof su_UTF8_NAME]; /*!< \cd{su_utf8_name} */
+	static char const name_lower[sizeof su_UTF8_NAME_LOWER]; /*!< \cd{su_utf8_name_lower} */
+	static char const replacer[sizeof su_UTF8_REPLACER]; /*!< \cd{su_utf8_replacer} */
 
-	/*! \copydoc{su_utf8_to_32()} */
+	/*! \cd{su_utf8_to_32()} */
 	static u32 convert_to_32(char const **bdat, uz *blen) {return su_utf8_to_32(bdat, blen);}
 };
 /* }}} */
@@ -144,11 +144,11 @@ public:
 class utf32{
 	su_CLASS_NO_COPY(utf32);
 public:
-	static char const name[sizeof su_UTF32_NAME]; /*!< \copydoc{su_utf32_name} */
-	static char const name_lower[sizeof su_UTF32_NAME_LOWER]; /*!< \copydoc{su_utf32_name_lower} */
-	static u32 const replacer = su_UTF32_REPLACER; /*!< \copydoc{su_UTF32_REPLACER} */
+	static char const name[sizeof su_UTF32_NAME]; /*!< \cd{su_utf32_name} */
+	static char const name_lower[sizeof su_UTF32_NAME_LOWER]; /*!< \cd{su_utf32_name_lower} */
+	static u32 const replacer = su_UTF32_REPLACER; /*!< \cd{su_UTF32_REPLACER} */
 
-	/*! \copydoc{su_utf32_to_8()} */
+	/*! \cd{su_utf32_to_8()} */
 	static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
 };
 /* }}} */

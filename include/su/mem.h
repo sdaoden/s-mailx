@@ -431,25 +431,25 @@ public:
 	 * @{
 	 */
 
-	/*! \copydoc{su_mem_cmp()} */
+	/*! \cd{su_mem_cmp()} */
 	static sz cmp(void const *vpa, void const *vpb, uz len) {return su_mem_cmp(vpa, vpb, len);}
 
-	/*! \copydoc{su_mem_copy()} */
+	/*! \cd{su_mem_copy()} */
 	static void *copy(void *vp, void const *src, uz len) {return su_mem_copy(vp, src, len);}
 
-	/*! \copydoc{su_mem_find()} */
+	/*! \cd{su_mem_find()} */
 	static void *find(void const *vp, s32 what, uz len) {return su_mem_find(vp, what, len);}
 
-	/*! \copydoc{su_mem_rfind()} */
+	/*! \cd{su_mem_rfind()} */
 	static void *rfind(void const *vp, s32 what, uz len) {return su_mem_rfind(vp, what, len);}
 
-	/*! \copydoc{su_mem_move()} */
+	/*! \cd{su_mem_move()} */
 	static void *move(void *vp, void const *src, uz len) {return su_mem_move(vp, src, len);}
 
-	/*! \copydoc{su_mem_set()} */
+	/*! \cd{su_mem_set()} */
 	static void *set(void *vp, s32 what, uz len) {return su_mem_set(vp, what, len);}
 
-	/*! \copydoc{su_mem_zero()} */
+	/*! \cd{su_mem_zero()} */
 	static void zero(void *vp, uz len) {su_mem_zero(vp, len);}
 	/*! @} *//* }}} */
 
@@ -469,37 +469,37 @@ public:
 	struct johnny;
 	struct mary;
 
-	/*! \copydoc{su_mem_alloc_flags} */
+	/*! \cd{su_mem_alloc_flags} */
 	enum alloc_flags{
-		alloc_none = su_MEM_ALLOC_NONE, /*!< \copydoc{su_MEM_ALLOC_NONE} */
-		alloc_zero = su_MEM_ALLOC_ZERO, /*!< \copydoc{su_MEM_ALLOC_ZERO} */
-		alloc_conceal = su_MEM_ALLOC_CONCEAL, /*!< \copydoc{su_MEM_ALLOC_CONCEAL} */
+		alloc_none = su_MEM_ALLOC_NONE, /*!< \cd{su_MEM_ALLOC_NONE} */
+		alloc_zero = su_MEM_ALLOC_ZERO, /*!< \cd{su_MEM_ALLOC_ZERO} */
+		alloc_conceal = su_MEM_ALLOC_CONCEAL, /*!< \cd{su_MEM_ALLOC_CONCEAL} */
 
-		alloc_32bit_overflow = su_MEM_ALLOC_32BIT_OVERFLOW, /*!< \copydoc{su_MEM_ALLOC_32BIT_OVERFLOW} */
-		alloc_31bit_overflow = su_MEM_ALLOC_31BIT_OVERFLOW, /*!< \copydoc{su_MEM_ALLOC_31BIT_OVERFLOW} */
+		alloc_32bit_overflow = su_MEM_ALLOC_32BIT_OVERFLOW, /*!< \cd{su_MEM_ALLOC_32BIT_OVERFLOW} */
+		alloc_31bit_overflow = su_MEM_ALLOC_31BIT_OVERFLOW, /*!< \cd{su_MEM_ALLOC_31BIT_OVERFLOW} */
 
-		alloc_overflow_ok = su_MEM_ALLOC_OVERFLOW_OK, /*!< \copydoc{su_MEM_ALLOC_OVERFLOW_OK} */
-		alloc_nomem_ok = su_MEM_ALLOC_NOMEM_OK, /*!< \copydoc{su_MEM_ALLOC_NOMEM_OK} */
-		alloc_mayfail = su_MEM_ALLOC_MAYFAIL, /*!< \copydoc{su_MEM_ALLOC_MAYFAIL} */
-		alloc_mustfail = su_MEM_ALLOC_MUSTFAIL, /*!< \copydoc{su_MEM_ALLOC_MUSTFAIL} */
+		alloc_overflow_ok = su_MEM_ALLOC_OVERFLOW_OK, /*!< \cd{su_MEM_ALLOC_OVERFLOW_OK} */
+		alloc_nomem_ok = su_MEM_ALLOC_NOMEM_OK, /*!< \cd{su_MEM_ALLOC_NOMEM_OK} */
+		alloc_mayfail = su_MEM_ALLOC_MAYFAIL, /*!< \cd{su_MEM_ALLOC_MAYFAIL} */
+		alloc_mustfail = su_MEM_ALLOC_MUSTFAIL, /*!< \cd{su_MEM_ALLOC_MUSTFAIL} */
 
-		alloc_mark_0 = su_MEM_ALLOC_MARK_0, /*!< \copydoc{su_MEM_ALLOC_MARK_0} */
-		alloc_mark_1 = su_MEM_ALLOC_MARK_1, /*!< \copydoc{su_MEM_ALLOC_MARK_1} */
-		alloc_mark_2 = su_MEM_ALLOC_MARK_2, /*!< \copydoc{su_MEM_ALLOC_MARK_2} */
-		alloc_mark_3 = su_MEM_ALLOC_MARK_3 /*!< \copydoc{su_MEM_ALLOC_MARK_3} */
+		alloc_mark_0 = su_MEM_ALLOC_MARK_0, /*!< \cd{su_MEM_ALLOC_MARK_0} */
+		alloc_mark_1 = su_MEM_ALLOC_MARK_1, /*!< \cd{su_MEM_ALLOC_MARK_1} */
+		alloc_mark_2 = su_MEM_ALLOC_MARK_2, /*!< \cd{su_MEM_ALLOC_MARK_2} */
+		alloc_mark_3 = su_MEM_ALLOC_MARK_3 /*!< \cd{su_MEM_ALLOC_MARK_3} */
 	};
 
 	enum{
-		alloc_min = su_MEM_ALLOC_MIN /*!< \copydoc{su_MEM_ALLOC_MIN} */
+		alloc_min = su_MEM_ALLOC_MIN /*!< \cd{su_MEM_ALLOC_MIN} */
 	};
 
-	/*! \copydoc{su_mem_conf_option} */
+	/*! \cd{su_mem_conf_option} */
 	enum conf_option{
-		conf_debug = su_MEM_CONF_DEBUG, /*!< \copydoc{su_MEM_CONF_DEBUG} */
-		conf_on_error_emerg = su_MEM_CONF_ON_ERROR_EMERG, /*!< \copydoc{su_MEM_CONF_ON_ERROR_EMERG} */
-		conf_linger_free = su_MEM_CONF_LINGER_FREE, /*!< \copydoc{su_MEM_CONF_LINGER_FREE} */
-		conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE, /*!< \copydoc{su_MEM_CONF_LINGER_FREE_RELEASE} */
-		conf_filler_set = su_MEM_CONF_FILLER_SET /*!< \copydoc{su_MEM_CONF_FILLER_SET} */
+		conf_debug = su_MEM_CONF_DEBUG, /*!< \cd{su_MEM_CONF_DEBUG} */
+		conf_on_error_emerg = su_MEM_CONF_ON_ERROR_EMERG, /*!< \cd{su_MEM_CONF_ON_ERROR_EMERG} */
+		conf_linger_free = su_MEM_CONF_LINGER_FREE, /*!< \cd{su_MEM_CONF_LINGER_FREE} */
+		conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE, /*!< \cd{su_MEM_CONF_LINGER_FREE_RELEASE} */
+		conf_filler_set = su_MEM_CONF_FILLER_SET /*!< \cd{su_MEM_CONF_FILLER_SET} */
 	};
 
 /*! The base of \r{su_MEM_NEW()} etc.
@@ -602,16 +602,16 @@ public:
 	 * @{
 	 */
 
-	/*! \copydoc{su_mem_get_usable_size()} */
+	/*! \cd{su_mem_get_usable_size()} */
 	static uz get_usable_size(uz size) {return su_mem_get_usable_size(size);}
 
-	/*! \copydoc{su_mem_conf_option()} */
+	/*! \cd{su_mem_conf_option()} */
 	static void set_conf(BITENUM(u32,conf_option) co, uz val) {su_mem_set_conf(co, val);}
 
-	/*! \copydoc{su_mem_check()} */
+	/*! \cd{su_mem_check()} */
 	static void check(void) {su_mem_check();}
 
-	/*! \copydoc{su_mem_trace()} */
+	/*! \cd{su_mem_trace()} */
 	static void trace(boole dumpmem=FAL0) {su_mem_trace(dumpmem);}
 
 	template<class T>

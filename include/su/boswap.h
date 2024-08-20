@@ -117,40 +117,40 @@ class boswap;
 class EXPORT boswap{
 	su_CLASS_NO_COPY(boswap);
 public:
-	/*! \copydoc{su_boswap_16()} */
+	/*! \cd{su_boswap_16()} */
 	static u16 swap_16(u16 v) {return su_boswap_16(v);}
-	/*! \copydoc{su_boswap_32()} */
+	/*! \cd{su_boswap_32()} */
 	static u32 swap_32(u32 v) {return su_boswap_32(v);}
-	/*! \copydoc{su_boswap_64()} */
+	/*! \cd{su_boswap_64()} */
 	static u64 swap_64(u64 v) {return su_boswap_64(v);}
-	/*! \copydoc{su_boswap_z()} */
+	/*! \cd{su_boswap_z()} */
 	static uz swap_z(uz v) {return su_boswap_z(v);}
 
-	/*! \copydoc{su_boswap_big_16()} */
+	/*! \cd{su_boswap_big_16()} */
 	static u16 big_16(u16 v) {return su_boswap_big_16(v);}
-	/*! \copydoc{su_boswap_big_32()} */
+	/*! \cd{su_boswap_big_32()} */
 	static u32 big_32(u32 v) {return su_boswap_big_32(v);}
-	/*! \copydoc{su_boswap_big_64()} */
+	/*! \cd{su_boswap_big_64()} */
 	static u64 big_64(u64 v) {return su_boswap_big_64(v);}
-	/*! \copydoc{su_boswap_big_z()} */
+	/*! \cd{su_boswap_big_z()} */
 	static uz big_z(uz v) {return su_boswap_big_z(v);}
 
-	/*! \copydoc{su_boswap_little_16()} */
+	/*! \cd{su_boswap_little_16()} */
 	static u16 little_16(u16 v) {return su_boswap_little_16(v);}
-	/*! \copydoc{su_boswap_little_32()} */
+	/*! \cd{su_boswap_little_32()} */
 	static u32 little_32(u32 v) {return su_boswap_little_32(v);}
-	/*! \copydoc{su_boswap_little_64()} */
+	/*! \cd{su_boswap_little_64()} */
 	static u64 little_64(u64 v) {return su_boswap_little_64(v);}
-	/*! \copydoc{su_boswap_little_z()} */
+	/*! \cd{su_boswap_little_z()} */
 	static uz little_z(uz v) {return su_boswap_little_z(v);}
 
-	/*! \copydoc{su_boswap_net_16()} */
+	/*! \cd{su_boswap_net_16()} */
 	static u16 net_16(u16 v) {return su_boswap_net_16(v);}
-	/*! \copydoc{su_boswap_net_32()} */
+	/*! \cd{su_boswap_net_32()} */
 	static u32 net_32(u32 v) {return su_boswap_net_32(v);}
-	/*! \copydoc{su_boswap_net_64()} */
+	/*! \cd{su_boswap_net_64()} */
 	static u64 net_64(u64 v) {return su_boswap_net_64(v);}
-	/*! \copydoc{su_boswap_net_z()} */
+	/*! \cd{su_boswap_net_z()} */
 	static uz net_z(uz v) {return su_boswap_net_z(v);}
 };
 /* }}} */
