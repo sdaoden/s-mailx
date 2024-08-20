@@ -80,14 +80,6 @@
 # define CHARSET_8BIT_OKEY ok_v_ttycharset
 #endif
 
-#ifndef HOST_NAME_MAX
-# ifdef _POSIX_HOST_NAME_MAX
-#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
-# else
-#  define HOST_NAME_MAX 255
-# endif
-#endif
-
 /* Supported [mx_HAVE_]IDNA implementations TODO should not be here!?! */
 #define n_IDNA_IMPL_LIBIDN2 0
 #define n_IDNA_IMPL_LIBIDN 1
@@ -115,7 +107,8 @@
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
-/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
+/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS)
+ * TODO su_path sources perform a proper check! */
 #ifndef PATH_MAX
 # ifdef MAXPATHLEN
 #  define PATH_MAX MAXPATHLEN
