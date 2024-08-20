@@ -207,21 +207,21 @@ public:
 	/*! \remarks{As documented in \r{SMP} \r{create()} is real constructor!} */
 	spinlock(void) {STRUCT_ZERO(su_spinlock, this);}
 
-	/*! \copydoc{su_spinlock_gut()} */
+	/*! \cd{su_spinlock_gut()} */
 	~spinlock(void) {su_spinlock_gut(this);}
 
-	/*! \copydoc{su_spinlock_create()} */
+	/*! \cd{su_spinlock_create()} */
 	s32 create(char const *dbg_name_or_nil=NIL, u32 estate=state::none){
 		return su_spinlock_create(this, dbg_name_or_nil, estate);
 	}
 
-	/*! \copydoc{su_spinlock_lock()} */
+	/*! \cd{su_spinlock_lock()} */
 	void lock(void) {su_spinlock_lock(this);}
 
-	/*! \copydoc{su_spinlock_trylock()} */
+	/*! \cd{su_spinlock_trylock()} */
 	boole trylock(void) {return su_spinlock_trylock(this);}
 
-	/*! \copydoc{su_spinlock_unlock()} */
+	/*! \cd{su_spinlock_unlock()} */
 	void unlock(void) {su_spinlock_unlock(this);}
 };
 /* }}} */

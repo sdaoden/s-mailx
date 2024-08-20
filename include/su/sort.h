@@ -62,7 +62,7 @@ class sort;
 class sort{
 	su_CLASS_NO_COPY(sort);
 public:
-	/*! \copydoc{su_sort_shell_vpp()} */
+	/*! \cd{su_sort_shell_vpp()} */
 	template<class T>
 	static void shell(T const **arr, uz entries, typename type_toolbox<T>::cmp_fun cmp_or_nil){
 		ASSERT_RET_VOID(entries == 0 || arr != NIL);

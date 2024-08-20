@@ -192,7 +192,7 @@ INLINE void su_mutex_gut(struct su_mutex *self){
 
 /*! Turn \SELF into a flat mutex.
  * It is asserted that \SELF is not locked, and normally this should be called directly after the constructor;
- * \r{su_MUTEX_FLAT_I9R()} says: \copydoc{su_MUTEX_FLAT_I9R()} */
+ * \r{su_MUTEX_FLAT_I9R()} says: \cd{su_MUTEX_FLAT_I9R()} */
 INLINE void su_mutex_disable_recursion(struct su_mutex *self){
 	ASSERT(self);
 	UNUSED(self);
@@ -356,70 +356,70 @@ public:
 	/*! \remarks{As documented in \r{SMP} \r{create()} is real constructor!} */
 	mutex(void) {STRUCT_ZERO(su_mutex, this);}
 
-	/*! \copydoc{su_mutex_gut()} */
+	/*! \cd{su_mutex_gut()} */
 	~mutex(void) {su_mutex_gut(this);}
 
-	/*! \copydoc{su_mutex_create()} */
+	/*! \cd{su_mutex_create()} */
 	s32 create(char const *name=NIL, u32 estate=state::none) {return su_mutex_create(this, name, estate);}
 
-	/*! \copydoc{su_mutex_disable_recursion()} */
+	/*! \cd{su_mutex_disable_recursion()} */
 	void disable_recursion(void){
 		ASSERT_RET_VOID(!is_locked());
 		su_mutex_disable_recursion(this);
 	}
 
-	/*! \copydoc{su_mutex_name()} */
+	/*! \cd{su_mutex_name()} */
 	char const *name(void) const {return su_mutex_name(this);}
 
-	/*! \copydoc{su_mutex_file()} */
+	/*! \cd{su_mutex_file()} */
 	char const *file(void) const {return su_mutex_file(this);}
 
-	/*! \copydoc{su_mutex_line()} */
+	/*! \cd{su_mutex_line()} */
 	u32 line(void) const {return su_mutex_line(this);}
 
-	/*! \copydoc{su_mutex_is_locked()} */
+	/*! \cd{su_mutex_is_locked()} */
 	boole is_locked(void) const {return su_mutex_is_locked(this);}
 
-	/*! \copydoc{su_mutex_lock()} */
+	/*! \cd{su_mutex_lock()} */
 	void lock(void) {su_mutex_lock(this);}
 
-	/*! \copydoc{su_mutex_lock_dbg()} */
+	/*! \cd{su_mutex_lock_dbg()} */
 	void lock(char const *file, u32 line) {su_mutex_lock_dbg(this, file, line);}
 
-	/*! \copydoc{su_mutex_lock_ts()} */
+	/*! \cd{su_mutex_lock_ts()} */
 	void lock(thread *tsp){
 		ASSERT_EXEC(tsp == thread::self(), tsp = thread::self());
 		su_mutex_lock_ts(this, tsp);
 	}
 
-	/*! \copydoc{su_mutex_lock_ts_dbg()} */
+	/*! \cd{su_mutex_lock_ts_dbg()} */
 	void lock(thread *tsp, char const *file, u32 line){
 		ASSERT_EXEC(tsp == thread::self(), tsp = thread::self());
 		su_mutex_lock_ts_dbg(this, tsp, file, line);
 	}
 
-	/*! \copydoc{su_mutex_trylock()} */
+	/*! \cd{su_mutex_trylock()} */
 	boole trylock(void) {return su_mutex_trylock(this);}
 
-	/*! \copydoc{su_mutex_trylock_dbg()} */
+	/*! \cd{su_mutex_trylock_dbg()} */
 	boole trylock(char const *file, u32 line) {return su_mutex_trylock_dbg(this, file, line);}
 
-	/*! \copydoc{su_mutex_trylock_ts()} */
+	/*! \cd{su_mutex_trylock_ts()} */
 	boole trylock(thread *tsp){
 		ASSERT_EXEC(tsp == thread::self(), tsp = thread::self());
 		return su_mutex_trylock_ts(this, tsp);
 	}
 
-	/*! \copydoc{su_mutex_trylock_ts_dbg()} */
+	/*! \cd{su_mutex_trylock_ts_dbg()} */
 	boole trylock(thread *tsp, char const *file, u32 line){
 		ASSERT_EXEC(tsp == thread::self(), tsp = thread::self());
 		return su_mutex_trylock_ts_dbg(this, tsp, file, line);
 	}
 
-	/*! \copydoc{su_mutex_unlock()} */
+	/*! \cd{su_mutex_unlock()} */
 	void unlock(void) {su_mutex_unlock(this);}
 
-	/*! \copydoc{su_mutex_unlock_dbg()} */
+	/*! \cd{su_mutex_unlock_dbg()} */
 	void unlock(char const *file, u32 line) {su_mutex_unlock_dbg(this, file, line);}
 };
 /* }}} */

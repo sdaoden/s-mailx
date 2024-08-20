@@ -347,201 +347,201 @@ class EXPORT cs{
 	// friend of siphash
 	su_CLASS_NO_COPY(cs);
 public:
-	/*! \copydoc{su_cs_ctype} */
+	/*! \cd{su_cs_ctype} */
 	enum ctype{
-		ctype_none = su_CS_CTYPE_NONE, /*!< \copydoc{su_CS_CTYPE_NONE} */
-		ctype_alnum = su_CS_CTYPE_ALNUM, /*!< \copydoc{su_CS_CTYPE_ALNUM} */
-		ctype_alpha = su_CS_CTYPE_ALPHA, /*!< \copydoc{su_CS_CTYPE_ALPHA} */
-		ctype_blank = su_CS_CTYPE_BLANK, /*!< \copydoc{su_CS_CTYPE_BLANK} */
-		ctype_cntrl = su_CS_CTYPE_CNTRL, /*!< \copydoc{su_CS_CTYPE_CNTRL} */
-		ctype_digit = su_CS_CTYPE_DIGIT, /*!< \copydoc{su_CS_CTYPE_DIGIT} */
-		ctype_graph = su_CS_CTYPE_GRAPH, /*!< \copydoc{su_CS_CTYPE_GRAPH} */
-		ctype_lower = su_CS_CTYPE_LOWER, /*!< \copydoc{su_CS_CTYPE_LOWER} */
-		ctype_print = su_CS_CTYPE_PRINT, /*!< \copydoc{su_CS_CTYPE_PRINT} */
-		ctype_punct = su_CS_CTYPE_PUNCT, /*!< \copydoc{su_CS_CTYPE_PUNCT} */
-		ctype_space = su_CS_CTYPE_SPACE, /*!< \copydoc{su_CS_CTYPE_SPACE} */
-		ctype_upper = su_CS_CTYPE_UPPER, /*!< \copydoc{su_CS_CTYPE_UPPER} */
-		ctype_white = su_CS_CTYPE_WHITE, /*!< \copydoc{su_CS_CTYPE_WHITE} */
-		ctype_xdigit = su_CS_CTYPE_XDIGIT /*!< \copydoc{su_CS_CTYPE_XDIGIT} */
+		ctype_none = su_CS_CTYPE_NONE, /*!< \cd{su_CS_CTYPE_NONE} */
+		ctype_alnum = su_CS_CTYPE_ALNUM, /*!< \cd{su_CS_CTYPE_ALNUM} */
+		ctype_alpha = su_CS_CTYPE_ALPHA, /*!< \cd{su_CS_CTYPE_ALPHA} */
+		ctype_blank = su_CS_CTYPE_BLANK, /*!< \cd{su_CS_CTYPE_BLANK} */
+		ctype_cntrl = su_CS_CTYPE_CNTRL, /*!< \cd{su_CS_CTYPE_CNTRL} */
+		ctype_digit = su_CS_CTYPE_DIGIT, /*!< \cd{su_CS_CTYPE_DIGIT} */
+		ctype_graph = su_CS_CTYPE_GRAPH, /*!< \cd{su_CS_CTYPE_GRAPH} */
+		ctype_lower = su_CS_CTYPE_LOWER, /*!< \cd{su_CS_CTYPE_LOWER} */
+		ctype_print = su_CS_CTYPE_PRINT, /*!< \cd{su_CS_CTYPE_PRINT} */
+		ctype_punct = su_CS_CTYPE_PUNCT, /*!< \cd{su_CS_CTYPE_PUNCT} */
+		ctype_space = su_CS_CTYPE_SPACE, /*!< \cd{su_CS_CTYPE_SPACE} */
+		ctype_upper = su_CS_CTYPE_UPPER, /*!< \cd{su_CS_CTYPE_UPPER} */
+		ctype_white = su_CS_CTYPE_WHITE, /*!< \cd{su_CS_CTYPE_WHITE} */
+		ctype_xdigit = su_CS_CTYPE_XDIGIT /*!< \cd{su_CS_CTYPE_XDIGIT} */
 	};
 
-	/*! \copydoc{su_cs_toolbox} */
+	/*! \cd{su_cs_toolbox} */
 	static NSPC(su)type_toolbox<char*> const * const type_toolbox;
-	/*! \copydoc{su_cs_toolbox} */
+	/*! \cd{su_cs_toolbox} */
 	static NSPC(su)type_toolbox<char const*> const * const const_type_toolbox;
 
-	/*! \copydoc{su_cs_toolbox_case} */
+	/*! \cd{su_cs_toolbox_case} */
 	static NSPC(su)type_toolbox<char*> const * const type_toolbox_case;
-	/*! \copydoc{su_cs_toolbox_case} */
+	/*! \cd{su_cs_toolbox_case} */
 	static NSPC(su)type_toolbox<char const*> const * const const_type_toolbox_case;
 
-	/*! \copydoc{su_cs_is_ascii()} */
+	/*! \cd{su_cs_is_ascii()} */
 	static boole is_ascii(s32 x) {return su_cs_is_ascii(x);}
 
-	/*! \copydoc{su_cs_is_alnum()} */
+	/*! \cd{su_cs_is_alnum()} */
 	static boole is_alnum(s32 x) {return su_cs_is_alnum(x);}
 
-	/*! \copydoc{su_cs_is_alpha()} */
+	/*! \cd{su_cs_is_alpha()} */
 	static boole is_alpha(s32 x) {return su_cs_is_alpha(x);}
 
-	/*! \copydoc{su_cs_is_blank()} */
+	/*! \cd{su_cs_is_blank()} */
 	static boole is_blank(s32 x) {return su_cs_is_blank(x);}
 
-	/*! \copydoc{su_cs_is_cntrl()} */
+	/*! \cd{su_cs_is_cntrl()} */
 	static boole is_cntrl(s32 x) {return su_cs_is_cntrl(x);}
 
-	/*! \copydoc{su_cs_is_digit()} */
+	/*! \cd{su_cs_is_digit()} */
 	static boole is_digit(s32 x) {return su_cs_is_digit(x);}
 
-	/*! \copydoc{su_cs_is_graph()} */
+	/*! \cd{su_cs_is_graph()} */
 	static boole is_graph(s32 x) {return su_cs_is_graph(x);}
 
-	/*! \copydoc{su_cs_is_lower()} */
+	/*! \cd{su_cs_is_lower()} */
 	static boole is_lower(s32 x) {return su_cs_is_lower(x);}
 
-	/*! \copydoc{su_cs_is_print()} */
+	/*! \cd{su_cs_is_print()} */
 	static boole is_print(s32 x) {return su_cs_is_print(x);}
 
-	/*! \copydoc{su_cs_is_punct()} */
+	/*! \cd{su_cs_is_punct()} */
 	static boole is_punct(s32 x) {return su_cs_is_punct(x);}
 
-	/*! \copydoc{su_cs_is_space()} */
+	/*! \cd{su_cs_is_space()} */
 	static boole is_space(s32 x) {return su_cs_is_space(x);}
 
-	/*! \copydoc{su_cs_is_upper()} */
+	/*! \cd{su_cs_is_upper()} */
 	static boole is_upper(s32 x) {return su_cs_is_upper(x);}
 
-	/*! \copydoc{su_cs_is_white()} */
+	/*! \cd{su_cs_is_white()} */
 	static boole is_white(s32 x) {return su_cs_is_white(x);}
 
-	/*! \copydoc{su_cs_is_xdigit()} */
+	/*! \cd{su_cs_is_xdigit()} */
 	static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
-	/*! \copydoc{su_cs_is_ctype()} */
+	/*! \cd{su_cs_is_ctype()} */
 	static boole is_ctype(s32 x, BITENUM(u32,ctype) ct) {return su_cs_is_ctype(x, ct);}
 
-	/*! \copydoc{su_cs_cmp()} */
+	/*! \cd{su_cs_cmp()} */
 	static sz cmp(char const *cp1, char const *cp2) {return su_cs_cmp(cp1, cp2);}
 
-	/*! \copydoc{su_cs_cmp_n()} */
+	/*! \cd{su_cs_cmp_n()} */
 	static sz cmp(char const *cp1, char const *cp2, uz n) {return su_cs_cmp_n(cp1, cp2, n);}
 
-	/*! \copydoc{su_cs_cmp_case()} */
+	/*! \cd{su_cs_cmp_case()} */
 	static sz cmp_case(char const *cp1, char const *cp2) {return su_cs_cmp_case(cp1, cp2);}
 
-	/*! \copydoc{su_cs_cmp_case_n()} */
+	/*! \cd{su_cs_cmp_case_n()} */
 	static sz cmp_case(char const *cp1, char const *cp2, uz n) {return su_cs_cmp_case_n(cp1, cp2, n);}
 
-	/*! \copydoc{su_cs_copy_n()} */
+	/*! \cd{su_cs_copy_n()} */
 	static char *copy(char *dst, char const *src, uz n) {return su_cs_copy_n(dst, src, n);}
 
-	/*! \copydoc{su_cs_dup_cbuf()} */
+	/*! \cd{su_cs_dup_cbuf()} */
 	static char *dup(char const *buf, uz len, u32 estate=state::none) {return su_cs_dup_cbuf(buf, len, estate);}
 
-	/*! \copydoc{su_cs_dup()} */
+	/*! \cd{su_cs_dup()} */
 	static char *dup(char const *cp, u32 estate=state::none) {return su_cs_dup(cp, estate);}
 
-	/*! \copydoc{su_cs_ends_with_case()} */
+	/*! \cd{su_cs_ends_with_case()} */
 	static boole ends_with_case(char const *cp, char const *x) {return su_cs_ends_with_case(cp, x);}
 
-	/*! \copydoc{su_cs_find()} */
+	/*! \cd{su_cs_find()} */
 	static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}
 
-	/*! \copydoc{su_cs_find_c()} */
+	/*! \cd{su_cs_find_c()} */
 	static char *find(char const *cp, char x) {return su_cs_find_c(cp, x);}
 
-	/*! \copydoc{su_cs_find_case()} */
+	/*! \cd{su_cs_find_case()} */
 	static char *find_case(char const *cp, char const *x) {return su_cs_find_case(cp, x);}
 
-	/*! \copydoc{su_cs_first_of()} */
+	/*! \cd{su_cs_first_of()} */
 	static uz first_of(char const *cp, char const *xp) {return su_cs_first_of(cp, xp);}
 
-	/*! \copydoc{su_cs_first_of_cbuf_cbuf()} */
+	/*! \cd{su_cs_first_of_cbuf_cbuf()} */
 	static uz first_of(char const *cp, uz cplen, char const *xp, uz xplen){
 		return su_cs_first_of_cbuf_cbuf(cp, cplen, xp, xplen);
 	}
 
-	/*! \copydoc{su_cs_first_not_of()} */
+	/*! \cd{su_cs_first_not_of()} */
 	static uz first_not_of(char const *cp, char const *xp) {return su_cs_first_not_of(cp, xp);}
 
-	/*! \copydoc{su_cs_first_not_of_cbuf_cbuf()} */
+	/*! \cd{su_cs_first_not_of_cbuf_cbuf()} */
 	static uz first_not_of(char const *cp, uz cplen, char const *xp, uz xplen){
 		return su_cs_first_not_of_cbuf_cbuf(cp, cplen, xp, xplen);
 	}
 
-	/*! \copydoc{su_cs_hash_cbuf()} */
+	/*! \cd{su_cs_hash_cbuf()} */
 	static uz hash(char const *buf, uz len) {return su_cs_hash_cbuf(buf, len);}
 
-	/*! \copydoc{su_cs_hash()} */
+	/*! \cd{su_cs_hash()} */
 	static uz hash(char const *cp) {return su_cs_hash(cp);}
 
-	/*! \copydoc{su_cs_hash_case_cbuf()} */
+	/*! \cd{su_cs_hash_case_cbuf()} */
 	static uz hash_case(char const *buf, uz len) {return su_cs_hash_case_cbuf(buf, len);}
 
-	/*! \copydoc{su_cs_hash_case()} */
+	/*! \cd{su_cs_hash_case()} */
 	static uz hash_case(char const *cp) {return su_cs_hash_case(cp);}
 
 #ifdef su_HAVE_MD
-	/*! \copydoc{su_cs_hash_strong_setup()} */
+	/*! \cd{su_cs_hash_strong_setup()} */
 	static s32 hash_strong_setup(siphash const *tp, u32 estate=state::none){
 		return su_cs_hash_strong_setup(S(struct su_siphash const*,tp), estate);
 	}
 
-	/*! \copydoc{su_cs_hash_strong_cbuf()} */
+	/*! \cd{su_cs_hash_strong_cbuf()} */
 	static uz hash_strong(char const *buf, uz len) {return su_cs_hash_strong_cbuf(buf, len);}
 
-	/*! \copydoc{su_cs_hash_strong()} */
+	/*! \cd{su_cs_hash_strong()} */
 	static uz hash_strong(char const *cp) {return su_cs_hash_strong(cp);}
 
-	/*! \copydoc{su_cs_hash_strong_case_cbuf()} */
+	/*! \cd{su_cs_hash_strong_case_cbuf()} */
 	static uz hash_strong_case(char const *buf, uz len) {return su_cs_hash_strong_case_cbuf(buf, len);}
 
-	/*! \copydoc{su_cs_hash_strong_case()} */
+	/*! \cd{su_cs_hash_strong_case()} */
 	static uz hash_strong_case(char const *cp) {return su_cs_hash_strong_case(cp);}
 #endif /* su_HAVE_MD */
 
-	/*! \copydoc{su_cs_len()} */
+	/*! \cd{su_cs_len()} */
 	static uz len(char const *cp) {return su_cs_len(cp);}
 
-	/*! \copydoc{su_cs_pcopy()} */
+	/*! \cd{su_cs_pcopy()} */
 	static char *pcopy(char *dst, char const *src) {return su_cs_pcopy(dst, src);}
 
-	/*! \copydoc{su_cs_pcopy_n()} */
+	/*! \cd{su_cs_pcopy_n()} */
 	static char *pcopy(char *dst, char const *src, uz n) {return su_cs_pcopy_n(dst, src, n);}
 
-	/*! \copydoc{su_cs_rfind_c()} */
+	/*! \cd{su_cs_rfind_c()} */
 	static char *rfind(char const *cp, char x) {return su_cs_rfind_c(cp, x);}
 
-	/*! \copydoc{su_cs_sep_c()} */
+	/*! \cd{su_cs_sep_c()} */
 	static char *sep(char **iolist, char sep, boole ignore_empty) {return su_cs_sep_c(iolist, sep, ignore_empty);}
 
-	/*! \copydoc{su_cs_sep_escable_c()} */
+	/*! \cd{su_cs_sep_escable_c()} */
 	static char *sep_escable(char **iolist, char sep, boole ignore_empty){
 		return su_cs_sep_escable_c(iolist, sep, ignore_empty);
 	}
 
-	/*! \copydoc{su_cs_squeeze()} */
+	/*! \cd{su_cs_squeeze()} */
 	static char *squeeze(char *cp) {return su_cs_squeeze(cp);}
 
-	/*! \copydoc{su_cs_starts_with()} */
+	/*! \cd{su_cs_starts_with()} */
 	static boole starts_with(char const *cp, char const *x) {return su_cs_starts_with(cp, x);}
 
-	/*! \copydoc{su_cs_starts_with_n()} */
+	/*! \cd{su_cs_starts_with_n()} */
 	static boole starts_with(char const *cp, char const *x, uz n) {return su_cs_starts_with_n(cp, x, n);}
 
-	/*! \copydoc{su_cs_starts_with_case()} */
+	/*! \cd{su_cs_starts_with_case()} */
 	static boole starts_with_case(char const *cp, char const *x) {return su_cs_starts_with_case(cp, x);}
 
-	/*! \copydoc{su_cs_starts_with_case_n()} */
+	/*! \cd{su_cs_starts_with_case_n()} */
 	static boole starts_with_case(char const *cp, char const *x, uz n) {return su_cs_starts_with_case_n(cp, x, n);}
 
-	/*! \copydoc{su_cs_trim()} */
+	/*! \cd{su_cs_trim()} */
 	static char *trim(char *cp) {return su_cs_trim(cp);}
 
-	/*! \copydoc{su_cs_to_lower()} */
+	/*! \cd{su_cs_to_lower()} */
 	static s32 to_lower(s32 c) {return su_cs_to_lower(c);}
 
-	/*! \copydoc{su_cs_to_upper()} */
+	/*! \cd{su_cs_to_upper()} */
 	static s32 to_upper(s32 c) {return su_cs_to_upper(c);}
 };
 /* }}} */

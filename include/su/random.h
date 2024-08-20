@@ -198,24 +198,24 @@ class random;
 class random : private su_random{
 	su_CLASS_NO_COPY(random);
 public:
-	/*! \copydoc{su_random_type} */
+	/*! \cd{su_random_type} */
 	enum type{
-		type_r = su_RANDOM_TYPE_R, /*!< \copydoc{su_RANDOM_TYPE_R} */
-		type_p = su_RANDOM_TYPE_P, /*!< \copydoc{su_RANDOM_TYPE_P} */
-		type_sp = su_RANDOM_TYPE_SP, /*!< \copydoc{su_RANDOM_TYPE_SP} */
-		type_vsp = su_RANDOM_TYPE_VSP /*!< \copydoc{su_RANDOM_TYPE_VSP} */
+		type_r = su_RANDOM_TYPE_R, /*!< \cd{su_RANDOM_TYPE_R} */
+		type_p = su_RANDOM_TYPE_P, /*!< \cd{su_RANDOM_TYPE_P} */
+		type_sp = su_RANDOM_TYPE_SP, /*!< \cd{su_RANDOM_TYPE_SP} */
+		type_vsp = su_RANDOM_TYPE_VSP /*!< \cd{su_RANDOM_TYPE_VSP} */
 	};
 
-	/*! \copydoc{su_random_generate_fun} */
+	/*! \cd{su_random_generate_fun} */
 	typedef su_random_generate_fun generate_fun;
 
 	/*! \remarks{Creation may fail: \r{create()} is real constructor!} */
 	random(void) {STRUCT_ZERO(su_random, this);}
 
-	/*! \copydoc{su_random_gut()} */
+	/*! \cd{su_random_gut()} */
 	~random(void) {su_random_gut(this);}
 
-	/*! \copydoc{su_random_create()} */
+	/*! \cd{su_random_create()} */
 	s32 create(type type=type_sp, u32 estate=state::none){
 		return su_random_create(this, S(enum su_random_type,type), estate);
 	}
@@ -223,45 +223,45 @@ public:
 	/*! \_ */
 	type type(void) const {return S(enum type,rm_type);}
 
-	/*! \copydoc{su_random::rm_reseed_after} */
+	/*! \cd{su_random::rm_reseed_after} */
 	u32 reseed_after(void) const {return rm_reseed_after;}
 
-	/*! \copydoc{su_random::rm_reseed_after} */
+	/*! \cd{su_random::rm_reseed_after} */
 	random &set_reseed_after(u32 count){
 		ASSERT_RET(type() == type_sp || type() == type_vsp, *this);
 		rm_reseed_after = count;
 		return *this;
 	}
 
-	/*! \copydoc{su_random_seed()} */
+	/*! \cd{su_random_seed()} */
 	boole seed(void) {return su_random_seed(this, NIL);}
-	/*! \copydoc{su_random_seed()} */
+	/*! \cd{su_random_seed()} */
 	boole seed(random &with) {return su_random_seed(this, &with);}
 
-	/*! \copydoc{su_random_generate()} */
+	/*! \cd{su_random_generate()} */
 	boole generate(void *buf, uz len){
 		ASSERT_RET(buf != NIL || len == 0, FAL0);
 		return su_random_generate(this, buf, len);
 	}
 
-	/*! \copydoc{su_random_generate()} */
+	/*! \cd{su_random_generate()} */
 	boole operator()(void *buf, uz len) {return generate(buf, len);}
 
-	/*! \copydoc{su_random_vsp_install()} */
+	/*! \cd{su_random_vsp_install()} */
 	static s32 vsp_install(generate_fun on_generate, u32 estate=state::none){
 		return su_random_vsp_install(on_generate, estate);
 	}
 
-	/*! \copydoc{su_random_builtin_generate()} */
+	/*! \cd{su_random_builtin_generate()} */
 	static s32 builtin_generate(void *buf, uz len, u32 estate=state::none){
 		ASSERT_RET(buf != NIL || len == 0, err::fault);
 		return su_random_builtin_generate(buf, len, estate);
 	}
 
-	/*! \copydoc{su_random_builtin_seed()} */
+	/*! \cd{su_random_builtin_seed()} */
 	static boole builtin_seed(boole seeder=FAL0) {return su_random_builtin_seed(seeder);}
 
-	/*! \copydoc{su_random_builtin_set_reseed_after()}
+	/*! \cd{su_random_builtin_set_reseed_after()}
 	 * \remarks{Reversed argument order for C++ default argument support.} */
 	static boole builtin_set_reseed_after(u32 reseed_after, boole seeder=FAL0){
 		return su_random_builtin_set_reseed_after(seeder, reseed_after);

@@ -238,68 +238,68 @@ class bits;
 class bits{
 	su_CLASS_NO_COPY(bits);
 public:
-	/*! \copydoc{su_bits_test()} */
+	/*! \cd{su_bits_test()} */
 	static boole test(uz x, uz bit) {return su_bits_test(x, bit);}
 
-	/*! \copydoc{su_bits_set()} */
+	/*! \cd{su_bits_set()} */
 	static uz set(uz x, uz bit) {return su_bits_set(x, bit);}
 
-	/*! \copydoc{su_bits_flip()} */
+	/*! \cd{su_bits_flip()} */
 	static uz flip(uz x, uz bit) {return su_bits_flip(x, bit);}
 
-	/*! \copydoc{su_bits_clear()} */
+	/*! \cd{su_bits_clear()} */
 	static uz clear(uz x, uz bit) {return su_bits_clear(x, bit);}
 
-	/*! \copydoc{su_bits_test_and_set()} */
+	/*! \cd{su_bits_test_and_set()} */
 	static boole test_and_set(uz *xp, uz bit) {return su_bits_test_and_set(xp, bit);}
 
-	/*! \copydoc{su_bits_test_and_flip()} */
+	/*! \cd{su_bits_test_and_flip()} */
 	static boole test_and_flip(uz *xp, uz bit) {return su_bits_test_and_flip(xp, bit);}
 
-	/*! \copydoc{su_bits_test_and_clear()} */
+	/*! \cd{su_bits_test_and_clear()} */
 	static boole test_and_clear(uz *xp, uz bit) {return su_bits_test_and_clear(xp, bit);}
 
-	/*! \copydoc{su_bits_find_first_set()} */
+	/*! \cd{su_bits_find_first_set()} */
 	static uz find_first_set(uz x) {return su_bits_find_first_set(x);}
 
-	/*! \copydoc{su_bits_find_last_set()} */
+	/*! \cd{su_bits_find_last_set()} */
 	static uz find_last_set(uz x) {return su_bits_find_last_set(x);}
 
-	/*! \copydoc{su_bits_rotate_left()} */
+	/*! \cd{su_bits_rotate_left()} */
 	static uz rotate_left(uz x, uz bits) {return su_bits_rotate_left(x, bits);}
 
-	/*! \copydoc{su_bits_rotate_right()} */
+	/*! \cd{su_bits_rotate_right()} */
 	static uz rotate_right(uz x, uz bits) {return su_bits_rotate_right(x, bits);}
 
-	/*! \copydoc{su_bits_array_test()} */
+	/*! \cd{su_bits_array_test()} */
 	static boole array_test(uz const *xap, uz bit) {return su_bits_array_test(xap, bit);}
 
-	/*! \copydoc{su_bits_array_set()} */
+	/*! \cd{su_bits_array_set()} */
 	static void array_set(uz *xap, uz bit) {su_bits_array_set(xap, bit);}
 
-	/*! \copydoc{su_bits_array_flip()} */
+	/*! \cd{su_bits_array_flip()} */
 	static void array_flip(uz *xap, uz bit) {su_bits_array_flip(xap, bit);}
 
-	/*! \copydoc{su_bits_array_clear()} */
+	/*! \cd{su_bits_array_clear()} */
 	static void array_clear(uz *xap, uz bit) {su_bits_array_clear(xap, bit);}
 
-	/*! \copydoc{su_bits_array_test_and_set()} */
+	/*! \cd{su_bits_array_test_and_set()} */
 	static boole array_test_and_set(uz *xap, uz bit) {return su_bits_array_test_and_set(xap, bit);}
 
-	/*! \copydoc{su_bits_array_test_and_flip()} */
+	/*! \cd{su_bits_array_test_and_flip()} */
 	static boole array_test_and_flip(uz *xap, uz bit) {return su_bits_array_test_and_flip(xap, bit);}
 
-	/*! \copydoc{su_bits_array_test_and_clear()} */
+	/*! \cd{su_bits_array_test_and_clear()} */
 	static boole array_test_and_clear(uz *xap, uz bit) {return su_bits_array_test_and_clear(xap, bit);}
 
 #if 0 /* TODO port array_find_first() */
-	/*! \copydoc{su_bits_array_find_first_set()} */
+	/*! \cd{su_bits_array_find_first_set()} */
 	static uz array_find_first_set(uz const *xap, uz xaplen) {return su_bits_array_find_first_set(xap, xaplen);}
 
-	/*! \copydoc{su_bits_array_find_last_set()} */
+	/*! \cd{su_bits_array_find_last_set()} */
 	static uz array_find_last_set(uz const *xap, uz xaplen) {return su_bits_array_find_last_set(xap, xaplen);}
 
-	/*! \copydoc{su_bits_array_find_first_set_after()} */
+	/*! \cd{su_bits_array_find_first_set_after()} */
 	static uz array_find_first_set_after(uz const *xap, uz xaplen, uz startbit){
 		return su_bits_array_find_first_set_after(xap, xaplen, startbit);
 	}

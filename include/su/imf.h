@@ -64,6 +64,9 @@ struct su_imf_shtok;
  * This means that presence of (or, with \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}, necessity for) quotation marks will
  * result in the result to be embraced as such by a single pair of quotation marks.
  * }\li{
+ * No further normalization occurs.
+ * (In particular, domain names may have any case, or be IDNA labels.)
+ * }\li{
  * Comments in display names of address groups are discarded (after being parsed correctly),
  * just like comments "in the void" (like \c{..., (comment), ...}).
  * }\li{
@@ -352,7 +355,7 @@ public:
 	class shtok;
 
 	/* addr {{{ */
-	/*! \copydoc{su_imf_addr} */
+	/*! \cd{su_imf_addr} */
 	class addr : private su_imf_addr{
 		friend class imf;
 	protected:
@@ -399,7 +402,7 @@ public:
 	/* }}} */
 
 	/* shtok {{{ */
-	/*! \copydoc{su_imf_shtok} */
+	/*! \cd{su_imf_shtok} */
 	class shtok : private su_imf_shtok{
 		friend class imf;
 	protected:
@@ -428,58 +431,58 @@ private:
 #endif
 public:
 
-	/*! \copydoc{su_imf_mode} */
+	/*! \cd{su_imf_mode} */
 	enum mode{
-		mode_none = su_IMF_MODE_NONE, /*!< \copydoc{su_IMF_MODE_NONE} */
+		mode_none = su_IMF_MODE_NONE, /*!< \cd{su_IMF_MODE_NONE} */
 
-		/*! \copydoc{su_IMF_MODE_OK_DISPLAY_NAME_DOT} */
+		/*! \cd{su_IMF_MODE_OK_DISPLAY_NAME_DOT} */
 		mode_ok_display_name_dot = su_IMF_MODE_OK_DISPLAY_NAME_DOT,
-		/*! \copydoc{su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN} */
+		/*! \cd{su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN} */
 		mode_ok_addr_spec_no_domain = su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN,
 
-		mode_ok_dot_atext = su_IMF_MODE_OK_DOT_ATEXT, /*!< \copydoc{su_IMF_MODE_OK_DOT_ATEXT} */
-		mode_tok_comment = su_IMF_MODE_TOK_COMMENT, /*! \copydoc{su_IMF_MODE_TOK_COMMENT} */
-		mode_tok_semicolon = su_IMF_MODE_TOK_SEMICOLON, /*!< \copydoc{su_IMF_MODE_TOK_SEMICOLON} */
-		mode_tok_empty = su_IMF_MODE_TOK_EMPTY, /*! \copydoc{su_IMF_MODE_TOK_EMPTY} */
+		mode_ok_dot_atext = su_IMF_MODE_OK_DOT_ATEXT, /*!< \cd{su_IMF_MODE_OK_DOT_ATEXT} */
+		mode_tok_comment = su_IMF_MODE_TOK_COMMENT, /*! \cd{su_IMF_MODE_TOK_COMMENT} */
+		mode_tok_semicolon = su_IMF_MODE_TOK_SEMICOLON, /*!< \cd{su_IMF_MODE_TOK_SEMICOLON} */
+		mode_tok_empty = su_IMF_MODE_TOK_EMPTY, /*! \cd{su_IMF_MODE_TOK_EMPTY} */
 
-		mode_relax = su_IMF_MODE_RELAX, /*!< \copydoc{su_IMF_MODE_RELAX} */
-		mode_stop_early = su_IMF_MODE_STOP_EARLY /*!< \copydoc{su_IMF_MODE_STOP_EARLY} */
+		mode_relax = su_IMF_MODE_RELAX, /*!< \cd{su_IMF_MODE_RELAX} */
+		mode_stop_early = su_IMF_MODE_STOP_EARLY /*!< \cd{su_IMF_MODE_STOP_EARLY} */
 	};
 
-	/*! \copydoc{su_imf_state} */
+	/*! \cd{su_imf_state} */
 	enum state{
-		state_display_name_dot = su_IMF_STATE_DISPLAY_NAME_DOT, /*!< \copydoc{su_IMF_STATE_DISPLAY_NAME_DOT} */
-		/*! \copydoc{su_IMF_STATE_ADDR_SPEC_NO_DOMAIN} */
+		state_display_name_dot = su_IMF_STATE_DISPLAY_NAME_DOT, /*!< \cd{su_IMF_STATE_DISPLAY_NAME_DOT} */
+		/*! \cd{su_IMF_STATE_ADDR_SPEC_NO_DOMAIN} */
 		state_addr_spec_no_domain = su_IMF_STATE_ADDR_SPEC_NO_DOMAIN,
-		state_domain_literal = su_IMF_STATE_DOMAIN_LITERAL, /*!< \copydoc{su_IMF_STATE_DOMAIN_LITERAL} */
-		state_group = su_IMF_STATE_GROUP, /*!< \copydoc{su_IMF_STATE_GROUP} */
-		state_group_start = su_IMF_STATE_GROUP_START, /*!< \copydoc{su_IMF_STATE_GROUP_START} */
-		state_group_end = su_IMF_STATE_GROUP_END, /*!< \copydoc{su_IMF_STATE_GROUP_END} */
-		state_group_empty = su_IMF_STATE_GROUP_EMPTY, /*!< \copydoc{su_IMF_STATE_GROUP_EMPTY} */
+		state_domain_literal = su_IMF_STATE_DOMAIN_LITERAL, /*!< \cd{su_IMF_STATE_DOMAIN_LITERAL} */
+		state_group = su_IMF_STATE_GROUP, /*!< \cd{su_IMF_STATE_GROUP} */
+		state_group_start = su_IMF_STATE_GROUP_START, /*!< \cd{su_IMF_STATE_GROUP_START} */
+		state_group_end = su_IMF_STATE_GROUP_END, /*!< \cd{su_IMF_STATE_GROUP_END} */
+		state_group_empty = su_IMF_STATE_GROUP_EMPTY, /*!< \cd{su_IMF_STATE_GROUP_EMPTY} */
 
-		state_semicolon = su_IMF_STATE_SEMICOLON, /*! \copydoc{su_IMF_STATE_SEMICOLON} */
-		state_comment = su_IMF_STATE_COMMENT, /*! \copydoc{su_IMF_STATE_COMMENT} */
+		state_semicolon = su_IMF_STATE_SEMICOLON, /*! \cd{su_IMF_STATE_SEMICOLON} */
+		state_comment = su_IMF_STATE_COMMENT, /*! \cd{su_IMF_STATE_COMMENT} */
 
-		state_relax = su_IMF_STATE_RELAX, /*!< \copydoc{su_IMF_STATE_RELAX} */
+		state_relax = su_IMF_STATE_RELAX, /*!< \cd{su_IMF_STATE_RELAX} */
 
-		state_mask = su_IMF_STATE_MASK /*!< \copydoc{su_IMF_STATE_MASK} */
+		state_mask = su_IMF_STATE_MASK /*!< \cd{su_IMF_STATE_MASK} */
 	};
 
-	/*! \copydoc{su_imf_err} */
+	/*! \cd{su_imf_err} */
 	enum err{
-		/*! \copydoc{su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY} */
+		/*! \cd{su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY} */
 		err_group_display_name_empty = su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY,
-		err_display_name_dot = su_IMF_ERR_DISPLAY_NAME_DOT, /*!< \copydoc{su_IMF_ERR_DISPLAY_NAME_DOT} */
-		err_dquote = su_IMF_ERR_DQUOTE, /*!< \copydoc{su_IMF_ERR_DQUOTE} */
-		err_group_open = su_IMF_ERR_GROUP_OPEN, /*!< \copydoc{su_IMF_ERR_GROUP_OPEN} */
+		err_display_name_dot = su_IMF_ERR_DISPLAY_NAME_DOT, /*!< \cd{su_IMF_ERR_DISPLAY_NAME_DOT} */
+		err_dquote = su_IMF_ERR_DQUOTE, /*!< \cd{su_IMF_ERR_DQUOTE} */
+		err_group_open = su_IMF_ERR_GROUP_OPEN, /*!< \cd{su_IMF_ERR_GROUP_OPEN} */
 
-		err_comment = su_IMF_ERR_COMMENT, /*!< \copydoc{su_IMF_ERR_COMMENT} */
+		err_comment = su_IMF_ERR_COMMENT, /*!< \cd{su_IMF_ERR_COMMENT} */
 
-		err_content = su_IMF_ERR_CONTENT, /*!< \copydoc{su_IMF_ERR_CONTENT} */
+		err_content = su_IMF_ERR_CONTENT, /*!< \cd{su_IMF_ERR_CONTENT} */
 
-		err_relax = su_IMF_ERR_RELAX, /*!< \copydoc{su_IMF_ERR_RELAX} */
+		err_relax = su_IMF_ERR_RELAX, /*!< \cd{su_IMF_ERR_RELAX} */
 
-		err_mask = su_IMF_ERR_MASK /*!< \copydoc{su_IMF_ERR_MASK} */
+		err_mask = su_IMF_ERR_MASK /*!< \cd{su_IMF_ERR_MASK} */
 	};
 
 	/*! \r{su_imf_snap_create()} */

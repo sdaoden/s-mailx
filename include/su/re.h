@@ -187,7 +187,7 @@ class EXPORT re : private su_re{
 public:
 	class match;
 
-	/*! \copydoc{su_re_match} */
+	/*! \cd{su_re_match} */
 	class match : private su_re_match{
 		friend class re;
 	protected:
@@ -209,78 +209,78 @@ private:
 #endif
 public:
 
-	/*! \copydoc{su_re_setup_flags} */
+	/*! \cd{su_re_setup_flags} */
 	enum setup_flags{
-		setup_none = su_RE_SETUP_NONE, /*!< \copydoc{su_RE_SETUP_NONE} */
-		setup_ext = su_RE_SETUP_EXT, /*!< \copydoc{su_RE_SETUP_EXT} */
+		setup_none = su_RE_SETUP_NONE, /*!< \cd{su_RE_SETUP_NONE} */
+		setup_ext = su_RE_SETUP_EXT, /*!< \cd{su_RE_SETUP_EXT} */
 		setup_extended = setup_ext, /*!< Equals \r{#setup_ext}. */
-		setup_icase = su_RE_SETUP_ICASE, /*!< \copydoc{su_RE_SETUP_ICASE} */
-		setup_nonl = su_RE_SETUP_NONL, /*!< \copydoc{su_RE_SETUP_NONL} */
-		 /*! \copydoc{su_RE_SETUP_TEST_ONLY} */
+		setup_icase = su_RE_SETUP_ICASE, /*!< \cd{su_RE_SETUP_ICASE} */
+		setup_nonl = su_RE_SETUP_NONL, /*!< \cd{su_RE_SETUP_NONL} */
+		 /*! \cd{su_RE_SETUP_TEST_ONLY} */
 		setup_test_only = su_RE_SETUP_TEST_ONLY
 	};
 
-	/*! \copydoc{su_re_eval_flags} */
+	/*! \cd{su_re_eval_flags} */
 	enum eval_flags{
-		eval_none = su_RE_EVAL_NONE, /*!< \copydoc{su_RE_EVAL_NONE} */
-		eval_notbol = su_RE_EVAL_NOTBOL, /*!< \copydoc{su_RE_EVAL_NOTBOL} */
-		eval_noteol = su_RE_EVAL_NOTEOL /*!< \copydoc{su_RE_EVAL_NOTEOL} */
+		eval_none = su_RE_EVAL_NONE, /*!< \cd{su_RE_EVAL_NONE} */
+		eval_notbol = su_RE_EVAL_NOTBOL, /*!< \cd{su_RE_EVAL_NOTBOL} */
+		eval_noteol = su_RE_EVAL_NOTEOL /*!< \cd{su_RE_EVAL_NOTEOL} */
 	};
 
-	/*! \copydoc{su_re_errors} */
+	/*! \cd{su_re_errors} */
 	enum errors{
-		error_none = su_RE_ERROR_NONE, /*!< \copydoc{su_RE_ERROR_NONE} */
-		error_badbr = su_RE_ERROR_BADBR, /*!< \copydoc{su_RE_ERROR_BADBR} */
-		error_badpat = su_RE_ERROR_BADPAT, /*!< \copydoc{su_RE_ERROR_BADPAT} */
-		error_badrpt = su_RE_ERROR_BADRPT, /*!< \copydoc{su_RE_ERROR_BADRPT} */
-		error_brace = su_RE_ERROR_BRACE, /*!< \copydoc{su_RE_ERROR_BRACE} */
-		error_brack = su_RE_ERROR_BRACK, /*!< \copydoc{su_RE_ERROR_BRACK} */
-		error_collate = su_RE_ERROR_COLLATE, /*!< \copydoc{su_RE_ERROR_COLLATE}*/
-		error_ctype = su_RE_ERROR_CTYPE, /*!< \copydoc{su_RE_ERROR_CTYPE} */
-		error_escape = su_RE_ERROR_ESCAPE, /*!< \copydoc{su_RE_ERROR_ESCAPE} */
-		error_paren = su_RE_ERROR_PAREN, /*!< \copydoc{su_RE_ERROR_PAREN} */
-		error_range = su_RE_ERROR_RANGE, /*!< \copydoc{su_RE_ERROR_RANGE} */
-		error_space = su_RE_ERROR_SPACE, /*!< \copydoc{su_RE_ERROR_SPACE} */
-		error_subreg = su_RE_ERROR_SUBREG, /*!< \copydoc{su_RE_ERROR_SUBREG} */
-		error_misc = su_RE_ERROR_MISC /*!< \copydoc{su_RE_ERROR_MISC} */
+		error_none = su_RE_ERROR_NONE, /*!< \cd{su_RE_ERROR_NONE} */
+		error_badbr = su_RE_ERROR_BADBR, /*!< \cd{su_RE_ERROR_BADBR} */
+		error_badpat = su_RE_ERROR_BADPAT, /*!< \cd{su_RE_ERROR_BADPAT} */
+		error_badrpt = su_RE_ERROR_BADRPT, /*!< \cd{su_RE_ERROR_BADRPT} */
+		error_brace = su_RE_ERROR_BRACE, /*!< \cd{su_RE_ERROR_BRACE} */
+		error_brack = su_RE_ERROR_BRACK, /*!< \cd{su_RE_ERROR_BRACK} */
+		error_collate = su_RE_ERROR_COLLATE, /*!< \cd{su_RE_ERROR_COLLATE}*/
+		error_ctype = su_RE_ERROR_CTYPE, /*!< \cd{su_RE_ERROR_CTYPE} */
+		error_escape = su_RE_ERROR_ESCAPE, /*!< \cd{su_RE_ERROR_ESCAPE} */
+		error_paren = su_RE_ERROR_PAREN, /*!< \cd{su_RE_ERROR_PAREN} */
+		error_range = su_RE_ERROR_RANGE, /*!< \cd{su_RE_ERROR_RANGE} */
+		error_space = su_RE_ERROR_SPACE, /*!< \cd{su_RE_ERROR_SPACE} */
+		error_subreg = su_RE_ERROR_SUBREG, /*!< \cd{su_RE_ERROR_SUBREG} */
+		error_misc = su_RE_ERROR_MISC /*!< \cd{su_RE_ERROR_MISC} */
 	};
 
-	/*! \copydoc{su_re_create()} */
+	/*! \cd{su_re_create()} */
 	re(void) {su_re_create(this);}
 
-	/*! \copydoc{su_re_gut()} */
+	/*! \cd{su_re_gut()} */
 	~re(void) {su_re_gut(this);}
 
-	/*! \copydoc{su_re_reset()} */
+	/*! \cd{su_re_reset()} */
 	re &reset(void) {SELFTHIS_RET(su_re_reset(this));}
 
-	/*! \copydoc{su_re_setup_cp()}.
+	/*! \cd{su_re_setup_cp()}.
 	 * \remarks{Sets \r{#setup_ext} by default.} */
 	BITENUM(u8,errors) setup(char const *expr, BITENUM(u8,setup_flags) flags=setup_ext){
 		return S(errors,su_re_setup_cp(this, expr, S(u8,flags)));
 	}
 
-	/*! \copydoc{su_re_is_setup()} */
+	/*! \cd{su_re_is_setup()} */
 	boole is_setup(void) const {return su_re_is_setup(this);}
 
-	/*! \copydoc{su_re::re_error} */
+	/*! \cd{su_re::re_error} */
 	errors error(void) const {return S(errors,re_error);}
 
-	/*! \copydoc{su_re_error_doc()} */
+	/*! \cd{su_re_error_doc()} */
 	char const *error_doc(void) const {return su_re_error_doc(this);}
 
 	/*! Whether \r{#setup_test_only} was not used. */
 	boole is_test_only(void) const {return ((re_setup_flags & setup_test_only) != 0);}
 
-	/*! \copydoc{su_re::re_group_count} */
+	/*! \cd{su_re::re_group_count} */
 	uz group_count(void) const {return re_group_count;}
 
-	/*! \copydoc{su_re_eval_cp()} */
+	/*! \cd{su_re_eval_cp()} */
 	boole eval(char const *input, BITENUM(u8,eval_flags) flags=eval_none){
 		return su_re_eval_cp(this, input, S(u8,flags));
 	}
 
-	/*! \copydoc{su_re::re_eval_ok} */
+	/*! \cd{su_re::re_eval_ok} */
 	boole eval_ok(void) const {return re_eval_ok;}
 
 	/*! Get \r{match} for group \a{no}, which is asserted to be valid.
@@ -291,13 +291,13 @@ public:
 		return R(match const*,&re_match[no]);
 	}
 
-	/*! \copydoc{su_re::re_input} */
+	/*! \cd{su_re::re_input} */
 	char const *input(void) const{
 		ASSERT_RET(is_setup(), NIL);
 		return re_input;
 	}
 
-	/*! \copydoc{su_re_get_error_doc()} */
+	/*! \cd{su_re_get_error_doc()} */
 	static char const *get_error_doc(errors error) {return su_re_get_error_doc(S(su_re_errors,error));}
 };
 /* }}} */

@@ -133,31 +133,31 @@ INLINE u8 su_atomic_xchg_8(u8 ATOMIC *store, u8 nval){
 	return su__atomic_xchg_8(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE u16 su_atomic_xchg_16(u16 ATOMIC *store, u16 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_xchg_16(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE u32 su_atomic_xchg_32(u32 ATOMIC *store, u32 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_xchg_32(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE u64 su_atomic_xchg_64(u64 ATOMIC *store, u64 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_xchg_64(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE uz su_atomic_xchg_z(uz ATOMIC *store, uz nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_xchg_z(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE up su_atomic_xchg_p(up ATOMIC *store, up nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_xchg_p(store, nval);
@@ -169,31 +169,31 @@ INLINE u8 su_atomic_busy_xchg_8(u8 ATOMIC *store, u8 nval){
 	return su__atomic_xchg_8(store, nval);
 }
 
-/*! \copydoc{su_atomic_busy_xchg_8()}. */
+/*! \cd{su_atomic_busy_xchg_8()}. */
 INLINE u16 su_atomic_busy_xchg_16(u16 ATOMIC *store, u16 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_busy_xchg_16(store, nval);
 }
 
-/*! \copydoc{su_atomic_busy_xchg_8()}. */
+/*! \cd{su_atomic_busy_xchg_8()}. */
 INLINE u32 su_atomic_busy_xchg_32(u32 ATOMIC *store, u32 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_busy_xchg_32(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE u64 su_atomic_busy_xchg_64(u64 ATOMIC *store, u64 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_busy_xchg_64(store, nval);
 }
 
-/*! \copydoc{su_atomic_xchg_8()}. */
+/*! \cd{su_atomic_xchg_8()}. */
 INLINE uz su_atomic_busy_xchg_z(uz ATOMIC *store, uz nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_busy_xchg_z(store, nval);
 }
 
-/*! \copydoc{su_atomic_busy_xchg_8()}. */
+/*! \cd{su_atomic_busy_xchg_8()}. */
 INLINE up su_atomic_busy_xchg_p(up ATOMIC *store, up nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_busy_xchg_p(store, nval);
@@ -206,31 +206,31 @@ INLINE boole su_atomic_cas_8(u8 ATOMIC *store, u8 oval, u8 nval){
 	return su__atomic_cas_8(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_cas_8()}. */
+/*! \cd{su_atomic_cas_8()}. */
 INLINE boole su_atomic_cas_16(u16 ATOMIC *store, u16 oval, u16 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_cas_16(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_cas_8()}. */
+/*! \cd{su_atomic_cas_8()}. */
 INLINE boole su_atomic_cas_32(u32 ATOMIC *store, u32 oval, u32 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_cas_32(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_cas_8()}. */
+/*! \cd{su_atomic_cas_8()}. */
 INLINE boole su_atomic_cas_64(u64 ATOMIC *store, u64 oval, u64 nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_cas_64(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_cas_8()}. */
+/*! \cd{su_atomic_cas_8()}. */
 INLINE boole su_atomic_cas_z(uz ATOMIC *store, uz oval, uz nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_cas_z(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_cas_8()}. */
+/*! \cd{su_atomic_cas_8()}. */
 INLINE boole su_atomic_cas_p(up ATOMIC *store, up oval, up nval){
 	ASSERT_RET(store != NIL, FAL0);
 	return su__atomic_cas_p(store, oval, nval);
@@ -242,31 +242,31 @@ INLINE void su_atomic_busy_cas_8(u8 ATOMIC *store, u8 oval, u8 nval){
 	su__atomic_busy_cas_8(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_busy_cas_8()}. */
+/*! \cd{su_atomic_busy_cas_8()}. */
 INLINE void su_atomic_busy_cas_16(u16 ATOMIC *store, u16 oval, u16 nval){
 	ASSERT_RET_VOID(store != NIL);
 	su__atomic_busy_cas_16(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_busy_cas_8()}. */
+/*! \cd{su_atomic_busy_cas_8()}. */
 INLINE void su_atomic_busy_cas_32(u32 ATOMIC *store, u32 oval, u32 nval){
 	ASSERT_RET_VOID(store != NIL);
 	su__atomic_busy_cas_32(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_busy_cas_8()}. */
+/*! \cd{su_atomic_busy_cas_8()}. */
 INLINE void su_atomic_busy_cas_64(u64 ATOMIC *store, u64 oval, u64 nval){
 	ASSERT_RET_VOID(store != NIL);
 	su__atomic_busy_cas_64(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_busy_cas_8()}. */
+/*! \cd{su_atomic_busy_cas_8()}. */
 INLINE void su_atomic_busy_cas_z(uz ATOMIC *store, uz oval, uz nval){
 	ASSERT_RET_VOID(store != NIL);
 	su__atomic_busy_cas_z(store, oval, nval);
 }
 
-/*! \copydoc{su_atomic_busy_cas_8()}. */
+/*! \cd{su_atomic_busy_cas_8()}. */
 INLINE void su_atomic_busy_cas_p(up ATOMIC *store, up oval, up nval){
 	ASSERT_RET_VOID(store != NIL);
 	su__atomic_busy_cas_p(store, oval, nval);
@@ -293,148 +293,148 @@ class atomic{
 	su_CLASS_NO_COPY(atomic);
 public:
 	enum{
-		is_real = su_ATOMIC_IS_REAL /*!< \copydoc{su_ATOMIC_IS_REAL} */
+		is_real = su_ATOMIC_IS_REAL /*!< \cd{su_ATOMIC_IS_REAL} */
 	};
 
-	/*! \copydoc{su_atomic_xchg_8()} */
+	/*! \cd{su_atomic_xchg_8()} */
 	static u8 xchg_8(u8 ATOMIC *store, u8 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_xchg_8(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_xchg_16()} */
+	/*! \cd{su_atomic_xchg_16()} */
 	static u16 xchg_16(u16 ATOMIC *store, u16 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_xchg_16(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_xchg_32()} */
+	/*! \cd{su_atomic_xchg_32()} */
 	static u32 xchg_32(u32 ATOMIC *store, u32 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_xchg_32(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_xchg_64()} */
+	/*! \cd{su_atomic_xchg_64()} */
 	static u64 xchg_64(u64 ATOMIC *store, u64 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_xchg_64(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_xchg_z()} */
+	/*! \cd{su_atomic_xchg_z()} */
 	static uz xchg_z(uz ATOMIC *store, uz nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_xchg_z(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_xchg_p()} */
+	/*! \cd{su_atomic_xchg_p()} */
 	static up xchg_p(up ATOMIC *store, up nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_xchg_p(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_xchg_8()} */
+	/*! \cd{su_atomic_busy_xchg_8()} */
 	static u8 busy_xchg_8(u8 ATOMIC *store, u8 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_busy_xchg_8(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_xchg_16()} */
+	/*! \cd{su_atomic_busy_xchg_16()} */
 	static u16 busy_xchg_16(u16 ATOMIC *store, u16 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_busy_xchg_16(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_xchg_32()} */
+	/*! \cd{su_atomic_busy_xchg_32()} */
 	static u32 busy_xchg_32(u32 ATOMIC *store, u32 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_busy_xchg_32(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_xchg_64()} */
+	/*! \cd{su_atomic_busy_xchg_64()} */
 	static u64 busy_xchg_64(u64 ATOMIC *store, u64 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_busy_xchg_64(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_xchg_z()} */
+	/*! \cd{su_atomic_busy_xchg_z()} */
 	static uz busy_xchg_z(uz ATOMIC *store, uz nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_busy_xchg_z(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_xchg_p()} */
+	/*! \cd{su_atomic_busy_xchg_p()} */
 	static up busy_xchg_p(up ATOMIC *store, up nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_busy_xchg_p(store, nval);
 	}
 
-	/*! \copydoc{su_atomic_cas_8()} */
+	/*! \cd{su_atomic_cas_8()} */
 	static boole cas_8(u8 ATOMIC *store, u8 oval, u8 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_cas_8(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_cas_16()} */
+	/*! \cd{su_atomic_cas_16()} */
 	static boole cas_16(u16 ATOMIC *store, u16 oval, u16 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_cas_16(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_cas_32()} */
+	/*! \cd{su_atomic_cas_32()} */
 	static boole cas_32(u32 ATOMIC *store, u32 oval, u32 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_cas_32(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_cas_64()} */
+	/*! \cd{su_atomic_cas_64()} */
 	static boole cas_64(u64 ATOMIC *store, u64 oval, u64 nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_cas_64(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_cas_z()} */
+	/*! \cd{su_atomic_cas_z()} */
 	static boole cas_z(uz ATOMIC *store, uz oval, uz nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_cas_z(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_cas_p()} */
+	/*! \cd{su_atomic_cas_p()} */
 	static boole cas_p(up ATOMIC *store, up oval, up nval){
 		ASSERT_RET(store != NIL, FAL0);
 		return su_atomic_cas_p(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_cas_8()} */
+	/*! \cd{su_atomic_busy_cas_8()} */
 	static void busy_cas_8(u8 ATOMIC *store, u8 oval, u8 nval){
 		ASSERT_RET_VOID(store != NIL);
 		su_atomic_busy_cas_8(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_cas_16()} */
+	/*! \cd{su_atomic_busy_cas_16()} */
 	static void busy_cas_16(u16 ATOMIC *store, u16 oval, u16 nval){
 		ASSERT_RET_VOID(store != NIL);
 		su_atomic_busy_cas_16(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_cas_32()} */
+	/*! \cd{su_atomic_busy_cas_32()} */
 	static void busy_cas_32(u32 ATOMIC *store, u32 oval, u32 nval){
 		ASSERT_RET_VOID(store != NIL);
 		su_atomic_busy_cas_32(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_cas_64()} */
+	/*! \cd{su_atomic_busy_cas_64()} */
 	static void busy_cas_64(u64 ATOMIC *store, u64 oval, u64 nval){
 		ASSERT_RET_VOID(store != NIL);
 		su_atomic_busy_cas_64(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_cas_z()} */
+	/*! \cd{su_atomic_busy_cas_z()} */
 	static void busy_cas_z(uz ATOMIC *store, uz oval, uz nval){
 		ASSERT_RET_VOID(store != NIL);
 		su_atomic_busy_cas_z(store, oval, nval);
 	}
 
-	/*! \copydoc{su_atomic_busy_cas_p()} */
+	/*! \cd{su_atomic_busy_cas_p()} */
 	static void busy_cas_p(up ATOMIC *store, up oval, up nval){
 		ASSERT_RET_VOID(store != NIL);
 		su_atomic_busy_cas_p(store, oval, nval);

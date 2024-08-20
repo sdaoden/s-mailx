@@ -130,22 +130,22 @@ class siphash : private su_siphash{
 	friend class cs; // Upcast capability
 public:
 	enum{
-		key_size = su_SIPHASH_KEY_SIZE, /*!< \copydoc{su_SIPHASH_KEY_SIZE} */
-		key_size_min = su_SIPHASH_KEY_SIZE_MIN, /*!< \copydoc{su_SIPHASH_KEY_SIZE_MIN} */
-		key_size_max = su_SIPHASH_KEY_SIZE_MAX, /*!< \copydoc{su_SIPHASH_KEY_SIZE_MAX} */
+		key_size = su_SIPHASH_KEY_SIZE, /*!< \cd{su_SIPHASH_KEY_SIZE} */
+		key_size_min = su_SIPHASH_KEY_SIZE_MIN, /*!< \cd{su_SIPHASH_KEY_SIZE_MIN} */
+		key_size_max = su_SIPHASH_KEY_SIZE_MAX, /*!< \cd{su_SIPHASH_KEY_SIZE_MAX} */
 
-		digest_size_64 = su_SIPHASH_DIGEST_SIZE_64, /*!< \copydoc{su_SIPHASH_DIGEST_SIZE_64} */
-		digest_size_128 = su_SIPHASH_DIGEST_SIZE_128, /*!< \copydoc{su_SIPHASH_DIGEST_SIZE_128} */
-		digest_size_min = su_SIPHASH_DIGEST_SIZE_MIN, /*!< \copydoc{su_SIPHASH_DIGEST_SIZE_MIN} */
-		digest_size_max = su_SIPHASH_DIGEST_SIZE_MAX, /*!< \copydoc{su_SIPHASH_DIGEST_SIZE_MAX} */
+		digest_size_64 = su_SIPHASH_DIGEST_SIZE_64, /*!< \cd{su_SIPHASH_DIGEST_SIZE_64} */
+		digest_size_128 = su_SIPHASH_DIGEST_SIZE_128, /*!< \cd{su_SIPHASH_DIGEST_SIZE_128} */
+		digest_size_min = su_SIPHASH_DIGEST_SIZE_MIN, /*!< \cd{su_SIPHASH_DIGEST_SIZE_MIN} */
+		digest_size_max = su_SIPHASH_DIGEST_SIZE_MAX, /*!< \cd{su_SIPHASH_DIGEST_SIZE_MAX} */
 
-		block_size = su_SIPHASH_BLOCK_SIZE /*!< \copydoc{su_SIPHASH_BLOCK_SIZE} */
+		block_size = su_SIPHASH_BLOCK_SIZE /*!< \cd{su_SIPHASH_BLOCK_SIZE} */
 	};
 
-	/*! \copydoc{su_siphash_digest} */
+	/*! \cd{su_siphash_digest} */
 	enum digest{
-		digest_64 = su_SIPHASH_DIGEST_64, /*!< \copydoc{su_SIPHASH_DIGEST_64} */
-		digest_128 = su_SIPHASH_DIGEST_128 /*!< \copydoc{su_SIPHASH_DIGEST_128} */
+		digest_64 = su_SIPHASH_DIGEST_64, /*!< \cd{su_SIPHASH_DIGEST_64} */
+		digest_128 = su_SIPHASH_DIGEST_128 /*!< \cd{su_SIPHASH_DIGEST_128} */
 	};
 
 	/*! \NOOP */
@@ -160,33 +160,33 @@ public:
 	/*! \_ */
 	siphash &operator=(siphash const &t) {*S(su_siphash*,this) = t; return *this;}
 
-	/*! \copydoc{su_siphash_setup()} */
+	/*! \cd{su_siphash_setup()} */
 	s32 setup(void const *key) {return su_siphash_setup(this, key);}
 
-	/*! \copydoc{su_siphash_setup_custom()} */
+	/*! \cd{su_siphash_setup_custom()} */
 	s32 setup(void const *key, digest digest_type, u8 crounds=0, u8 drounds=0){
 		return su_siphash_setup_custom(this, key, S(su_siphash_digest,digest_type), crounds, drounds);
 	}
 
-	/*! \copydoc{su_siphash::sh_digest} */
+	/*! \cd{su_siphash::sh_digest} */
 	digest digest(void) const {return S(enum digest,sh_digest);}
 
 	/*! \_ */
 	u8 digest_size(void) const {return (digest() == digest_128) ? digest_size_128 : digest_size_64;}
 
-	/*! \copydoc{su_siphash::sh_compress_rounds} */
+	/*! \cd{su_siphash::sh_compress_rounds} */
 	u8 compress_rounds(void) const {return sh_compress_rounds;}
 
-	/*! \copydoc{su_siphash::sh_finalize_rounds} */
+	/*! \cd{su_siphash::sh_finalize_rounds} */
 	u8 finalize_rounds(void) const {return sh_finalize_rounds;}
 
-	/*! \copydoc{su_siphash_update()} */
+	/*! \cd{su_siphash_update()} */
 	void update(void const *dat, uz dat_len) {su_siphash_update(this, dat, dat_len);}
 
-	/*! \copydoc{su_siphash_end()} */
+	/*! \cd{su_siphash_end()} */
 	void end(void *digest_store) {su_siphash_end(this, digest_store);}
 
-	/*! \copydoc{su_siphash_once()}
+	/*! \cd{su_siphash_once()}
 	 * \remarks{For default argument policies the order is different to C.} */
 	static void once(void *digest_store, void const *key, void const *dat, uz dat_len,
 			enum digest digest_type=digest_64, u8 crounds=0, u8 drounds=0){
