@@ -701,7 +701,10 @@ jredo:
 		default:
 		case mx_CMD_ARG_DESC_SHEXP:
 jshexp_restart:
-			if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
+			if(shin.l == 0){
+				if(!(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY) || cookie == NIL)
+					goto jloop_break; /* xxx (required grrr) quickshot */
+			}
 
 			shoup = n_string_creat_auto(&shou);
 
