@@ -2129,8 +2129,10 @@ else
 	config_exit 1
 fi
 
-if link_check termios 'termios.h and tc*(3) family' << \!
+# TODO port to old tty drivers; bash's job.c is a good thing to look at
+if link_check termios 'termios.h, tc*attr(), (tc)?getpgrp()' << \!
 #include <termios.h>
+#include <unistd.h>
 int main(void){
 	struct termios tios;
 	speed_t ospeed;
@@ -2138,14 +2140,16 @@ int main(void){
 	tcgetattr(0, &tios);
 	tcsetattr(0, TCSANOW | TCSADRAIN | TCSAFLUSH, &tios);
 	ospeed = ((tcgetattr(0, &tios) == -1) ? B9600 : cfgetospeed(&tios));
+	getpgrp();
+	tcgetpgrp(0);
 	return 0;
 }
 !
 then
 	:
 else
-	msg 'ERROR: we require termios.h and the tc[gs]etattr() function family.'
-	msg 'That much Unix we indulge ourselves.'
+	msg 'ERROR: we require termios.h and its tc[gs]etattr() and tcgetpgrp() functions.'
+	msg 'That much "new Unix" we indulge ourselves.  (Yet.  Ie, TODO for elder ones.)'
 	config_exit 1
 fi
 
