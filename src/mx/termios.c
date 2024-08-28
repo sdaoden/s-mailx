@@ -1,7 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of termios.h.
- *@ FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
- *@ FIXME foreground pgrp, and can fail with EINTR!!
+ *@ FIXME everywhere: tcsetattr() can fail with EINTR!!
  *@ TODO . SIGINT during HANDS_OFF reaches us nonetheless.
  *@ TODO . _HANDS_OFF as well as the stack based approach as such is nonsense.
  *@ TODO   It might work well for this MUA, but in general termios_ctx should
@@ -12,6 +11,7 @@
  *@ TODO   instead, we need to have a notion of background and foreground,
  *@ TODO   and ensure the terminal is in normal mode when going backward.
  *@ TODO   What children do is up to them, managing them in stack: impossible
+ *@ TODO . Not restartable (no devel-only on_gut())
  *
  * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -82,12 +82,14 @@ struct a_termios_env{
 };
 
 struct a_termios_g{
+	pid_t tiosg_pgrp;
+	boole tiosg_is_bg; /* Are we a background process? */
+	boole tiosg_normal_is_init; /* Started in background, "normal" termios settings are yet unknown */
+	u8 tiosg__pad[2];
 	struct a_termios_env *tiosg_envp;
 	/* If outermost == normal state; used as init switch, too */
 	struct a_termios_env *tiosg_normal;
 	struct a_termios_env *tiosg_pend_free;
-	/*s32 tiosg_pgrp;
-	 *u8 tiosg__pad[4];*/
 	n_sighdl_t tiosg_otstp;
 	n_sighdl_t tiosg_ottin;
 	n_sighdl_t tiosg_ottou;
@@ -113,8 +115,8 @@ static void a_termios_sig_adjust(boole condome);
 /* */
 static void a_termios_onsig(int sig);
 
-/* */
-SINLINE boole a_termios_norm_query(void);
+/* Detect whether we are in the background (return is-foreground), and query current terminal settings if not */
+SINLINE boole a_termios_normal_query(void);
 
 /* Do the system-dependent dance on getting used to terminal dimension */
 static void a_termios_dimen_query(struct mx_termios_dimension *tiosdp);
@@ -143,16 +145,24 @@ a_termios_sig_adjust(boole condome){
 }
 
 SINLINE boole
-a_termios_norm_query(void){
-	boole rv;
+a_termios_normal_query(void){
+	boole is_bg;
 	/*NYD2_IN;*/
 
-	rv = (tcgetattr(fileno(mx_tty_fp), &a_termios_g.tiosg_normal->tiose_state) == 0);
-	/* XXX always set ECHO and ICANON in our "normal" canonical state */
-	a_termios_g.tiosg_normal->tiose_state.c_lflag |= ECHO | ICANON;
+	is_bg = (a_termios_g.tiosg_pgrp != tcgetpgrp(fileno(mx_tty_fp)));
+
+	a_termios_g.tiosg_is_bg = is_bg;
+
+	if(!is_bg){
+		tcgetattr(fileno(mx_tty_fp), &a_termios_g.tiosg_normal->tiose_state);
+		/* XXX always set ECHO and ICANON in our "normal" canonical state */
+		a_termios_g.tiosg_normal->tiose_state.c_lflag |= ECHO | ICANON;
+		/*a_termios_g.tiosg_normal->tiose_state.c_iflag |= ICRNL;*/
+		a_termios_g.tiosg_normal_is_init = TRU1;
+	}
 
 	/*NYD2_OU;*/
-	return rv;
+	return !is_bg;
 }
 
 static void
@@ -175,7 +185,7 @@ a_termios_onsig(int sig){
 	a_X(TSTP, tstp, TRU1)
 	a_X(TTIN, ttin, TRU1)
 	a_X(TTOU, ttou, TRU1)
-	a_X(CONT, cont, TRU1)
+	a_X(CONT, cont, TRUM1)
 	a_X(HUP, hup, FAL0)
 	a_X(INT, int, FAL0)
 	a_X(QUIT, quit, FAL0)
@@ -186,6 +196,31 @@ a_termios_onsig(int sig){
 
 	dopop = FAL0;
 	tiosep = a_termios_g.tiosg_envp;
+
+	if(a_termios_g.tiosg_is_bg){
+		if(sig == SIGCONT){
+			boole was_init;
+
+			was_init = a_termios_g.tiosg_normal_is_init;
+			if(a_termios_normal_query()){
+				if(was_init){
+					/* May have state_change hooks to call, too */
+					if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
+						goto jraiseskip;
+					(void)tcsetattr(fileno(mx_tty_fp), TCSAFLUSH,
+						&a_termios_g.tiosg_normal->tiose_state);
+				}
+				goto jleave;
+			}
+			/* Otherwise do not recognize this SIGCONT, we need to be in the foreground to continue */
+			sig = SIGTSTP;
+			oact = SIG_DFL;
+			goto jbgskip;
+		}
+		if(jobsig)
+			goto jbgskip;
+		goto jleave;
+	}
 
 	if(/*!jobsig ||*/ sig != SIGCONT){
 		if(!tiosep->tiose_suspended){
@@ -199,7 +234,8 @@ a_termios_onsig(int sig){
 					a_termios_g.tiosg_envp = tiosep->tiose_prev;
 			}
 
-			if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
+			if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL && !a_termios_g.tiosg_is_bg){
+				ASSERT(a_termios_g.tiosg_normal_is_init);
 				(void)tcsetattr(fileno(mx_tty_fp), TCSAFLUSH, &a_termios_g.tiosg_normal->tiose_state);
 		}
 	}
@@ -212,6 +248,7 @@ a_termios_onsig(int sig){
 
 	if(jobsig || (tiosep->tiose_cmd != mx_TERMIOS_CMD_HANDS_OFF &&
 			oact != SIG_DFL && oact != SIG_IGN && oact != SIG_ERR)){
+jbgskip:
 		myact = safe_signal(sig, oact);
 
 		sigemptyset(&nset);
@@ -223,14 +260,21 @@ a_termios_onsig(int sig){
 		safe_signal(sig, myact);
 
 		/* When we come here we shall continue */
+		if(a_termios_g.tiosg_is_bg)
+			goto jleave;
+		if(jobsig > FAL0){
+			a_termios_g.tiosg_is_bg = TRU1;
+			goto jleave;
+		}
+
+jraiseskip:
 		if(!dopop && tiosep->tiose_suspended){
 			tiosep->tiose_suspended = FAL0;
 
 			if(tiosep->tiose_cmd != mx_TERMIOS_CMD_HANDS_OFF){
 				/* Requery our notion of what is "normal", so that possible user
 				 * adjustments which happened in the meantime are kept */
-				a_termios_norm_query();
-
+				ASSERT(sig == SIGCONT);
 				if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
 					(void)tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state);
 			}
@@ -438,10 +482,14 @@ mx_termios_cmd(u32 tiosc, uz a1){
 			(tiosc == mx_TERMIOS_CMD_RESET /*|| tiosc == mx_TERMIOS_CMD_SET_PGRP*/),
 		rv = FAL0);
 
+	/* First-time init */
 	if(a_termios_g.tiosg_normal == NIL){
+		a_termios_g.tiosg_pgrp = getpgrp();
 		a_termios_g.tiosg_normal = a_termios_g.tiosg_envp;
 		a_termios_g.tiosg_normal->tiose_cmd = mx_TERMIOS_CMD_NORMAL;
-		/*rv =*/ a_termios_norm_query();
+		/* In that situation all we can do is to stop immediately */
+		if(!a_termios_normal_query())
+			n_raise(SIGTSTP);
 	}
 
 	/* Note: RESET only called with signals blocked in main loop handler */
