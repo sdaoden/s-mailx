@@ -89,24 +89,24 @@ mx_tty_getpass(char const *query){
 
 	pass = NIL;
 
-	if(n_psonce & n_PSO_TTYANY){
+	if(n_psonce & n_PSO_INTERACTIVE){
 		if(query == NIL)
 			query = _("Password: ");
 
 		/* Because of this we cannot use go_input(), thus possibly MLE with termcap stuff */
 		mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_PASSWORD);
 
-		fputs(query, mx_tty_fp);
-		fflush(mx_tty_fp);
+		fputs(query, mx_stdout);
+		fflush(mx_stdout);
 
 		mx_fs_linepool_aquire(&ldat, &lsize);
-		if(readline_restart(mx_tty_fp, &ldat, &lsize, 0) >= 0)
+		if(readline_restart(mx_stdin, &ldat, &lsize, 0) >= 0)
 			pass = savestr(ldat);
 		mx_fs_linepool_release(ldat, lsize);
 
 		mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_PASSWORD);
 
-		putc('\n', mx_tty_fp);
+		putc('\n', mx_stdout);
 	}
 
 	NYD_OU;

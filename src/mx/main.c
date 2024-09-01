@@ -128,9 +128,10 @@ a_main_startup(char const *argv0){ /* {{{ */
 	char *cp;
 	NYD2_IN;
 
-	n_stdin = stdin;
-	n_stdout = stdout;
-	n_stderr = stderr;
+	/* (xxx SU I/O) */
+	mx_stdin = stdin;
+	mx_stdout = stdout;
+	mx_stderr = stderr;
 
 	mx_go_init(TRU1);
 
@@ -147,26 +148,16 @@ a_main_startup(char const *argv0){ /* {{{ */
 	 * TODO Start doing it right for at least explicit terminal-related things,
 	 * TODO but v15 should use ONLY this, also for terminal input! */
 	if(isatty(STDIN_FILENO)){
-		n_psonce |= n_PSO_TTYIN;
-		/* We need a writable terminal descriptor then, anyway */
-		if((mx_tty_fp = fdopen(fileno(n_stdin), "w+")) != NIL)
-			setvbuf(mx_tty_fp, NIL, _IOLBF, 0);
-	}
+		/* Assume we are interactive, then.
+		 * This state will become unset later for n_PO_QUICKRUN_MASK! */
+		if(isatty(STDOUT_FILENO))
+			n_psonce |= n_PSO_INTERACTIVE;
+		n_psonce |= n_PSO_TERMIOS_TTY;
+	}else if(isatty(STDOUT_FILENO))
+		n_psonce |= n_PSO_TERMIOS_TTY;
 
-	if(isatty(STDOUT_FILENO))
-		n_psonce |= n_PSO_TTYOUT;
 	/* STDOUT is always line buffered from our point of view */
-	setvbuf(n_stdout, NIL, _IOLBF, 0);
-	if(mx_tty_fp == NIL)
-		mx_tty_fp = n_stdout;
-
-	/* Assume we are interactive, then.
-	 * This state will become unset later for n_PO_QUICKRUN_MASK! */
-	if((n_psonce & n_PSO_TTYANY) == n_PSO_TTYANY)
-		n_psonce |= n_PSO_INTERACTIVE;
-
-	if(isatty(STDERR_FILENO))
-		n_psonce |= n_PSO_TTYERR;
+	setvbuf(mx_stdout, NIL, _IOLBF, 0);
 
 	/* Change to reproducible mode asap before doing extensive setup */
 	if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
@@ -371,7 +362,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 		if((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
 			safe_signal(SIGINT, &a_main_hdrstop);
 		if(!ok_blook(quiet))
-			fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"), n_uagent,
+			fprintf(mx_stdout, _("%s version %s.  Type `?' for help\n"), n_uagent,
 				(su_state_has(su_STATE_REPRODUCIBLE) ? su_reproducible_build : ok_vlook(version)));
 		n_folder_announce(n_ANNOUNCE_MAIN_CALL | n_ANNOUNCE_CHANGE);
 		safe_signal(SIGINT, prevint);
@@ -405,7 +396,7 @@ a_main_hdrstop(int signo){
 	NYD; /* Signal handler */
 	UNUSED(signo);
 
-	fflush(n_stdout);
+	fflush(mx_stdout);
 	n_err_sighdl(_("\nInterrupt\n"));
 	siglongjmp(a_main__hdrjmp, 1);
 }
@@ -607,7 +598,7 @@ a_main_usage(FILE *fp){
 		fprintf(fp, _("%s (%s%s%s): send and receive Internet mail\n"),
 			su_program, (isne ? n_uagent : su_empty), (isne ? " " : su_empty), ok_vlook(version));
 	}
-	if(fp != n_stderr)
+	if(fp != mx_stderr)
 		putc('\n', fp);
 
 	fprintf(fp, _(
@@ -617,7 +608,7 @@ a_main_usage(FILE *fp){
 		"  %s [-M type | -m file | -q file | -t] [-r from-addr] [:-S var[=value]:]\n"
 		"  %s [-s subject] [-T \"arget: addr\"] [:-X/Y cmd:] [-.] :to-addr:\n"),
 		su_program, buf, buf, buf);
-	if(fp != n_stderr)
+	if(fp != mx_stderr)
 		putc('\n', fp);
 
 	fprintf(fp, _(
@@ -625,7 +616,7 @@ a_main_usage(FILE *fp){
 		"  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
 		"  %s [-L spec] [-r from-addr] [:-S var[=value]:] [-u user] [:-X/Y cmd:]\n"),
 		su_program, buf);
-	if(fp != n_stderr)
+	if(fp != mx_stderr)
 		putc('\n', fp);
 
 	fprintf(fp, _(
@@ -633,7 +624,7 @@ a_main_usage(FILE *fp){
 		"  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":] -f\n"
 		"  %s [-L spec] [-r from-addr] [:-S var[=value]:] [:-X/Y cmd:] [file]\n"),
 		su_program, buf);
-	if(fp != n_stderr)
+	if(fp != mx_stderr)
 		putc('\n', fp);
 
 	/* (ISO C89 string length) */
@@ -840,10 +831,10 @@ main(int argc, char *argv[]){
 		case 'h':
 		case -1:
 			if(!su_state_has(su_STATE_REPRODUCIBLE)){
-				a_main_usage(n_stdout);
+				a_main_usage(mx_stdout);
 				if(i < 0){
-					fprintf(n_stdout, "\nLong options:\n");
-					(void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,n_stdout));
+					fprintf(mx_stdout, "\nLong options:\n");
+					(void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,mx_stdout));
 				}
 			}
 			goto jleave;
@@ -929,7 +920,7 @@ main(int argc, char *argv[]){
 		case 'V':{
 			struct n_string s;
 
-			fputs(n_string_cp_const(mx_version(n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
+			fputs(n_string_cp_const(mx_version(n_string_book(n_string_creat_auto(&s), 120))), mx_stdout);
 			n_exit_status = su_EX_OK;
 			}goto jleave;
 		case 'v':
@@ -973,7 +964,7 @@ main(int argc, char *argv[]){
 		case '#':
 			/* Work in batch mode, even if non-interactive */
 			if(!(n_psonce & n_PSO_INTERACTIVE))
-				setvbuf(n_stdin, NIL, _IOLBF, 0);
+				setvbuf(mx_stdin, NIL, _IOLBF, 0);
 			n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
 			mc.mc_folder = su_path_null;
 			n_var_setup_batch_mode();
@@ -996,7 +987,7 @@ jusage:
 					n_err("%s\n", V_(emsg));
 			}
 			if(!su_state_has(su_STATE_REPRODUCIBLE))
-				a_main_usage(n_stderr);
+				a_main_usage(mx_stderr);
 			n_exit_status = su_EX_USAGE;
 			goto jleave;
 		}

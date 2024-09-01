@@ -400,7 +400,7 @@ n_sigman_leave(struct n_sigman *self, enum n_sigman_flags reraise_flags){
 	switch(self->sm_signo){
 	case SIGPIPE:
 		if((reraise_flags & n_SIGMAN_PIPE) ||
-				((reraise_flags & n_SIGMAN_NTTYOUT_PIPE) && !(n_psonce & n_PSO_TTYOUT)))
+				((reraise_flags & n_SIGMAN_NTTYOUT_PIPE) && !(n_psonce & n_PSO_INTERACTIVE)))
 			sig = SIGPIPE;
 		break;
 	case SIGHUP:

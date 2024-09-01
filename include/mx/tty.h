@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ MLE (Mailx Line Editor) and some more TTY stuff.
+ *@ We read from mx_stdin and write to mx_stdout.
  *
  * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -25,8 +26,6 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
-
-EXPORT_DATA FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 
 /* Return whether user says yes, on STDIN if interactive.
  * Uses noninteract_default, the return value for non-interactive use cases, as a hint for n_boolify() and chooses the

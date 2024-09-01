@@ -1354,7 +1354,7 @@ int
 
 	/* Interrupts will cause trouble if we are inside a stdio call. As this is
 	 * only relevant if input is from tty, bypass it by read(), then */
-	if ((n_psonce & n_PSO_TTYIN) && fileno(ibuf) == 0) {
+	if ((n_psonce & n_PSO_INTERACTIVE) && fileno(ibuf) == 0) {
 		ASSERT(*linesize == 0 || *linebuf != NULL);
 		n_pstate &= ~n_PS_READLINE_NL;
 		for (;;) {

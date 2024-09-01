@@ -377,7 +377,7 @@ mx_child_fork(struct mx_child_ctx *ccp){
 	/* Does this child take the terminal? */
 	if(ccp->cc_fds[0] == mx_CHILD_FD_PASS || ccp->cc_fds[1] == mx_CHILD_FD_PASS){
 		/* We strip that in started children.. */
-		if(n_psonce & n_PSO_TTYANY){
+		if(n_psonce & n_PSO_INTERACTIVE){
 			ccp->cc_flags |= mx__CHILD_JOBCTL;
 			cep->ce_tios = TRU1;
 		}
@@ -468,7 +468,7 @@ jleave:
 jkid:
 	a_child_head = NIL;
 	/* Strip tty bits, our children will not care from our point of view */
-	n_psonce &= ~(n_PSO_TTYANY | n_PSO_INTERACTIVE);
+	n_psonce &= ~n_PSO_INTERACTIVE;
 
 	n_err_on_fork(); /* XXX ugly on-fork hacks */
 
