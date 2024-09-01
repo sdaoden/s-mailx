@@ -149,12 +149,12 @@ a_termios_normal_query(void){
 	boole is_bg;
 	/*NYD2_IN;*/
 
-	is_bg = (a_termios_g.tiosg_pgrp != tcgetpgrp(fileno(mx_tty_fp)));
+	is_bg = (a_termios_g.tiosg_pgrp != tcgetpgrp(fileno(mx_stdout)));
 
 	a_termios_g.tiosg_is_bg = is_bg;
 
 	if(!is_bg){
-		tcgetattr(fileno(mx_tty_fp), &a_termios_g.tiosg_normal->tiose_state);
+		tcgetattr(fileno(mx_stdout), &a_termios_g.tiosg_normal->tiose_state);
 		/* XXX always set ECHO and ICANON in our "normal" canonical state */
 		a_termios_g.tiosg_normal->tiose_state.c_lflag |= ECHO | ICANON;
 		/*a_termios_g.tiosg_normal->tiose_state.c_iflag |= ICRNL;*/
@@ -207,7 +207,7 @@ a_termios_onsig(int sig){
 					/* May have state_change hooks to call, too */
 					if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
 						goto jraiseskip;
-					(void)tcsetattr(fileno(mx_tty_fp), TCSAFLUSH,
+					(void)tcsetattr(fileno(mx_stdout), TCSAFLUSH,
 						&a_termios_g.tiosg_normal->tiose_state);
 				}
 				goto jleave;
@@ -236,7 +236,8 @@ a_termios_onsig(int sig){
 
 			if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL && !a_termios_g.tiosg_is_bg){
 				ASSERT(a_termios_g.tiosg_normal_is_init);
-				(void)tcsetattr(fileno(mx_tty_fp), TCSAFLUSH, &a_termios_g.tiosg_normal->tiose_state);
+				(void)tcsetattr(fileno(mx_stdout), TCSAFLUSH, &a_termios_g.tiosg_normal->tiose_state);
+			}
 		}
 	}
 
@@ -276,7 +277,7 @@ jraiseskip:
 				 * adjustments which happened in the meantime are kept */
 				ASSERT(sig == SIGCONT);
 				if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
-					(void)tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state);
+					(void)tcsetattr(fileno(mx_stdout), TCSADRAIN, &tiosep->tiose_state);
 			}
 
 			if(tiosep->tiose_on_state_change != NIL)
@@ -317,13 +318,13 @@ a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
 	/*NYD2_IN;*/
 
 #ifdef mx_HAVE_TCGETWINSIZE
-	if(tcgetwinsize(fileno(mx_tty_fp), &ws) == -1)
+	if(tcgetwinsize(fileno(mx_stdout), &ws) == -1)
 		ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGWINSZ
-	if(ioctl(fileno(mx_tty_fp), TIOCGWINSZ, &ws) == -1)
+	if(ioctl(fileno(mx_stdout), TIOCGWINSZ, &ws) == -1)
 		ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGSIZE
-	if(ioctl(fileno(mx_tty_fp), TIOCGSIZE, &ws) == -1)
+	if(ioctl(fileno(mx_stdout), TIOCGSIZE, &ws) == -1)
 		ts.ts_lines = ts.ts_cols = 0;
 #endif
 
@@ -341,7 +342,7 @@ a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
 		 * If baud rate < 1200, use  9
 		 * If baud rate = 1200, use 14
 		 * If baud rate > 1200, use VAL_HEIGHT */
-		ospeed = ((tcgetattr(fileno(mx_tty_fp), &tbuf) == -1) ? B9600 : cfgetospeed(&tbuf));
+		ospeed = ((tcgetattr(fileno(mx_stdout), &tbuf) == -1) ? B9600 : cfgetospeed(&tbuf));
 
 		if(ospeed < B1200)
 			tiosdp->tiosd_height = 9;
@@ -391,7 +392,7 @@ mx_termios_controller_setup(enum mx_termios_setup what){
 		/* Semantics are a bit hairy and cast in stone in the manual, and
 		 * scattered all over the place, at least $COLUMNS, $LINES, -# */
 		if(!su_state_has(su_STATE_REPRODUCIBLE) && ((n_psonce & n_PSO_INTERACTIVE) ||
-					((n_psonce & n_PSO_TTYANY) && (n_poption & n_PO_BATCH_FLAG)))){
+					((n_psonce & n_PSO_TERMIOS_TTY) && (n_poption & n_PO_BATCH_FLAG)))){
 			/* (Also) POSIX: LINES and COLUMNS always override.  Variables ensured to be positive numbers */
 			u32 l, c;
 			char const *cp;
@@ -418,8 +419,9 @@ mx_termios_controller_setup(enum mx_termios_setup what){
 			if(l == 0 || c == 0){
 				/* In non-interactive mode, stop now, except for the documented case that both are set
 				 * but not both have been usable */
-				if(!(n_psonce & n_PSO_INTERACTIVE) && !((n_psonce & n_PSO_TTYANY) &&
-							(n_poption & n_PO_BATCH_FLAG)) && (!hadl || !hadc))
+				if(!(n_psonce & n_PSO_INTERACTIVE) &&
+						!((n_psonce & n_PSO_TERMIOS_TTY) && (n_poption & n_PO_BATCH_FLAG)) &&
+						(!hadl || !hadc))
 					goto jtermsize_default;
 
 				a_termios_dimen_query(&mx_termios_dimen);
@@ -500,7 +502,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
 			rv = TRU1;
 			goto jleave;
 		}
-		rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state) == 0);
+		rv = (tcsetattr(fileno(mx_stdout), TCSADRAIN, &tiosep->tiose_state) == 0);
 
 		for(isfirst = TRU1;; isfirst = FAL0){
 			a_termios_g.tiosg_envp = tiosep->tiose_prev;
@@ -523,7 +525,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
 	}else if(tiosc == mx_TERMIOS_CMD_SET_PGRP){
 		if(a_termios_g.tiosg_pgrp == 0)
 			a_termios_g.tiosg_pgrp = getpgrp();
-		rv = (tcsetpgrp(fileno(mx_tty_fp), S(pid_t,a1)) == 0);
+		rv = (tcsetpgrp(fileno(mx_stdout), S(pid_t,a1)) == 0);
 		goto jleave;
 #endif
 	}else if(a_termios_g.tiosg_envp->tiose_cmd == (tiosc & mx__TERMIOS_CMD_ACT_MASK) &&
@@ -584,12 +586,12 @@ mx_termios_cmd(u32 tiosc, uz a1){
 		}
 		/* FALLTHRU */
 	case mx_TERMIOS_CMD_NORMAL:
-		rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state) == 0);
+		rv = (tcsetattr(fileno(mx_stdout), TCSADRAIN, &tiosep->tiose_state) == 0);
 		break;
 	case mx_TERMIOS_CMD_PASSWORD:
 		tiosep->tiose_state.c_iflag &= ~(ISTRIP);
 		tiosep->tiose_state.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-		rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state) == 0);
+		rv = (tcsetattr(fileno(mx_stdout), TCSADRAIN, &tiosep->tiose_state) == 0);
 		break;
 	case mx_TERMIOS_CMD_RAW:
 	case mx_TERMIOS_CMD_RAW_TIMEOUT:
@@ -604,7 +606,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
 		}
 		tiosep->tiose_state.c_iflag &= ~(ISTRIP | IGNCR | IXON | IXOFF);
 		tiosep->tiose_state.c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN | ISIG);
-		rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state) == 0);
+		rv = (tcsetattr(fileno(mx_stdout), TCSADRAIN, &tiosep->tiose_state) == 0);
 		break;
 	}
 

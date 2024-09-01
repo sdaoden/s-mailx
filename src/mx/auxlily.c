@@ -647,7 +647,7 @@ n_verrx(boole allow_multiple, char const *format, void *vlp){/*XXX sigcondom TOD
 #endif
 
 #ifdef mx_HAVE_COLOUR
-		if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
+		if(c5recur == 1 && (n_psonce & n_PSO_INTERACTIVE)){
 			struct str const *pref, *suff;
 			struct mx_colour_pen *cp;
 

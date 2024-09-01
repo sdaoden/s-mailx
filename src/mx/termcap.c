@@ -454,7 +454,7 @@ a_termcap_load(char const *term){
 	int err;
 	NYD2_IN;
 
-	if(!(rv = (setupterm(term, fileno(mx_tty_fp), &err) == OK)))
+	if(!(rv = (setupterm(term, fileno(mx_stdout), &err) == OK)))
 		n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
 
 	NYD2_OU;
@@ -594,7 +594,7 @@ a_termcap_ent_query_tcp(struct a_termcap_ent *tep, struct a_termcap_control cons
 
 static int
 a_termcap_putc(int c){
-	return putc(c, mx_tty_fp);
+	return putc(c, mx_stdout);
 }
 #endif /* mx_HAVE_TERMCAP */
 
@@ -636,7 +636,7 @@ mx_termcap_init(void){
 	struct str termvar;
 	char const *ccp;
 	NYD_IN;
-	ASSERT(n_psonce & n_PSO_TTYANY);
+	ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
 	a_termcap_g = su_TCALLOC(struct a_termcap_g, 1);
 	a_termcap_g->tg_ext_ents = NIL;
@@ -748,7 +748,7 @@ mx_termcap_resume(BITENUM(u32,mx_termcap_mode) mode){
 		}
 
 		if(any)
-			fflush(mx_tty_fp);
+			fflush(mx_stdout);
 	}
 
 	NYD_OU;
@@ -778,7 +778,7 @@ mx_termcap_suspend(BITENUM(u32,mx_termcap_mode) mode){
 		any |= (mx_termcap_cmdx(mx_TERMCAP_CMD_ke) > FAL0);
 
 		if(any)
-			fflush(mx_tty_fp);
+			fflush(mx_stdout);
 	}
 
 	NYD_OU;
@@ -854,7 +854,7 @@ mx_termcap_cmd(BITENUM(u32,mx_termcap_cmd) cmd, sz a1, sz a2){
 					break;
 			}else
 #endif
-			      if(fputs(cp, mx_tty_fp) == EOF)
+			      if(fputs(cp, mx_stdout) == EOF)
 				break;
 			if(!(tep->te_flags & a_TERMCAP_F_ARG_CNT) || --a1 <= 0){
 				rv = TRU1;
@@ -874,7 +874,7 @@ mx_termcap_cmd(BITENUM(u32,mx_termcap_cmd) cmd, sz a1, sz a2){
 				--a1;
 			if((rv = mx_termcap_cmd(mx_TERMCAP_CMD_ch, a1, 0)) > 0){
 				for(a2 = mx_termios_dimen.tiosd_width - a1; a2 > 0; --a2)
-					if(putc(' ', mx_tty_fp) == EOF){
+					if(putc(' ', mx_stdout) == EOF){
 						rv = FAL0;
 						break;
 					}
@@ -900,8 +900,8 @@ mx_termcap_cmd(BITENUM(u32,mx_termcap_cmd) cmd, sz a1, sz a2){
 
 jflush:
 		if(flags & mx_TERMCAP_CMD_FLAG_FLUSH)
-			fflush(mx_tty_fp);
-		if(ferror(mx_tty_fp))
+			fflush(mx_stdout);
+		if(ferror(mx_stdout))
 			rv = FAL0;
 	}
 

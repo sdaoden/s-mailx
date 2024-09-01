@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Signal handling and commands heavily related with signals.
+ *@ TODO sigman is a CRUX
  *
  * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -50,6 +51,7 @@ enum n_sigman_flags{
 	n_SIGMAN_ALL = 0xFF,
 	/* Mostly for _leave() reraise flags */
 	n_SIGMAN_VIPSIGS = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT | n_SIGMAN_TERM,
+	/* TODO ..if stdout is not a terminal .. mutated to interactive; bad; and name also obsolete..  */
 	n_SIGMAN_NTTYOUT_PIPE = 1<<16,
 	n_SIGMAN_VIPSIGS_NTTYOUT = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT | n_SIGMAN_TERM | n_SIGMAN_NTTYOUT_PIPE,
 
@@ -114,7 +116,7 @@ EXPORT void rele_sigs(void);
 
 EXPORT int n__sigman_enter(struct n_sigman *self, int flags);
 EXPORT void n_sigman_cleanup_ping(struct n_sigman *self);
-EXPORT void n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
+EXPORT void n_sigman_leave(struct n_sigman *self, enum n_sigman_flags reraise_flags);
 
 /* Pending signal or 0? */
 EXPORT int n_sigman_peek(void);

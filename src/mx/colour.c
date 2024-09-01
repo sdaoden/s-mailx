@@ -261,7 +261,7 @@ a_colour_ok_to_go(u32 get_flags){
 	n_poption &= ~n_PO_V_MASK; /* TODO log too loud - need "no log" bit!! */
 
 	/* xxx Entire preamble could later be a shared function */
-	if(!(n_psonce & n_PSO_TTYANY) || !(n_psonce & n_PSO_STARTED) || ok_blook(colour_disable) ||
+	if(!(n_psonce & n_PSO_INTERACTIVE) || !(n_psonce & n_PSO_STARTED) || ok_blook(colour_disable) ||
 			(!(get_flags & mx_COLOUR_GET_FORCED) && !mx_COLOUR_IS_ACTIVE()))
 		goto jleave;
 	if(UNLIKELY(!a_colour_g.cg_is_init))
@@ -940,7 +940,7 @@ mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp){
 	struct mx_colour_env *cep;
 	NYD_IN;
 
-	if(!(n_psonce & n_PSO_TTYANY))
+	if(!(n_psonce & n_PSO_INTERACTIVE))
 		goto jleave;
 	if(!a_colour_g.cg_is_init)
 		a_colour_init();

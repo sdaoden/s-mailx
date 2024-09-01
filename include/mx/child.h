@@ -91,8 +91,8 @@ EXPORT boole mx_child_run(struct mx_child_ctx *ccp);
 
 /* Fork a child process, "enable" the below functions upon success.  With SPAWN_CONTROL the parent will linger until
  * the child has called in_child_setup() or even (with SPAWN_CONTROL_LINGER) until it execve's.
- * If any of ::cc_fds[01] is _FD_PASS, and if n_psonce&n_PSO_TTYANY, then we deal with sh(1)ell job control and/aka
- * create a mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_HANDS_OFF) environment for the child!
+ * If any of ::cc_fds[01] is _FD_PASS, and if n_psonce&n_PSO_INTERACTIVE, then we deal with sh(1)ell job control
+ * and/aka create a mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_HANDS_OFF) environment for the child!
  * Children can start children themselves, but we do not care about termios.
  * XXX or child handling no more in recursive levels */
 EXPORT boole mx_child_fork(struct mx_child_ctx *ccp);

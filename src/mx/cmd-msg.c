@@ -142,8 +142,8 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          n_perr(cmd, 0);
          obuf = n_stdout;
       }
-   } else if ((n_psonce & n_PSO_TTYOUT) && (dopage ||
-         ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
+   }else if (dopage ||
+         ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL)) {
       uz nlines, lib;
 
       nlines = 0;
@@ -165,14 +165,11 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          if((obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }
-#ifdef mx_HAVE_COLOUR
-         if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-            mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf);
-#endif
    }
+
 #ifdef mx_HAVE_COLOUR
-   else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-      mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout);
+   if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
+      mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf);
 #endif
 
    rv = 0;
@@ -206,6 +203,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          tstats[0] += mstats[0];
    }
    n_autorec_snap_gut();
+
 #ifdef mx_HAVE_COLOUR
    if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
       mx_colour_env_gut();

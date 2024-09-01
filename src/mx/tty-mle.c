@@ -68,8 +68,6 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-FILE *mx_tty_fp; /* Our terminal output TODO input channel */
-
 /*
  * MLE: the Mailx-Line-Editor, our homebrew editor
  *
@@ -733,7 +731,7 @@ a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
 	}else if(tiossc & mx_TERMIOS_STATE_RESUME){
 		/* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
 # ifdef mx_HAVE_COLOUR
-		mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp);
+		mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_stdout);
 # endif
 		mx_termcap_resume(mx_TERMCAP_MODE_CA |
 			((a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD) ? mx_TERMCAP_MODE_SMART : 0));
@@ -1000,7 +998,7 @@ a_tty_hist_list(void){ /* {{{ */
 		goto jleave;
 
 	if((fp = mx_fs_tmp_open(NIL, "hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
-		fp = n_stdout;
+		fp = mx_stdout;
 
 	no = su_cs_dict_count(&a_tty.tg_hist_dict);
 	l = b = 0;
@@ -1026,7 +1024,7 @@ a_tty_hist_list(void){ /* {{{ */
 		fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
 	}
 
-	if(fp != n_stdout){
+	if(fp != mx_stdout){
 		page_or_print(fp, l);
 
 		mx_fs_close(fp);
@@ -1129,7 +1127,7 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){ /* {{{ */
 			mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, thp->th_dat, thp->th_len);
 			break;
 		}else{
-			fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"), entry, thp->th_dat);
+			fprintf(mx_stdout, _("history: deleting %" PRIdZ ": %s\n"), entry, thp->th_dat);
 			su_cs_dict_remove(&a_tty.tg_hist_dict, thp->th_dat);
 		}
 	}
@@ -1318,7 +1316,7 @@ a_tty_line_config(struct a_tty_line *tlp, boole isfirst){ /* {{{ */
 		char *posbuf, *pos;
 
 		if(isfirst)
-			mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp);
+			mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_stdout);
 
 		/* .tl_pos_buf is a hack */
 		posbuf = pos = NIL;
@@ -1577,10 +1575,10 @@ a_tty_vinuni(struct a_tty_line *tlp){ /* {{{ */
 				csuf = mx_colour_reset_to_str();
 		}
 #endif
-		fprintf(mx_tty_fp, _("%sPlease enter Unicode code point:%s "),
+		fprintf(mx_stdout, _("%sPlease enter Unicode code point:%s "),
 			(cpre != NIL ? cpre->s : su_empty), (csuf != NIL ? csuf->s : su_empty));
 	}
-	fflush(mx_tty_fp);
+	fflush(mx_stdout);
 
 	buf[sizeof(buf) -1] = '\0';
 	for(i = 0;;){
@@ -1599,8 +1597,8 @@ a_tty_vinuni(struct a_tty_line *tlp){ /* {{{ */
 			goto jerr;
 		}
 
-		putc(buf[i], mx_tty_fp);
-		fflush(mx_tty_fp);
+		putc(buf[i], mx_stdout);
+		fflush(mx_stdout);
 		if(++i == sizeof buf)
 			goto jerr;
 	}
@@ -1628,7 +1626,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){ /* {{{ */
 
 	if(tlp->tl_vi_flags & a_TTY_VF_BELL){ /* XXX visual bell?? */
 		tlp->tl_vi_flags |= a_TTY_VF_SYNC;
-		if(putc('\a', mx_tty_fp) == EOF)
+		if(putc('\a', mx_stdout) == EOF)
 			goto jerr;
 	}
 
@@ -1657,7 +1655,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){ /* {{{ */
 
 	if(tlp->tl_vi_flags & a_TTY_VF_SYNC){
 		tlp->tl_vi_flags &= ~a_TTY_VF_SYNC;
-		if(fflush(mx_tty_fp))
+		if(fflush(mx_stdout))
 			goto jerr;
 	}
 
@@ -1668,7 +1666,7 @@ jleave:
 	return rv;
 
 jerr:
-	clearerr(mx_tty_fp); /* xxx I/O layer rewrite */
+	clearerr(mx_stdout); /* xxx I/O layer rewrite */
 	n_err(_("Visual refresh failed!  Is $TERM set correctly?\n  Setting *line-editor-disable* to get us through!\n"));
 	ok_bset(line_editor_disable);
 	rv = FAL0;
@@ -1742,7 +1740,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 		}
 
 		if((f & (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)) == (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)){
-			if(fputs(n_string_cp(tlp->tl_prompt), mx_tty_fp) == EOF)
+			if(fputs(n_string_cp(tlp->tl_prompt), mx_stdout) == EOF)
 				goto jerr;
 			phy_cur = tlp->tl_prompt_width + 1;
 		}
@@ -1916,7 +1914,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 
 	if(f & a_SHOW_PROMPT){
 		ASSERT(phy_base == tlp->tl_prompt_width);
-		if(fputs(n_string_cp(tlp->tl_prompt), mx_tty_fp) == EOF)
+		if(fputs(n_string_cp(tlp->tl_prompt), mx_stdout) == EOF)
 			goto jerr;
 		phy_cur = phy_nxtcur;
 	}
@@ -1928,7 +1926,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 		cw = tcp_left->tc_width;
 
 		if(LIKELY(!tcp_left->tc_novis)){
-			if(fwrite(tcp_left->tc_cbuf, sizeof *tcp_left->tc_cbuf, tcp_left->tc_count, mx_tty_fp
+			if(fwrite(tcp_left->tc_cbuf, sizeof *tcp_left->tc_cbuf, tcp_left->tc_count, mx_stdout
 					) != tcp_left->tc_count)
 				goto jerr;
 		}else{ /* XXX Should not be here <-> CText, ui_str.c */
@@ -1948,7 +1946,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 			}else
 				wbuf[0] = '?', wbuf[1] = '\0';
 
-			if(fputs(wbuf, mx_tty_fp) == EOF)
+			if(fputs(wbuf, mx_stdout) == EOF)
 				goto jerr;
 			cw = 1;
 		}
@@ -1997,7 +1995,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 			pos[2] = '%';
 		}
 
-		if(fputs(posbuf, mx_tty_fp) == EOF)
+		if(fputs(posbuf, mx_stdout) == EOF)
 			goto jerr;
 		phy_cur += 4;
 	}
@@ -2192,8 +2190,8 @@ a_tty_kdel(struct a_tty_line *tlp){
 		}
 		f = a_TTY_VF_MOD_CONTENT;
 	}else if(cnt == 0 && !ok_blook(ignoreeof)){
-		putc('^', mx_tty_fp);
-		putc('D', mx_tty_fp);
+		putc('^', mx_stdout);
+		putc('D', mx_stdout);
 		i = -1;
 		f = a_TTY_VF_NONE;
 	}else{
@@ -2648,7 +2646,7 @@ jmulti:{ /* xxx huge: own function */
 
 		if((fp = mx_fs_tmp_open(NIL, "mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
 			n_perr(_("tmpfile"), 0);
-			fp = mx_tty_fp;
+			fp = mx_stdout;
 		}
 
 		shoup = n_string_reserve(n_string_trunc(shoup, 0), 80 -1);
@@ -2755,7 +2753,7 @@ jsep:
 		putc('\n', fp);
 		++lncnt;
 
-		if(fp != mx_tty_fp){
+		if(fp != mx_stdout){
 			su_mem_bag_push(mx_go_data->gdc_membag, membag_persist);
 			page_or_print(fp, lncnt);
 			su_mem_bag_pop(mx_go_data->gdc_membag, membag_persist);
@@ -3660,8 +3658,8 @@ jdone:
 		*histok_or_nil = FAL0;
 
 jleave:
-	putc('\n', mx_tty_fp);
-	fflush(mx_tty_fp);
+	putc('\n', mx_stdout);
+	fflush(mx_stdout);
 	NYD_OU;
 	return rv;
 
@@ -4785,7 +4783,7 @@ c_bind(void *vp){ /* {{{ */
 		FILE *fp;
 
 		if((fp = mx_fs_tmp_open(NIL, "bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
-			fp = n_stdout;
+			fp = mx_stdout;
 
 		lns = 0;
 		for(;;){
@@ -4795,7 +4793,7 @@ c_bind(void *vp){ /* {{{ */
 				break;
 		}
 
-		if(fp != n_stdout){
+		if(fp != mx_stdout){
 			page_or_print(fp, lns);
 
 			mx_fs_close(fp);
@@ -4824,8 +4822,8 @@ c_bind(void *vp){ /* {{{ */
 					n_shexp_quote_cp(tbpc.tbpc_in_seq, FAL0));
 				vp = NIL;
 			}else{
-				a_tty_bind_show(tbpc.tbpc_tbcp, n_stdout);
-				clearerr(n_stdout);
+				a_tty_bind_show(tbpc.tbpc_tbcp, mx_stdout);
+				clearerr(mx_stdout);
 			}
 		}
 	}
@@ -4935,12 +4933,12 @@ int
 
 	if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
 		if(mx_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
-			fwrite(xprompt.s_dat, 1, xprompt.s_len, mx_tty_fp);
-			fflush(mx_tty_fp);
+			fwrite(xprompt.s_dat, 1, xprompt.s_len, mx_stdout);
+			fflush(mx_stdout);
 		}
 	}
 
-	rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DVL_LOC_ARGS_USE);
+	rv = (readline_restart)(mx_stdin, linebuf, linesize, n  su_DVL_LOC_ARGS_USE);
 
 	NYD_OU;
 	return rv;

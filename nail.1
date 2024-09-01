@@ -276,7 +276,7 @@ of the attachment.
 invisible for other recipients.
 May be used multiple times.
 See also
-.Sx "On sending mail, and non-interactive mode" .
+.Sx "Sending mail, and non-interactive mode" .
 .
 .Mx
 .It Fl C Ar """name: content""" , Fl Fl custom-header Ns =..
@@ -773,7 +773,7 @@ constraint of
 .Va expandaddr
 applies to recipient addresses on the command line.
 For more see
-.Sx "On sending mail, and non-interactive mode" .
+.Sx "Sending mail, and non-interactive mode" .
 .
 .Bd -literal -offset indent
 $ \*(xX -#:/ -X 'addrcodec enc <silver@go> Hey, ho' -Xx
@@ -877,8 +877,8 @@ etc. support an asterisk
 wildcard argument that matches all covered settings.
 .\" }}}
 .
-.\" .Ss "On sending mail, and non-interactive mode" {{{
-.Ss "On sending mail, and non-interactive mode"
+.\" .Ss "Sending mail, and non-interactive mode" {{{
+.Ss "Sending mail, and non-interactive mode"
 .
 To send a message to one or more people give their email addresses (and
 .Va fullnames )
@@ -890,7 +890,9 @@ add (blind) carbon copy recipients.
 When delivered through a local
 .Va mta
 (Message-Transfer-Agent) plain system-local user names can be addressed.
-The message text will be read from standard input:
+The message text will be read from standard input \(em
+if the standard input and output I/O channels do not both point to
+a terminal, non-interactive mode is entered:
 .
 .Bd -literal -offset indent
 # Via test MTA
@@ -1024,7 +1026,7 @@ and
 .Va smtp-config ,
 in order.
 More on that under
-.Sx "On URL syntax and credential lookup"
+.Sx "URL syntax and credential lookup"
 and
 .Sx "INTERNAL VARIABLES" .
 .
@@ -1229,14 +1231,14 @@ which enter compose mode support a
 covered changes will be reverted once compose mode is left.
 .\" }}}
 .
-.\" .Ss "On reading mail, and more on interactive mode" {{{
-.Ss "On reading mail, and more on interactive mode"
+.\" .Ss "Reading mail, and more on interactive mode" {{{
+.Ss "Reading mail, and more on interactive mode"
 .
 When invoked without recipients
 .Dq receive mode
-is entered, more oriented towards interactive use
-.Pf ( Sx "On terminal control and line editor" ,
-.Sx "Coloured display" ) .
+is entered, and if the standard input and output I/O channels both point
+to a terminal, in interactive mode with
+.Sx "Terminal control and line editor" .
 Through many
 .Sx COMMANDS
 mail can be read, sent and managed in this mode.
@@ -1718,7 +1720,7 @@ in a pure 7-bit US-ASCII
 .Ql LC_ALL=C
 .Sx ENVIRONMENT
 (as shown in
-.Sx "On sending mail, and non-interactive mode" ) .
+.Sx "Sending mail, and non-interactive mode" ) .
 Unfortunate: due to lack of programming interfaces reading mail will not
 truly work here: whereas
 .Va ttycharset
@@ -2354,8 +2356,8 @@ criterion then the last of those criteria is used.
 .El
 .\" }}}
 .
-.\" .Ss "On terminal control and line editor" {{{
-.Ss "On terminal control and line editor"
+.\" .Ss "Terminal control and line editor" {{{
+.Ss "Terminal control and line editor"
 .
 \*(OP Terminal control depends on the standard
 .Ux
@@ -2705,7 +2707,7 @@ an implementation detail.
 capabilities of the
 .Ev TERM Ns
 inal (see
-.Sx "On terminal control and line editor" ) ,
+.Sx "Terminal control and line editor" ) ,
 and are configurable via
 .Ic colour
 and
@@ -2861,8 +2863,8 @@ it is recommended to repeat any important header information in the
 message text.
 .\" }}}
 .
-.\" .Ss "On URL syntax and credential lookup" {{{
-.Ss "On URL syntax and credential lookup"
+.\" .Ss "URL syntax and credential lookup" {{{
+.Ss "URL syntax and credential lookup"
 .
 For accessing protocol-specific resources Uniform Resource Locators
 (URL, RFC 3986) have become omnipresent.
@@ -4200,7 +4202,7 @@ mailbox instead of simply being flagged as read.
 .It
 Meta expansions may be applied to the resulting pathname, as allowed by
 the operation and applicable to the resulting access protocol (also see
-.Sx "On URL syntax and credential lookup" ) .
+.Sx "URL syntax and credential lookup" ) .
 For the file-protocol, a leading tilde
 .Ql ~
 character will be replaced by the expansion of
@@ -4392,7 +4394,7 @@ also
 password
 and
 .Va user
-.Pf ( Sx "On URL syntax and credential lookup" ) ,
+.Pf ( Sx "URL syntax and credential lookup" ) ,
 as well as things like
 .Va smime-sign-cert
 .Pf ( Sx "Signed and encrypted messages with S/MIME" ) ,
@@ -4511,7 +4513,7 @@ for the third.
 .Pp
 In all other cases the given alias is created or appended to:
 arguments must be valid alias names or other address types (see
-.Sx "On sending mail, and non-interactive mode" ) .
+.Sx "Sending mail, and non-interactive mode" ) .
 The later recursive expansion can be prevented by prefixing the desired
 name with reverse solidus
 .Ql \e .
@@ -4592,7 +4594,7 @@ See
 .Mx
 .It Ic bind , unbind
 \*(OP\*(NQ Configure M(ailx)-L(ine)-E(ditor) key bindings
-.Pf ( Sx "On terminal control and line editor" ) .
+.Pf ( Sx "Terminal control and line editor" ) .
 The latter removes from the given context the given key binding,
 both may be the wildcard
 .Ql * :
@@ -4910,7 +4912,7 @@ are used for the \*(OPal built-in Mailx-Line-Editor
 .Mx -sx
 .Sx MLE
 (see
-.Sx "On terminal control and line editor" ) ,
+.Sx "Terminal control and line editor" ) ,
 and do not support preconditions.
 .Pp
 .Bl -tag -compact -width view-partinfo
@@ -5633,7 +5635,7 @@ but open the mailbox read-only.
 With one argument the current mailbox is synchronized and closed first,
 .Sx "Filename transformations"
 are performed; URL
-.Pf ( Sx "On URL syntax and credential lookup" )
+.Pf ( Sx "URL syntax and credential lookup" )
 .Ql mailbox-type://
 prefixes are understood, as in
 .Ql mbox:///tmp/somefolder ,
@@ -6153,7 +6155,7 @@ Lastly
 the given entries
 .Pf ( Ar :NUMBER: ) .
 Also see
-.Sx "On terminal control and line editor" .
+.Sx "Terminal control and line editor" .
 .
 .Mx
 .Mx
@@ -6556,7 +6558,7 @@ Implicitly generate a
 header if that seems useful, regardless of
 .Va followup-to .
 For more documentation refer to
-.Sx "On sending mail, and non-interactive mode" .
+.Sx "Sending mail, and non-interactive mode" .
 .Pp
 May generate
 .Va ^ERR Ns -DESTADDRREQ
@@ -6589,7 +6591,7 @@ but honouring
 Unless
 .Va fullnames
 is set recipient addresses are skinned, and see
-.Sx "On sending mail, and non-interactive mode" ;
+.Sx "Sending mail, and non-interactive mode" ;
 supports
 .Cm local .
 .Pp
@@ -6778,7 +6780,7 @@ See
 .Va netrc-lookup ,
 .Va netrc-pipe
 and the section
-.Sx "On URL syntax and credential lookup" ;
+.Sx "URL syntax and credential lookup" ;
 the section
 .Sx "The .netrc file"
 documents the file format in detail.
@@ -7110,7 +7112,7 @@ will exchange this command with
 .Ic Lreply
 offers special support for replying to mailing lists.
 For more documentation refer to
-.Sx "On sending mail, and non-interactive mode" .
+.Sx "Sending mail, and non-interactive mode" .
 .Pp
 This may generate the errors
 .Va ^ERR Ns -DESTADDRREQ
@@ -7577,7 +7579,7 @@ This also sets the flag
 \*(OP\*(NQ TLS information and management command multiplexer to aid in
 .Sx "Encrypted network communication"
 with the given URL
-.Pf ( Sx "On URL syntax and credential lookup" ) .
+.Pf ( Sx "URL syntax and credential lookup" ) .
 The port of the URL's
 .Ql server:port
 defaults to HTTPS (443); only protocols which establish TLS directly are
@@ -9260,7 +9262,7 @@ variable is set or unset!), \*(oPally IDNA converted, and indeed means
 if a
 .Ql port
 had been specified in the contextual Uniform Resource Locator URL, see
-.Sx "On URL syntax and credential lookup" .
+.Sx "URL syntax and credential lookup" .
 Even though this mechanism is based on URLs no URL percent encoding
 .Pf ( Ic urlcodec )
 may be applied to neither of
@@ -9762,7 +9764,7 @@ yet these cannot be read as a unit.
 This specifies a timeout in milliseconds that the
 .Mx -sx
 .Sx MLE
-.Pf ( Sx "On terminal control and line editor" )
+.Pf ( Sx "Terminal control and line editor" )
 waits for more bytes to arrive unless it treats a sequence as completed.
 The default is 200, the maximum is about 10000 (10 seconds).
 The comments mention affected sequences in this example:
@@ -10097,7 +10099,7 @@ An empty value makes command escapes unreachable.
 .Mx
 .It Va expandaddr
 Unless set only name and email address recipients are allowed
-.Pf ( Sx "On sending mail, and non-interactive mode" ) ,
+.Pf ( Sx "Sending mail, and non-interactive mode" ) ,
 otherwise all possible recipient types.
 May be set to a comma-separated case-insensitive list that is
 interpreted left-to-right.
@@ -10535,7 +10537,7 @@ file for the
 .Mx -sx
 .Sx MLE
 line editor
-.Pf ( Sx "On terminal control and line editor" ) .
+.Pf ( Sx "Terminal control and line editor" ) .
 .Sx "Filename transformations"
 are performed.
 Also see
@@ -10596,7 +10598,7 @@ Used instead of asking
 for local
 .Ql From:
 etc. addresses (context:
-.Sx "On sending mail, and non-interactive mode" )
+.Sx "Sending mail, and non-interactive mode" )
 if non-empty.
 If set (even empty) unique
 .Ql Message-ID:
@@ -10812,7 +10814,7 @@ uses to detect word boundaries, by default
 .Mx
 .It Va line-editor-disable
 \*(BO Turn off line editing capabilities
-.Pf ( Sx "On terminal control and line editor" ) .
+.Pf ( Sx "Terminal control and line editor" ) .
 .
 .Mx
 .It Va line-editor-no-defaults
@@ -11273,7 +11275,7 @@ will (not) be passed.
 \*(OPally \*(Xx can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
 a corresponding URL (see
-.Sx "On URL syntax and credential lookup" ) .
+.Sx "URL syntax and credential lookup" ) .
 Server interaction (TLS, authentication type, etc.) is configurable via
 .Va smtp-config .
 An overview on TLS and links to more information can be found under
@@ -11422,7 +11424,7 @@ Unless set corresponding recipients are only passed via command line
 \*(BO\*(OP Used to control usage of the user's
 .Pa \*(VN
 file for lookup of account credentials, as documented in the section
-.Sx "On URL syntax and credential lookup"
+.Sx "URL syntax and credential lookup"
 and for the command
 .Ic netrc ;
 the section
@@ -11604,7 +11606,7 @@ Executes with three arguments before a
 .Sx MLE
 .Ic history
 entry is to be added (see
-.Sx "On terminal control and line editor" ) :
+.Sx "Terminal control and line editor" ) :
 the
 .Ic bind
 input context name, the
@@ -12502,7 +12504,7 @@ Also see
 Sending messages to the chosen
 .Va mta
 or to command-pipe recipients (see
-.Sx "On sending mail, and non-interactive mode" )
+.Sx "Sending mail, and non-interactive mode" )
 will be performed asynchronously.
 This means that only startup errors of the respective program will be
 recognizable, but no delivery errors.
@@ -12730,7 +12732,7 @@ will be tried as a fallback to provide the necessary
 To include intermediate certificates, use
 .Va smime-sign-include-certs .
 The possible password sources are documented in
-.Sx "On URL syntax and credential lookup" .
+.Sx "URL syntax and credential lookup" .
 .
 .
 .Mx Va smime-sign-digest
@@ -12803,7 +12805,7 @@ The pseudo-host
 will be used for performing password lookups for these certificates,
 shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
-.Sx "On URL syntax and credential lookup" .
+.Sx "URL syntax and credential lookup" .
 .
 .
 .Mx Va smtp-auth
@@ -13194,7 +13196,7 @@ the system-wide of the
 and/or
 .Lb libtermcap
 capabilities (see
-.Sx "On terminal control and line editor" ,
+.Sx "Terminal control and line editor" ,
 escape commas with reverse solidus
 .Ql \e )
 to be used to overwrite or define entries.
@@ -13997,7 +13999,7 @@ Actively managed
 for child processes and the
 .Mx -sx
 .Sx MLE
-.Pf ( Sx "On terminal control and line editor" )
+.Pf ( Sx "Terminal control and line editor" )
 in interactive mode thereafter.
 Non-interactive mode always uses, and the fallback default is
 a compile-time constant, by default 80 columns.
@@ -14254,7 +14256,7 @@ a program abortion.
 For extended colour and font control refer to
 .Sx "Coloured display" ,
 and for terminal management in general to
-.Sx "On terminal control and line editor" .
+.Sx "Terminal control and line editor" .
 .
 .Mx
 .It Ev TMPDIR
@@ -14944,7 +14946,7 @@ Further reading:
 .Ss "The .netrc file"
 .
 User credentials for machine accounts (see
-.Sx "On URL syntax and credential lookup" )
+.Sx "URL syntax and credential lookup" )
 can be placed in the
 .Pa .netrc
 file, which will be loaded and cached when requested by
@@ -15325,7 +15327,7 @@ create an application specific password (16 characters), and
 .It
 use that special password instead of the real Google account password in
 \*(Xx (for more on that see the section
-.Sx "On URL syntax and credential lookup" ) .
+.Sx "URL syntax and credential lookup" ) .
 .El
 .\" }}}
 .
@@ -15387,7 +15389,7 @@ up-to-date (from within \*(Xx) can only be performed via the hook
 or (for sending only)
 .Va on-compose-enter
 (for more on authentication see the section
-.Sx "On URL syntax and credential lookup" ) :
+.Sx "URL syntax and credential lookup" ) :
 .
 .Bd -literal -offset indent
 set on-main-loop-tick=o-m-l-t on-compose-enter=o-c-e
@@ -15431,7 +15433,7 @@ tree dump after (re-)build (upon startup or after modifying bindings).
 .
 .Pp
 Or the terminal library (see
-.Sx "On terminal control and line editor",
+.Sx "Terminal control and line editor",
 .Ic bind ,
 .Va termcap )
 reports different codes than

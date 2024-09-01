@@ -1103,7 +1103,7 @@ a_coll_ocs__mac(void){
 	/* Execs in a fork(2)ed child  TODO if remains, global MASKs for those! */
 	setvbuf(n_stdin, NIL, _IOLBF, 0);
 	setvbuf(n_stdout, NIL, _IOLBF, 0);
-	n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYANY);
+	n_psonce &= ~n_PSO_INTERACTIVE;
 	n_pstate |= n_PS_COMPOSE_FORKHOOK;
 	n_readctl_read_overlay = NIL; /* TODO need OnForkEvent! See c_readctl() */
 	mx_dig_msg_read_overlay = NIL; /* TODO need OnForkEvent! See c_digmsg() */
@@ -1417,7 +1417,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 
 			temporary_compose_mode_hook_call(NIL, FAL0);
 			mx_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
-				(n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYANY)), &a_coll_ocs__finalize, &coap);
+				(n_psonce & ~n_PSO_INTERACTIVE), &a_coll_ocs__finalize, &coap);
 			fputs("0 0 3\n", n_stdout/*coap->coa_stdout*/); /* (last supported version before removal) */
 			goto jloop;
 		}

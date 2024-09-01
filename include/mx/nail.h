@@ -530,12 +530,12 @@ enum n_program_state_once{
 
    n_PSO_SENDMODE = 1u<<9,
    n_PSO_INTERACTIVE = 1u<<10,
-   n_PSO_TTYIN = 1u<<11,
-   n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
-   n_PSO_TTYANY = n_PSO_TTYIN | n_PSO_TTYOUT, /* mx_tty_fp = TTY */
-   n_PSO_TTYERR = 1u<<13,
 
    /* "Later" (mostly "hacks") */
+
+   /* For $COLUMNS/$LINES handling of non-interactive -# batch mode we need to
+    * know whether we have a terminal around so we can init winsize */
+   n_PSO_TERMIOS_TTY = 1u<<14,
    n_PSO_t_FLAG_DONE = 1u<<15,
    n_PSO_VAR_SETUP_VERIFY_NEEDED = 1u<<16,
    n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<17,
@@ -1313,10 +1313,12 @@ VL char const n_qm[2]; /* Question-mark ? */
 VL char const n_at[2]; /* Commercial at @ */
 #endif /* mx_HAVE_AMALGAMATION */
 
-VL FILE *n_stdin;
-VL FILE *n_stdout;
-VL FILE *n_stderr;
-/* XXX Plus mx_tty_fp in tty.h */
+VL FILE *mx_stdin;
+#define n_stdin mx_stdin
+VL FILE *mx_stdout;
+#define n_stdout mx_stdout
+VL FILE *mx_stderr;
+#define n_stderr mx_stderr
 /* XXX *_read_overlay and dig_msg_compose_ctx are hacks caused by missing
  * XXX event driven nature of individual program parts */
 VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
