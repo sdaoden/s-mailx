@@ -14,6 +14,7 @@
 : ${HONOURS_READONLY_NOT:=} # file-system/user "can"; else auto-detect
 : ${FS_TIME_RES:=1} # file-system time resolution
 : ${OSSL_NEWKEY_SPEC:=rsa:2048} # to avoid future "key too small"
+: ${OSSL_SMIME_SIGN_DIGEST:=sha256} # sha1|sha256|sha3-256|sha3-512
 
 : ${KEEP_DATA:=}
 : ${NO_COLOUR:=}
@@ -13739,6 +13740,19 @@ t_z() { #{{{
 t_s_mime() { #{{{
 	t_prolog "${@}"
 
+	# Only SHA-1 has files in [test-out]:, because only the digest name changes..
+	case ${OSSL_SMIME_SIGN_DIGEST} in
+	sha1) _s_mime_ck1='54262178 667' _s_mime_ck2='3545588265 963';;
+	sha256) _s_mime_ck1='2533822102 669' _s_mime_ck2='1318545165 965';;
+	sha3-256) _s_mime_ck1='2345929147 671' _s_mime_ck2='1295237037 967';;
+	sha3-512) _s_mime_ck1='266374389 671' _s_mime_ck2='3372694243 967';;
+	*)
+		t_echoskip '[!SMIME:invalid setting of $OSSL_SMIME_SIGN_DIGEST]'
+		t_epilog "${@}"
+		return
+		;;
+	esac
+
 	if have_feat smime; then :; else
 		t_echoskip '[!SMIME]'
 		t_epilog "${@}"
@@ -13753,14 +13767,12 @@ t_s_mime() { #{{{
 
 	#{{{
 	doit() {
-		if [ -z "${1}" ]; then
+		if [ -z "${2}" ]; then
 			_pass=
-			_ossl=
 			_f=client
 		else
-			_pass=client-key-pass
+			_pass='-S password-test@localhost.smime-cert-key='${2}
 			_osslreq=
-			_ossl='-passin pass:'${_pass}
 			_f=client-pass
 		fi
 
@@ -13768,8 +13780,8 @@ t_s_mime() { #{{{
 		echo bla | ${MAILX} ${ARGS} \
 			-Ssmime-sign -Ssmime-sign-cert=./${_f}-pair.pem \
 			-Sfrom=test@localhost \
-			-Ssmime-sign-digest=sha1 \
-			-S password-test@localhost.smime-cert-key=${_pass} \
+			-Ssmime-sign-digest=${OSSL_SMIME_SIGN_DIGEST} \
+			${_pass} \
 			-s 'S/MIME test' ./t.VERIFY >${E0} 2>&1
 		ck_ex0 ${1}-1-estat
 		${awk} '
@@ -13778,7 +13790,7 @@ t_s_mime() { #{{{
 			/^$/{if(skip) --skip}
 			{if(!skip) print}
 		' < ./t.VERIFY > ./tverify
-		cke0 ${1}-2 - ./tverify '54262178 667'
+		cke0 ${1}-2 - ./tverify "${_s_mime_ck1}"
 
 		printf 'verify\nx\n' |
 		${MAILX} ${ARGS} -Ssmime-ca-file=./ca.pem -Serrexit -R -f ./t.VERIFY > ${EX} 2>${E0}
@@ -13786,16 +13798,16 @@ t_s_mime() { #{{{
 		openssl smime -verify -CAfile ./ca.pem -in ./t.VERIFY >>${E} 2>&1
 		ck_ex0 ${1}-4
 
-		# (signing +) encryption / decryption
+		# signing + encryption / decryption
 		echo bla |
 		${MAILX} ${ARGS} \
 			-Smta=test://t.ENCRYPT \
 			-Ssmime-force-encryption \
 			-Ssmime-encrypt-recei@ver.com=./client2-cert.pem \
-			-Ssmime-sign-digest=sha1 \
+			-Ssmime-sign-digest=${OSSL_SMIME_SIGN_DIGEST} \
 			-Ssmime-sign -Ssmime-sign-cert=./${_f}-pair.pem \
 			-Sfrom=test@localhost \
-			-S password-test@localhost.smime-cert-key=${_pass} \
+			${_pass} \
 			-s 'S/MIME test' recei@ver.com >${E0} 2>&1
 		ck_ex0 ${1}-5-estat
 		${sed} -e '/^$/,$d' < ./t.ENCRYPT > ${EX}
@@ -13814,12 +13826,13 @@ t_s_mime() { #{{{
 			/^$/{if(skip) --skip}
 			{if(!skip) print}
 		' < ./t.DECRYPT > ${EX}
-		cke0 ${1}-7 - ${EX} '3545588265 963'
+		cke0 ${1}-7 - ${EX} "${_s_mime_ck2}"
 
 		{ openssl smime -decrypt -inkey ./client2-key.pem -in ./t.ENCRYPT |
 			openssl smime -verify -CAfile ./ca.pem; } >>${E} 2>&1
 		ck_ex0 ${1}-8 # XXX pipe..
 
+		# (without signing)
 		${rm} ./t.ENCRYPT
 		echo bla | ${MAILX} ${ARGS} \
 			-Smta=test://t.ENCRYPT -Ssmime-force-encryption \
@@ -13838,16 +13851,16 @@ t_s_mime() { #{{{
 		cke0 ${1}-10 0 ${EX} '3082658999 30'
 		ck ${1}-10-dec 0 ./tdecrypt '3114464078 454'
 
-		openssl smime ${_ossl} -decrypt -inkey ./client2-key.pem -in ./t.ENCRYPT >>${E} 2>&1
+		openssl smime -decrypt -inkey ./client2-key.pem -in ./t.ENCRYPT >>${E} 2>&1
 		ck_ex0 ${1}-11
 
 		${rm} -f tencrypt t.ENCRYPT tdecrypt t.DECRYPT tverify t.VERIFY
-		unset _z _pass _osslreq _ossl
+		unset _z _pass _osslreq
 	}
 	#}}}
 
 	doit unprot
-	doit passwd
+	doit passwd client-key-pass
 
 	t_epilog "${@}"
 } #}}}
