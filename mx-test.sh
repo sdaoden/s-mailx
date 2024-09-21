@@ -1623,7 +1623,7 @@ e a$'\c@'b c d
 	#}}}
 
 	if [ -z "${UTF8_LOCALE}" ]; then
-		t_echoskip 'unicode:[no UTF-8 locale]'
+		t_echoskip '[!unicode:no UTF-8 locale]'
 	else
 		< ./t.rc DIET=CURD TIED= \
 		LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${EX}
@@ -2992,7 +2992,7 @@ __EOT
 	cke0 1 0 ./t1 '3316745312 1241'
 
 	if [ -z "${UTF8_LOCALE}" ]; then
-		t_echoskip 'unicode:[no UTF-8 locale]'
+		t_echoskip '[!unicode:no UTF-8 locale]'
 	elif have_feat multibyte-charsets; then
 		#{{{
 		<< '__EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${E0}
@@ -3009,7 +3009,7 @@ __EOT
 		#}}}
 		cke0 unicode 0 ./tunicode '1175985867 77'
 	else
-		t_echoskip 'unicode:[!MULTIBYTE-CHARSETS]'
+		t_echoskip '[!unicode:!MULTIBYTE-CHARSETS]'
 	fi
 
 	t_epilog "${@}"
@@ -4129,7 +4129,7 @@ t_ifelse() { #{{{
 		#}}}
 		cke0 regex-match 0 ./tregex-match '1075116293 219'
 	else
-		t_echoskip 'regex,regex-match:[!REGEX]'
+		t_echoskip '[!regex,regex-match:!REGEX]'
 	fi
 
 	#{{{
@@ -5138,7 +5138,7 @@ __EOT
 		#}}}
 		cke0 regex 0 ./tregex '1617405672 590'
 	else
-		t_echoskip 'regex:[!REGEX]'
+		t_echoskip '[!regex:!REGEX]'
 	fi
 
 	#{{{
@@ -6251,7 +6251,7 @@ __EOT
 	#}}}
 	i=$?
 	if [ $i -eq 11 ]; then
-		t_echoskip 'glob:[no fnmatch(3)]'
+		t_echoskip '[!glob:no fnmatch(3)]'
 	else
 		ck_ex0 glob $i
 		cke0 glob - ./tglob '3802555029 695'
@@ -6481,7 +6481,7 @@ __EOT
 		#}}}
 		cke0 idna 0 ./tidna '498775983 326'
 	else
-		t_echoskip 'idna:[!IDNA]'
+		t_echoskip '[!idna:!IDNA]'
 	fi
 
 	t_epilog "${@}"
@@ -6577,7 +6577,7 @@ x20
 		#}}}
 		ck 2 0 ./t2 '2498393046 2323' '4015855337 55'
 	else
-		t_echoskip '2:[!REGEX]'
+		t_echoskip '[!2:!REGEX]'
 	fi
 
 	#{{{object
@@ -6951,7 +6951,7 @@ body3
 			> ./.tall 2>${EX}
 		ck 7 0 ./.tall '3631170341 244' '2337093063 663'
 	else
-		t_echoskip '7:[!MAILDIR]'
+		t_echoskip '[!7:!MAILDIR]'
 	fi
 
 	## Ensure action on multiple messages
@@ -7126,7 +7126,7 @@ __EOT
 			./.tmbox >./.tall 2>${E0}
 		cke0 21-html - ./.tall '3677737714 1115'
 	else
-		t_echoskip '21-html:[!FILTER_HTML_TAGSOUP]'
+		t_echoskip '[!21-html:!FILTER_HTML_TAGSOUP]'
 	fi
 
 	t_epilog "${@}"
@@ -7479,7 +7479,7 @@ t_copy() { #{{{
 			echo 5:$?/$^ERRNAME' "${MBOX}" > ./.tall 2>${EX}
 		ck 2-5 - ./.tall '1553358948 10' '2555077523 32'
 	else
-		t_echoskip '2-5:[!READONLY-AWARE-FS/USER]'
+		t_echoskip '[!2-5:!READONLY-AWARE-FS/USER]'
 	fi
 
 	##
@@ -7611,7 +7611,7 @@ t_save() { #{{{
 			#' "${MBOX}" > ./.tall 2>${EX}
 		ck 2-5 - ./.tall '1553358948 10' '2555077523 32'
 	else
-		t_echoskip '2-5:[!READONLY-AWARE-FS/USER]'
+		t_echoskip '[!2-5:!READONLY-AWARE-FS/USER]'
 	fi
 
 	##
@@ -7759,7 +7759,7 @@ t_move() { #{{{
 			#' -R ./.tf1 > ./.tall 2>${EX}
 		ck 2-4 - ./.tall '1090472814 10' '417055732 32'
 	else
-		t_echoskip '2-4:[!READONLY-AWARE-FS/USER]'
+		t_echoskip '[!2-4:!READONLY-AWARE-FS/USER]'
 	fi
 
 	##
@@ -8493,7 +8493,7 @@ _EOT
 			-Rf ./t9-in > ./t9 2>${EX}
 		ck 9 0 ./t9 '1718457763 424' '762537659 75'
 	else
-		t_echoskip '8,9:[!ICONV]'
+		t_echoskip '[!8,9:!ICONV]'
 	fi
 
 	t_epilog "${@}"
@@ -8508,7 +8508,7 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 				(</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
 			:
 		else
-			t_echoskip '[ICONV/iconv(1):missing conversion(s)]'
+			t_echoskip '[!ICONV/iconv(1):missing conversion(s)]'
 			t_epilog "${@}"
 			return
 		fi
@@ -8563,7 +8563,7 @@ _EOT
 			${sed} -e '/^\[-- M/d' < ./t4 > ./t4-x
 			ck 4 - ./t4-x '1126114755 2027'
 	else
-		t_echoskip '1-4:[ICONV/iconv(1):ISO-2022-JP unsupported]'
+		t_echoskip '[!1-4:ICONV/iconv(1):ISO-2022-JP unsupported]'
 	fi
 
 	if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
@@ -8611,7 +8611,7 @@ _EOT
 			${sed} -e '/^\[-- M/d' < ./t8 > ./t8-x
 			ck 8 - ./t8-x '1326462994 1980'
 	else
-		t_echoskip '5-8:[ICONV/iconv(1):EUC-JP unsupported]'
+		t_echoskip '[!5-8:ICONV/iconv(1):EUC-JP unsupported]'
 	fi
 
 	t_epilog "${@}"
@@ -8658,7 +8658,7 @@ t_iconv_mainbody() { #{{{
 			cke0 5-5 - ./t5-xxx '2418770324 615' # ?
 		fi
 	else
-		t_echoskip '5:[ICONV replacement unknown]'
+		t_echoskip '[!5:ICONV replacement unknown]'
 	fi
 
 	t_epilog "${@}"
@@ -8727,7 +8727,7 @@ t_ttycharset_detect() { #{{{
 		< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=l1 -a l.txt -s '☺' x@y > ./t2 2> ${E0}
 		cke0 2 0 ./t2 '3511208580 766'
 	else
-		t_echoskip '1-2:[!ICONV]'
+		t_echoskip '[!1-2:!ICONV]'
 	fi
 
 	# with iconv: sendcharsets; without: (only) -detect
@@ -9244,7 +9244,7 @@ __EOT
 
 		#xxx check without %: prefix
 	else
-		t_echoskip '3,4:[!MAILDIR]'
+		t_echoskip '[!3,4:!MAILDIR]'
 	fi
 
 # TODO`seen' for "states" test above
@@ -9442,12 +9442,12 @@ sea @>@^b10?$;x
 		#}}}
 		cke0 3 0 ./t3 '1188076824 1084'
 	else
-		t_echoskip '3:[!REGEX]'
+		t_echoskip '[!3:!REGEX]'
 	fi
 
 	# TODO if have_feat imap-search; then
 	#else
-	#	t_echoskip '4:[!IMAP-SEARCH]'
+	#	t_echoskip '[!4:!IMAP-SEARCH]'
 	# fi
 
 	t_epilog "${@}"
@@ -9807,7 +9807,7 @@ t_mta_aliases() { #{{{
 		ck 4 - ./t.mbox '1172368381 238'
 		ck0 5 - ${E0} '771616226 179'
 	else
-		t_echoskip '5:[!SMTP]'
+		t_echoskip '[!5:!SMTP]'
 	fi
 
 	# xxx for false-positive SMTP test we would need some mocking
@@ -9892,7 +9892,7 @@ t_filetype() { #{{{
 		cke0 2 - ./t2.mbox '970408791 13538'
 		ck 3 - ./t3 '4165397337 97'
 	else
-		t_echoskip '2-3:[missing gzip(1)]'
+		t_echoskip '[!2-3:missing gzip(1)]'
 	fi
 
 	{
@@ -10312,10 +10312,10 @@ _EOT
 				ex@am.ple > ./t10 2>${E0}
 			cke0 10 0 ./t10 '3571320489 989'
 		else
-			t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
+			t_echoskip '[!10:ICONV/iconv(1):missing conversion(1)]'
 		fi
 	else
-		t_echoskip '10:[!ICONV]'
+		t_echoskip '[!10:!ICONV]'
 	fi
 
 	# `mimetype' "handler-only" type-marker not matched for types
@@ -11049,7 +11049,7 @@ __EOT
 		ck 2-html - ./t2-html '996062905 8447' '3575876476 49'
 		ck 3-html - ./t3 '1553884295 4748'
 	else
-		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
+		t_echoskip '[!{2,3}-html:!FILTER_HTML_TAGSOUP]'
 	fi
 
 	#{{{ Simple return/error value after *expandaddr* failure test
@@ -13289,7 +13289,7 @@ t_pipe_handlers() { #{{{
 
 	# Keep $MBOX..
 	if [ -z "${ln}" ]; then
-		t_echoskip '5:[ln(1) not found]'
+		t_echoskip '[!5:ln(1) not found]'
 	else
 		# Let us fill in tmpfile, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t5.one-link\n'\
