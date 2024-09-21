@@ -284,7 +284,8 @@ struct a_xtls_cipher{
 };
 
 struct a_xtls_digest{
-   char const xd_name[16];
+   boole xd_smime; /* Whether S/MIME supports this algorithm */
+   char const xd_name[15];
    EVP_MD const *(*xd_fun)(void);
 };
 
@@ -352,8 +353,8 @@ static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
  * Update manual on default changes! */
 static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #ifdef mx_XTLS_HAVE_BLAKE2
-   {"BLAKE2b512\0", &EVP_blake2b512},
-   {"BLAKE2s256", &EVP_blake2s256},
+   {FAL0, "BLAKE2b512\0", &EVP_blake2b512},
+   {FAL0, "BLAKE2s256", &EVP_blake2s256},
 # ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
 #  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_blake2s256
 #  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "BLAKE2s256"
@@ -361,15 +362,15 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #ifdef mx_XTLS_HAVE_SHA3
-   {"SHA3-512\0", &EVP_sha3_512},
-   {"SHA3-384", &EVP_sha3_384},
-   {"SHA3-256", &EVP_sha3_256},
-   {"SHA3-224", &EVP_sha3_224},
+   {TRU1, "SHA3-512\0", &EVP_sha3_512},
+   {TRU1, "SHA3-384", &EVP_sha3_384},
+   {TRU1, "SHA3-256", &EVP_sha3_256},
+   {TRU1, "SHA3-224", &EVP_sha3_224},
 #endif
 
 #ifndef OPENSSL_NO_SHA512
-   {"SHA512\0", &EVP_sha512},
-   {"SHA384", &EVP_sha384},
+   {TRU1, "SHA512\0", &EVP_sha512},
+   {TRU1, "SHA384", &EVP_sha384},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha512
 #  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA512"
@@ -377,8 +378,8 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #ifndef OPENSSL_NO_SHA256
-   {"SHA256\0", &EVP_sha256},
-   {"SHA224", &EVP_sha224},
+   {TRU1, "SHA256\0", &EVP_sha256},
+   {TRU1, "SHA224", &EVP_sha224},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha256
 #  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA256"
@@ -390,7 +391,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #if !defined OPENSSL_NO_SHA || !defined OPENSSL_NO_SHA1
-   {"SHA1\0", &EVP_sha1},
+   {TRU1, "SHA1\0", &EVP_sha1},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1
 #  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA1"
@@ -402,7 +403,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #ifndef OPENSSL_NO_MD5
-   {"MD5\0", &EVP_md5},
+   {TRU1, "MD5\0", &EVP_md5},
 #endif
 };
 
@@ -459,7 +460,7 @@ static boole a_xtls_parse_asn1_time(ASN1_TIME const *atp,
                char *bdat, uz blen);
 static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
-static boole a_xtls_digest_find(boole fingerprint, char const *name,
+static boole a_xtls_digest_find(boole smime, char const *name,
       EVP_MD const **mdp, char const **normalized_name_or_nil, boole *freeit);
 
 /* *smime-ca-flags*, *tls-ca-flags* */
@@ -772,7 +773,7 @@ jleave:
 }
 
 static boole
-a_xtls_digest_find(boole fingerprint, char const *name, EVP_MD const **mdp,
+a_xtls_digest_find(boole smime, char const *name, EVP_MD const **mdp,
       char const **normalized_name_or_nil, boole *freeit){
    uz i;
    NYD2_IN;
@@ -780,9 +781,9 @@ a_xtls_digest_find(boole fingerprint, char const *name, EVP_MD const **mdp,
    *freeit = FAL0;
 
    if(name == NIL){
-      name = fingerprint ? a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S
+      name = !smime ? a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S
             : a_XTLS_SMIME_DEFAULT_DIGEST_S;
-      a_XTLS__NFETCH_INJ(*mdp = fingerprint
+      a_XTLS__NFETCH_INJ(*mdp = !smime
             ? a_XTLS_FINGERPRINT_DEFAULT_DIGEST()
             : a_XTLS_SMIME_DEFAULT_DIGEST();)
       goto a_XTLS__JFETCH;
@@ -801,7 +802,8 @@ a_xtls_digest_find(boole fingerprint, char const *name, EVP_MD const **mdp,
    }
 
    for(i = 0; i < NELEM(a_xtls_digests); ++i)
-      if(!su_cs_cmp(a_xtls_digests[i].xd_name, name)){
+      if((!smime || a_xtls_digests[i].xd_smime) &&
+            !su_cs_cmp(a_xtls_digests[i].xd_name, name)){
          a_XTLS__NFETCH_INJ(*mdp = (*a_xtls_digests[i].xd_fun)();)
          name = a_xtls_digests[i].xd_name;
          goto a_XTLS__JFETCH;
@@ -1884,7 +1886,7 @@ a_xtls_smime_sign_digest(char const *name, char const **digname,
    cp = ok_vlook(smime_sign_message_digest)/* v15 */;
 
 jhave_name:
-   if(a_xtls_digest_find(FAL0, cp, &md, digname, freeit)){
+   if(a_xtls_digest_find(TRU1, cp, &md, digname, freeit)){
 #ifndef PKCS7_PARTIAL
       n_err(_("ALERT: old OpenSSL version, *smime-sign-digest*=%s ignored\n"),
          *digname);
@@ -2078,7 +2080,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
    if(fprnt != NIL || urlp->url_cproto == CPROTO_CERTINFO ||
          (n_poption & n_PO_D_V)){
       fprnt_namep = xok_vlook(tls_fingerprint_digest, urlp, OXM_ALL);
-      if(!a_xtls_digest_find(TRU1, fprnt_namep, &fprnt_mdp, &fprnt_namep,
+      if(!a_xtls_digest_find(FAL0, fprnt_namep, &fprnt_mdp, &fprnt_namep,
             &free_md))
          goto j_leave;
    }
