@@ -12758,8 +12758,6 @@ it will be logged if that happened.
 .Pp
 \*(Xx will try to add built-in support for the following message
 digests, names are case-insensitive:
-.Ql BLAKE2b512 ,
-.Ql BLAKE2s256 ,
 .Ql SHA3-512 ,
 .Ql SHA3-384 ,
 .Ql SHA3-256 ,
@@ -13753,8 +13751,23 @@ This fingerprint can for example be calculated with
 fingerprints, the defaults, if available, in test order, being
 .Ql BLAKE2s256 ,
 .Ql SHA256 .
-For the complete list of digest algorithms refer to
-.Va smime-sign-digest .
+.Ql SHA1 .
+The complete list of digest algorithms is
+.Ql BLAKE2b512 ,
+.Ql BLAKE2s256 ,
+.Ql SHA3-512 ,
+.Ql SHA3-384 ,
+.Ql SHA3-256 ,
+.Ql SHA3-224 ,
+as well as the widely available
+.Ql SHA512 ,
+.Ql SHA384 ,
+.Ql SHA256 ,
+.Ql SHA224 ,
+and the proposed insecure
+.Ql SHA1 ,
+finally
+.Ql MD5 .
 .
 .Mx
 .It Va tls-rand-file
