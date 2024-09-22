@@ -192,6 +192,17 @@ For example, it is not uncommon that Unicode tests fail because the
 platform uses old or incomplete character information.
 These tests can be excluded by passing SKIPTEST="t1 t2 ..".
 
+It may be that the test detected conditions wrong, or used obsolete say
+message digests that are not supported by your cryptographic library.
+At the top of mx-test.sh there are some variables which *can* be
+inherited via the outer environment, at the time of this writing:
+
+  : ${UTF8_LOCALE:=} # else auto-detect
+  : ${HONOURS_READONLY_NOT:=} # file-system/user "can"; else auto-detect
+  : ${FS_TIME_RES:=1} # file-system time resolution
+  : ${OSSL_NEWKEY_SPEC:=rsa:2048} # to avoid future "key too small"
+  : ${OSSL_SMIME_SIGN_DIGEST:=sha256} # sha1|sha256|sha3-256|sha3-512
+
 It could also be a miscompilation, caused by excessive optimization
 and/or a compiler bug.  If OPT_AUTOCC had been used in conjunction with
 a non-debug target (the defaults), an additional cc_maxopt=1 (or an
