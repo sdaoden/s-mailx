@@ -3213,16 +3213,6 @@ int main(void){
 			fi
 		fi
 
-		# Blake
-		link_check tls_blake2 'TLS: BLAKE2 digests' '#define mx_XTLS_HAVE_BLAKE2' << \!
-#include <openssl/evp.h>
-int main(void){
-	EVP_blake2b512();
-	EVP_blake2s256();
-	return 0;
-}
-!
-
 		# SHA-3
 		link_check tls_sha3 'TLS: SHA-3 digests' '#define mx_XTLS_HAVE_SHA3' << \!
 #include <openssl/evp.h>
@@ -3231,6 +3221,16 @@ int main(void){
 	EVP_sha3_384();
 	EVP_sha3_256();
 	EVP_sha3_224();
+	return 0;
+}
+!
+
+		# Blake2
+		link_check tls_blake2 'TLS: BLAKE2 digests' '#define mx_XTLS_HAVE_BLAKE2' << \!
+#include <openssl/evp.h>
+int main(void){
+	EVP_blake2b512();
+	EVP_blake2s256();
 	return 0;
 }
 !
