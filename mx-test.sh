@@ -5,16 +5,19 @@
 #
 # Public Domain
 
-: ${OBJDIR:=.obj}
-: ${JOBNO:=}
-: ${JOBWAIT:=42}
-: ${JOBMON:=y}
-: ${SKIPTEST:=}
 : ${UTF8_LOCALE:=} # else auto-detect
 : ${HONOURS_READONLY_NOT:=} # file-system/user "can"; else auto-detect
 : ${FS_TIME_RES:=1} # file-system time resolution
 : ${OSSL_NEWKEY_SPEC:=rsa:2048} # to avoid future "key too small"
 : ${OSSL_SMIME_SIGN_DIGEST:=sha256} # sha1|sha256|sha3-256|sha3-512
+
+## -- >8 -- 8< -- ##
+
+: ${OBJDIR:=.obj}
+: ${JOBNO:=}
+: ${JOBWAIT:=42}
+: ${JOBMON:=y}
+: ${SKIPTEST:=}
 
 : ${KEEP_DATA:=}
 : ${NO_COLOUR:=}
