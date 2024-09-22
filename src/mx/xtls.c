@@ -352,6 +352,21 @@ static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
 /* Supported S/MIME message digest algorithms.
  * Update manual on default changes! */
 static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
+#ifdef mx_XTLS_HAVE_SHA3
+   {TRU1, "SHA3-512\0", &EVP_sha3_512},
+   {TRU1, "SHA3-384", &EVP_sha3_384},
+   {TRU1, "SHA3-256", &EVP_sha3_256},
+   {TRU1, "SHA3-224", &EVP_sha3_224},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha3_256
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA3-256"
+# endif
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha3_256
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA3-256"
+# endif
+#endif
+
 #ifdef mx_XTLS_HAVE_BLAKE2
    {FAL0, "BLAKE2b512\0", &EVP_blake2b512},
    {FAL0, "BLAKE2s256", &EVP_blake2s256},
@@ -359,13 +374,6 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_blake2s256
 #  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "BLAKE2s256"
 # endif
-#endif
-
-#ifdef mx_XTLS_HAVE_SHA3
-   {TRU1, "SHA3-512\0", &EVP_sha3_512},
-   {TRU1, "SHA3-384", &EVP_sha3_384},
-   {TRU1, "SHA3-256", &EVP_sha3_256},
-   {TRU1, "SHA3-224", &EVP_sha3_224},
 #endif
 
 #ifndef OPENSSL_NO_SHA512
