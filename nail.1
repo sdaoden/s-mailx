@@ -12734,30 +12734,28 @@ To include intermediate certificates, use
 The possible password sources are documented in
 .Sx "URL syntax and credential lookup" .
 .
-.
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
 \*(OP Specifies the message digest to use when signing S/MIME messages.
-Remember that for this use case
+.Sy Please remember
+that here
 .Ql USER@HOST
-refers to the variable
+refers to
 .Va from
-(or, if that contains multiple addresses,
+(or even
 .Va sender ) .
 The available algorithms depend on the used cryptographic library, but
-at least one usable built-in algorithm is ensured as a default.
-If possible the standard RFC 5751 will be violated by using
+at least one usable built-in algorithm is ensured as a default:
+here the standard RFC 5751 is violated by using either
+.Ql SHA3-256 ,
 .Ql SHA512
+or
+.Ql SHA256
 instead of the mandated
 .Ql SHA1
-due to security concerns.
-This variable is ignored for very old (released before 2010)
-cryptographic libraries which do not offer the necessary interface:
-it will be logged if that happened.
-.
-.Pp
-\*(Xx will try to add built-in support for the following message
-digests, names are case-insensitive:
+due to security concerns if possible.
+It will be tried to add built-in support for these message digests, with
+case-insensitive names, in test order:
 .Ql SHA3-512 ,
 .Ql SHA3-384 ,
 .Ql SHA3-256 ,
@@ -12771,10 +12769,13 @@ and the proposed insecure
 .Ql SHA1 ,
 finally
 .Ql MD5 .
-More digests may \*(oPally be available through dynamic loading via the
-OpenSSL function
+More digests may \*(oPally be available through dynamic loading via
 .Xr EVP_get_digestbyname 3 .
-.
+.Sy Remarks:
+this variable is ignored for very old (released before 2010)
+cryptographic libraries which do not offer the necessary interface:
+it will be logged if that happened.
+
 .
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
@@ -13747,18 +13748,25 @@ This fingerprint can for example be calculated with
 .Mx Va tls-fingerprint-digest
 .It Va tls-fingerprint-digest-USER@HOST , tls-fingerprint-digest-HOST , \
   tls-fingerprint-digest
-\*(OP The message digest to be used when creating TLS certificate
-fingerprints, the defaults, if available, in test order, being
+\*(OP Specifies the message digest to use when creating a
+.Va tls-fingerprint .
+The available algorithms depend on the used cryptographic library, but
+at least one usable built-in algorithm is ensured as a default, either
+.Ql SHA3-256 ,
 .Ql BLAKE2s256 ,
-.Ql SHA256 .
+.Ql SHA256
+or
 .Ql SHA1 .
-The complete list of digest algorithms is
-.Ql BLAKE2b512 ,
-.Ql BLAKE2s256 ,
+It will be tried to add built-in support for these message digests, with
+case-insensitive names, in test order:
 .Ql SHA3-512 ,
 .Ql SHA3-384 ,
 .Ql SHA3-256 ,
 .Ql SHA3-224 ,
+the at times unsupported
+.Ql BLAKE2b512
+and
+.Ql BLAKE2s256 ,
 as well as the widely available
 .Ql SHA512 ,
 .Ql SHA384 ,
@@ -13768,6 +13776,8 @@ and the proposed insecure
 .Ql SHA1 ,
 finally
 .Ql MD5 .
+More digests may \*(oPally be available through dynamic loading via
+.Xr EVP_get_digestbyname 3 .
 .
 .Mx
 .It Va tls-rand-file
