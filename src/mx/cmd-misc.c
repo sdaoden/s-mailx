@@ -104,7 +104,7 @@ a_cmisc_bangexp(char const *cp){ /* {{{ */
 } /* }}} */
 
 static int
-a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! {{{ */
+a_cmisc_echo(void *vp, FILE *fp, boole donl){/* {{{ */
 	struct n_string s_b, *s;
 	int rv;
 	char const *cp;
@@ -113,15 +113,22 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! {{{ */
 	struct mx_cmd_arg_ctx *cacp;
 	NYD2_IN;
 
-	s = n_string_reserve(n_string_creat_auto(&s_b), 121/* XXX */);
 	cacp = vp;
 	doerr = (fp == n_stderr);
+
+	/* C99 */{
+		uz i;
+
+		for(i = 1 +1, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next)
+			i += cap->ca_arg.ca_str.l + 1;
+		s = n_string_reserve(n_string_creat_auto(&s_b), i);
+	}
 
 	for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
 		if(cap != cacp->cac_arg)
 			s = n_string_push_c(s, ' ');
-		/* TODO -t/-T en/disable if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)*/
-		s = n_string_push_buf(s, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l);
+		if(cap->ca_arg.ca_str.l > 0)
+			s = n_string_push_buf(s, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l);
 	}
 	if(donl)
 		s = n_string_push_c(s, '\n');
@@ -140,7 +147,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! {{{ */
 			e = su_err_by_errno();
 		if((rv = (fflush(fp) == EOF)))
 			e = su_err_by_errno();
-		rv |= ferror(fp) ? 1 : 0; /* FIXME stupid! */
+		rv |= (ferror(fp) != 0);
 		n_pstate_err_no = e;
 	}else if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
