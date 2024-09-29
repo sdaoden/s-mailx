@@ -498,10 +498,20 @@ su_mem_allocate(uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf  su_DVL_LOC_
 	su_DVL_LOC_ARGS_UNUSED();
 
 	a_MEMA_DBG( user_sz = size su_COMMA user_no = no; )
-	if(UNLIKELY(size == 0))
+	if(UNLIKELY(size == 0)){
+#ifdef su_MEM_ALLOC_DEBUG
+		su_log_write(su_LOG_NOTICE | su_LOG_F_CORE,
+			"SU memory: allocation: size==0 size at %s, line %" PRIu32 su_DVL_LOC_ARGS_USE);
+#endif
 		size = 1;
-	if(UNLIKELY(no == 0))
+	}
+	if(UNLIKELY(no == 0)){
+#ifdef su_MEM_ALLOC_DEBUG
+		su_log_write(su_LOG_NOTICE | su_LOG_F_CORE,
+			"SU memory: allocation: no==0 size at %s, line %" PRIu32 su_DVL_LOC_ARGS_USE);
+#endif
 		no = 1;
+	}
 	maf &= su__MEM_ALLOC_USER_MASK;
 
 	rv = NIL;
@@ -575,10 +585,20 @@ su_mem_reallocate(void *ovp, uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf
 	su_DVL_LOC_ARGS_UNUSED();
 
 	a_MEMA_DBG( user_sz = size su_COMMA user_no = no su_COMMA orig_sz = 0; )
-	if(UNLIKELY(size == 0))
+	if(UNLIKELY(size == 0)){
+#ifdef su_MEM_ALLOC_DEBUG
+		su_log_write(su_LOG_NOTICE | su_LOG_F_CORE,
+			"SU memory: reallocation: size==0 size at %s, line %" PRIu32 su_DVL_LOC_ARGS_USE);
+#endif
 		size = 1;
-	if(UNLIKELY(no == 0))
+	}
+	if(UNLIKELY(no == 0)){
+#ifdef su_MEM_ALLOC_DEBUG
+		su_log_write(su_LOG_NOTICE | su_LOG_F_CORE,
+			"SU memory: reallocation: no==0 size at %s, line %" PRIu32 su_DVL_LOC_ARGS_USE);
+#endif
 		no = 1;
+	}
 	maf &= su__MEM_ALLOC_USER_MASK;
 
 	rv = NIL;
