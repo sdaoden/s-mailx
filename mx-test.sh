@@ -5804,6 +5804,35 @@ __EOT
 	cke0 ifs-3 0 ./tifs-3 '316016421 114'
 
 	#{{{
+	${cat} << '__EOT' > ./tifs-4-in
+a:b:c
+ : :
+: : 
+::
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-4 2>${E0}
+commandalias x ec '$x/$y / <$a><$b><$c>'
+readctl c ./tifs-4-in
+define t {
+	se ifs=:; read a b c; local se x=$? y=$^ERRNAME; x; uns ifs
+	if $x -ge 0; xcall t; en
+}
+call t
+readctl r ./tifs-4-in;ec readctl remove:$?/$^ERRNAME
+
+commandalias x ec '$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^2<$^2> ^3<$^3> ^*<"$^*">'
+readctl c ./tifs-4-in
+define t {
+	se ifs=:; read ^; local se x=$? y=$^ERRNAME; x; uns ifs
+	if $x -ge 0; xcall t; en
+}
+call t
+readctl r ./tifs-4-in;ec readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
+	cke0 ifs-4 0 ./tifs-4 '2749867790 347'
+
+	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./treadall 2>${E0}
 commandalias x echo '$?/$^ERRNAME / <$d>'
 readctl create ./t1in
