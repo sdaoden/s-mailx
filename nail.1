@@ -10326,6 +10326,9 @@ are understood, folded according to
 .
 .Mx
 .It Va from
+An email address (a mailbox); mostly only necessary with a
+\*(oPal SMTP
+.Va mta .
 Quoting RFC 5322:
 .Dq the author(s) of the message, that is, the mailbox(es) of the \
   person(s) or system(s) responsible for the writing of the message.
@@ -10344,24 +10347,23 @@ Contextually these addresse(es) are
 .Pp
 With a file-based
 .Va mta
-the
 .Va \&\&from
-or
-.Va \&\&sender
-user can still be used as the envelope sender address (the RFC 5321
+(or
+.Va \&\&sender )
+may still be used as the envelope sender address (the RFC 5321
 reverse-path) via an empty
 .Fl r
 command line argument, or by setting
 .Va r-option-implicit .
 .
 .Pp
-If the box has not a valid name in the network either this or
+If the machine is not resolvable in the network usually
 .Va hostname
-have to be set (a SMTP-based
+and/or this have to be set (a SMTP-based
 .Va mta
 adds onto this
-.Va smtp-from ) ;
-with either unique
+.Va smtp-from ) .
+With either set unique
 .Ql Message-ID:
 and MIME part
 .Ql Content-ID:

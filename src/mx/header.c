@@ -1249,7 +1249,7 @@ myaddrs(struct header *hp) /* TODO vanish! */
 
    /* When invoking *sendmail* directly, it's its task to generate an otherwise
     * undeterminable From: address.  However, if the user sets *hostname*,
-    * accept his desire */
+    * accept his desire (n_nodename() will use it) */
    if(ok_vlook(hostname) != NIL)
       goto jnodename;
    if(ok_vlook(smtp) != NIL || /* TODO obsolete -> mta */
