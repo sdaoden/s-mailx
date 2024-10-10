@@ -465,6 +465,7 @@ jcmd_insert:{ /* {{{ */
 
 	/* Strip [\r\n] which would render a body invalid; plus \t */
 	/* C99 */{
+		char const *cpx;
 		char c;
 
 		aerr = 0;
@@ -478,10 +479,18 @@ jcmd_insert:{ /* {{{ */
 				continue;
 			*UNCONST(char*,cp) = c;
 		}
-		if(aerr){
-			cp = a3p->ca_arg.ca_str.s;
+		cpx = cp;
+		cp = a3p->ca_arg.ca_str.s;
+		if(aerr)
 			goto j501cp;
-		}
+
+		/* Trim */
+		for(; *cp == ' '; ++cp)
+			--a3p->ca_arg.ca_str.l;
+		a3p->ca_arg.ca_str.s = UNCONST(char*,cp);
+		for(; cpx > cp && cpx[-1] == ' '; --cpx)
+			--a3p->ca_arg.ca_str.l;
+		*UNCONST(char*,cpx) = '\0';
 	}
 
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_subj)){

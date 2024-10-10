@@ -219,11 +219,11 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
 			i=$(</dev/null LC_ALL=de_DE.utf8 ${RAWMAILX} ${ARGS} -X '
 				\define cset_test {
 					\if "${charset-locale}" =%?case utf
-						\echo $LC_ALL
+						\ec "$LC_ALL"
 						\xit 0
 					\end
 					\if ${#} -gt 0
-						\set LC_ALL=${1}
+						\se LC_ALL=${1}
 						\shift
 						\xcall cset_test "${@}"
 					\end
@@ -926,16 +926,16 @@ t_eval() { #{{{
 	t_prolog "${@}"
 
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-set i=du
-echo 1:
-echo $i
-echo '$i'
-eval echo '$i'
-echo 2:
-echo "\"'$i'\""
-eval echo "\"'$i'\""
-eval eval echo "\"'$i'\""
-eval eval eval eval echo "\"'$i'\""
+se i=du
+echo "1:"
+ec "$i"
+ec '$i'
+eval ec '"$i"'
+ec "2:"
+ec "\"'$i'\""
+eval ec "\"'$i'\""
+eval eval ec "\"'$i'\""
+eval eval eval eval ec "\"'$i'\""
 	__EOT
 
 	cke0 1 0 ./t1 '847277817 33'
@@ -951,29 +951,139 @@ t_call_xcall() { #{{{
 define one {
 	echo one<$0>: $#: $*
 }
-call one
-call one 1
-call one 1 2
-call one 1 2 3
 define two {
 	echo two<$0>: $#: $*
 	call one "$@"
 }
+define three {
+	echo three<$0>: $#: 1=$1, 2=$2, 3=$3, $*
+	call two "$@"
+}
+define four {
+	echo four<$0>: $#: 1=$1, 2=$2, 3=$3, $*
+	call three "$@${@}"${@}
+}
+call one
+call one 1
+call one 1 2
+call one 1 2 3
 call two
 call two a
 call two a b
 call two a b c
-define three {
-	echo three<$0>: $#: $*
-	call two "$@"
-}
 call three
 call three not
 call three not my
 call three not my love
+call four
+call four $
+call four $ i
+call four 'my ty' she
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '59079195 403'
+	cke0 1 0 ./t1 '4286708545 747'
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
+define y {
+	ec ".. $#,1=$1,2=$2,3=$3,4=$4,5=$5,6=$6,7=$7,8=$8,9=$9,"
+}
+define x {
+	ec "$#,1=$1,2=$2,3=$3,4=$4,5=$5,6=$6,7=$7,8=$8,9=$9,"
+	xcall y "$@$@"$@
+}
+se i='ja "da du $j" ich' j=recur
+
+ec =1=
+call x ja "da du $j" ich
+call x ja:"da du $j":ich
+call x $i
+call x "$i"
+eval call x $i
+eval call x "$i"
+call x ''
+eval call x ''
+ec =2=
+se ifs=:; call x ja "da du $j" ich; uns ifs
+se ifs=:; call x ja:"da du $j":ich; uns ifs
+se ifs=:; call x $i; uns ifs
+se ifs=:; call x "$i"; uns ifs
+se ifs=:; eval call x $i; uns ifs
+se ifs=:; eval call x "$i"; uns ifs
+se ifs=:; call x ''; uns ifs
+se ifs=:; eval call x ''; uns ifs
+ec =3=
+se ifs=': '; call x ja "da du $j" ich; uns ifs
+se ifs=': '; call x ja:"da du $j":ich; uns ifs
+se ifs=': '; call x $i; uns ifs
+se ifs=': '; call x "$i"; uns ifs
+se ifs=': '; eval call x $i; uns ifs
+se ifs=': '; eval call x "$i"; uns ifs
+se ifs=': '; call x ''; uns ifs
+se ifs=': '; eval call x ''; uns ifs
+ec =4=
+se i=
+call x $i
+call x "$i"
+eval call x $i
+eval call x "$i"
+__EOT
+	#}}}
+	cke0 2 0 ./t2 '59079195 403'
+
+	# identical to t_vpospar:ifs-basic-split, but with*out* vpospar {{{
+# proof ({{{
+#a() {
+#	#set -- "$@"
+#	echo ,$1,$2,$3,$4,
+#	echo ,$1$2$3$4,
+#	echo $1$2$3$4
+#	echo ",$1,$2,$3,$4,"
+#	echo ",$1$2$3$4,"
+#	echo "$1$2$3$4"
+#	echo ,$*,
+#	echo $*
+#	echo ",$*,"
+#	echo "$*"
+#	(IFS=:; echo ,$*,)
+#	(IFS=:; echo $*)
+#	(IFS=:; echo ",$*,")
+#	(IFS=:; echo "$*")
+#}
+#echo =1=
+#a '  abc' 'def  ' '   ' geh
+#echo =2=
+#a '  ' '' '   ' '		'
+#echo =3=
+#a '' '' '' ''
+#}}}
+	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-basic-split 2>${E0}
+define a {
+	#vpospar se "$@"
+	ec ,$1,$2,$3,$4,
+	ec ,$1$2$3$4,
+	ec $1$2$3$4
+	ec ",$1,$2,$3,$4,"
+	ec ",$1$2$3$4,"
+	ec "$1$2$3$4"
+	ec ,$*,
+	ec $*
+	ec ",$*,"
+	ec "$*"
+	se ifs=:; ec ,$*,; uns ifs
+	se ifs=:; ec $*; uns ifs
+	se ifs=:; ec ",$*,"; uns ifs
+	se ifs=:; ec "$*"; uns ifs
+}
+ec =1=
+call a '  abc' 'def  ' '   ' geh
+ec =2=
+call a '  ' '' '   ' '		'
+ec =3=
+call a '' '' '' ''
+__EOT
+	#}}}
+	cke0 ifs-basic-split 0 ./tifs-basic-split '3698594299 860'
 
 	t_epilog "${@}"
 } #}}}
@@ -982,42 +1092,42 @@ t_X_Y_opt_input_go_stack() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' > ./t.rc
-	echo 1
-	define mac0 {
-		echo mac0-1 via1 $0
-	}
-	call mac0
-	echo 2
-	source '\
-		echo "define mac1 {";\
-		echo "  echo mac1-1 via1 \$0";\
-		echo "  call mac0";\
-		echo "  echo mac1-2";\
-		echo "  call mac2";\
-		echo "  echo mac1-3";\
-		echo "}";\
-		echo "echo 1-1";\
-		echo "define mac2 {";\
-		echo "  echo mac2-1 via1 \$0";\
-		echo "  call mac0";\
-		echo "  echo mac2-2";\
-		echo "}";\
-		echo "echo 1-2";\
-		echo "call mac1";\
-		echo "echo 1-3";\
-		echo "source \"\
-			echo echo 1-1-1 via1 \$0;\
-			echo call mac0;\
-			echo echo 1-1-2;\
-		| \"";\
-		echo "echo 1-4";\
-	| '
-	echo 3
-	call mac2
-	echo 4
-	undefine *
-	__EOT
+	${cat} << '__EOT' > ./t.rc
+ec 1
+define mac0 {
+	ec mac0-1 via1 "$0"
+}
+call mac0
+ec 2
+source '\
+	echo "define mac1 {";\
+	echo "  ec mac1-1 via1 \"\$0\"";\
+	echo "  call mac0";\
+	echo "  ec mac1-2";\
+	echo "  call mac2";\
+	echo "  ec mac1-3";\
+	echo "}";\
+	echo "ec 1-1";\
+	echo "define mac2 {";\
+	echo "  ec mac2-1 via1 \"\$0\"";\
+	echo "  call mac0";\
+	echo "  ec mac2-2";\
+	echo "}";\
+	echo "ec 1-2";\
+	echo "call mac1";\
+	echo "ec 1-3";\
+	echo "source \"\
+		echo ec 1-1-1 via1 \\\"\$0\\\";\
+		echo call mac0;\
+		echo ec 1-1-2;\
+	| \"";\
+	echo "ec 1-4";\
+| '
+ec 3
+call mac2
+ec 4
+undefine *
+__EOT
 	#}}}
 
 	# The -X option supports multiline arguments, and those can internally use
@@ -1032,53 +1142,53 @@ t_X_Y_opt_input_go_stack() { #{{{
 		-X 1 \
 		-X'
 	define mac0 {
-		echo mac0-1 via2 $0
+		ec mac0-1 via2 "$0"
 	}
 	call mac0
-	echo 2
+	ec 2
 	' \
 		-X'
 	source '${APO}'\
 		echo "define mac1 {";\
-		echo "  echo mac1-1 via2 \$0";\
+		echo "  ec mac1-1 via2 \"\$0\"";\
 		echo "  call mac0";\
-		echo "  echo mac1-2";\
+		echo "  ec mac1-2";\
 		echo "  call mac2";\
-		echo "  echo mac1-3";\
+		echo "  ec mac1-3";\
 		echo "}";\
-		echo "echo 1-1";\
+		echo "ec 1-1";\
 		echo "define mac2 {";\
-		echo "  echo mac2-1 via2 \$0";\
+		echo "  ec mac2-1 via2 \"\$0\"";\
 		echo "  call mac0";\
-		echo "  echo mac2-2";\
+		echo "  ec mac2-2";\
 		echo "}";\
-		echo "echo 1-2";\
+		echo "ec 1-2";\
 		echo "call mac1";\
-		echo "echo 1-3";\
+		echo "ec 1-3";\
 		echo "source \"\
-			echo echo 1-1-1 via2 \$0;\
+			echo ec 1-1-1 via2 \\\"\$0\\\";\
 			echo call mac0;\
-			echo echo 1-1-2;\
+			echo ec 1-1-2;\
 		| \"";\
 		echo "echo 1-4";\
 	| '${APO}'
-	echo 3
+	ec 3
 	' \
 		-X'
 	call mac2
-	echo 4
+	ec 4
 	undefine *
 	' > ./t1 2>${E0}
 	#}}}
-	cke0 1 0 ./t1 '1786542668 416'
+	cke0 1 0 ./t1 '3241373318 408'
 
 	# The -Y option supports multiline arguments, and those can internally use
 	# reverse solidus newline escaping.
 	#{{{
 	APO=\'
 	< ./t.rc ${MAILX} ${ARGS} \
-		-X 'echo FIRST_X' \
-		-X 'echo SECOND_X' \
+		-X 'ec FIRST_X' \
+		-X 'ec SECOND_X' \
 		-Y 'e\' \
 		-Y ' c\' \
 		-Y ' h\' \
@@ -1086,46 +1196,46 @@ t_X_Y_opt_input_go_stack() { #{{{
 		-Y 1 \
 		-Y'
 	define mac0 {
-		echo mac0-1 via2 $0
+		ec mac0-1 via2 "$0"
 	}
 	call mac0
-	echo 2
+	ec 2
 	' \
 		-Y'
 	source '${APO}'\
 		echo "define mac1 {";\
-		echo "  echo mac1-1 via2 \$0";\
+		echo "  ec mac1-1 via2 \"\$0\"";\
 		echo "  call mac0";\
-		echo "  echo mac1-2";\
+		echo "  ec mac1-2";\
 		echo "  call mac2";\
-		echo "  echo mac1-3";\
+		echo "  ec mac1-3";\
 		echo "}";\
-		echo "echo 1-1";\
+		echo "ec 1-1";\
 		echo "define mac2 {";\
-		echo "  echo mac2-1 via2 \$0";\
+		echo "  ec mac2-1 via2 \"\$0\"";\
 		echo "  call mac0";\
-		echo "  echo mac2-2";\
+		echo "  ec mac2-2";\
 		echo "}";\
-		echo "echo 1-2";\
+		echo "ec 1-2";\
 		echo "call mac1";\
-		echo "echo 1-3";\
+		echo "ec 1-3";\
 		echo "source \"\
-			echo echo 1-1-1 via2 \$0;\
+			echo ec 1-1-1 via2 \\\"\$0\\\";\
 			echo call mac0;\
-			echo echo 1-1-2;\
+			echo ec 1-1-2;\
 		| \"";\
-		echo "echo 1-4";\
+		echo "ec 1-4";\
 	| '${APO}'
-	echo 3
+	ec 3
 	' \
 		-Y'
 	call mac2
-	echo 4
+	ec 4
 	undefine *
 	' \
 		-Y 'echo LAST_Y' > ./t2 2>${E0}
 	#}}}
-	cke0 2 0 ./t2 '1845176711 440'
+	cke0 2 0 ./t2 '3684214198 432'
 
 	# Compose mode, too!
 	</dev/null ${MAILX} ${ARGS} \
@@ -1164,48 +1274,48 @@ t_X_Y_opt_input_go_stack() { #{{{
 
 	# Test for [8412796a] (n_cmd_arg_parse(): FIX token error -> crash, e.g.
 	# "-RX 'bind;echo $?' -Xx".., 2018-08-02)
-	${MAILX} ${ARGS} -RX'call;echo $?' -Xx > ./tcmdline 2>${E0}
-	${MAILX} ${ARGS} -RX'call ;echo $?' -Xx >> ./tcmdline 2>>${E0}
-	${MAILX} ${ARGS} -RX'call	;echo $?' -Xx >> ./tcmdline 2>>${E0}
-	${MAILX} ${ARGS} -RX'call		 ;echo $?' -Xx >> ./tcmdline 2>>${E0}
+	${MAILX} ${ARGS} -RX'call;ec "$?"' -Xx > ./tcmdline 2>${E0}
+	${MAILX} ${ARGS} -RX'call ;ec "$?"' -Xx >> ./tcmdline 2>>${E0}
+	${MAILX} ${ARGS} -RX'call	;ec "$?"' -Xx >> ./tcmdline 2>>${E0}
+	${MAILX} ${ARGS} -RX'call		 ;echo "$?"' -Xx >> ./tcmdline 2>>${E0}
 	cke0 cmdline 0 ./tcmdline '1867586969 8'
 
 	#{{{ Recursion via `source'
-	${cat} > ./t11-1.rc <<- '_EOT'; \
-		${cat} > ./t11-2.rc <<- '_EOT'; \
-		${cat} > ./t11-3.rc <<- '_EOT'; \
-		${cat} > ./t11-4.rc <<- '_EOT'
-	define r1 {
-		echo r1: $*
-		source ./t11-2.rc
-		eval $1 r2 "$@"
-	}
-	_EOT
-	define r2 {
-		echo r2: $*
-		source ./t11-3.rc
-		eval $1 r3 "$@"
-	}
-	_EOT
-	define r3 {
-		echo r3: $*
-		source ./t11-4.rc
-		eval $1 r4 "$@"
-	}
-	_EOT
-	define r4 {
-		echo r4: $*
-	}
-	_EOT
+	${cat} > ./t11-1.rc <<- '_EOT';\
+		${cat} > ./t11-2.rc << '_EOT';\
+		${cat} > ./t11-3.rc << '_EOT';\
+		${cat} > ./t11-4.rc << '_EOT'
+define r1 {
+	ec "r1: $*"
+	source ./t11-2.rc
+	eval "$1" r2 "$@"
+}
+_EOT
+define r2 {
+	ec "r2: $*"
+	source ./t11-3.rc
+	eval "$1" r3 "$@"
+}
+_EOT
+define r3 {
+	ec "r3: $*"
+	source ./t11-4.rc
+	eval "$1" r4 "$@"
+}
+_EOT
+define r4 {
+	ec "r4: $*"
+}
+_EOT
 
 	<< '__EOT' ${MAILX} ${ARGS} > ./t11 2>${E0}
-echo round 1: call
+ec "round 1: call"
 source ./t11-1.rc
 call r1 call
-echo round 2: xcall
+ec 'round 2: xcall'
 source ./t11-1.rc
 call r1 xcall
-echo alive and well
+ec 'alive and well'
 __EOT
 	#}}}
 	cke0 11 0 ./t11 '2740730424 120'
@@ -1222,26 +1332,26 @@ t_more_source_go_stack() { #{{{
 
 	${cat} >> ./tx.rc <<'_EOT'; ${cat} >> ./ty.rc <<'_EOT'
 define ad {
-	echo >ad $#: $*
-	source 'echo echo ecsrc|'
+	ec ">ad $#: $*"
+	source 'echo ec ecsrc|'
 	source ./ty.rc
-	echo <ad $#: $*
+	ec "<ad $#: $*"
 }
 account ad {
-	set inbox=./tx.mbox
+	se inbox=./tx.mbox
 	xcall ad acc
 }
 define ome {
-	echo >ome $#: $1: $mailbox-display,$mailbox-basename,<$mailbox-read-only>
+	ec ">ome $#: $1: $mailbox-display,$mailbox-basename,<$mailbox-read-only>"
 	if $1 == open
 		call ad ome
 	end
-	echo <ome
+	ec "<ome"
 }
-set on-mailbox-event=ome
-if "$x" =% ad; account ad; end
+se on-mailbox-event=ome
+if $x =% ad; account ad; end
 _EOT
-echo ty.rc
+ec ty.rc
 _EOT
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Yx > ./t1-1 2>${E0}
@@ -1255,33 +1365,33 @@ _EOT
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx > ./t2-1 2>${E0}
 	cke0 2-1 0 ./t2-1 '1988817349 258'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' > ./t2-2 2>${E0}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'acc ad' > ./t2-2 2>${E0}
 	cke0 2-2 0 ./t2-2 '172969318 323'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx -f ty.mbox > ./t2-3 2>${E0}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'acc ad' -Yx -f ty.mbox > ./t2-3 2>${E0}
 	cke0 2-3 0 ./t2-3 '1095948700 447'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -f ty.mbox > ./t2-4 2>${E0}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'acc ad' -f ty.mbox > ./t2-4 2>${E0}
 	cke0 2-4 0 ./t2-4 '2435929601 498'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' -Yx > ./t2-5 2>${EX}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'acc ad' -Yx > ./t2-5 2>${EX}
 	ck 2-5 0 ./t2-5 '1908918706 214' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' > ./t2-6 2>${EX}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'acc ad' > ./t2-6 2>${EX}
 	ck 2-6 0 ./t2-6 '422974811 279' '849946118 56'
 
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' -Yx > ./t3-1 2>${EX}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'acc ad' -Yx > ./t3-1 2>${EX}
 	ck 3-1 0 ./t3-1 '1908918706 214' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' > ./t3-2 2>${EX}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'acc ad' > ./t3-2 2>${EX}
 	ck 3-2 0 ./t3-2 '422974811 279' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' -Yx > ./t3-3 2>${EX}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'acc ad' -Yx > ./t3-3 2>${EX}
 	ck 3-3 0 ./t3-3 '1908918706 214' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' > ./t3-4 2>${EX}
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'acc ad' > ./t3-4 2>${EX}
 	ck 3-4 0 ./t3-2 '422974811 279' '849946118 56'
 
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-1 2>${E0}
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'acc ad' -Yx > ./t4-1 2>${E0}
 	cke0 4-1 0 ./t4-1 '1988817349 258'
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'account ad' > ./t4-2 2>${E0}
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'acc ad' > ./t4-2 2>${E0}
 	cke0 4-2 0 ./t4-2 '172969318 323'
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-3 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'acc ad' -Yx > ./t4-3 2>${EX}
 	ck 4-3 0 ./t4-3 '1988817349 258' '849946118 56'
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' > ./t4-4 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'acc ad' > ./t4-4 2>${EX}
 	ck 4-4 0 ./t4-4 '172969318 323' '849946118 56'
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Xx > ./t5-1 2>${E0}
@@ -1299,14 +1409,14 @@ t_X_errexit() { #{{{
 	t_prolog "${@}"
 
 	${cat} <<- '__EOT' > ./t.rc
-	echo one
+	ec one
 	echoerr pre
 	echos nono
 	echoerr post
-	echo two
+	ec two
 	__EOT
 
-	</dev/null ${MAILX} ${ARGS} -X'echo one' -X' echos nono ' -X'echo two' > ./t1 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -X'ec one' -X' echos nono ' -X'ec two' > ./t1 2>${EX}
 	ck 1 0 ./t1 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -X'source ./t.rc' > ./t2 2>${EX}
@@ -1317,7 +1427,7 @@ t_X_errexit() { #{{{
 
 	##
 
-	</dev/null ${MAILX} ${ARGS} -Serrexit -X'echo one' -X' echos nono ' -X'echo two' > ./t4 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -Serrexit -X'ec one' -X' echos nono ' -X'ec two' > ./t4 2>${EX}
 	ck 4 1 ./t4 '815791956 4' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -X'source ./t.rc' -Serrexit > ./t5 2>${EX}
@@ -1333,7 +1443,7 @@ t_X_errexit() { #{{{
 
 	${sed} -e 's/^echos /ignerr echos /' < ./t.rc > ./t2.rc
 
-	</dev/null ${MAILX} ${ARGS} -Serrexit -X'echo one' -X'ignerr echos nono ' -X'echo two' > ./t8 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -Serrexit -X'ec one' -X'ignerr echos nono ' -X'ec two' > ./t8 2>${EX}
 	ck 8 0 ./t8 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -X'source ./t2.rc' -Serrexit > ./t9 2>${EX}
@@ -1350,7 +1460,7 @@ t_X_errexit() { #{{{
 		echoerr bug
 	}
 	define x {
-		eval set $xarg
+		eval set "$xarg"
 		echoerr pre
 		echoes time
 		echoerr post
@@ -1358,14 +1468,14 @@ t_X_errexit() { #{{{
 	}
 	__EOT
 
-	printf 'source ./t3.rc\ncall x\necho au' | ${MAILX} ${ARGS} -Sxarg=errexit > ./t12 2>${EX}
+	printf 'source ./t3.rc\ncall x\nec au' | ${MAILX} ${ARGS} -Sxarg=errexit > ./t12 2>${EX}
 	ck0 12 1 ./t12 '116615032 68'
 
-	printf 'source ./t3.rc\nset on-history-addition=oha\ncall x\necho au' |
+	printf 'source ./t3.rc\nse on-history-addition=oha\ncall x\nec au' |
 		${MAILX} ${ARGS} -Sxarg=errexit > ./t13 2>${EX}
 	ck0 13 1 ./t13 '116615032 68'
 
-	printf 'source ./t3.rc\nset on-history-addition=oha\ncall x\necho au' |
+	printf 'source ./t3.rc\nse on-history-addition=oha\ncall x\nec au' |
 		${MAILX} ${ARGS} -Sxarg=i > ./t14 2>${EX}
 	ck 14 0 ./t14 '1772040099 3' '515198292 93'
 
@@ -1376,14 +1486,14 @@ t_Y_errexit() { #{{{
 	t_prolog "${@}"
 
 	${cat} <<- '__EOT' > ./t.rc
-	echo one
+	ec one
 	echoerr pre
 	echos nono
 	echoerr post
-	echo two
+	ec two
 	__EOT
 
-	</dev/null ${MAILX} ${ARGS} -Y'echo one' -Y' echos nono ' -Y'echo two' > ./t1 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -Y'ec one' -Y' echos nono ' -Y'ec two' > ./t1 2>${EX}
 	ck 1 0 ./t1 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' > ./t2 2>${EX}
@@ -1391,7 +1501,7 @@ t_Y_errexit() { #{{{
 
 	##
 
-	</dev/null ${MAILX} ${ARGS} -Serrexit -Y'echo one' -Y' echos nono ' -Y'echo two' > ./t3 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -Serrexit -Y'ec one' -Y' echos nono ' -Y'ec two' > ./t3 2>${EX}
 	ck 3 1 ./t3 '815791956 4' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' -Serrexit > ./t4 2>${EX}
@@ -1401,7 +1511,7 @@ t_Y_errexit() { #{{{
 
 	${sed} -e 's/^echos /ignerr echos /' < ./t.rc > ./t2.rc
 
-	</dev/null ${MAILX} ${ARGS} -Serrexit -Y'echo one' -Y'ignerr echos nono ' -Y'echo two' > ./t5 2>${EX}
+	</dev/null ${MAILX} ${ARGS} -Serrexit -Y'ec one' -Y'ignerr echos nono ' -Y'ec two' > ./t5 2>${EX}
 	ck 5 0 ./t5 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -Y'source ./t2.rc' -Serrexit > ./t6 2>${EX}
@@ -1415,76 +1525,76 @@ t_S_freeze() { #{{{
 
 	# Test basic assumption
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} \
-		-X'echo asksub<$asksub> dietcurd<$dietcurd>' \
+		-X'ec "asksub<$asksub> dietcurd<$dietcurd>"' \
 		-Xx > ./t1 2>${E0}
 	cke0 1 0 ./t1 '270686329 21'
 
 	#
-	echo 'ec asksub<$asksub>; se asksub; ec asksub<$asksub>' > "${BODY}"
+	echo 'ec "asksub<$asksub>"; se asksub; ec "asksub<$asksub>"' > "${BODY}"
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
 		-Snoasksub -Sasksub -Snoasksub \
-		-X'echo asksub<$asksub>' -X'set asksub' -X'echo asksub<$asksub>' \
+		-X'ec "asksub<$asksub>"' -X'se asksub' -X'ec "asksub<$asksub>"' \
 		-Xx > ./t2 2>${E0}
 	cke0 2 0 ./t2 '3182942628 37'
 
 	# freeze beats MAILRC, -X beats freeze
-	echo 'ec asksub<$asksub>; uns asksub; ec asksub<$asksub>' > "${BODY}"
+	echo 'ec "asksub<$asksub>"; uns asksub; ec "asksub<$asksub>"' > "${BODY}"
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
 		-Snoasksub -Sasksub \
-		-X'echo asksub<$asksub>' -X'unset asksub' -X'echo asksub<$asksub>' \
+		-X'ec "asksub<$asksub>"' -X'uns asksub' -X'ec "asksub<$asksub>"' \
 		-Xx > ./t3 2>${E0}
 	cke0 3 0 ./t3 '2006554293 39'
 
 	#
-	echo 'ec dietcurd<$dietcurd>; se dietcurd=cherry; ec dietcurd<$dietcurd>' > "${BODY}"
+	echo 'ec "dietcurd<$dietcurd>"; se dietcurd=cherry; ec "dietcurd<$dietcurd>"' > "${BODY}"
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
 		-Sdietcurd=strawberry -Snodietcurd -Sdietcurd=vanilla \
-		-X'echo dietcurd<$dietcurd>' -X'unset dietcurd' \
-			-X'echo dietcurd<$dietcurd>' \
+		-X'ec "dietcurd<$dietcurd>"' -X'uns dietcurd' \
+			-X'ec "dietcurd<$dietcurd>"' \
 		-Xx > ./t4 2>${E0}
 	cke0 4 0 ./t4 '1985768109 65'
 
-	echo 'ec dietcurd<$dietcurd>; uns dietcurd; ec dietcurd<$dietcurd>' > ./t.rc
+	echo 'ec "dietcurd<$dietcurd>"; uns dietcurd; ec "dietcurd<$dietcurd>"' > ./t.rc
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
 		-Sdietcurd=strawberry -Snodietcurd \
-		-X'echo dietcurd<$dietcurd>' -X'set dietcurd=vanilla' \
-			-X'echo dietcurd<$dietcurd>' \
+		-X'ec "dietcurd<$dietcurd>"' -X'se dietcurd=vanilla' \
+			-X'ec "dietcurd<$dietcurd>"' \
 		-Xx > ./t5 2>${E0}
 	cke0 5 0 ./t5 '151574279 51'
 
 	${cat} << '__EOT' > ./t.rc
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-ec _S_MAILX_TEST<$_S_MAILX_TEST>
+ec "_S_MAILX_TEST<$_S_MAILX_TEST>"
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
 se _S_MAILX_TEST=cherry
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-ec _S_MAILX_TEST<$_S_MAILX_TEST>
+ec "_S_MAILX_TEST<$_S_MAILX_TEST>"
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
 __EOT
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
 		-S_S_MAILX_TEST=strawberry -Sno_S_MAILX_TEST -S_S_MAILX_TEST=vanilla \
-		-X'echo mail<$_S_MAILX_TEST>' -X'unset _S_MAILX_TEST' \
+		-X'ec "mail<$_S_MAILX_TEST>"' -X'uns _S_MAILX_TEST' \
 		-X'!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"' \
-		-X'echo _S_MAILX_TEST<$_S_MAILX_TEST>' \
+		-X'ec "_S_MAILX_TEST<$_S_MAILX_TEST>"' \
 		-Xx > ./t6 2>${E0}
 	cke0 6 0 ./t6 '3512312216 239'
 
 	${cat} << '__EOT' > ./t.rc
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-ec _S_MAILX_TEST<$_S_MAILX_TEST>
+ec "_S_MAILX_TEST<$_S_MAILX_TEST>"
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-se _S_MAILX_TEST=cherry
+se "_S_MAILX_TEST=cherry"
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-ec _S_MAILX_TEST<$_S_MAILX_TEST>
+ec "_S_MAILX_TEST<$_S_MAILX_TEST>"
 !echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
 __EOT
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
 		-S_S_MAILX_TEST=strawberry -Sno_S_MAILX_TEST \
-		-X'echo _S_MAILX_TEST<$_S_MAILX_TEST>' -X'set _S_MAILX_TEST=vanilla' \
+		-X'ec "_S_MAILX_TEST<$_S_MAILX_TEST>"' -X'se _S_MAILX_TEST=vanilla' \
 		-X'!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"' \
-		-X'echo _S_MAILX_TEST<$_S_MAILX_TEST>' \
+		-X'ec "_S_MAILX_TEST<$_S_MAILX_TEST>"' \
 		-Xx > ./t7 2>${E0}
 	cke0 7 0 ./t7 '167059161 213'
 
@@ -1519,11 +1629,11 @@ define mydeepmac {
 define mymac {
 	echon this_is_mymac;;;;;;call mydeepmac;echon ';';
 }
-echon one';';call mymac;echon two";";;;call mymac;echo three$';';
+echon one';';call mymac;echon two";";;;call mymac;ec three$';';
 define mymac {
 	echon this_is_mymac;call mydeepmac;;;echon ,TOO'!;';
 }
-echon one';';call mymac;echon two";";call mymac;echo three$';';
+echon one';';call mymac;echon two";";call mymac;ec three$';';
 __EOT
 	#}}}
 	cke0 1 0 ./t1 '512117110 140'
@@ -1531,13 +1641,13 @@ __EOT
 	#{{{
 	<< '__EOT' ${cat} > ./txitquit.in
 define l3 {
-	ec l3>; eval $fun; ec l3<
+	ec l3>; eval "$fun"; ec l3<
 }
 define l2 {
-	ec l2>; eval $call l3; ec l2<
+	ec l2>; eval "$call" l3; ec l2<
 }
 define l1 {
-	ec l1>; eval $xcall l2; ec l1<
+	ec l1>; eval "$xcall" l2; ec l1<
 }
 call l1
 __EOT
@@ -1564,6 +1674,14 @@ t_wysh() { #{{{
 	#{{{
 	${cat} <<- '__EOT' > ./t.rc
 commandali e \\echo
+#
+e $ 
+e $
+e $ i
+e "$"
+e "$ "
+e "$ i"
+e ,1"$*"$* $*,
 #
 e abcd
 e a'b'c'd'
@@ -1631,11 +1749,11 @@ e a$'\c@'b c d
 	else
 		< ./t.rc DIET=CURD TIED= \
 		LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${EX}
-		ck unicode 0 ./tunicode '1126664893 337' '1444508169 628'
+		ck unicode 0 ./tunicode '2886138892 359' '1444508169 628'
 	fi
 
 	< ./t.rc DIET=CURD TIED= ${MAILX} ${ARGS} > ./tc 2>${EX}
-	ck c 0 ./tc '3138417346 341' '1444508169 628'
+	ck c 0 ./tc '262869076 363' '1444508169 628'
 
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
 	set mager='\hey\'
@@ -2830,166 +2948,168 @@ t_shcodec() { #{{{
 
 	#{{{ XXX the first needs to be checked, it is quite dumb as such
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-commandalias x ec '$?/$^ERRNAME'
-shcodec e abcd
+commandalias e shcodec e
+commandalias d shcodec d
+commandalias x ec '"$?/$^ERRNAME"'
+e abcd
 x
-shcodec d abcd
+d abcd
 x
-shcodec e a'b'c'd'
+e a'b'c'd'
 x
-shcodec d a'b'c'd'
+d a'b'c'd'
 x
-shcodec e a"b"c"d"
+e a"b"c"d"
 x
-shcodec d a"b"c"d"
+d a"b"c"d"
 x
-shcodec e a$'b'c$'d'
+e a$'b'c$'d'
 x
-shcodec d a$'b'c$'d'
+d a$'b'c$'d'
 x
-shcodec e 'abcd'
+e 'abcd'
 x
-shcodec d 'abcd'
+d 'abcd'
 x
-shcodec e "abcd"
+e "abcd"
 x
-shcodec d "abcd"
+d "abcd"
 x
-shcodec e $'abcd'
+e $'abcd'
 x
-shcodec d $'abcd'
+d $'abcd'
 x
 # same but with >
-commandalias y echo '$?/$^ERRNAME $res'
->res shcodec e abcd
+commandalias y ec '"$?/$^ERRNAME $res"'
+>res e abcd
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d abcd
+>res d abcd
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e a'b'c'd'
+>res e a'b'c'd'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a'b'c'd'
+>res d a'b'c'd'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e a"b"c"d"
+>res e a"b"c"d"
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a"b"c"d"
+>res d a"b"c"d"
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e a$'b'c$'d'
+>res e a$'b'c$'d'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a$'b'c$'d'
+>res d a$'b'c$'d'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e 'abcd'
+>res e 'abcd'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d 'abcd'
+>res d 'abcd'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e "abcd"
+>res e "abcd"
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d "abcd"
+>res d "abcd"
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e $'abcd'
+>res e $'abcd'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d $'abcd'
+>res d $'abcd'
 y
-eval shcodec d $res
+eval d "$res"
 x
 #
->res shcodec e a b\ c d
+>res e a b\ c d
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a b\ c d
+>res d a b\ c d
 y
->res shcodec e ab cd
+>res e ab cd
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d 'ab cd'
+>res d 'ab cd'
 y
->res shcodec e a 'b c' d
+>res e a 'b c' d
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a 'b c' d
+>res d a 'b c' d
 y
->res shcodec e a "b c" d
+>res e a "b c" d
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a "b c" d
+>res d a "b c" d
 y
->res shcodec e a $'b c' d
+>res e a $'b c' d
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d a $'b c' d
+>res d a $'b c' d
 y
 #
->res shcodec e 'a$`"\'
+>res e 'a$`"\'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d 'a$`"\'
+>res d 'a$`"\'
 y
->res shcodec e "a\$\`'\"\\"
+>res e "a\$\`'\"\\"
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d "a\$\`'\"\\"
+>res d "a\$\`'\"\\"
 y
->res shcodec e $'a\$`\'\"\\'
+>res e $'a\$`\'\"\\'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d $'a\$`\'\"\\'
+>res d $'a\$`\'\"\\'
 y
->res shcodec e $'a\$`\'"\\'
+>res e $'a\$`\'"\\'
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec d $'a\$`\'"\\'
+>res d $'a\$`\'"\\'
 y
 #
-set diet=curd
->res shcodec e a${diet}c
+se diet=curd
+>res e a${diet}c
 y
-eval shcodec d $res
+eval d "$res"
 x
-eval >res shcodec e a${diet}c
+eval >res e a${diet}c
 y
-eval shcodec d $res
+eval d "$res"
 x
->res shcodec e "a${diet}c"
+>res e "a${diet}c"
 y
-eval shcodec d $res
+eval d "$res"
 x
-eval >res shcodec e "a${diet}c"
+eval >res e "a${diet}c"
 y
-eval shcodec d $res
+eval d "$res"
 x
 __EOT
 	#}}}
@@ -3023,1107 +3143,1107 @@ t_ifelse() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./teasy 2>${E0}
-	commandalias e \\echo
-	set i=0
-	if [ $i -eq 0 ]
-		e 0
-		set i=1
-	eli [ $i -ne 0 ]
-		e 1
-		set i=2
-	els
-		set i=3
-		e 2
-	end
-	e =$i
-	set i=10
-	if [ $i -eq 0 ]
-		e 0
-		set i=1
-	eli [ $i -ne 0 ]
-		e 1
-		set i=2
-	els
-		set i=3
-		e 2
-	end
-	e =$i
-	set i=10
-	if [ $i -eq 0 ]
-		e 0
-		set i=1
-	eli [ $i -ne 10 ]
-		e 1
-		set i=2
-	els
-		set i=3
-		e 2
-	end
-	e =$i
-	#
-	set i=0
-	if 1
-		if 0
-			if [ $i -eq 0 ]
-				e 0
-				set i=1
-			eli [ $i -ne 0 ]
-				e 1
-				set i=2
-			els
-				set i=3
-				e 2
-			end
-			e =$i
+	<< '__EOT' ${MAILX} ${ARGS} > ./teasy 2>${E0}
+commandalias e \\echo
+set i=0
+if [ $i -eq 0 ]
+	e 0
+	se i=1
+eli [ $i -ne 0 ]
+	e 1
+	se i=2
+els
+	se i=3
+	e 2
+end
+e "=$i"
+se i=10
+if [ $i -eq 0 ]
+	e 0
+	se i=1
+eli [ $i -ne 0 ]
+	e 1
+	se i=2
+els
+	se i=3
+	e 2
+end
+e "=$i"
+se i=10
+if [ $i -eq 0 ]
+	e 0
+	se i=1
+eli [ $i -ne 10 ]
+	e 1
+	se i=2
+els
+	se i=3
+	e 2
+end
+e "=$i"
+#
+set i=0
+if 1
+	if 0
+		if [ $i -eq 0 ]
+			e 0
+			se i=1
+		eli [ $i -ne 0 ]
+			e 1
+			se i=2
+		els
+			se i=3
+			e 2
 		end
-	end
-	e ==$i
-	set i=10
-	if 1
-		if 0
-			set i=5
+		e "=$i"
+	en
+en
+e "==$i"
+se i=10
+if 1
+	if 0
+		se i=5
+		define x {
+			#
+		}
+	els
+		se i=10
+		if [ $i -eq 0 ]
+			e 0
+			se i=1
+			define x {
+				#
+			}
+		eli [ $i -ne 0 ]
+			e 1
+			se i=2
 			define x {
 				#
 			}
 		els
-			set i=10
-			if [ $i -eq 0 ]
-				e 0
-				set i=1
-				define x {
-					#
-				}
-			eli [ $i -ne 0 ]
-				e 1
-				set i=2
-				define x {
-					#
-				}
-			els
-				set i=3
-				e 2
-				define x {
-					#
-				}
-			end
+			se i=3
+			e 2
 			define x {
 				#
 			}
-			e =$i
 		end
-	end
-	e ==$i
-	__EOT
+		define x {
+			#
+		}
+		e "=$i"
+	en
+en
+e "==$i"
+__EOT
 	#}}}
 	cke0 easy 0 ./teasy '1243020683 28'
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tshexpign 2>${E0}
-	commandalias e \\echo
-	set i=0
-	if [ $((i+=10)) -eq 10 ]
-		e 0
-	eli [ $((++i)) -eq 11 ]
-		e 1
-	els
-		:$((i+=40))
-		e 2
-	end
-	e =$i
-	set i=0
-	if [ $((i+=10)) -eq 1 ]
-		e 0
-	eli [ $((++i)) -eq 11 ]
-		e 1
-	els
-		:$((i+=40))
-		e 2
-	end
-	e =$i
-	set i=0
-	if [ $((i+=10)) -eq 1 ]
-		e 0
-	eli [ $((i++)) -eq 11 ]
-		e 1
-	els
-		:$((i+=40))
-		e 2
-	end
-	e =$i
-	#
-	set i=0
-	if 1
-		if 0
-			if [ $((i+=10)) -eq 10 ]
-				e 0
-			eli [ $((++i)) -eq 11 ]
-				e 1
-			els
-				:$((i+=40))
-				e 2
-			end
-		end
-	end
-	e =$i
-	set i=0
-	if 1
-		if 0
-			:$((i=5))
+	<< '__EOT' ${MAILX} ${ARGS} > ./tshexpign 2>${E0}
+commandalias e \\echo
+se i=0
+if [ $((i+=10)) -eq 10 ]
+	e 0
+eli [ $((++i)) -eq 11 ]
+	e 1
+els
+	:$((i+=40))
+	e 2
+en
+e "=$i"
+set i=0
+if [ $((i+=10)) -eq 1 ]
+	e 0
+eli [ $((++i)) -eq 11 ]
+	e 1
+els
+	:$((i+=40))
+	e 2
+en
+e "=$i"
+se i=0
+if [ $((i+=10)) -eq 1 ]
+	e 0
+eli [ $((i++)) -eq 11 ]
+	e 1
+els
+	:$((i+=40))
+	e 2
+en
+e "=$i"
+#
+se i=0
+if 1
+	if 0
+		if [ $((i+=10)) -eq 10 ]
+			e 0
+		eli [ $((++i)) -eq 11 ]
+			e 1
 		els
-			if [ $((i+=10)) -eq 10 ]
-				e 0
-			eli [ $((++i)) -eq 11 ]
-				e 1
-			els
-				:$((i+=40))
-				e 2
-			end
-		end
-	end
-	e =$i
-	__EOT
+			:$((i+=40))
+			e 2
+		en
+	en
+en
+e "=$i"
+set i=0
+if 1
+	if 0
+		:$((i=5))
+	els
+		if [ $((i+=10)) -eq 10 ]
+			e 0
+		eli [ $((++i)) -eq 11 ]
+			e 1
+		els
+			:$((i+=40))
+			e 2
+		en
+	en
+en
+e "=$i"
+__EOT
 	#}}}
 	cke0 shexpign 0 ./tshexpign '1174905124 27'
 
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tbadsyn 2>${EX}
-	commandalias ca \\commandalias
-	ca ec \\echo
-	ca el \\else\;ec
-	ca f \\endif
-	if !;ec 1a;el 1b;f
-	if [ ! && a == hey ];ec 2a;el 2b;f
-	if true && ! ! ! ! ! ! ! ! !;ec 3a;el 3b;f
-	if true && [ true ] [ true ];ec 4a;el 4b;f
-	if [ -n == -n ];ec 5a;el 5b;f
-	if -n == -n;ec 6a;el 6b;f
-	if [ == ];ec 7a;el 7b;f
-	if [ == [;ec 8a;el 8b;f
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tbadsyn 2>${EX}
+commandalias ca \\commandalias
+ca ec \\echo
+ca el \\else\;ec
+ca f \\endif
+if !;ec 1a;el 1b;f
+if [ ! && a == hey ];ec 2a;el 2b;f
+if true && ! ! ! ! ! ! ! ! !;ec 3a;el 3b;f
+if true && [ true ] [ true ];ec 4a;el 4b;f
+if [ -n == -n ];ec 5a;el 5b;f
+if -n == -n;ec 6a;el 6b;f
+if [ == ];ec 7a;el 7b;f
+if [ == [;ec 8a;el 8b;f
+__EOT
 	ck0 badsyntax 0 ./tbadsyn '2718347745 864'
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tgoodsyn 2>${E0}
-	commandalias e \\echo
-	commandalias f \\endif
-	if ! false;e y1.1;f
-	if [ ! != x ];e y1.2;f
-	if [ ! == ! ];e y1.3;f
-	if [ & == & ];e y1.4;f
-	if [ | == | ];e y1.5;f
-	if [ & != | ];e y1.6;f
-	if [ | != & ];e y1.7;f
-	#
-	if [ && == && ];e y1.8;f
-	if [ || == || ];e y1.9;f
-	if [ && != || ];e y1.10;f
-	if [ || != && ];e y1.11;f
-	#
-	if '[' == [;e y1.12;f
-	set i=[
-	if ! ! $i == [;e y1.13;f
-	if ! \[ != [;e y1.14;f
-	if [ '[' == [ ];e y1.15;f
-	if [ ! ! $'\x5B' == [ ];e y1.16;f
-	if [ ! $'\u5B' != [ ];e y1.17;f
-	if [ [ [ \[ == [ ] ] ];e y1.18;f
-	#
-	if ] == ];e y1.19;f
-	if ! ! ] == ];e y1.20;f
-	if ! ] != ];e y1.21;f
-	if [ ] == ] ];e y1.22;f
-	if [ ! ! ] == ] ];e y1.23;f
-	if [ ! ] != ] ];e y1.24;f
-	if [ [ [ ] == ] ] ] ];e y1.25;f
-	#
-	if '[' != ];e y1.26;f
-	set i=[
-	if ! ! $i != ];e y1.27;f
-	if ! \[ == ];e y1.28;f
-	if [ '[' != ] ];e y1.29;f
-	if [ ! ! $'\x5B' != ] ];e y1.30;f
-	if [ ! $'\u5B' == ] ];e y1.31;f
-	if [ [ [ ! \[ == ] ] ] ];e y1.32;f
-	##
-	if ! false;e y2.1;f
-	if ! != x;e y2.2;f
-	if ! ! ! != x;e y2.3;f
-	if ! == !;e y2.4;f
-	if & == &;e y2.5;f
-	if | == |;e y2.6;f
-	if & != |;e y2.7;f
-	if | != &;e y2.8;f
-	#
-	if && == &&;e y2.9;f
-	if || == ||;e y2.10;f
-	if && != ||;e y2.11;f
-	if || != &&;e y2.12;f
-	if ! && != &&;e y2.13;f
-	if ! || != ||;e y2.14;f
-	if ! && == ||;e y2.15;f
-	if ! || == &&;e y2.16;f
-	##
-	if [ ! false ];e y2.20;f
-	if [ ! != x ];e y2.21;f
-	if ! [ ! ! != x ] ;e y2.22;f
-	if [ ! == ! ];e y2.23;f
-	if [ & == & ];e y2.24;f
-	if [ | == | ];e y2.25;f
-	if [ & != | ];e y2.26;f
-	if [ | != & ];e y2.27;f
-	#
-	if [ && == && ];e y2.28;f
-	if [ || == || ];e y2.29;f
-	if [ && != || ];e y2.30;f
-	if [ || != && ];e y2.31;f
-	if ! ! [ && == && ];e y2.32;f
-	if [ ! [ ! || == || ] ];e y2.33;f
-	if ! [ ! && != || ];e y2.34;f
-	if [ ! ! || != && ];e y2.35;f
-	##
-	if [ && == && ] && [ && == && ];e y3.1;f
-	if [ || == || ] || [ || == || ];e y3.2;f
-	if [ && != || ] && [ && != || ];e y3.3;f
-	if [ || != && ] || [ || != && ];e y3.4;f
-	#
-	if && == && && && == &&;e y4.1;f
-	if || == || || || == ||;e y4.2;f
-	if && != || && && != ||;e y4.3;f
-	if || != && || || != &&;e y4.4;f
-	##
-	if [ '' -lt 1 ];e y10.1;f
-	## (examplary: binaries are all alike in our eyes)
-	if == == ==;e y20.1;f
-	if == != !=;e y20.2;f
-	if != == !=;e y20.3;f
-	if != != ==;e y20.4;f
-	# (quoting binaries is not needed)
-	if [ '==' == == ];e y21.1;f
-	set i===
-	if [ $i == == ];e y21.2;f
-	if [ == == == ];e y21.3;f
-	if [ == != != ];e y21.4;f
-	if [ != == != ];e y21.5;f
-	if [ != != == ];e y21.6;f
-	#
-	if ! '==' == ==;el;e y22.1;f
-	set i===
-	if ! $i == ==;el;e y22.2;f
-	if ! == == ==;el;e y22.3;f
-	if ! == != !=;el;e y22.4;f
-	if ! != == !=;el;e y22.5;f
-	if ! != != ==;el;e y22.6;f
-	#
-	if ! [ '==' == == ];el;e y23.1;f
-	set i===
-	if ! [ $i == == ];el;e y23.2;f
-	if [ ! == == == ];el;e y23.3;f
-	if [ ! == != != ];el;e y23.4;f
-	if ! [ != == != ];el;e y23.5;f
-	if ! [ != != == ];el;e y23.6;f
-	#
-	if [ ! '==' == == ];el;e y24.1;f
-	set i===
-	if [ ! $i == == ];el;e y24.2;f
-	if [ ! == == == ];el;e y24.3;f
-	if [ ! ! == != != ];el;e y24.4;f
-	if [ ! != == != ];el;e y24.5;f
-	if [ ! != != == ];el;e y24.6;f
-	##
-	if -n [;e y30.1;f
-	if -n ];e y30.2;f
-	if -n &&;e y30.3;f
-	if -n ||;e y30.4;f
-	if ! -z [;e y31.1;f
-	if ! -z ];e y31.2;f
-	if ! -z &&;e y31.3;f
-	if ! -z ||;e y31.4;f
-	##
-	if -n ==;e y32.1;f
-	if [ -n == ];e y32.2;f
-	if [ '-n' == -n ];e y32.3;f
-	if \-n == -n;e y32.4;f
-	if -n == && true;e y32.5;f
-	if \-n == -n && true;e y32.6;f
-	if -$'\u6E' == ] || true;e y32.7;f
-	if [ [ [ -n == ] ] ];e y32.8;f
-	if [ [ [ -$'\x6e' == -n ] ] ];e y32.9;f
-	if [ '-n' != ] && true ];e y32.10;f
-	if [ -$'\x6e' == ] ] || true;e y32.11;f
-	if [ [ \-n == ] ] ] || true;e y32.12;f
-	if [ [ \-n == ] ] || true ];e y32.13;f
-	#
-	if ! ! -n ==;e y33.1;f
-	if ! [ ! -n == ];e y33.2;f
-	if ! [ ! \-n == -n ];e y33.3;f
-	if ! ! \-n == -n;e y33.4;f
-	if ! ! -n == && true;e y33.5;f
-	if ! ! \-n == -n && true;e y33.6;f
-	if ! \-n == ] && true;e y33.7;f
-	if ! ! [ ! [ ! [ -n == ] ] ];e y33.8;f
-	if ! ! [ ! [ ! [ \-n == -n ] ] ];e y33.9;f
-	if [ ! \-n == ] && true ];e y33.10;f
-	if [ ! \-n == ] ] && true;e y33.11;f
-	if ! ! [ ! [  \-n == ] ] ] && true;e y33.12;f
-	if ! ! [ [ \-n != ] ] && true ];e y33.13;f
-	#
-	if [ = = = ];e y40;f
-	if [ = == = ];e y41;f
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tgoodsyn 2>${E0}
+commandalias e \\echo
+commandalias f \\endif
+if ! false;e y1.1;f
+if [ ! != x ];e y1.2;f
+if [ ! == ! ];e y1.3;f
+if [ & == & ];e y1.4;f
+if [ | == | ];e y1.5;f
+if [ & != | ];e y1.6;f
+if [ | != & ];e y1.7;f
+#
+if [ && == && ];e y1.8;f
+if [ || == || ];e y1.9;f
+if [ && != || ];e y1.10;f
+if [ || != && ];e y1.11;f
+#
+if '[' == [;e y1.12;f
+set i=[
+if ! ! $i == [;e y1.13;f
+if ! \[ != [;e y1.14;f
+if [ '[' == [ ];e y1.15;f
+if [ ! ! $'\x5B' == [ ];e y1.16;f
+if [ ! $'\u5B' != [ ];e y1.17;f
+if [ [ [ \[ == [ ] ] ];e y1.18;f
+#
+if ] == ];e y1.19;f
+if ! ! ] == ];e y1.20;f
+if ! ] != ];e y1.21;f
+if [ ] == ] ];e y1.22;f
+if [ ! ! ] == ] ];e y1.23;f
+if [ ! ] != ] ];e y1.24;f
+if [ [ [ ] == ] ] ] ];e y1.25;f
+#
+if '[' != ];e y1.26;f
+set i=[
+if ! ! $i != ];e y1.27;f
+if ! \[ == ];e y1.28;f
+if [ '[' != ] ];e y1.29;f
+if [ ! ! $'\x5B' != ] ];e y1.30;f
+if [ ! $'\u5B' == ] ];e y1.31;f
+if [ [ [ ! \[ == ] ] ] ];e y1.32;f
+##
+if ! false;e y2.1;f
+if ! != x;e y2.2;f
+if ! ! ! != x;e y2.3;f
+if ! == !;e y2.4;f
+if & == &;e y2.5;f
+if | == |;e y2.6;f
+if & != |;e y2.7;f
+if | != &;e y2.8;f
+#
+if && == &&;e y2.9;f
+if || == ||;e y2.10;f
+if && != ||;e y2.11;f
+if || != &&;e y2.12;f
+if ! && != &&;e y2.13;f
+if ! || != ||;e y2.14;f
+if ! && == ||;e y2.15;f
+if ! || == &&;e y2.16;f
+##
+if [ ! false ];e y2.20;f
+if [ ! != x ];e y2.21;f
+if ! [ ! ! != x ] ;e y2.22;f
+if [ ! == ! ];e y2.23;f
+if [ & == & ];e y2.24;f
+if [ | == | ];e y2.25;f
+if [ & != | ];e y2.26;f
+if [ | != & ];e y2.27;f
+#
+if [ && == && ];e y2.28;f
+if [ || == || ];e y2.29;f
+if [ && != || ];e y2.30;f
+if [ || != && ];e y2.31;f
+if ! ! [ && == && ];e y2.32;f
+if [ ! [ ! || == || ] ];e y2.33;f
+if ! [ ! && != || ];e y2.34;f
+if [ ! ! || != && ];e y2.35;f
+##
+if [ && == && ] && [ && == && ];e y3.1;f
+if [ || == || ] || [ || == || ];e y3.2;f
+if [ && != || ] && [ && != || ];e y3.3;f
+if [ || != && ] || [ || != && ];e y3.4;f
+#
+if && == && && && == &&;e y4.1;f
+if || == || || || == ||;e y4.2;f
+if && != || && && != ||;e y4.3;f
+if || != && || || != &&;e y4.4;f
+##
+if [ '' -lt 1 ];e y10.1;f
+## (examplary: binaries are all alike in our eyes)
+if == == ==;e y20.1;f
+if == != !=;e y20.2;f
+if != == !=;e y20.3;f
+if != != ==;e y20.4;f
+# (quoting binaries is not needed)
+if [ '==' == == ];e y21.1;f
+set i===
+if [ $i == == ];e y21.2;f
+if [ == == == ];e y21.3;f
+if [ == != != ];e y21.4;f
+if [ != == != ];e y21.5;f
+if [ != != == ];e y21.6;f
+#
+if ! '==' == ==;el;e y22.1;f
+set i===
+if ! $i == ==;el;e y22.2;f
+if ! == == ==;el;e y22.3;f
+if ! == != !=;el;e y22.4;f
+if ! != == !=;el;e y22.5;f
+if ! != != ==;el;e y22.6;f
+#
+if ! [ '==' == == ];el;e y23.1;f
+set i===
+if ! [ $i == == ];el;e y23.2;f
+if [ ! == == == ];el;e y23.3;f
+if [ ! == != != ];el;e y23.4;f
+if ! [ != == != ];el;e y23.5;f
+if ! [ != != == ];el;e y23.6;f
+#
+if [ ! '==' == == ];el;e y24.1;f
+set i===
+if [ ! $i == == ];el;e y24.2;f
+if [ ! == == == ];el;e y24.3;f
+if [ ! ! == != != ];el;e y24.4;f
+if [ ! != == != ];el;e y24.5;f
+if [ ! != != == ];el;e y24.6;f
+##
+if -n [;e y30.1;f
+if -n ];e y30.2;f
+if -n &&;e y30.3;f
+if -n ||;e y30.4;f
+if ! -z [;e y31.1;f
+if ! -z ];e y31.2;f
+if ! -z &&;e y31.3;f
+if ! -z ||;e y31.4;f
+##
+if -n ==;e y32.1;f
+if [ -n == ];e y32.2;f
+if [ '-n' == -n ];e y32.3;f
+if \-n == -n;e y32.4;f
+if -n == && true;e y32.5;f
+if \-n == -n && true;e y32.6;f
+if -$'\u6E' == ] || true;e y32.7;f
+if [ [ [ -n == ] ] ];e y32.8;f
+if [ [ [ -$'\x6e' == -n ] ] ];e y32.9;f
+if [ '-n' != ] && true ];e y32.10;f
+if [ -$'\x6e' == ] ] || true;e y32.11;f
+if [ [ \-n == ] ] ] || true;e y32.12;f
+if [ [ \-n == ] ] || true ];e y32.13;f
+#
+if ! ! -n ==;e y33.1;f
+if ! [ ! -n == ];e y33.2;f
+if ! [ ! \-n == -n ];e y33.3;f
+if ! ! \-n == -n;e y33.4;f
+if ! ! -n == && true;e y33.5;f
+if ! ! \-n == -n && true;e y33.6;f
+if ! \-n == ] && true;e y33.7;f
+if ! ! [ ! [ ! [ -n == ] ] ];e y33.8;f
+if ! ! [ ! [ ! [ \-n == -n ] ] ];e y33.9;f
+if [ ! \-n == ] && true ];e y33.10;f
+if [ ! \-n == ] ] && true;e y33.11;f
+if ! ! [ ! [  \-n == ] ] ] && true;e y33.12;f
+if ! ! [ [ \-n != ] ] && true ];e y33.13;f
+#
+if [ = = = ];e y40;f
+if [ = == = ];e y41;f
+__EOT
 	#}}}
 	cke0 goodsyntax 0 ./tgoodsyn '3800596256 794'
 
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tNnZz_whiteout 2>${E0}
-	\if -N xyz; echo 1.err-1; \
-		\elif ! -Z xyz;echo 1.err-2;\
-		\elif -n "$xyz"	  ;	 	echo 1.err-3	;	  \
-		\elif ! -z "$xyz"	 	 ;	 	  echo 1.err-4   ;	 \
-		\else;echo 1.ok;\
-		\end
-	\set xyz
-	\i ! -N xyz; echo 2.err-1; \
-		\eli -Z xyz;echo 2.err-2;\
-		\eli -n $xyz	  ;	 	echo 2.err-3	 ; 	  \
-		\eli ! -z $xyz		 ;		  echo 2.err-4   ;	 \
-		\el;echo 2.ok;\
-		\en
-	\set xyz=notempty
-	\if ! -N xyz; echo 3.err-1; \
-		\eli -Z xyz;echo 3.err-2;\
-		\eli ! -n $xyz;echo 3.err-3;\
-		\eli -z $xyz;echo 3.err-4;\
-		\el;echo 3.ok;\
-		\en
-	\if $xyz != notempty;echo 4.err-1;else;echo 4.ok;\end
-	\if $xyz == notempty;echo 5.ok;else;echo 5.err-1;\end
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tNnZz_whiteout 2>${E0}
+\if -N xyz; ec 1.err-1; \
+\elif ! -Z xyz;ec 1.err-2;\
+\elif -n "$xyz"	  ;	 	ec 1.err-3	;	  \
+\elif ! -z "$xyz"	 	 ;	 	  ec 1.err-4   ;	 \
+\else;ec 1.ok;\
+\end
+\se xyz
+\i ! -N xyz; ec 2.err-1; \
+\eli -Z xyz;ec 2.err-2;\
+\eli -n $xyz	  ;	 	ec 2.err-3	 ; 	  \
+\eli ! -z $xyz		 ;		  ec 2.err-4   ;	 \
+\el;ec 2.ok;\
+\en
+\se xyz=notempty
+\if ! -N xyz; ec 3.err-1; \
+\eli -Z xyz;ec 3.err-2;\
+\eli ! -n $xyz;ec 3.err-3;\
+\eli -z $xyz;ec 3.err-4;\
+\el;ec 3.ok;\
+\en
+\if $xyz != notempty;ec 4.err-1;else;ec 4.ok;\end
+\if $xyz == notempty;ec 5.ok;else;ec 5.err-1;\end
+__EOT
 	cke0 NnZz_whiteout 0 ./tNnZz_whiteout '4280687462 25'
 
 	#{{{ # TODO t_ifelse: individual tests as for NnZz_whiteout
 	# Nestable conditions test
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tnormal 2>${E0}
-		if 0
-			echo 1.err
+	<< '__EOT' ${MAILX} ${ARGS} > ./tnormal 2>${E0}
+if 0
+	ec 1.err
+else
+	ec 1.ok
+endif
+if 1
+	ec 2.ok
+else
+	ec 2.err
+endif
+if [ "$dietcurd" != "" ]
+	ec 3.err
+else
+	ec 3.ok
+endif
+set dietcurd=yoho
+if $'\$dietcurd' != ""
+	ec 4.ok
+else
+	ec 4.err
+endif
+if "$dietcurd" == 'yoho'
+	ec 5.ok
+else
+	ec 5.err
+endif
+if $'\$dietcurd' ==? 'Yoho'
+	ec 5-1.ok
+else
+	ec 5-1.err
+endif
+if $dietcurd == 'Yoho'
+	ec 5-2.err
+else
+	ec 5-2.ok
+endif
+if $dietcurd != 'yoho'
+	ec 6.err
+else
+	ec 6.ok
+endif
+if $dietcurd !=?case 'Yoho'
+	ec 6-1.err
+else
+	ec 6-1.ok
+endif
+if $dietcurd != 'Yoho'
+	ec 6-2.ok
+else
+	ec 6-2.err
+endif
+# Nesting
+if faLse
+	ec 7.err1
+	if tRue
+		ec 7.err2
+		if yEs
+			ec 7.err3
 		else
-			echo 1.ok
+			ec 7.err4
 		endif
-		if 1
-			echo 2.ok
+		ec 7.err5
+	endif
+	ec 7.err6
+else
+	ec 7.ok7
+	if YeS
+		ec 7.ok8
+		if No
+			ec 7.err9
 		else
-			echo 2.err
+			ec 7.ok9
 		endif
-		if [ "$dietcurd" != "" ]
-			echo 3.err
+		ec 7.ok10
+	else
+		ec 7.err11
+		if yeS
+			ec 7.err12
 		else
-			echo 3.ok
+			ec 7.err13
 		endif
-		set dietcurd=yoho
-		if $'\$dietcurd' != ""
-			echo 4.ok
-		else
-			echo 4.err
-		endif
-		if "$dietcurd" == 'yoho'
-			echo 5.ok
-		else
-			echo 5.err
-		endif
-		if $'\$dietcurd' ==? 'Yoho'
-			echo 5-1.ok
-		else
-			echo 5-1.err
-		endif
-		if $dietcurd == 'Yoho'
-			echo 5-2.err
-		else
-			echo 5-2.ok
-		endif
-		if $dietcurd != 'yoho'
-			echo 6.err
-		else
-			echo 6.ok
-		endif
-		if $dietcurd !=?case 'Yoho'
-			echo 6-1.err
-		else
-			echo 6-1.ok
-		endif
-		if $dietcurd != 'Yoho'
-			echo 6-2.ok
-		else
-			echo 6-2.err
-		endif
-		# Nesting
-		if faLse
-			echo 7.err1
-			if tRue
-				echo 7.err2
-				if yEs
-					echo 7.err3
-				else
-					echo 7.err4
-				endif
-				echo 7.err5
-			endif
-			echo 7.err6
-		else
-			echo 7.ok7
-			if YeS
-				echo 7.ok8
-				if No
-					echo 7.err9
-				else
-					echo 7.ok9
-				endif
-				echo 7.ok10
-			else
-				echo 7.err11
-				if yeS
-					echo 7.err12
-				else
-					echo 7.err13
-				endif
-			endif
-			echo 7.ok14
-		endif
-		if r
-			echo 8.ok1
-			if R
-				echo 8.ok2
-			else
-				echo 8.err2
-			endif
-			echo 8.ok3
-		else
-			echo 8.err1
-		endif
-		if s
-			echo 9.err1
-		else
-			echo 9.ok1
-			if S
-				echo 9.err2
-			else
-				echo 9.ok2
-			endif
-			echo 9.ok3
-		endif
-		# `elif'
+	endif
+	ec 7.ok14
+endif
+if r
+	ec 8.ok1
+	if R
+		ec 8.ok2
+	else
+		ec 8.err2
+	endif
+	ec 8.ok3
+else
+	ec 8.err1
+endif
+if s
+	ec 9.err1
+else
+	ec 9.ok1
+	if S
+		ec 9.err2
+	else
+		ec 9.ok2
+	endif
+	ec 9.ok3
+endif
+# `elif'
+if $dietcurd == 'yohu'
+	ec 10.err1
+elif $dietcurd == 'yoha'
+	ec 10.err2
+elif $dietcurd == 'yohe'
+	ec 10.err3
+elif $dietcurd == 'yoho'
+	ec 10.ok1
+	if $dietcurd == 'yohu'
+		ec 10.err4
+	elif $dietcurd == 'yoha'
+		ec 10.err5
+	elif $dietcurd == 'yohe'
+		ec 10.err6
+	elif $dietcurd == 'yoho'
+		ec 10.ok2
 		if $dietcurd == 'yohu'
-			echo 10.err1
+			ec 10.err7
 		elif $dietcurd == 'yoha'
-			echo 10.err2
+			ec 10.err8
 		elif $dietcurd == 'yohe'
-			echo 10.err3
+			ec 10.err9
 		elif $dietcurd == 'yoho'
-			echo 10.ok1
-			if $dietcurd == 'yohu'
-				echo 10.err4
-			elif $dietcurd == 'yoha'
-				echo 10.err5
-			elif $dietcurd == 'yohe'
-				echo 10.err6
-			elif $dietcurd == 'yoho'
-				echo 10.ok2
-				if $dietcurd == 'yohu'
-					echo 10.err7
-				elif $dietcurd == 'yoha'
-					echo 10.err8
-				elif $dietcurd == 'yohe'
-					echo 10.err9
-				elif $dietcurd == 'yoho'
-					echo 10.ok3
-				else
-					echo 10.err10
-				endif
-			else
-				echo 10.err11
-			endif
-		else
-			echo 10.err12
-		endif
-		# integer
-		set dietcurd=10
-		if $dietcurd -lt 11
-			echo 11.ok1
-			if $dietcurd -gt 9
-				echo 11.ok2
-			else
-				echo 11.err2
-			endif
-			if $dietcurd -eq 10
-				echo 11.ok3
-			else
-				echo 11.err3
-			endif
-			if $dietcurd -ge 10
-				echo 11.ok4
-			else
-				echo 11.err4
-			endif
-			if $dietcurd -le 10
-				echo 11.ok5
-			else
-				echo 11.err5
-			endif
-			if $dietcurd -ge 11
-				echo 11.err6
-			else
-				echo 11.ok6
-			endif
-			if $dietcurd -ge?satu -0xFFFFFFFFFFFFFFFF1
-				echo 11.err7
-			else
-				echo 11.ok7
-			endif
-		else
-			echo 11.err1
-		endif
-		set dietcurd=Abc
-		if $dietcurd < aBd
-			echo 12.ok1
-			if $dietcurd >? abB
-				echo 12.ok2
-			else
-				echo 12.err2
-			endif
-			if $dietcurd ==?case aBC
-				echo 12.ok3
-			else
-				echo 12.err3
-			endif
-			if $dietcurd >=?ca AbC
-				echo 12.ok4
-			else
-				echo 12.err4
-			endif
-			if $dietcurd <=? ABc
-				echo 12.ok5
-			else
-				echo 12.err5
-			endif
-			if $dietcurd >=?case abd
-				echo 12.err6
-			else
-				echo 12.ok6
-			endif
-			if $dietcurd <=? abb
-				echo 12.err7
-			else
-				echo 12.ok7
-			endif
-		else
-			echo 12.err1
-		endif
-		if $dietcurd < aBc
-			echo 12-1.ok
-		else
-			echo 12-1.err
-		endif
-		if $dietcurd <? aBc
-			echo 12-2.err
-		else
-			echo 12-2.ok
-		endif
-		if $dietcurd > ABc
-			echo 12-3.ok
-		else
-			echo 12-3.err
-		endif
-		if $dietcurd >? ABc
-			echo 12-3.err
-		else
-			echo 12-3.ok
-		endif
-		if $dietcurd =%?case aB
-			echo 13.ok
-		else
-			echo 13.err
-		endif
-		if $dietcurd =% aB
-			echo 13-1.err
-		else
-			echo 13-1.ok
-		endif
-		if $dietcurd =%? bC
-			echo 14.ok
-		else
-			echo 14.err
-		endif
-		if $dietcurd !% aB
-			echo 15-1.ok
-		else
-			echo 15-1.err
-		endif
-		if $dietcurd !%? aB
-			echo 15-2.err
-		else
-			echo 15-2.ok
-		endif
-		if $dietcurd !% bC
-			echo 15-3.ok
-		else
-			echo 15-3.err
-		endif
-		if $dietcurd !%? bC
-			echo 15-4.err
-		else
-			echo 15-4.ok
-		endif
-		if $dietcurd =% Cd
-			echo 16.err
-		else
-			echo 16.ok
-		endif
-		if $dietcurd !% Cd
-			echo 17.ok
-		else
-			echo 17.err
-		endif
-		set diet='ab c' curd='ab c'
-		if "$diet" == "$curd"
-			echo 18.ok
-		else
-			echo 18.err
-		endif
-		set diet='ab c' curd='ab cd'
-		if "$diet" != "$curd"
-			echo 19.ok
-		else
-			echo 19.err
-		endif
-		# 1. Shitty grouping capabilities as of today
-		unset diet curd ndefined
-		if [ [ false ] || [ false ] || [ true ] ] && \
-				[ [ false ] || [ true ] ] && \
-				[ yes ]
-			echo 20.ok
-		else
-			echo 20.err
-		endif
-		if [ [ [ [ 0 ] || [ 1 ] ] && [ [ 1 ] || [ 0 ] ] ] && [ 1 ] ] && [ yes ]
-			echo 21.ok
-		else
-			echo 21.err
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] ]
-			echo 22.ok
-		else
-			echo 22.err
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] ]
-			echo 23.ok
-		else
-			echo 23.err
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] && [ no ]
-			echo 24.err
-		else
-			echo 24.ok
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] \
-				&& [ no ] || [ yes ]
-			echo 25.ok
-		else
-			echo 25.err
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
-			echo 26.ok
-		else
-			echo 26.err
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 0 ] ]
-			echo 27.err
-		else
-			echo 27.ok
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 0 ] ] && [ 1 ] ] ] && [ 1 ] ]
-			echo 28.err
-		else
-			echo 28.ok
-		endif
-		if [ [ [ [ [ [ [ 0 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
-			echo 29.err
-		else
-			echo 29.ok
-		endif
-		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 0 ]
-			echo 30.err
-		else
-			echo 30.ok
-		endif
-		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 1 ]
-			echo 31.ok
-		else
-			echo 31.err
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ]
-			echo 32.err
-		else
-			echo 32.ok
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 1 ]
-			echo 33.ok
-		else
-			echo 33.err
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 0 ]
-			echo 34.err
-		else
-			echo 34.ok
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 1 ]
-			echo 35.ok
-		else
-			echo 35.err
-		endif
-		set diet=yo curd=ho
-		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && \
-				[ -N ndefined || -n "$ndefined" || \
-				! -Z ndefined || ! -z "$ndefined" ]
-			echo 36.err
-		else
-			echo 36.ok
-		endif
-		set ndefined
-		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && \
-				-N ndefined && ! -n "$ndefined" && \
-				! -Z ndefined && -z "$ndefined"
-			echo 37.ok
-		else
-			echo 37.err
-		endif
-		# 2. Shitty grouping capabilities as of today
-		unset diet curd ndefined
-		if [ false || false || true ] && [ false || true ] && yes
-			echo 40.ok
-		else
-			echo 40.err
-		endif
-		if [ [ [ 0 || 1 ] && [ 1 || 0 ] ] && 1 ] && [ yes ]
-			echo 41.ok
-		else
-			echo 41.err
-		endif
-		if [ 1 || 0 || 0 || 0 ]
-			echo 42.ok
-		else
-			echo 42.err
-		endif
-		if [ 1 || 0 || 0 || 0 || [ 1 ] ]
-			echo 43.ok
-		else
-			echo 43.err
-		endif
-		if [ 1 || 0 || 0 || 0 || [ 1 ] || 1 ] && no
-			echo 44.err
-		else
-			echo 44.ok
-		endif
-		if [ 1 || 0 || 0 || 0 || 1 || [ 1 ] ] && no || [ yes ]
-			echo 45.ok
-		else
-			echo 45.err
-		endif
-		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && 1 ] ] && [ 1 ] ]
-			echo 46.ok
-		else
-			echo 46.err
-		endif
-		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && [ 1 ] ] ] && 0 ]
-			echo 47.err
-		else
-			echo 47.ok
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && 1 ] && 0 ] && [ 1 ] ] ] && 1 ]
-			echo 48.err
-		else
-			echo 48.ok
-		endif
-		if [ [ [ [ [ [ 0 ] && 1 ] && 1 ] && 1 ] ] && 1 ]
-			echo 49.err
-		else
-			echo 49.ok
-		endif
-		if 1 || 0 || 0 || 0 && 0
-			echo 50.err
-		else
-			echo 50.ok
-		endif
-		if 1 || 0 || 0 || 0 && 1
-			echo 51.ok
-		else
-			echo 51.err
-		endif
-		if 0 || 0 || 0 || 1 && 0
-			echo 52.err
-		else
-			echo 52.ok
-		endif
-		if 0 || 0 || 0 || 1 && 1
-			echo 53.ok
-		else
-			echo 53.err
-		endif
-		if 0 || 0 || 0 || 1 && 0 || 1 && 0
-			echo 54.err
-		else
-			echo 54.ok
-		endif
-		if 0 || 0 || 0 || 1 && 0 || 1 && 1
-			echo 55.ok
-		else
-			echo 55.err
-		endif
-		set diet=yo curd=ho
-		if [ $diet == 'yo' && $curd == 'ho' ] && \
-				[ -N ndefined || -n "$ndefined" || \
-					! -Z ndefined || ! -z "$ndefined" ]
-			echo 56.err
-		else
-			echo 56.ok
-		endif
-		if [ $diet == 'yo' && $curd == 'ho' && \
-				[ [ -N ndefined || -n "$ndefined" || \
-					! -Z ndefined || ! -z "$ndefined" ] ] ]
-			echo 57.err
-		else
-			echo 57.ok
-		endif
-		set ndefined
-		if [ $diet == 'yo' && $curd == 'ho' ] && \
-				-N ndefined && ! -n "$ndefined" && \
-				! -Z ndefined && -z "$ndefined"
-			echo 57.ok
-		else
-			echo 57.err
-		endif
-		if $diet == 'yo' && $curd == 'ho' && ! -Z ndefined
-			echo 58.ok
-		else
-			echo 58.err
-		endif
-		if [ [ [ [ [ [ $diet == 'yo' && $curd == 'ho' && -N ndefined ] ] ] ] ] ]
-			echo 59.ok
-		else
-			echo 59.err
-		endif
-		# Some more en-braced variables
-		set diet=yo curd=ho
-		if ${diet} == ${curd}
-			echo 70.err
-		else
-			echo 70.ok
-		endif
-		if "${diet}" != "${curd}"
-			echo 71.ok
-		else
-			echo 71.err
-		endif
-		if $diet == ${curd}
-			echo 72.err
-		else
-			echo 72.ok
-		endif
-		if ${diet} == $curd
-			echo 73.err
-		else
-			echo 73.ok
-		endif
-		# Unary !
-		if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
-			echo 80.ok
-		else
-			echo 80.err
-		endif
-		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ ! 2 ] ] ] && 3
-			echo 81.ok
-		else
-			echo 81.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
-			echo 82.ok
-		else
-			echo 82.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
-			echo 83.err
-		else
-			echo 83.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
-			echo 84.err
-		else
-			echo 84.ok
-		endif
-		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
-			echo 85.err
-		else
-			echo 85.ok
-		endif
-		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
-			echo 86.err
-		else
-			echo 86.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] || 3
-			echo 87.ok
-		else
-			echo 87.err
-		endif
-		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! ! [ 2 ] ] ] ] ]
-			echo 88.ok
-		else
-			echo 88.err
-		endif
-		# Unary !, odd
-		if ! 0 && ! ! 1 && ! ! ! 0 && 3
-			echo 90.ok
-		else
-			echo 90.err
-		endif
-		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ 0 ] ] ] && 3
-			echo 91.ok
-		else
-			echo 91.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ [ 0 ] ] ] ] ] && 3
-			echo 92.ok
-		else
-			echo 92.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! ! [ ! [ ! 0 ] ] ] ] && ! 3
-			echo 93.err
-		else
-			echo 93.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ ! [ ! [ ! [ ! 0 ] ] ] ] && 3
-			echo 94.ok
-		else
-			echo 94.err
-		endif
-		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! ! [ ! [ ! [ ! [ 0 ] ] ] ] ] && 3
-			echo 95.err
-		else
-			echo 95.ok
-		endif
-		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! ! 0 ] ] ] ] && 3
-			echo 96.err
-		else
-			echo 96.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ ! 0 ] ] ] ] ] || 3
-			echo 97.ok
-		else
-			echo 97.err
-		endif
-		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! [ 0 ] ] ] ] ]
-			echo 98.ok
-		else
-			echo 98.err
-		endif
-	__EOT
+			ec 10.ok3
+		else
+			ec 10.err10
+		endif
+	else
+		ec 10.err11
+	endif
+else
+	ec 10.err12
+endif
+# integer
+set dietcurd=10
+if $dietcurd -lt 11
+	ec 11.ok1
+	if $dietcurd -gt 9
+		ec 11.ok2
+	else
+		ec 11.err2
+	endif
+	if $dietcurd -eq 10
+		ec 11.ok3
+	else
+		ec 11.err3
+	endif
+	if $dietcurd -ge 10
+		ec 11.ok4
+	else
+		ec 11.err4
+	endif
+	if $dietcurd -le 10
+		ec 11.ok5
+	else
+		ec 11.err5
+	endif
+	if $dietcurd -ge 11
+		ec 11.err6
+	else
+		ec 11.ok6
+	endif
+	if $dietcurd -ge?satu -0xFFFFFFFFFFFFFFFF1
+		ec 11.err7
+	else
+		ec 11.ok7
+	endif
+else
+	ec 11.err1
+endif
+set dietcurd=Abc
+if $dietcurd < aBd
+	ec 12.ok1
+	if $dietcurd >? abB
+		ec 12.ok2
+	else
+		ec 12.err2
+	endif
+	if $dietcurd ==?case aBC
+		ec 12.ok3
+	else
+		ec 12.err3
+	endif
+	if $dietcurd >=?ca AbC
+		ec 12.ok4
+	else
+		ec 12.err4
+	endif
+	if $dietcurd <=? ABc
+		ec 12.ok5
+	else
+		ec 12.err5
+	endif
+	if $dietcurd >=?case abd
+		ec 12.err6
+	else
+		ec 12.ok6
+	endif
+	if $dietcurd <=? abb
+		ec 12.err7
+	else
+		ec 12.ok7
+	endif
+else
+	ec 12.err1
+endif
+if $dietcurd < aBc
+	ec 12-1.ok
+else
+	ec 12-1.err
+endif
+if $dietcurd <? aBc
+	ec 12-2.err
+else
+	ec 12-2.ok
+endif
+if $dietcurd > ABc
+	ec 12-3.ok
+else
+	ec 12-3.err
+endif
+if $dietcurd >? ABc
+	ec 12-3.err
+else
+	ec 12-3.ok
+endif
+if $dietcurd =%?case aB
+	ec 13.ok
+else
+	ec 13.err
+endif
+if $dietcurd =% aB
+	ec 13-1.err
+else
+	ec 13-1.ok
+endif
+if $dietcurd =%? bC
+	ec 14.ok
+else
+	ec 14.err
+endif
+if $dietcurd !% aB
+	ec 15-1.ok
+else
+	ec 15-1.err
+endif
+if $dietcurd !%? aB
+	ec 15-2.err
+else
+	ec 15-2.ok
+endif
+if $dietcurd !% bC
+	ec 15-3.ok
+else
+	ec 15-3.err
+endif
+if $dietcurd !%? bC
+	ec 15-4.err
+else
+	ec 15-4.ok
+endif
+if $dietcurd =% Cd
+	ec 16.err
+else
+	ec 16.ok
+endif
+if $dietcurd !% Cd
+	ec 17.ok
+else
+	ec 17.err
+endif
+set diet='ab c' curd='ab c'
+if "$diet" == "$curd"
+	ec 18.ok
+else
+	ec 18.err
+endif
+set diet='ab c' curd='ab cd'
+if "$diet" != "$curd"
+	ec 19.ok
+else
+	ec 19.err
+endif
+# 1. Shitty grouping capabilities as of today
+unset diet curd ndefined
+if [ [ false ] || [ false ] || [ true ] ] && \
+		[ [ false ] || [ true ] ] && \
+		[ yes ]
+	ec 20.ok
+else
+	ec 20.err
+endif
+if [ [ [ [ 0 ] || [ 1 ] ] && [ [ 1 ] || [ 0 ] ] ] && [ 1 ] ] && [ yes ]
+	ec 21.ok
+else
+	ec 21.err
+endif
+if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] ]
+	ec 22.ok
+else
+	ec 22.err
+endif
+if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] ]
+	ec 23.ok
+else
+	ec 23.err
+endif
+if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] && [ no ]
+	ec 24.err
+else
+	ec 24.ok
+endif
+if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] \
+		&& [ no ] || [ yes ]
+	ec 25.ok
+else
+	ec 25.err
+endif
+if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
+	ec 26.ok
+else
+	ec 26.err
+endif
+if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 0 ] ]
+	ec 27.err
+else
+	ec 27.ok
+endif
+if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 0 ] ] && [ 1 ] ] ] && [ 1 ] ]
+	ec 28.err
+else
+	ec 28.ok
+endif
+if [ [ [ [ [ [ [ 0 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
+	ec 29.err
+else
+	ec 29.ok
+endif
+if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 0 ]
+	ec 30.err
+else
+	ec 30.ok
+endif
+if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 1 ]
+	ec 31.ok
+else
+	ec 31.err
+endif
+if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ]
+	ec 32.err
+else
+	ec 32.ok
+endif
+if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 1 ]
+	ec 33.ok
+else
+	ec 33.err
+endif
+if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 0 ]
+	ec 34.err
+else
+	ec 34.ok
+endif
+if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 1 ]
+	ec 35.ok
+else
+	ec 35.err
+endif
+set diet=yo curd=ho
+if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && \
+		[ -N ndefined || -n "$ndefined" || \
+		! -Z ndefined || ! -z "$ndefined" ]
+	ec 36.err
+else
+	ec 36.ok
+endif
+set ndefined
+if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && \
+		-N ndefined && ! -n "$ndefined" && \
+		! -Z ndefined && -z "$ndefined"
+	ec 37.ok
+else
+	ec 37.err
+endif
+# 2. Shitty grouping capabilities as of today
+unset diet curd ndefined
+if [ false || false || true ] && [ false || true ] && yes
+	ec 40.ok
+else
+	ec 40.err
+endif
+if [ [ [ 0 || 1 ] && [ 1 || 0 ] ] && 1 ] && [ yes ]
+	ec 41.ok
+else
+	ec 41.err
+endif
+if [ 1 || 0 || 0 || 0 ]
+	ec 42.ok
+else
+	ec 42.err
+endif
+if [ 1 || 0 || 0 || 0 || [ 1 ] ]
+	ec 43.ok
+else
+	ec 43.err
+endif
+if [ 1 || 0 || 0 || 0 || [ 1 ] || 1 ] && no
+	ec 44.err
+else
+	ec 44.ok
+endif
+if [ 1 || 0 || 0 || 0 || 1 || [ 1 ] ] && no || [ yes ]
+	ec 45.ok
+else
+	ec 45.err
+endif
+if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && 1 ] ] && [ 1 ] ]
+	ec 46.ok
+else
+	ec 46.err
+endif
+if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && [ 1 ] ] ] && 0 ]
+	ec 47.err
+else
+	ec 47.ok
+endif
+if [ [ [ [ [ [ [ 1 ] ] && 1 ] && 0 ] && [ 1 ] ] ] && 1 ]
+	ec 48.err
+else
+	ec 48.ok
+endif
+if [ [ [ [ [ [ 0 ] && 1 ] && 1 ] && 1 ] ] && 1 ]
+	ec 49.err
+else
+	ec 49.ok
+endif
+if 1 || 0 || 0 || 0 && 0
+	ec 50.err
+else
+	ec 50.ok
+endif
+if 1 || 0 || 0 || 0 && 1
+	ec 51.ok
+else
+	ec 51.err
+endif
+if 0 || 0 || 0 || 1 && 0
+	ec 52.err
+else
+	ec 52.ok
+endif
+if 0 || 0 || 0 || 1 && 1
+	ec 53.ok
+else
+	ec 53.err
+endif
+if 0 || 0 || 0 || 1 && 0 || 1 && 0
+	ec 54.err
+else
+	ec 54.ok
+endif
+if 0 || 0 || 0 || 1 && 0 || 1 && 1
+	ec 55.ok
+else
+	ec 55.err
+endif
+set diet=yo curd=ho
+if [ $diet == 'yo' && $curd == 'ho' ] && \
+		[ -N ndefined || -n "$ndefined" || \
+			! -Z ndefined || ! -z "$ndefined" ]
+	ec 56.err
+else
+	ec 56.ok
+endif
+if [ $diet == 'yo' && $curd == 'ho' && \
+		[ [ -N ndefined || -n "$ndefined" || \
+			! -Z ndefined || ! -z "$ndefined" ] ] ]
+	ec 57.err
+else
+	ec 57.ok
+endif
+set ndefined
+if [ $diet == 'yo' && $curd == 'ho' ] && \
+		-N ndefined && ! -n "$ndefined" && \
+		! -Z ndefined && -z "$ndefined"
+	ec 57.ok
+else
+	ec 57.err
+endif
+if $diet == 'yo' && $curd == 'ho' && ! -Z ndefined
+	ec 58.ok
+else
+	ec 58.err
+endif
+if [ [ [ [ [ [ $diet == 'yo' && $curd == 'ho' && -N ndefined ] ] ] ] ] ]
+	ec 59.ok
+else
+	ec 59.err
+endif
+# Some more en-braced variables
+set diet=yo curd=ho
+if ${diet} == ${curd}
+	ec 70.err
+else
+	ec 70.ok
+endif
+if "${diet}" != "${curd}"
+	ec 71.ok
+else
+	ec 71.err
+endif
+if $diet == ${curd}
+	ec 72.err
+else
+	ec 72.ok
+endif
+if ${diet} == $curd
+	ec 73.err
+else
+	ec 73.ok
+endif
+# Unary !
+if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
+	ec 80.ok
+else
+	ec 80.err
+endif
+if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ ! 2 ] ] ] && 3
+	ec 81.ok
+else
+	ec 81.err
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+	ec 82.ok
+else
+	ec 82.err
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
+	ec 83.err
+else
+	ec 83.ok
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
+	ec 84.err
+else
+	ec 84.ok
+endif
+if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+	ec 85.err
+else
+	ec 85.ok
+endif
+if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
+	ec 86.err
+else
+	ec 86.ok
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] || 3
+	ec 87.ok
+else
+	ec 87.err
+endif
+if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! ! [ 2 ] ] ] ] ]
+	ec 88.ok
+else
+	ec 88.err
+endif
+# Unary !, odd
+if ! 0 && ! ! 1 && ! ! ! 0 && 3
+	ec 90.ok
+else
+	ec 90.err
+endif
+if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ 0 ] ] ] && 3
+	ec 91.ok
+else
+	ec 91.err
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ [ 0 ] ] ] ] ] && 3
+	ec 92.ok
+else
+	ec 92.err
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! ! [ ! [ ! 0 ] ] ] ] && ! 3
+	ec 93.err
+else
+	ec 93.ok
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ ! [ ! [ ! [ ! 0 ] ] ] ] && 3
+	ec 94.ok
+else
+	ec 94.err
+endif
+if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! ! [ ! [ ! [ ! [ 0 ] ] ] ] ] && 3
+	ec 95.err
+else
+	ec 95.ok
+endif
+if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! ! 0 ] ] ] ] && 3
+	ec 96.err
+else
+	ec 96.ok
+endif
+if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ ! 0 ] ] ] ] ] || 3
+	ec 97.ok
+else
+	ec 97.err
+endif
+if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! [ 0 ] ] ] ] ]
+	ec 98.ok
+else
+	ec 98.err
+endif
+__EOT
 	#}}}
 	cke0 normal 0 ./tnormal '1688759742 719'
 
 	if have_feat regex; then
 		#{{{
-		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
-			set dietcurd=yoho
-			if $dietcurd =~ '^yo.*'
-				echo 1.ok
-			else
-				echo 1.err
-			endif
-			if "$dietcurd" =~ '^Yo.*'
-				echo 1-1.err
-			else
-				echo 1-1.ok
-			endif
-			if $dietcurd =~?case '^Yo.*'
-				echo 1-2.ok
-			else
-				echo 1-2.err
-			endif
-			if $dietcurd =~ '^yOho.+'
-				echo 2.err
-			else
-				echo 2.ok
-			endif
-			if $dietcurd !~? '.*Ho$'
-				echo 3.err
-			else
-				echo 3.ok
-			endif
-			if $dietcurd !~ '.+yohO$'
-				echo 4.ok
-			else
-				echo 4.err
-			endif
-			if [ $dietcurd !~?cas '.+yoho$' ]
-				echo 5.ok
-			else
-				echo 5.err
-			endif
-			if ! [ "$dietcurd" =~?case '.+yoho$' ]
-				echo 6.ok
-			else
-				echo 6.err
-			endif
-			if ! ! [ $'\$dietcurd' !~? '.+yoho$' ]
-				echo 7.ok
-			else
-				echo 7.err
-			endif
-			if ! [ ! [ $dietcurd !~? '.+yoho$' ] ]
-				echo 8.ok
-			else
-				echo 8.err
-			endif
-			if [ ! [ ! [ $dietcurd !~? '.+yoho$' ] ] ]
-				echo 9.ok
-			else
-				echo 9.err
-			endif
-			if ! [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
-				echo 10.err
-			else
-				echo 10.ok
-			endif
-			if !	! ! $dietcurd !~ '.+yoho$'
-				echo 11.err
-			else
-				echo 11.ok
-			endif
-			if !	! ! $dietcurd =~ '.+yoho$'
-				echo 12.ok
-			else
-				echo 12.err
-			endif
-			if ! [ ! ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
-				echo 13.ok
-			else
-				echo 13.err
-			endif
-			set diet=abc curd='^abc$'
-			if $diet =~ $curd
-				echo 14.ok
-			else
-				echo 14.err
-			endif
-			set diet=abc curd='^abcd$'
-			if "$diet" !~ $'\$curd'
-				echo 15.ok
-			else
-				echo 15.err
-			endif
-		__EOT
+		<< '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
+se dietcurd=yoho
+if $dietcurd =~ '^yo.*'
+	ec 1.ok
+els
+	ec 1.err
+end
+if "$dietcurd" =~ '^Yo.*'
+	ec 1-1.err
+els
+	ec 1-1.ok
+end
+if $dietcurd =~?case '^Yo.*'
+	ec 1-2.ok
+els
+	ec 1-2.err
+end
+if $dietcurd =~ '^yOho.+'
+	ec 2.err
+els
+	ec 2.ok
+end
+if $dietcurd !~? '.*Ho$'
+	ec 3.err
+els
+	ec 3.ok
+end
+if $dietcurd !~ '.+yohO$'
+	ec 4.ok
+els
+	ec 4.err
+end
+if [ $dietcurd !~?cas '.+yoho$' ]
+	ec 5.ok
+els
+	ec 5.err
+end
+if ! [ "$dietcurd" =~?case '.+yoho$' ]
+	ec 6.ok
+els
+	ec 6.err
+end
+if ! ! [ $'\$dietcurd' !~? '.+yoho$' ]
+	ec 7.ok
+els
+	ec 7.err
+end
+if ! [ ! [ $dietcurd !~? '.+yoho$' ] ]
+	ec 8.ok
+els
+	ec 8.err
+end
+if [ ! [ ! [ $dietcurd !~? '.+yoho$' ] ] ]
+	ec 9.ok
+els
+	ec 9.err
+end
+if ! [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+	ec 10.err
+els
+	ec 10.ok
+end
+if !	! ! $dietcurd !~ '.+yoho$'
+	ec 11.err
+els
+	ec 11.ok
+end
+if !	! ! $dietcurd =~ '.+yoho$'
+	ec 12.ok
+els
+	ec 12.err
+end
+if ! [ ! ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+	ec 13.ok
+els
+	ec 13.err
+end
+se diet=abc curd='^abc$'
+if $diet =~ $curd
+	ec 14.ok
+els
+	ec 14.err
+end
+se diet=abc curd='^abcd$'
+if "$diet" !~ $'\$curd'
+	ec 15.ok
+els
+	ec 15.err
+end
+__EOT
 		#}}}
 		cke0 regex 0 ./tregex '1115671789 95'
 
 		#{{{
 		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex-match 2>${E0}
-		commandalias x \\echo '$?/$^ERRNAME.. $^?/$^#<$^0, <$^*>, <"$^@">, $^1, $^2, $^3, $^4>'
+		commandalias x \\ec '"$?/$^ERRNAME.. $^?/$^#<$^0, <$^*>, <$^@>, $^1, $^2, $^3, $^4>"'
 		commandalias e \\echoerr err:
 		\if abrakadabra =~ (.+)ka.*; x; \else; e 1; \end
 		\if abrakadabra =~ ^.*(ra)(.*)(ra)'$'; x; \else; e 2; \end
@@ -4141,24 +4261,24 @@ t_ifelse() { #{{{
 	sleep ${FS_TIME_RES}
 	printf '.' > ./tf2
 
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tfops 2>${E0}
-	commandalias o \\echo
-	commandalias e \\end
-	\if -e tf1;o 1;e
-	\if -e tf1 && -f tf1;o 2;e
-	\if -e tf1 && -f tf1 && ! -s tf1;o 3;e
-	\if -e tf1 && -f? .;o 4;e
-	\if -e tf1 && -f? . && ! -s? -;o 5;e
-	\if -r tf1;o 6;e
-	\if -w tf1;o 7;e
-	\if -x .;o 8;e
-	\if tf1 -ef tf1;o 9;e
-	\if ! tf1 -ef tf2;o 10;e
-	\if tf2 -ef tf2;o 11;e
-	\if tf1 -ot tf2;o 12;e
-	\if ! tf2 -ot tf1;o 13;e
-	\if tf2 -nt tf1;o 14;e
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./tfops 2>${E0}
+commandalias o \\echo
+commandalias e \\end
+\if -e tf1;o 1;e
+\if -e tf1 && -f tf1;o 2;e
+\if -e tf1 && -f tf1 && ! -s tf1;o 3;e
+\if -e tf1 && -f? .;o 4;e
+\if -e tf1 && -f? . && ! -s? -;o 5;e
+\if -r tf1;o 6;e
+\if -w tf1;o 7;e
+\if -x .;o 8;e
+\if tf1 -ef tf1;o 9;e
+\if ! tf1 -ef tf2;o 10;e
+\if tf2 -ef tf2;o 11;e
+\if tf1 -ot tf2;o 12;e
+\if ! tf2 -ot tf1;o 13;e
+\if tf2 -nt tf1;o 14;e
+__EOT
 	#}}}
 	cke0 fileops 0 ./tfops '571055761 33'
 
@@ -4196,31 +4316,31 @@ t_call_xcall_scope() { #{{{
 	# (xxx revealed environ link scope bugs t_environ() did not catch) {{{
 	${cat} << '__EOT' | ${MAILX} ${ARGS} >./tft 2>${E0}
 define 1 {
-	x 1>; eval our $C1 2; x 1<
+	x 1>; eval our "$C1" 2; x 1<
 }
 define 2 {
-	x 2>; our environ link j; set j=j2 DEAD=d2; x 2=; eval $C2 3; x 2<
+	x 2>; our environ link j; set j=j2 DEAD=d2; x 2=; eval "$C2" 3; x 2<
 }
 define 3 {
 	# (j remains in env)
-	x 3>; our environ set i=i3 _S_MAILX_TEST=MXT3; local unset j; x 3=; eval $C1 4; x 3<
+	x 3>; our environ set i=i3 _S_MAILX_TEST=MXT3; local unset j; x 3=; eval "$C1" 4; x 3<
 }
 define 4 {
 	# (j env link still exists)
-	x 4>; our unset asksub; local set j=j4x toplines=4; our set j=j4; x 4=; eval $C2 5; x 4<
+	x 4>; our unset asksub; local set j=j4x toplines=4; our set j=j4; x 4=; eval "$C2" 5; x 4<
 }
 define 5 {
-	x 5>; our set toplines=5; x 5=; eval local $C1 6; x 5<
+	x 5>; our set toplines=5; x 5=; eval local "$C1" 6; x 5<
 }
 define 6 {
-	x 6>; environ link i toplines; set toplines=6 i=i6 DEAD=d6; x 6=; eval $C2 7; x 6<
+	x 6>; environ link i toplines; set toplines=6 i=i6 DEAD=d6; x 6=; eval "$C2" 7; x 6<
 }
 define 7 {
 	x 7>; environ unset j; unset i; x 7=; x 7<
 }
 commandalias x \
 	'eval !printf \"sh i<\$i> j<\$j> D<\$DEAD> MXT<\$_S_MAILX_TEST>\";\
-	echo " / "<$0> i<$i> j<$j> D<$DEAD> as<$asksub> tl<$toplines> MXT<$_S_MAILX_TEST>'
+	echo " / <$0> i<$i> j<$j> D<$DEAD> as<$asksub> tl<$toplines> MXT<$_S_MAILX_TEST>"'
 environ unset i j;se asksub toplines=4 j=j1 _S_MAILX_TEST=mxt1;x
 se C1=call C2=xcall;ec;ec C1=call C2=xcall;call 1;x ==1
 se toplines=8 j=J1 _S_MAILX_TEST=MXT1 C1=xcall C2=call;ec;ec C1=xcall C2=call;call 1;x ==2
@@ -4244,27 +4364,27 @@ define w1 {
 	if $i -le 42
 		local pp : $((j = i & 7))
 		if $j -eq 7; echo .; en
-		call w1 $i
+		call w1 "$i"
 		local se i=$? k=$!
 		: $((j = i & 7))
 		echon "<$1/$i/$k "
-		if $j -eq 7; echo .; en
-	else
-		echo ! The end for $1
+		if $j -eq 7; ec .; en
+	els
+		ec "! The end for $1"
 	end
-	return $1
+	return "$1"
 }
 # Transport $?/$! up the call chain
 define w2 {
 	echon ">$1 "
 	local pp : $((i = $1 + 1))
 	if $1 -lt 42
-		call w2 $i
+		call w2 "$i"
 		local se i=$? j=$! k=$^ERRNAME
 		echon "<$1/$i/$k "
 		return $i $j ^ $((i + j))
 	else
-		ec ! The end for $1
+		ec "! The end for $1"
 		return $i $^ERR-BUSY ^ $((i + 1))
 	end
 	echoerr au
@@ -4274,19 +4394,19 @@ define w3 {
 	echon ">$1/$2 "
 	local pp : $((i = $1 + 1))
 	if $1 -lt 42
-		call w3 $i $2
+		call w3 "$i" "$2"
 		local se i=$? j=$!
 		local pp : $((k = $1 - $2))
 		if $k -eq 21
 			: $((i = $1 + 1, j = $2 + 1))
 			ec "# <$i/$j> .. "
-			call w3 $i $j
+			call w3 "$i" "$j"
 			se i=$? j=$!
 		end
-		eval echon "<\$1=\$i/\$^ERRNAME-$j"
+		eval echon "\"<\$1=\$i/\$^ERRNAME-$j\""
 		return $i $j ^ $^1 $^2 $^3 $^4
-	else
-		ec ! The end for $1=$i/$2
+	els
+		ec "! The end for $1=$i/$2"
 		if -n "$2"
 			return $i $^ERR-DOM ^ $i $((i + 1))
 		el
@@ -4298,7 +4418,7 @@ define w3 {
 define nada {
 	return ^
 }
-commandali x 'ec ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^*<$^*> ^@<"$^@"> ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
+commandali x 'ec "?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^*<$^*> ^@<$^@> ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3"; ec -----;'
 call w1 0; x
 call nada; x
 call w2 0; x
@@ -4317,7 +4437,7 @@ t_macro_param_shift() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
-commandalias x ec 'n<$n>s<$s>,?<$?><$^ERRNAME>,#<$#>,*<$*>,@<"$@">'
+commandalias x 'ec "n<$n>s<$s>,?<$?><$^ERRNAME>,#<$#>,*<$*>,@<$@>"'
 define t {
 	local se n=$1 s=$2 ie=$3
 	if -n "$ie"
@@ -4325,12 +4445,12 @@ define t {
 	en
 	shift 3
 	x
-	eval $ie shift ${s}2
+	eval "$ie" shift "${s}"2
 	x
-	shift ${s}0
+	shift "${s}"0
 	x
 	if $# -gt 0
-		shift ${s}1
+		shift "${s}"1
 	en
 	x;ec
 }
@@ -4362,27 +4482,26 @@ __EOT
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
-commandalias x ec 'n<$n>s<$s>,?<$?><$^ERRNAME>,^#<$^#>,^*<$^*>,^@<"$^@">'
+commandalias x 'ec "n<$n>s<$s>,?<$?><$^ERRNAME>,^#<$^#>,^*<$^*>,^@<$^@>"'
 define c {
 	local se i=$1 j=$2
-
 	if -n "$j"; se j=" $j"; en
 	se j="$i$j"
-	if $((--i)) -gt 0; xcall c $i "$j"; en
-	eval return ^ $j
+	if $((--i)) -gt 0; xcall c "$i" "$j"; en
+	eval return ^ "$j"
 }
 define t {
 	local se n=$1 s=$2 ie=$3
-	call c $4
+	call c "$4"
 	if -n "$ie"
 		se ie=ignerr
 	en
-	eval $ie shift ^ ${s}2
+	eval "$ie" shift ^ "${s}"2
 	x
-	shift ^ ${s}0
+	shift ^ "${s}"0
 	x
 	if $^# -gt 0
-		shift ^ ${s}1
+		shift ^ "${s}"1
 	en
 	x;ec
 }
@@ -4419,67 +4538,65 @@ t_localopts() { # v15-compat {{{
 	t_prolog "${@}"
 
 	#{{{ Nestable conditions test
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 define t2 {
-	echo in: t2
-	set t2=t2
-	echo $t2
+	ec in: t2
+	se t2=t2
+	ec "$t2"
 }
 define t1 {
-	echo in: t1
-	set gv1=gv1
+	ec in: t1
+	se gv1=gv1
 	localopts on
-	set lv1=lv1 lv2=lv2
-	set lv3=lv3
+	se lv1=lv1 lv2=lv2 lv3=lv3
 	call t2
 	localopts off
-	set gv2=gv2
-	echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	se gv2=gv2
+	ec "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
 }
 define t0 {
-	echo in: t0
+	ec in: t0
 	call t1
-	echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
-	echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
+	ec "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
 }
 account trouble {
-	echo in: trouble
+	ec in: trouble
 	call t0
 }
 call t0
-unset gv1 gv2
+uns gv1 gv2
 account trouble
-echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+ec "active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3"
 account null
-echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+ec "active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3"
 
 #
 define ll2 {
-	localopts $1
-	set x=2
-	echo ll2=$x
+	localopts "$1"
+	se x=2
+	ec "ll2=$x"
 }
 define ll1 {
-	set y=$1; shift; eval localopts $y; localopts $1; shift
-	set x=1
-	echo ll1.1=$x
-	call ll2 $1
-	echo ll1.2=$x
+	se y=$1; shift; eval localopts "$y"; localopts "$1"; shift
+	se x=1
+	ec "ll1.1=$x"
+	call ll2 "$1"
+	ec "ll1.2=$x"
 }
 define ll0 {
-	set y=$1; shift; eval localopts $y; localopts $1; shift
+	se y=$1; shift; eval localopts "$y"; localopts "$1"; shift
 	set x=0
-	echo ll0.1=$x
-	call ll1 $y "$@"
-	echo ll0.2=$x
+	ec "ll0.1=$x"
+	call ll1 "$y" "$@"
+	ec "ll0.2=$x"
 }
 define llx {
-	echo ----- $1: $2 -> $3 -> $4
-	echo ll-1.1=$x
-	eval localopts $1
+	ec "----- $1: $2 -> $3 -> $4"
+	ec "ll-1.1=$x"
+	eval localopts "$1"
 	call ll0 "$@"
-	echo ll-1.2=$x
-	unset x
+	ec "ll-1.2=$x"
+	uns x
 }
 define lly {
 	call llx 'call off' on on on
@@ -4537,19 +4654,19 @@ varshow EK1 EK2 EK3 EK4 NEK5
 
 ec link games EK4
 environ link EK4
-ec $?/$!/$^ERRNAME
+ec "$?/$!/$^ERRNAME"
 environ unlink EK4
-ec $?/$!/$^ERRNAME
+ec "$?/$!/$^ERRNAME"
 se EK4=.EV4
 varshow EK4
 environ lookup EK4
-ec $?/$!/$^ERRNAME
+ec "$?/$!/$^ERRNAME"
 !!\!
 environ link EK4
-ec $?/$!/$^ERRNAME
+ec "$?/$!/$^ERRNAME"
 varshow EK4
 environ lookup EK4
-ec $?/$!/$^ERRNAME
+ec "$?/$!/$^ERRNAME"
 !!\!
 
 ec rechanging EK1, EK4
@@ -4571,8 +4688,8 @@ __EOT
 	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
 define l4 {
 	ec --l4-in;show
-	eval $1 environ unlink LK1
-	eval $1 environ unset EK1
+	eval "$1" environ unlink LK1
+	eval "$1" environ unset EK1
 	local se LK1=LK1_L4
 	ec --l4-ou;show
 }
@@ -4607,7 +4724,7 @@ define l1 {
 	ec --l1-ou;show
 }
 commandalias show \
-	'ec LK1=$LK1 EK1=$EK1;\
+	'ec "LK1=$LK1 EK1=$EK1";\
 	varshow LK1 EK1;\
 	!echo shell" LK1<$LK1> EK1<$EK1>"'
 environ set EK1=EV1 noLK1
@@ -4627,26 +4744,26 @@ __EOT
 		${cat} << '__EOT' > ./t3_4_5.dat
 set recu=0
 define du {
-	echon 1 only env (outer) du=$du:; var du; !echo sh=$du
+	echon "1 only env (outer) du=$du":; var du; !echo sh=$du
 	local set du=au
-	echon 2 only local (au) du=$du:; var du; !echo sh=$du
+	echon "2 only local (au) du=$du:"; var du; !echo sh=$du
 	environ link du
-	echon 3 also env linked du=$du:; var du; !echo sh=$du
-	>recu vexpr + $recu 1
+	echon "3 also env linked du=$du:"; var du; !echo sh=$du
+	>recu vexpr + "$recu" 1
 	if $recu -eq 1
 		echo ----------------RECURSION STARTS
 		call du
-		echon ----------------RECURSION ENDS: du=$du:; var du; !echo sh=$du
+		echon "----------------RECURSION ENDS: du=$du:"; var du; !echo sh=$du
 	end
 	local unset du
-	echon 4 local ($recu) unset du=$du:; var du; !echo sh=$du
-	>recu vexpr + $recu 1
+	echon "4 local ($recu) unset du=$du:"; var du; !echo sh=$du
+	>recu vexpr + "$recu" 1
 	set du=updated$recu
-	echon 5 updated ($recu) du=$du:; var du; !echo sh=$du
+	echon "5 updated ($recu) du=$du:"; var du; !echo sh=$du
 }
-echon outer-1 du=$du:; var du; !echo sh=$du
+echon "outer-1 du=$du:"; var du; !echo sh=$du
 call du
-echon outer-2 du=$du:; var du; !echo sh=$du
+echon "outer-2 du=$du:"; var du; !echo sh=$du
 __EOT
 		#}}}
 		< ./t3_4_5.dat du=outer ${MAILX} ${ARGS} > ./t3 2>${E0}
@@ -4665,7 +4782,7 @@ __EOT
 	#{{{ lookup
 	unset du
 	<< '__EOT' ${MAILX} ${ARGS} > ./t6 2>${EX}
-commandalias x echon '$?/$^ERRNAME\; du=$du\; d1=$d1:;var du'
+commandalias x echon '"$?/$^ERRNAME; du=$du; d1=$d1:";var du'
 environ lookup du
 x
 >d1 environ lookup du
@@ -4698,19 +4815,19 @@ define r5 {
 }
 define r4 {
 	if $# -eq 1
-		ec --r4-${1}-in;show
+		ec "--r4-${1}-in";show
 		call r5
 		echon 'ln-restored: '; vars zz; !echo ln-restored, shell" zz=$zz"
 	end
 	our env unset zz
 	local se noasksub notoplines noxy yz=YZ! zz=!ZY no_S_MAILX_TEST
 	if $# -eq 2 && "$2" -ge 50
-		ec --r4-${1}-ou;show
+		ec "--r4-${1}-ou";show
 		return
 	end
 	local pp : $((i += $2 + 1))
-	ec --r4-stress-${1}-$i
-	eval ${_x}call r4 $1 $i
+	ec "--r4-stress-${1}-$i"
+	eval "${_x}call" r4 "$1" "$i"
 }
 define r3 {
 	ec --r3-in;show
@@ -4745,7 +4862,7 @@ define r0 {
 	ec --r0-ou;show
 }
 commandalias show \
-	'ec as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST;\
+	'ec "as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST";\
 	vars asksub toplines xy yz zz _S_MAILX_TEST;\
 	!echo shell" a=$ask tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST"'
 ec 'test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST'
@@ -4796,7 +4913,7 @@ __EOT
 	\se password=$1 mta=ju$1 z=hu$1
 }
 \def s {
-	\ec --s:$1 password<$password> mta<$mta> al<$al> g<$g> z<$z>
+	\ec "--s:$1 password<$password> mta<$mta> al<$al> g<$g> z<$z>"
 }
 __EOT
 	#}}}
@@ -4823,7 +4940,7 @@ t_csop() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-commandalias x echo '$?/$^ERRNAME :$res:'
+commandalias x echo '"$?/$^ERRNAME :$res:"'
 echo ' #-2'
 >res csop find you y;x
 >res csop find you o;x
@@ -4900,7 +5017,7 @@ t_vexpr() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./tnumeric 2>${EX}
-commandalias x \\echo '$?/$^ERRNAME $res'
+commandalias x \\echo '"$?/$^ERRNAME $res"'
 commandalias X \\echoerr
 echo ' #0.0'
 >res vexpr = 9223372036854775807;x
@@ -5109,7 +5226,7 @@ __EOT
 	if have_feat regex; then
 		#{{{
 		<< '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
-commandalias x echo '$?/$^ERRNAME :$res:'
+commandalias x echo '"$?/$^ERRNAME :$res:"'
 echo ' #-2'
 >res vexpr regex you y;x
 >res vexpr regex you o;x
@@ -5161,39 +5278,39 @@ __EOT
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./tagnostic 2>${E0}
-commandalias x echo '$?/$^ERRNAME :$res:'
+commandalias x echo '"$?/$^ERRNAME :$res:"'
 >res vexpr date-utc 1620942446;x
-eval set $res
+eval set "$res"
 if 2021-5-13T21:47:26:May != "${dutc_year}-${dutc_month}-${dutc_day}T"\
 	"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
 >res vexpr epoch 2021 05 13 21 47 26;x
-eval set $res
+eval se "$res"
 if 16209424460 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 >res vexpr seconds 2021 05 13 21 47 26;x
 if 1620942446 != "$res"; echo ERROR; endif
 #
 >res vexpr date-utc 0x1D30BE2E1FF;x
-eval set $res
+eval set "$res"
 if 65535-12-31T23:59:59:Dec != "${dutc_year}-${dutc_month}-${dutc_day}T"\
 	"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
 >res vexpr epoch 65535 12 31 23 59 59;x
-eval set $res
+eval set "$res"
 if 20059491455990 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 #
 >res vexpr date-utc 951786123;x
-eval set $res
+eval set "$res"
 if 2000-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
 	"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
 >res vexpr epoch 2000 02 29 01 02 03;x
-eval set $res
+eval set "$res"
 if 9517861230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 #
 >res vexpr date-utc 1582938123;x
-eval set $res
+eval set "$res"
 if 2020-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
 	"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
 >res vexpr epoch 2020 02 29 01 02 03;x
-eval set $res
+eval set "$res"
 if 15829381230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 __EOT
 	#}}}
@@ -5206,37 +5323,37 @@ t_xcall_heavy() { #{{{
 	t_prolog "${@}"
 
 	t1() { #{{{
-	<< '__EOT' ${MAILX} ${ARGS} -Smax=${2} > ./t1.${1} 2>${E0}
+		<< '__EOT' ${MAILX} ${ARGS} -Smax=${2} > ./t1.${1} 2>${E0}
 define work {
 	echon "$1 "
-	i "$3" == ""; local se l='local pp'; el; local se l; en
-	eval $l : $((i = $1 + 1))
+	if "$3" == ""; local se l='local pp'; el; local se l; en
+	eval "$l" : \$((i = "$1" + 1))
 	if $i -le "$max"
-		eval $l : $((j = i & 7))
+		eval "$l" : \$((j = i & 7))
 		if $j -eq 7
 			echo .
 		en
-		eval $l \xcall work \"$i\" \"$2\" $l
+		eval "$l" \xcall work "\"$i\"" "\"$2\"" \"\$l\"
 	en
-	ec ! The end for $1/$2
+	ec "! The end for $1/$2"
 	if "$2" != ""
 		return $i $^ERR-BUSY
 	end
 }
 define xwork {
-	\xcall work 0 $2
+	\xcall work 0 "$2"
 }
 call work 0
-echo 1: ?=$? !=$!
+ec "1: ?=$? !=$!"
 call xwork
-echo 2: ?=$? !=$!
+ec "2: ?=$? !=$!"
 local xcall xwork
-echo 3: ?=$? !=$^ERRNAME
+ec "3: ?=$? !=$^ERRNAME"
 #
 local call work 0 yes
-echo 4: ?=$? !=$^ERRNAME
+ec "4: ?=$? !=$^ERRNAME"
 call xwork 0 yes
-echo 5: ?=$? !=$^ERRNAME
+ec "5: ?=$? !=$^ERRNAME"
 __EOT
 	} #}}}
 	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
@@ -5255,10 +5372,10 @@ __EOT
 	local pp : $((i = $1 + 1))
 	\if $i -le 111
 		local pp : $((j = i & 7))
-		\if $j -eq 7; \echo .; \end
-		\xcall __w $i $2
+		\if $j -eq 7; \ec .; \end
+		\xcall __w "$i" "$2"
 	\end
-	\echo ! The end for $1
+	\ec "! The end for $1"
 	\if $2 -eq 0
 		\echoerr pre
 		nonexistingcommand
@@ -5270,22 +5387,22 @@ __EOT
 	\exit
 }
 \define work {
-	\echo eins
+	\ec eins
 	\call __w 0 0
-	\echo zwei, ?=$? !=$!
-	\local set errexit
+	\ec "zwei, ?=$? !=$!"
+	\local se errexit
 	\ignerr call __w 0 0
-	\echo drei, ?=$? !=$^ERRNAME
-	\call __w 0 $1
-	\echo vier, ?=$? !=$^ERRNAME, this is an error
+	\ec "drei, ?=$? !=$^ERRNAME"
+	\call __w 0 "$1"
+	\ec "vier, ?=$? !=$^ERRNAME, this is an error"
 }
 \ignerr call work 0
-\echo outer 1, ?=$? !=$^ERRNAME
+\ec "outer 1, ?=$? !=$^ERRNAME"
 xxxign \call work 0
-\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+\ec "outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty"
 \call work 1
-\echo outer 3, ?=$? !=$^ERRNAME
-\echo this is definitely an error
+\ec "outer 3, ?=$? !=$^ERRNAME"
+\ec this is definitely an error
 __EOT
 	#}}}
 	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' > ./t2 2>${EX}
@@ -5316,25 +5433,25 @@ t_local_x_call_environ() { #{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 \commandalias show '\
 	\>x environ lookup DEAD;\
-	\if "$DEAD" != dead.0 || "$x" != dead.0;\ec 1:$DEAD:$x;\en;\
+	\if "$DEAD" != dead.0 || "$x" != dead.0;\ec "1:$DEAD:$x";\en;\
 	\>x environ lookup U;\
-	\if "$U" != u.0 || "$x" != u.0;\ec 2 env[U=$x] U=$U;\en;\
+	\if "$U" != u.0 || "$x" != u.0;\ec "2 env[U=$x] U=$U";\en;\
 	\>x env l N;\
-	\if $? -eq 0;\ec 3:$N;\end;\
-	\if "$N" != n.0;\ec 4:$N;\end'
+	\if $? -eq 0;\ec "3:$N";\end;\
+	\if "$N" != n.0;\ec "4:$N";\end'
 define l2 {
-	ec ----${1}l2
+	ec "----${1}l2"
 	show
 }
 define l1 {
-	eval $1 se DEAD=dead.0 U=u.0 N=n.0 x
+	eval "$1" se DEAD=dead.0 U=u.0 N=n.0 x
 	ec --l1
 	show
 	call l2
-	xcall l2 $1
+	xcall l2 "$1"
 }
 define xl0 {
-	eval $1 xcall l1 "$2"
+	eval "$1" xcall l1 "$2"
 }
 define l0 {
 	local call l1 "$1"
@@ -5343,8 +5460,8 @@ define xi {
 	se DEAD=dead.$1 U=u.$1 N=n.$1
 }
 define xo {
-	ec -top-${1}
-	ec DEAD=$DEAD U=$U N=$N;varshow DEAD U N
+	ec "-top-${1}"
+	ec "DEAD=$DEAD U=$U N=$N";varshow DEAD U N
 	!echo shell" DEAD<$DEAD> U<$U> N<$N>"
 }
 commandalias xi call xi
@@ -5374,6 +5491,425 @@ __EOT
 
 t_vpospar() { #{{{
 	t_prolog "${@}"
+
+	# identical to t_call_xcall:ifs-basic-split, but *with* vpospar {{{
+# proof ({{{
+#a() {
+#	set -- "$@"
+#	echo ,$1,$2,$3,$4,
+#	echo ,$1$2$3$4,
+#	echo $1$2$3$4
+#	echo ",$1,$2,$3,$4,"
+#	echo ",$1$2$3$4,"
+#	echo "$1$2$3$4"
+#	echo ,$*,
+#	echo $*
+#	echo ",$*,"
+#	echo "$*"
+#	(IFS=:; echo ,$*,)
+#	(IFS=:; echo $*)
+#	(IFS=:; echo ",$*,")
+#	(IFS=:; echo "$*")
+#}
+#echo =1=
+#a '  abc' 'def  ' '   ' geh
+#echo =2=
+#a '  ' '' '   ' '		'
+#echo =3=
+#a '' '' '' ''
+#}}}
+	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-basic-split 2>${E0}
+define a {
+	vpospar se "$@"
+	ec ,$1,$2,$3,$4,
+	ec ,$1$2$3$4,
+	ec $1$2$3$4
+	ec ",$1,$2,$3,$4,"
+	ec ",$1$2$3$4,"
+	ec "$1$2$3$4"
+	ec ,$*,
+	ec $*
+	ec ",$*,"
+	ec "$*"
+	se ifs=:; ec ,$*,; uns ifs
+	se ifs=:; ec $*; uns ifs
+	se ifs=:; ec ",$*,"; uns ifs
+	se ifs=:; ec "$*"; uns ifs
+}
+ec =1=
+call a '  abc' 'def  ' '   ' geh
+ec =2=
+call a '  ' '' '   ' '		'
+ec =3=
+call a '' '' '' ''
+__EOT
+	#}}}
+	cke0 ifs-basic-split 0 ./tifs-basic-split '3698594299 860'
+
+
+
+t_epilog "$@"
+return
+
+
+#
+#	#{{{
+## proof {{{
+##a() {
+##	echo $#,1="$1"/$1,2="$2"/$2,3="$3"/$3,4="$4"/$4,5="$5"/$5,6="$6"/$6,'*'="$*"/$*,'@'="$@",$@
+##	echo $#,1= "$1" , $1 , 2= "$2" , $2 , 3= "$3" , $3 , 4= "$4" , $4 , 5= "$5" , $5 , 6= "$6" , $6 , '*=' "$*" , $* , '@=' "$@" , $@
+##}
+##echo _
+##echo "$*"$* $*
+##echo __
+##a "$*"$* $*
+##echo ___
+##IFS=:;echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo =
+##set -- a '' b c
+##echo "$*"$* $*
+##echo ==
+##a "$*"$* $*
+##echo ===
+##IFS=': '; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 0
+##IFS=' :'; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 1
+##echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 2
+##IFS=; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 3
+##IFS= ; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 4
+##IFS=$'\t'; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 5
+##IFS=$'\n'; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 6
+##IFS=$'\\'; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo ====
+##set -- '' '' ''
+##echo 1/$#
+##echo "$*"$* $*
+##echo 2
+##a "$*"$* $*
+##echo 3
+##IFS=' '; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 4
+##IFS=:; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 5
+##IFS=$'\\'; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 6
+##a $*
+##echo 7
+##a "$*"
+##echo 8
+##IFS=:; a $*;unset IFS
+##echo 9
+##IFS=:; a "$*";unset IFS
+##echo ==A==
+##set -- '' 'a' ''
+##echo 1/$#
+##echo "$*"$* $*
+##echo 2
+##a "$*"$* $*
+##echo 3
+##IFS=' '; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 4
+##IFS=:; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 5
+##IFS=$'\\'; echo "$*"$* $*; a "$*"$* $*;unset IFS
+##echo 6
+##a $*
+##echo 7
+##a "$*"
+##echo 8
+##IFS=:; a $*;unset IFS
+##echo 9
+##IFS=:; a "$*";unset IFS
+##echo ==B==
+##set -- '' '' ''
+##echo 1
+##IFS=':'; a "$@";unset IFS
+##IFS=' '; a "$@";unset IFS
+##echo 2
+##IFS=':'; a $@;unset IFS
+##IFS=' '; a $@;unset IFS
+##echo 3
+##IFS=':'; a "$*";unset IFS
+##IFS=' '; a "$*";unset IFS
+##echo 4
+##IFS=':'; a $*;unset IFS
+##IFS=' '; a $*;unset IFS
+##echo ==
+##set -- '' 'a' ''
+##echo 1
+##IFS=':'; a "$@";unset IFS
+##IFS=' '; a "$@";unset IFS
+##echo 2
+##IFS=':'; a $@;unset IFS
+##IFS=' '; a $@;unset IFS
+##echo 3
+##IFS=':'; a "$*";unset IFS
+##IFS=' '; a "$*";unset IFS
+##echo 4
+##IFS=':'; a $*;unset IFS
+##IFS=' '; a $*;unset IFS
+##echo ==
+##set -- a b ''
+##echo 1
+##IFS=':'; a "$@";unset IFS
+##IFS=' '; a "$@";unset IFS
+##echo 2
+##IFS=':'; a $@;unset IFS
+##IFS=' '; a $@;unset IFS
+##echo 3
+##IFS=':'; a "$*";unset IFS
+##IFS=' '; a "$*";unset IFS
+##echo 4
+##IFS=':'; a $*;unset IFS
+##IFS=' '; a $*;unset IFS
+##echo ==
+##set -- a 'b c' d
+##echo 1
+##IFS=':'; a "$@";unset IFS
+##IFS=' '; a "$@";unset IFS
+##echo 2
+##IFS=':'; a $@;unset IFS
+##IFS=' '; a $@;unset IFS
+##echo 3
+##IFS=':'; a "$*";unset IFS
+##IFS=' '; a "$*";unset IFS
+##echo 4
+##IFS=':'; a $*;unset IFS
+##IFS=' '; a $*;unset IFS
+##echo ==
+##set -- ' a' b 'c '
+##echo 1
+##IFS=':'; a "$@";unset IFS
+##IFS=' '; a "$@";unset IFS
+##echo 2
+##IFS=':'; a $@;unset IFS
+##IFS=' '; a $@;unset IFS
+##echo 3
+##IFS=':'; a "$*";unset IFS
+##IFS=' '; a "$*";unset IFS
+##echo 4
+##IFS=':'; a $*;unset IFS
+##IFS=' '; a $*;unset IFS
+##echo ==
+##set -- ' a' b '  ' 'd '
+##echo 1
+##IFS=':'; a "$@";unset IFS
+##IFS=' '; a "$@";unset IFS
+##echo 2
+##IFS=':'; a $@;unset IFS
+##IFS=' '; a $@;unset IFS
+##echo 3
+##IFS=':'; a "$*";unset IFS
+##IFS=' '; a "$*";unset IFS
+##echo 4
+##IFS=':'; a $*;unset IFS
+##IFS=' '; a $*;unset IFS
+##}}}
+#	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-split-xxx 2>${E0}
+#define a {
+#	ec $#,1="$1"/$1,2="$2"/$2,3="$3"/$3,4="$4"/$4,5="$5"/$5,6="$6"/$6,*="$*"/$*,@="$@",$@
+#	ec $#,1= "$1" , $1 , 2= "$2" , $2 , 3= "$3" , $3 , 4= "$4" , $4 , 5= "$5" , $5 , 6= "$6" , $6 , *= "$*" , $* , @= "$@" , $@
+#}
+#vpospar set '' 'a' ''
+#call a "$*"$* $*
+#xit
+#
+#ec _
+#ec "$*"$* $*
+#ec __
+#call a "$*"$* $*
+#ec ___
+#se ifs=:; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec =
+#vpospar set a '' b c
+#ec "$*"$* $*
+#ec ==
+#call a "$*"$* $*
+#ec ===
+#se ifs=': '; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 0
+#se ifs=' :'; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 1
+#ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 2
+#se ifs=; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 3
+#se ifs= ; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 4
+#se ifs=$'\t'; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 5
+#se ifs=$'\n'; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 6
+#se ifs=$'\\'; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec ====
+#vpospar set '' '' ''
+#ec 1/$#
+#ec "$*"$* $*
+#ec 2
+#call a "$*"$* $*
+#ec 3
+#se ifs=' '; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 4
+#se ifs=:; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 5
+#se ifs=$'\\'; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 6
+#call a $*
+#ec 7
+#call a "$*"
+#ec 8
+#se ifs=:; call a $*; uns ifs
+#ec 9
+#se ifs=:; call a "$*"; uns ifs
+#ec ==A==
+#vpospar set '' 'a' ''
+#ec 1/$#
+#ec "$*"$* $*
+#ec 2
+#call a "$*"$* $*
+#ec 3
+#se ifs=' '; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 4
+#se ifs=:; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 5
+#se ifs=$'\\'; ec "$*"$* $*; call a "$*"$* $*; uns ifs
+#ec 6
+#call a $*
+#ec 7
+#call a "$*"
+#ec 8
+#se ifs=:; call a $*; uns ifs
+#ec 9
+#se ifs=:; call a "$*"; uns ifs
+#ec ==B==
+#vpospar set '' '' ''
+#ec 1
+#se ifs=':'; call a "$@"; uns ifs
+#se ifs=' '; call a "$@"; uns ifs
+#ec 2
+#se ifs=':'; call a $@; uns ifs
+#se ifs=' '; call a $@; uns ifs
+#ec 3
+#se ifs=':'; call a "$*"; uns ifs
+#se ifs=' '; call a "$*"; uns ifs
+#ec 4
+#se ifs=':'; call a $*; uns ifs
+#se ifs=' '; call a $*; uns ifs
+#ec ==
+#vpospar set '' 'a' ''
+#ec 1
+#se ifs=':'; call a "$@"; uns ifs
+#se ifs=' '; call a "$@"; uns ifs
+#ec 2
+#se ifs=':'; call a $@; uns ifs
+#se ifs=' '; call a $@; uns ifs
+#ec 3
+#se ifs=':'; call a "$*"; uns ifs
+#se ifs=' '; call a "$*"; uns ifs
+#ec 4
+#se ifs=':'; call a $*; uns ifs
+#se ifs=' '; call a $*; uns ifs
+#ec ==
+#vpospar set a b ''
+#ec 1
+#se ifs=':'; call a "$@"; uns ifs
+#se ifs=' '; call a "$@"; uns ifs
+#ec 2
+#se ifs=':'; call a $@; uns ifs
+#se ifs=' '; call a $@; uns ifs
+#ec 3
+#se ifs=':'; call a "$*"; uns ifs
+#se ifs=' '; call a "$*"; uns ifs
+#ec 4
+#se ifs=':'; call a $*; uns ifs
+#se ifs=' '; call a $*; uns ifs
+#ec ==
+#vpospar set a 'b c ' d
+#ec 1
+#se ifs=':'; call a "$@"; uns ifs
+#se ifs=' '; call a "$@"; uns ifs
+#ec 2
+#se ifs=':'; call a $@; uns ifs
+#se ifs=' '; call a $@; uns ifs
+#ec 3
+#se ifs=':'; call a "$*"; uns ifs
+#se ifs=' '; call a "$*"; uns ifs
+#ec 4
+#se ifs=':'; call a $*; uns ifs
+#se ifs=' '; call a $*; uns ifs
+#ec ==
+#vpospar set ' a' b 'c '
+#ec 1
+#se ifs=':'; call a "$@"; uns ifs
+#se ifs=' '; call a "$@"; uns ifs
+#ec 2
+#se ifs=':'; call a $@; uns ifs
+#se ifs=' '; call a $@; uns ifs
+#ec 3
+#se ifs=':'; call a "$*"; uns ifs
+#se ifs=' '; call a "$*"; uns ifs
+#ec 4
+#se ifs=':'; call a $*; uns ifs
+#se ifs=' '; call a $*; uns ifs
+#ec ==
+#vpospar set ' a' b '  ' 'd '
+#ec 1
+#se ifs=':'; call a "$@"; uns ifs
+#se ifs=' '; call a "$@"; uns ifs
+#ec 2
+#se ifs=':'; call a $@; uns ifs
+#se ifs=' '; call a $@; uns ifs
+#ec 3
+#se ifs=':'; call a "$*"; uns ifs
+#se ifs=' '; call a "$*"; uns ifs
+#ec 4
+#se ifs=':'; call a $*; uns ifs
+#se ifs=' '; call a $*; uns ifs
+#__EOT
+#	#}}}
+#	cke0 ifs-split-xxx 0 ./tifs-split-xxx '3698594299 860'
+#t_epilog "$@"
+#return
+
+
+
+
+
+# FIXME YEAH TEST MUCH MORE $@ things
+
+#printf '[%s]\n' foo $@
+#[foo]
+#printf '[%s]\n' foo "$@"
+#[foo]
+#printf '[%s]\n' foo "$@$@"
+#[foo]
+#printf '[%s]\n' foo "$@""$@"
+#[foo]
+#printf '[%s]\n' foo "$@$*"
+#[foo]
+#[] </tt>(this line of output is optional)<tt>
+#printf '[%s]\n' foo "$@""$*"
+#[foo]
+#[]
+#printf '[%s]\n' foo ''$@
+#[foo]
+#[]
+#printf '[%s]\n' foo ''"$@"
+#[foo]
+#[]
+#printf '[%s]\n' foo "$novar$@$(echo)"
+#[foo]
+#[] </tt>(this line of output is optional)<tt>
+#printf '[%s]\n' foo ''"$novar$@$(echo)"
+#[foo]
+#[]
+#FIXME
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
@@ -5405,7 +5941,7 @@ x
 vpospar clear;x
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '155175639 866'
+	cke0 1 0 ./t1 '2301131561 863'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./tifs 2>${E0}
@@ -5439,34 +5975,63 @@ eval vpospar set ${x};\
 unset ifs;x
 __EOT
 	#}}}
-	cke0 ifs 0 ./tifs '2015927702 706'
+	cke0 ifs 0 ./tifs '976280013 700'
 
+
+
+
+
+
+
+#FIXME
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x echo '"'"'$?: $#: <"$*">: <$1><$2><$3><$4><$5><$6>'"'"'
-set x=$'"'"'a b\nc d\ne f\n'"'"'
-vpospar set $x
+commandalias ca \\commandalias
+ca x ec ,#=\$#,*=\$*,1=\$1,2=\$2,3=\$3,4=\$4,5=\$5,6=\$6,
+ca y ec ,^#=\$^#,^*=\$^*,^1=\$^1,^2=\$^2,^3=\$^3,^4=\$^4,^5=\$^5,^6=\$^6,
+se i=\ ::\ ::\ :\ 
+
+ec =0=
+vpospar se $
 x
-eval vpospar set $x
+vpospar se $ i
 x
-set ifs=$'"'"'\n'"'"'
-eval vpospar set $x
+ec =1=
+se ifs=:; vpospar se $i; uns ifs
 x
-unset ifs
->i vpospar quote
+se ifs=:; eval vpospar se $i; uns ifs
 x
-shift
->i vpospar quote
+se ifs=:; vpospar se :: :: : ; uns ifs
 x
-vpospar clear
+ec =2=
+se ifs=:\ ; vpospar se $i; uns ifs
 x
-echo i<$i>
-eval vpospar set $i
+se ifs=:\ ; eval vpospar se $i; uns ifs
 x
+se ifs=:\ ; vpospar se :: :: : ; uns ifs
+x
+ec =3=
+echoerr =1=
+se ifs=:; vpospar ^ se $i; uns ifs
+y
+se ifs=:; eval vpospar ^ se $i; uns ifs
+y
+se ifs=:; vpospar ^ se :: :: : ; uns ifs
+y
+echoerr =1=
+ec =4=
+se ifs=:\ ; vpospar ^ se $i; uns ifs
+y
+se ifs=:\ ; eval vpospar ^ se $i; uns ifs
+y
+se ifs=:\ ; vpospar ^ se :: :: : ; uns ifs
+y
 ' \
-	> ./tifs-2 2>${E0}
+	> ./tifs-types-split-2 2>${E0}
 	#}}}
-	cke0 ifs-2 0 ./tifs-2 '4228963670 283'
+	cke0 ifs-types-split-2 0 ./tifs-types-split-2 '1683530866 54'
+
+
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
@@ -5643,29 +6208,35 @@ _EOT
 	#}}}
 	cke0 2 0 ./t2 '41566293 164'
 
-#	# disproofer -- we differ for first 2/8
+#	# disproofer
 #	#{{{
-#	${cat} > ./t.sh << '_EOT'
 #c() { echo "$# 1<$1> 2<$2> 3<$3> *<$*> @<$@>"; }
 #set -- a\ b c\ d e\ f
+#echo 1
 #c $*
 #c $@
 #c "$*"
 #c "$@"
+#echo 2
 #IFS=:
+#c $*
+#c $@
 #c "${*}"
 #c "${@}"
+#echo 3
 #IFS=
-#c "<$*>"
-#c "<$@>"
+#c $*
+#c $@
+#c "$*"
+#c "$@"
+#echo 4
 #unset IFS
 #set --
-#c "<$*>"
-#c "<$@>"
-#_EOT
+#c $*
+#c $@
+#c "$*"
+#c "$@"
 #	#}}}
-#	${SHELL} ./t.sh > ./t3disproof 2>${E0}
-#	cke0 3disproof 0 ./t3disproof '1457492088 478'
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
@@ -5673,20 +6244,30 @@ define c {
 	echo "$# 1<$1> 2<$2> 3<$3> *<$*> @<$@>"
 }
 vpospar set a\ b c\ d e\ f
+ec 1
 call c $*
 call c $@
 call c "$*"
 call c "$@"
+ec 2
 set ifs=:
+call c $*
+call c $@
 call c "${*}"
 call c "${@}"
+ec 3
 set ifs=
-call c "<$*>"
-call c "<$@>"
+call c $*
+call c $@
+call c "$*"
+call c "$@"
+ec 4
 unset ifs
 vpospar set
-call c "<$*>"
-call c "<$@>"' \
+call c $*
+call c $@
+call c "$*"
+call c "$@"' \
 	> ./t3 2>${E0}
 	#}}}
 	cke0 3 0 ./t3 '1377173839 494'
@@ -5733,13 +6314,13 @@ t_read() { #{{{
    hey4, "'you    "
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
-commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+commandalias x echo '"$?/$^ERRNAME / <$a><$b><$c>"'
 read a b c;x
 read a b c;x
 read a b c;x
 read a b c;x
 unset a b c;read a b c;x
-readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
+readctl remove ./t1in;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 1 0 ./t1 '1527910147 173'
@@ -5754,7 +6335,7 @@ __EOT
    :
 __EOT
 	<< '__EOT' 6< ./tifsin ${MAILX} ${ARGS} -X 'readctl create 6' > ./tifs 2>${E0}
-commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+commandalias x ec '"$?/$^ERRNAME / <$a><$b><$c>"'
 se ifs=:
 read a b c;x
 read a b c;x
@@ -5764,7 +6345,7 @@ read a b c;x
 read a b c;x
 uns a b c;read a b c;x
 read a b c;x
-readctl r 6;ec readctl remove:$?/$^ERRNAME
+readctl r 6;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 ifs 0 ./tifs '890153490 298'
@@ -5777,17 +6358,17 @@ __EOT
 	} > ./tifsin-2
 	</dev/null ${MAILX} ${ARGS} -X '
 commandalias r read
-commandalias y ec <\$a><\$b><\$c><\$d><\$e>
+commandalias y ec \"<\$a><\$b><\$c><\$d><\$e>\"
 define x {
-	local set v=$*
+	local se v=$*
 	readctl c ./tifsin-2
-	se ifs=":	";eval r $v;uns ifs;y
-	se ifs=":	";eval r $v;uns ifs;y
-	se ifs=":	";eval r $v;uns ifs;y
+	se ifs=":	";eval r "$v";uns ifs;y
+	se ifs=":	";eval r "$v";uns ifs;y
+	se ifs=":	";eval r "$v";uns ifs;y
 	readctl r ./tifsin-2; readctl c ./tifsin-2
-	set ifs=:;eval r $v;uns ifs;y
-	set ifs=:;eval r $v;uns ifs;y
-	set ifs=:;eval r $v;uns ifs;y
+	set ifs=:;eval r "$v";uns ifs;y
+	set ifs=:;eval r "$v";uns ifs;y
+	set ifs=:;eval r "$v";uns ifs;y
 	readctl r ./tifsin-2; ec
 }
 call x a
@@ -5808,11 +6389,11 @@ call x a b c d e
 
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./tifs-3-in' > ./tifs-3 2>${E0}
-commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+commandalias x ec '"$?/$^ERRNAME / <$a><$b><$c>"'
 read a;x
 read a b;x
 read a b c;x
-readctl r ./tifs-3-in;ec readctl remove:$?/$^ERRNAME
+readctl r ./tifs-3-in;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 ifs-3 0 ./tifs-3 '316016421 114'
@@ -5825,43 +6406,43 @@ a:b:c
 ::
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-4 2>${E0}
-commandalias x ec '$x/$y / <$a><$b><$c>'
+commandalias x ec '"$x/$y / <$a><$b><$c>"'
 readctl c ./tifs-4-in
 define t {
 	se ifs=:; read a b c; local se x=$? y=$^ERRNAME; x; uns ifs
 	if $x -ge 0; xcall t; en
 }
 call t
-readctl r ./tifs-4-in;ec readctl remove:$?/$^ERRNAME
+readctl r ./tifs-4-in;ec "readctl remove:$?/$^ERRNAME"
 
-commandalias x ec '$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^2<$^2> ^3<$^3> ^*<"$^*">'
+commandalias x ec '"$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^2<$^2> ^3<$^3> ^*<$^*>"'
 readctl c ./tifs-4-in
 define t {
 	se ifs=:; read ^; local se x=$? y=$^ERRNAME; x; uns ifs
 	if $x -ge 0; xcall t; en
 }
 call t
-readctl r ./tifs-4-in;ec readctl remove:$?/$^ERRNAME
+readctl r ./tifs-4-in;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 ifs-4 0 ./tifs-4 '2749867790 347'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./treadall 2>${E0}
-commandalias x echo '$?/$^ERRNAME / <$d>'
+commandalias x ec '"$?/$^ERRNAME / <$d>"'
 readctl create ./t1in
 readall d;x
 set d;readall d;x
 readctl create tifsin
 readall d;x
 set d;readall d;x
-readctl remove ./t1in;echo $?/$^ERRNAME;\
-	readctl remove tifsin;echo $?/$^ERRNAME
+readctl remove ./t1in;ec "$?/$^ERRNAME";\
+	readctl remove tifsin;ec "$?/$^ERRNAME"
 echo '### now with empty lines'
 ! printf 'one line\n\ntwo line\n\n' > ./temptynl
-readctl create ./temptynl;echo $?/$^ERRNAME
+readctl create ./temptynl;ec "$?/$^ERRNAME"
 readall d;x
-readctl remove ./temptynl;echo $?/$^ERRNAME
+readctl remove ./temptynl;ec "$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 readall 0 ./treadall '4113506527 405'
@@ -5872,22 +6453,22 @@ __EOT
 		echo kadabra
 	} > ./tlocalin
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x echo \$?/\$^ERRNAME
+commandalias x ec \"\$?/\$^ERRNAME\"
 define x {
-	echo ==$1
+	echo "==$1"
 	readctl creat ./tlocalin;x
-	eval local $1 locvar;x;echo "L<$locvar>"
+	eval local "$1" locvar;x;ec "L<$locvar>"
 	readctl remo ./tlocalin;x
 }
 define x2 {
-	echo ==$1/$locvar
+	echo "==$1/$locvar"
 	readctl creat ./tlocalin;x
-	eval local $1 locvar;x;echo "L<$locvar>"
-	xcall y2 $1
+	eval local "$1" locvar;x;ec "L<$locvar>"
+	xcall y2 "$1"
 }
 define y2 {
-	echo ===$1/$locvar
-	eval local $1 locvar;x;echo "L<$locvar>"
+	echo "===$1/$locvar"
+	eval local "$1" locvar;x;ec "L<$locvar>"
 	readctl remo ./tlocalin;x
 }
 set locvar=run
@@ -5906,29 +6487,29 @@ call x2 readall;echo "G<$locvar>"
 		echo kadabra
 	} > ./tourin
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x echo \$?/\$^ERRNAME
+commandalias x echo \"\$?/\$^ERRNAME\"
 define x {
-	echo ==$1
+	echo "==$1"
 	readctl creat ./tourin;x
-	eval our $1 ourvar;x;echo "L<$ourvar>"
+	eval our "$1" ourvar;x;ec "L<$ourvar>"
 	readctl remo ./tourin;x
 }
 define x2 {
-	echo ==$1/$ourvar
+	echo "==$1/$ourvar"
 	readctl creat ./tourin;x
-	eval our $1 ourvar;x;echo "L<$ourvar>"
-	xcall y2 $1
+	eval our "$1" ourvar;x;ec "L<$ourvar>"
+	xcall y2 "$1"
 }
 define y2 {
-	echo ===$1/$ourvar
-	eval our $1 ourvar;x;echo "L<$ourvar>"
+	echo "===$1/$ourvar"
+	eval our "$1" ourvar;x;ec "L<$ourvar>"
 	readctl remo ./tourin;x
 }
 set ourvar=run
-call x read;echo "G<$ourvar>"
-call x readall;echo "G<$ourvar>"
-call x2 read;echo "G<$ourvar>"
-call x2 readall;echo "G<$ourvar>"
+call x read;ec "G<$ourvar>"
+call x readall;ec "G<$ourvar>"
+call x2 read;ec "G<$ourvar>"
+call x2 readall;ec "G<$ourvar>"
 ' \
 	> ./tour 2>${E0}
 	#}}}
@@ -5944,13 +6525,13 @@ one
 1 2 '3 3.5' 4 5
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./tresult-set-in' > ./tresult-set 2>${E0}
-commandalias x ec '$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^3<$^3> ^*<$^*>'
+commandalias x ec '"$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^3<$^3> ^*<$^*>"'
 define t {
 	read ^;local se x=$? y=$^ERRNAME;x
 	if $x -ge 0; xcall t; en
 }
 call t
-readctl r ./tresult-set-in;ec readctl remove:$?/$^ERRNAME
+readctl r ./tresult-set-in;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 result-set 0 ./tresult-set '3320907390 324'
@@ -5969,13 +6550,13 @@ t_readsh() { #{{{
    from@exam.ple' diet spliced <from@exam.ple>   ''a'  
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./t1in' > ./t1 2>${E0}
-commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+commandalias x ec '"$?/$^ERRNAME / <$a><$b><$c>"'
 readsh a b c;x
 readsh a b c;x
 readsh a b c;x
 readsh a b c;x
 uns a b c;read a b c;x
-readctl r ./t1in;echo readctl remove:$?/$^ERRNAME
+readctl r ./t1in;echo "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 1 0 ./t1 '2955084684 291'
@@ -5988,11 +6569,11 @@ __EOT
 
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./t2in' > ./t2 2>${E0}
-commandalias x ec '$?/$^ERRNAME / <$a><$b><$c>'
+commandalias x ec '"$?/$^ERRNAME / <$a><$b><$c>"'
 readsh a;x
 readsh a b;x
 readsh a b c;x
-readctl r ./t2in;ec readctl remove:$?/$^ERRNAME
+readctl r ./t2in;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 2 0 ./t2 '780130043 115'
@@ -6003,20 +6584,20 @@ __EOT
 		echo kadabra
 	} > ./tlocalin
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x ec \$?/\$^ERRNAME
+commandalias x ec \"\$?/\$^ERRNAME\"
 define x {
 	readctl c ./tlocalin;x
 	local readsh locvar;x;ec "L<$locvar>"
 	readctl r ./tlocalin;x
 }
 define x2 {
-	echo ==$locvar
+	ec "==$locvar"
 	readctl c ./tlocalin;x
 	local readsh locvar;x;ec "L<$locvar>"
 	xcall y2
 }
 define y2 {
-	echo ===$locvar
+	ec "===$locvar"
 	local readsh locvar;x;ec "L<$locvar>"
 	readctl r ./tlocalin;x
 }
@@ -6034,26 +6615,26 @@ call x2;ec "G<$locvar>"
 		echo kadabra
 	} > ./tourin
 	</dev/null ${MAILX} ${ARGS} -X '
-commandalias x echo \$?/\$^ERRNAME
+commandalias x ec \"\$?/\$^ERRNAME\"
 define x {
 	readctl creat ./tourin;x
-	our readsh ourvar;x;echo "L<$ourvar>"
+	our readsh ourvar;x;ec "L<$ourvar>"
 	readctl remo ./tourin;x
 }
 define x2 {
-	echo ==$ourvar
+	echo "==$ourvar"
 	readctl creat ./tourin;x
-	our readsh ourvar;x;echo "L<$ourvar>"
+	our readsh ourvar;x;ec "L<$ourvar>"
 	xcall y2
 }
 define y2 {
-	echo ===$ourvar
-	our readsh ourvar;x;echo "L<$ourvar>"
+	echo "===$ourvar"
+	our readsh ourvar;x;ec "L<$ourvar>"
 	readctl remo ./tourin;x
 }
 set ourvar=run
-call x;echo "G<$ourvar>"
-call x2;echo "G<$ourvar>"
+call x;ec "G<$ourvar>"
+call x2;ec "G<$ourvar>"
 ' \
 	> ./tour 2>${E0}
 	#}}}
@@ -6069,13 +6650,13 @@ one
 1 2 '3 3.5' 4 5
 __EOT
 	<< '__EOT' ${MAILX} ${ARGS} -X'readctl c ./tresult-set-in' > ./tresult-set 2>${E0}
-commandalias x ec '$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^3<$^3> ^*<$^*>'
+commandalias x ec '"$x/$y / ^#=$^# ^0=$^0 ^1<$^1> ^3<$^3> ^*<$^*>"'
 define t {
 	readsh ^;local se x=$? y=$^ERRNAME;x
 	if $x -ge 0; xcall t; en
 }
 call t
-readctl r ./tresult-set-in;ec readctl remove:$?/$^ERRNAME
+readctl r ./tresult-set-in;ec "readctl remove:$?/$^ERRNAME"
 __EOT
 	#}}}
 	cke0 result-set 0 ./tresult-set '3887266309 327'
@@ -6093,8 +6674,8 @@ t_fop() { # XXX improve writes when we have redirection {{{
 	fi
 
 	# touch,stat,rm,lock,create,rewind,pass,close,remove <-> reading {{{
-	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
-commandalias x ec '$?/$^ERRNAME :$res:'
+	<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
+commandalias x ec '"$?/$^ERRNAME :$res:"'
 ec ===T1
 >res fop touch ./t1.1;x
 uns res;>res_noecho fop stat ./t1.1;x
@@ -6105,65 +6686,65 @@ ec ===T2
 #xxx write on our own
 ! (echo l1;echo l2;echo l3;) > ./t1.2
 ec ===readctl create 2.1
-readctl create $fd;x
+readctl create "$fd";x
 read res;x
 read res;x
 read res;x
 read res;x
 ec ===rewind 2.1.1
->xres fop rewind $fd;x
+>xres fop rewind "$fd";x
 if $xres -ne $fd;ec ERR;en
 read res;x
 read res;x
 read res;x
 read res;x
 ec ===rewind 2.1.2
->xres fop rewind $fd;x
+>xres fop rewind "$fd";x
 if $xres -ne $fd;ec ERR;en
->res fop pass $fd @ "${CAT} && exit 11";x
->res fop pass $fd - "${CAT} && exit 12";x
+>res fop pass "$fd" @ "${CAT} && exit 11";x
+>res fop pass "$fd" - "${CAT} && exit 12";x
 ec ===rewind 2.1.3
->xres fop rewind $fd;x
+>xres fop rewind "$fd";x
 if $xres -ne $fd;ec ERR;en
->res fop pass $fd - "${CAT} && exit 13";x
->res fop pass $fd - "${CAT} && exit 14";x
+>res fop pass "$fd" - "${CAT} && exit 13";x
+>res fop pass "$fd" - "${CAT} && exit 14";x
 ec ===dtors 2.1
->xres fop close $fd;x
-if $xres -ne $fd;ec ERR;end
->res fop close $fd;x
-readctl remove $fd;x
-	__EOT
+>xres fop close "$fd";x
+if $xres -ne "$fd";ec ERR;end
+>res fop close "$fd";x
+readctl remove "$fd";x
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '2930509783 397'
 
 	if have_feat flock; then
 		#{{{
 		<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>${E0}
-commandalias x ec '$?/$^ERRNAME :$res:'
+commandalias x ec '"$?/$^ERRNAME :$res:"'
 ec ===T1
 >res fop flock ./t2.1 a 'echo x1;echo x2;echo x3';x
 >res fop flock ./t2.1 r;x
 set fd=$res
 ec ===readctl create 1.1
-readctl create $fd;x
+readctl create "$fd";x
 ec ===rewind 1.1.1
->res fop rewind $fd;x
+>res fop rewind "$fd";x
 read res;x
 read res;x
 read res;x
 read res;x
 ec ===rewind 1.1.2
->res fop rewind $fd;x
->res fop pass $fd @ "${CAT} && exit 21";x
->res fop pass $fd - "${CAT} && exit 22";x
+>res fop rewind "$fd";x
+>res fop pass "$fd" @ "${CAT} && exit 21";x
+>res fop pass "$fd" - "${CAT} && exit 22";x
 ec ===rewind 1.1.3
->res fop rewind $fd;x
->res fop pass $fd - "${CAT} && exit 23";x
->res fop pass $fd - "${CAT} && exit 24";x
+>res fop rewind "$fd";x
+>res fop pass "$fd" - "${CAT} && exit 23";x
+>res fop pass "$fd" - "${CAT} && exit 24";x
 ec ===dtors 1.1
->res fop close $fd;x
->res fop close $fd;x
-readctl remove $fd;x
+>res fop close "$fd";x
+>res fop close "$fd";x
+readctl remove "$fd";x
 __EOT
 		#}}}
 		cke0 2 0 ./t2 '1544976144 297'
@@ -6173,69 +6754,69 @@ __EOT
 
 	# open,rewind,create,close,remove,pass <-> reading {{{
 	<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
-commandalias x ec '$?/$^ERRNAME :$res:'
+commandalias x ec '"$?/$^ERRNAME :$res:"'
 ec ===T1
 >fd fop open ./t3.x w;x 1
 >res fop open ./t3.x W;x 2
-fop pass - $fd "echo 1;echo .2;echo ._3";x 3 #xxx write on our own
->nil fop rewind $fd;x 4
-readctl create $fd;x 5
+fop pass - "$fd" "echo 1;echo .2;echo ._3";x 3 #xxx write on our own
+>nil fop rewind "$fd";x 4
+readctl create "$fd";x 5
 read res;x 6
 read res;x 7
 read res;x 8
 read res;x 9
->nil fop close $fd;x 10
-readctl remove $fd;x 11
+>nil fop close "$fd";x 10
+readctl remove "$fd";x 11
 ec ===T2
 >fd fop open ./t3.x w;x 20
-fop pass - $fd "echo X";x 21 #xxx write on our own
->nil fop rewind $fd;x 22
-readctl create $fd;x 23
+fop pass - "$fd" "echo X";x 21 #xxx write on our own
+>nil fop rewind "$fd";x 22
+readctl create "$fd";x 23
 read res;x 24
 read res;x 25
 read res;x 26
 read res;x 27
-readctl remove $fd;x 28
->nil fop close $fd;x 29
+readctl remove "$fd";x 28
+>nil fop close "$fd";x 29
 ec ===T3
 >fd fop open ./t3.x a^;x 30
 >res fop open ./t3.x A;x 31
-fop pass - $fd "echo ._,4";x 32 #xxx write on our own
-fop rewind $fd;x 23
-readctl create $fd;x 34
+fop pass - "$fd" "echo ._,4";x 32 #xxx write on our own
+fop rewind "$fd";x 23
+readctl create "$fd";x 34
 read res;x 35
 read res;x 36
 read res;x 37
 read res;x 38
 read res;x 39
-readctl remove $fd;x 40
-fop close $fd;x 41
+readctl remove "$fd";x 40
+fop close "$fd";x 41
 ec ===T4
 >fd fop open ./t3.x a0^;x 50
-fop pass - $fd "echo 123";x 51 #xxx write on our own
-fop rewind $fd;x 52
-readctl create $fd;x 53
+fop pass - "$fd" "echo 123";x 51 #xxx write on our own
+fop rewind "$fd";x 52
+readctl create "$fd";x 53
 read res;x 54
 read res;x 55
-readctl remove $fd;x 56
-fop close $fd;x 57
+readctl remove "$fd";x 56
+fop close "$fd";x 57
 __EOT
 	#}}}
 	cke0 3 0 ./t3 '3318177702 649'
 
 	# mktemp,mkdir,rename,rmdir {{{
 	<< '__EOT' TMPDIR=$(${pwd}) ${MAILX} ${ARGS} > ./t4 2>${E0}
-commandalias x ec '$?/$^ERRNAME:$res:'
+commandalias x ec '"$?/$^ERRNAME:$res:"'
 >f1 fop mktemp;x
 >f2 fop mktemp .xy;x
-\if $features =% ,regex,;\if "$f2" =~ '(\.xy)$';\ec y=$^1;\en;\el;\ec y=.xy;\en
+\if $features =% ,regex,;\if "$f2" =~ '(\.xy)$';\ec "y=$^1";\en;\el;\ec y=.xy;\en
 >res fop mkdir .ttt;x
 >f3 fop mktemp .yz .ttt;x
-\if $features =% ,regex,;\if "$f3" =~ '(\.xy)$';\ec y=$^1;\en;\el;\ec y=.xy;\en
-eval ! echo 1 > $f1\; echo 2 > $f2\; echo 3 > $f3 # XXX w/out sh!
->res fop rename ./t4.1 $f1;x
->res fop rename ./t4.2 $f2;x
->res fop rename ./t4.3 $f3;x
+\if $features =% ,regex,;\if "$f3" =~ '(\.xy)$';\ec "y=$^1";\en;\el;\ec y=.xy;\en
+eval ! echo 1 > "$f1"\; echo 2 > "$f2"\; echo 3 > "$f3" # XXX w/out sh!
+>res fop rename ./t4.1 "$f1";x
+>res fop rename ./t4.2 "$f2";x
+>res fop rename ./t4.3 "$f3";x
 >res fop rmdir .ttt;x
 __EOT
 	#}}}
@@ -6247,37 +6828,36 @@ __EOT
 	# ftruncate,rewind ## position write<-read+truncate {{{
 	printf 'ab\ncd\nef\n' > ./t5-in
 	<< '__EOT' ${MAILX} ${ARGS} > ./t5 2>${E0}
-commandalias x ec '$?/$^ERRNAME:'
+commandalias x ec '"$?/$^ERRNAME:"'
 commandalias y \if '$res -eq $fd;\ec ok;\el;\ec err;\en'
 ec r,bad
 >fd fop open ./t5-inx r;x
 >fd fop open ./t5-in r;x
-readctl create $fd;x
-read res;x $res
->res fop ftruncate $fd;x <$res>
+readctl create "$fd";x
+read res;x "$res"
+>res fop ftruncate "$fd";x "<$res>"
 eval !cp ./t5-in ./t5.1 # XXX our own
->res fop close $fd;x;y
-readctl remove $fd;x
+>res fop close "$fd";x;y
+readctl remove "$fd";x
 ec w,ok
 >fd fop open ./t5-in w;x
-readctl create $fd;x
-read res;x $res
->res fop rewind $fd;x;y
->res fop ftruncate $fd;x;y
+readctl create "$fd";x
+read res;x "$res"
+>res fop rewind "$fd";x;y
+>res fop ftruncate "$fd";x;y
 eval !cp ./t5-in ./t5.2 # XXX our own
->res fop close $fd;x;y
-readctl remove $fd;x
+>res fop close "$fd";x;y
+readctl remove "$fd";x
 __EOT
 	#}}}
 	cke0 5 0 ./t5 '2784691844 146'
 	ck 5.1 - ./t5.1 '533590307 9'
 	ck0 5.2 - ./t5.2
 
-
 	# glob {{{
 	touch .tz1 .tz2 .tz4 '.tx 3' .tx5
 	<< '__EOT' ${MAILX} ${ARGS} > ./tglob 2>${E0}
-commandali x 'ec ?=$? !=$^ERRNAME ^?=$^? ^#=$^#/x=$x ^*<$^*> ^@<"$^@"> ^0<$^0> ^1=$^1 ^2=$^2 ^3=$^3; ec -----;'
+commandali x 'ec "?=$? !=$^ERRNAME ^?=$^? ^#=$^#/x=$x ^*<$^*> ^@<"$^@"> ^0<$^0> ^1=$^1 ^2=$^2 ^3=$^3"; ec -----;'
 >x fop glob .
 if $? -ne 0 && $^ERR -eq $^ERR-NOSYS
 	xit 11
@@ -6318,7 +6898,7 @@ t_msg_number_list() { #{{{
 	} > ./t.mbox
 
 	</dev/null ${MAILX} ${ARGS} -Rf -Y '#
-commandalias x ec '"'"'$?/$^ERRNAME <$res>'"'"'
+commandalias x ec \"\$?/\$^ERRNAME <\$res>\"
 se res
 =
 x
@@ -6355,109 +6935,109 @@ t_addrcodec() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-commandalias x ec '$?/$^ERRNAME $res'
+commandalias x ec '"$?/$^ERRNAME $res"'
 >res addrcodec e 1 <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e 2 . <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e 3 Sauer Dr. <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e 3.50 Sauer (Ma) Dr. <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e 3.51 Sauer (Ma) "Dr." <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 #
 >res addrcodec +e 4 Sauer (Ma) Dr. <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 5 Sauer (Ma) Braten Dr. <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 8 \
 	Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 10 (Ma)Braten Dr. (Heu) <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 12 Dr.		Sauer  (Ma)   Braten		Dr.	(u) <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 13(Ma)Braten	  Dr.		 (Heu)	  <doog@def>
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 15 \
 	Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 16 \
 	"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 17 \
 	"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 18 \
 	<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 #
 >res addrcodec ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
 x
 >res addrcodec ++e 21 Hey\,\""	<doog@def> "Wie()" findet \" Dr. \" das?
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 #
 >res addrcodec \
 	+++e 22 Hey\\,\"	<doog@def> "Wie()" findet \" Dr. \" das?
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 #
 >res addrcodec s \
@@ -6467,11 +7047,11 @@ x
 # Fix for [f3852f88]
 >res addrcodec ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e <from2@exam.ple> 100 (comment) "Quot(e)d"
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 __EOT
 	#}}}
@@ -6479,7 +7059,7 @@ __EOT
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
-commandalias x ec '$?/$^ERRNAME $res'
+commandalias x ec '"$?/$^ERRNAME $res"'
 mlist isa1@list
 mlsubscribe isa2@list
 #
@@ -6503,26 +7083,26 @@ __EOT
 	if have_feat idna; then
 		#{{{
 		<< '__EOT' ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>${E0}
-commandalias x ec '$?/$^ERRNAME $res'
+commandalias x ec '"$?/$^ERRNAME $res"'
 >res addrcodec e		(heu) <du@blödiän> "stroh" du	 
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e			<du@blödiän>   du		
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e		 du	 <du@blödiän>	
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e			 <du@blödiän>	 
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 >res addrcodec e			 du@blödiän	  
 x
-eval >res addrcodec d $res
+eval >res addrcodec d "$res"
 x
 __EOT
 		#}}}
@@ -6541,8 +7121,8 @@ t_headerpick() { #{{{
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -Rf -Y '#
-commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
-\echo --- 1
+commandalias x \ec \"--- \$?/\$^ERRNAME, \"
+\ec --- 1
 \headerpick
 x2
 \type
@@ -6560,14 +7140,14 @@ x8
 \type
 x9
 \unheaderpick type ignore from_ ba:l
-\set x=$? y=$^ERRNAME
-\echo --- $x/$y, 10
+\se x=$? y=$^ERRNAME
+\ec "--- $x/$y, 10"
 \unheaderpick type ignore *
 x11
 \headerpick
 x12
 \type
-\echo --- $?/$^ERRNAME, 13 ---
+\ec "--- $?/$^ERRNAME, 13 ---"
 #	' ./tmbox > ./t1 2>${EX}
 	#}}}
 	ck 1 0 ./t1 '3638879055 2121' '2678545530 152'
@@ -6575,7 +7155,7 @@ x12
 	if have_feat regex; then
 		#{{{
 		</dev/null ${MAILX} ${ARGS} -Y '#
-commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
+commandalias x \echo \"--- \$?/\$^ERRNAME, \"
 \headerpick type retain \
 bcc cc date from sender subject to \
 message-id mail-followup-to reply-to user-agent
@@ -6587,7 +7167,7 @@ x2
 \headerpick save ignore ^Original-.*$ ^X-.*$ ^DKIM.*$
 x3
 \headerpick top retain To Cc
-\echo --- $?/$^ERRNAME, 4 ---
+\ec "--- $?/$^ERRNAME, 4 ---"
 \headerpick
 x5
 \headerpick type
@@ -6597,19 +7177,19 @@ x7
 \headerpick save
 x8
 \headerpick top
-\echo --- $?/$^ERRNAME, 9 ---
+\ec "--- $?/$^ERRNAME, 9 ---"
 \unheaderpick type retain message-id mail-followup-to reply-to user-agent
 x10
 \unheaderpick save ignore ^X-.*$ ^DKIM.*$
 x11
 \unheaderpick forward retain *
-\echo --- $?/$^ERRNAME, 12 ---
+\ec "--- $?/$^ERRNAME, 12 ---"
 \headerpick
 x13
 \headerpick type
 x14
 \headerpick save
-\echo --- $?/$^ERRNAME, 15 --
+\ec "--- $?/$^ERRNAME, 15 --"
 \unheaderpick type retain *
 x16
 \unheaderpick forward retain *
@@ -6617,7 +7197,7 @@ x17
 \unheaderpick save ignore *
 x18
 \unheaderpick top retain *
-\echo --- $?/$^ERRNAME, 19 --
+\ec "--- $?/$^ERRNAME, 19 --"
 \headerpick
 x20
 #		' > ./t2 2>${EX}
@@ -6629,7 +7209,7 @@ x20
 
 	#{{{object
 	</dev/null ${MAILX} ${ARGS} -Y '
-commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
+commandalias x \echo \"--- \$?/\$^ERRNAME, \"
 headerp create au;x1
 headerp create au1;x2
 headerp create au2;x3
@@ -6726,7 +7306,7 @@ mail hey@exam.ple
 ~s Subject 1
 Body1
 ~.
-echo $?/$^ERRNAME
+echo "$?/$^ERRNAME"
 #	' > ./t7 2>${E0}
 	cke0 7 0 ./t7 '951018449 138'
 
@@ -6928,19 +7508,19 @@ t_reply() { #{{{
 		</dev/null ${MAILX} ${ARGS} -Rf -Y "${2}${1}"'
 r1
 ~.
-		echo 1:$?/$^ERRNAME
+		ec "1:$?/$^ERRNAME"
 		set fullnames escape=!; '${1}'
 r2 fullnames
 !.
-		echo 2:$?/$^ERRNAME
+		ec "2:$?/$^ERRNAME"
 		set recipients-in-cc nofullnames; '${1}'
 r3 recipients-in-cc
 !.
-		echo 3:$?/$^ERRNAME
-		unset recipients-in-cc; '${1}'
+		ec "3:$?/$^ERRNAME"
+		uns recipients-in-cc; '${1}'
 r4
 !.
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
 		return ${?}
@@ -6963,15 +7543,15 @@ r4
 	File ./.tnoaddr; reply # Takes addressee from From_ line :(
 body1
 !.
-	echo 1:$?/$^ERRNAME
-	File '"${MBOX}"'; set ea=$expandaddr expandaddr=-all; reply
+	ec "1:$?/$^ERRNAME"
+	File '"${MBOX}"'; se ea=$expandaddr expandaddr=-all; reply
 body2
 !.
-	echo 2:$?/$^ERRNAME; set expandaddr=$ea; reply 10 # BADMSG
-	echo 3:$?/$^ERRNAME; reply # cannot test IO,NOTSUP,INVAL
+	ec "2:$?/$^ERRNAME"; se expandaddr=$ea; reply 10 # BADMSG
+	ec "3:$?/$^ERRNAME"; reply # cannot test IO,NOTSUP,INVAL
 body3
 !.
-	echo 4:$?/$^ERRNAME
+	ec "4:$?/$^ERRNAME"
 	#' \
 		> ./.tall 2>${EX}
 	ck 5 0 ./.tall '3088217220 382' '522145961 578'
@@ -6985,15 +7565,15 @@ body3
 		File ./.tdir; reply
 body1
 !.
-		echo 1:$?/$^ERRNAME
-		File '"${MBOX}"'; set ea=$expandaddr expandaddr=-all; reply
+		ec "1:$?/$^ERRNAME"
+		File '"${MBOX}"'; se ea=$expandaddr expandaddr=-all; reply
 body2
 !.
-		echo 2:$?/$^ERRNAME; set expandaddr=$ea; reply 10 # BADMSG
-		echo 3:$?/$^ERRNAME;reply # cannot test IO,NOTSUP,INVAL
+		ec "2:$?/$^ERRNAME"; se expandaddr=$ea; reply 10 # BADMSG
+		ec "3:$?/$^ERRNAME";reply # cannot test IO,NOTSUP,INVAL
 body3
 !.
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		#' \
 			> ./.tall 2>${EX}
 		ck 7 0 ./.tall '3631170341 244' '2337093063 663'
@@ -7011,10 +7591,10 @@ repbody1
 !.
 repbody2
 !.
-		echo 1:$?/$^ERRNAME; '${2}' 1 2
+		ec "1:$?/$^ERRNAME"; '${2}' 1 2
 Repbody1
 !.
-		echo 2:$?/$^ERRNAME
+		ec "2:$?/$^ERRNAME"
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
 		cke0 ${3} 0 ./.tall '283309820 502'
@@ -7042,35 +7622,35 @@ repbody1
 !.
 repbody2
 !.
-		echo 1:$?/$^ERRNAME; '${2}' 1 2
+		ec "1:$?/$^ERRNAME"; '${2}' 1 2
 Repbody3
 !.
-		echo 2:$?/$^ERRNAME; set record=.trec'${4}'; '${1}' 1 2
+		ec "2:$?/$^ERRNAME"; se record=.trec'${4}'; '${1}' 1 2
 repbody4
 !.
 repbody5
 !.
-		echo 3:$?/$^ERRNAME; '${2}' 1 2
+		ec "3:$?/$^ERRNAME"; '${2}' 1 2
 Repbody6
 !.
-		echo 4:$?/$^ERRNAME; set outfolder norecord
+		ec "4:$?/$^ERRNAME"; se outfolder norecord
 		'${1}' 1 2
 repbody1
 !.
 repbody2
 !.
-		echo 1:$?/$^ERRNAME; '${2}' 1 2
+		ec "1:$?/$^ERRNAME"; '${2}' 1 2
 Repbody3
 !.
-		echo 2:$?/$^ERRNAME; set record=.trec'${4}'; '${1}' 1 2
+		ec "2:$?/$^ERRNAME"; se record=.trec'${4}'; '${1}' 1 2
 repbody4
 !.
 repbody5
 !.
-		echo 3:$?/$^ERRNAME; '${2}' 1 2
+		ec "3:$?/$^ERRNAME"; '${2}' 1 2
 Repbody6
 !.
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
 		cke0 ${3} 0 ./.tall '3410330303 2008'
@@ -7102,33 +7682,33 @@ Repbody6
 	t__x2_msg > ./.tmbox
 
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! -Sindentprefix=' >' ./.tmbox >./.tall 2>${E0}
-set indentprefix=" |" quote
+se indentprefix=" |" quote
 reply
 b1
 !.
-set quote=noheading quote-inject-head
+se quote=noheading quote-inject-head
 reply
 b2
 !.
 headerpick type retain cc date from message-id reply-to subject to
-set quote=headers
+se quote=headers
 reply
 b3
 !.
-set quote=allheaders
+se quote=allheaders
 reply
 b4
 !.
-set quote-inject-head=%% quote-inject-tail=%% quote=headers
+se quote-inject-head=%% quote-inject-tail=%% quote=headers
 reply
 b5
 !.
-set quote quote-inject-head=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n' \
+se quote quote-inject-head=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n' \
 	quote-inject-tail=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n'
 reply
 b6
 !.
-set showname datefield=%y nodatefield-markout-older indentprefix=\ :
+se showname datefield=%y nodatefield-markout-older indentprefix=\ :
 reply
 b7
 !.
@@ -7190,42 +7770,42 @@ t_forward() { #{{{
 		</dev/null ${MAILX} ${ARGS} -Rf -Y ${1}' . "du <ex1@am.ple>"
 b1
 ~.
-		echo 1:$?/$^ERRNAME; echoerr 1:done
-		set fullnames escape=!
+		ec "1:$?/$^ERRNAME"; echoerr 1:done
+		se fullnames escape=!
 		'${1}' 1 "du <ex2@am.ple>"
 b2 fullnames
 !.
-		echo 2:$?/$^ERRNAME; echoerr 2:done
+		ec "2:$?/$^ERRNAME"; echoerr 2:done
 		# Some errors
-		set nofullnames ea=$expandaddr expandaddr=-all
+		se nofullnames ea=$expandaddr expandaddr=-all
 		'${1}' ` "du <ex3@am.ple>"
 b3
 !.
-		echo 3:$?/$^ERRNAME; echoerr 3:done
-		set expandaddr=$ea
+		ec "3:$?/$^ERRNAME"; echoerr 3:done
+		se expandaddr=$ea
 		'${1}' ` ex4-nono@am.ple ex4@am.ple # the first is a non-match msglist
 b4
 !.
-		echo 4:$?/$^ERRNAME; echoerr 4:done
+		ec "4:$?/$^ERRNAME"; echoerr 4:done
 		'${1}' # TODO not yet possible b5 !.
-		echo 5:$?/$^ERRNAME; echoerr 5:done
-		set expandaddr=$ea
+		ec "5:$?/$^ERRNAME"; echoerr 5:done
+		se expandaddr=$ea
 		'${1}' 1 2 ex6@am.ple
 b6-1
 !.
 b6-2
 !.
-		echo 6:$?/$^ERRNAME; echoerr 6:done
-		set forward-add-cc fullnames
+		ec "6:$?/$^ERRNAME"; echoerr 6:done
+		se forward-add-cc fullnames
 		'${1}' . ex7@am.ple
 b7
 !.
-		echo 7:$?/$^ERRNAME; echoerr 7:done
-		set nofullnames
+		ec "7:$?/$^ERRNAME"; echoerr 7:done
+		se nofullnames
 		'${1}' . ex8@am.ple
 b8
 !.
-		echo 8:$?/$^ERRNAME; echoerr 8:done
+		ec "8:$?/$^ERRNAME"; echoerr 8:done
 		#' \
 			"${MBOX}" > ./.tall 2>${EX}
 		return ${?}
@@ -7247,16 +7827,16 @@ b8
 		'${1}' 1 ex1@am.ple
 b1
 !.
-		echo 1:$?/$^ERRNAME; set record=.trec'${2}'; '${1}' 1 ex2@am.ple
+		ec "1:$?/$^ERRNAME"; se record=.trec'${2}'; '${1}' 1 ex2@am.ple
 b2
 !.
-		echo 2:$?/$^ERRNAME; set outfolder norecord; '${1}' 2 ex1@am.ple
+		ec "2:$?/$^ERRNAME"; se outfolder norecord; '${1}' 2 ex1@am.ple
 b3
 !.
-		echo 3:$?/$^ERRNAME; set record=.trec'${2}'; '${1}' 2 ex2@am.ple
+		ec "3:$?/$^ERRNAME"; se record=.trec'${2}'; '${1}' 2 ex2@am.ple
 b4
 !.
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
 		cke0 ${2} 0 ./.tall '3180366037 1212'
@@ -7344,22 +7924,22 @@ t_resend() { #{{{
 	#{{{ Base
 	t_it() {
 		</dev/null ${MAILX} ${ARGS} -Rf -Y ${1}' . "du <ex1@am.ple>"
-		echo 1:$?/$^ERRNAME; echoerr 1:done
-		set fullnames escape=!
+		ec "1:$?/$^ERRNAME"; echoerr 1:done
+		se fullnames escape=!
 		'${1}' 1 "du , da <ex2@am.ple>"
-		echo 2:$?/$^ERRNAME; echoerr 2:done
+		ec "2:$?/$^ERRNAME"; echoerr 2:done
 		# Some errors
-		set nofullnames ea=$expandaddr expandaddr=-all
+		se nofullnames ea=$expandaddr expandaddr=-all
 		'${1}' ` "du <ex3@am.ple>"
-		echo 3:$?/$^ERRNAME; echoerr 3:done
-		set expandaddr=$ea
+		ec "3:$?/$^ERRNAME"; echoerr 3:done
+		se expandaddr=$ea
 		'${1}' ` ex4-nono@am.ple ex4@am.ple # the first is a non-match msglist
-		echo 4:$?/$^ERRNAME; echoerr 4:done
+		ec "4:$?/$^ERRNAME"; echoerr 4:done
 		'${1}' # TODO not yet possible b5 !.
-		echo 5:$?/$^ERRNAME; echoerr 5:done
-		set expandaddr=$ea
+		ec "5:$?/$^ERRNAME"; echoerr 5:done
+		se expandaddr=$ea
 		'${1}' 1 2 ex6@am.ple
-		echo 6:$?/$^ERRNAME; echoerr 6:done
+		ec "6:$?/$^ERRNAME"; echoerr 6:done
 		#' \
 			"${MBOX}" > ./.tall 2>${EX}
 		return ${?}
@@ -7377,11 +7957,11 @@ t_resend() { #{{{
 
 	t_it() {
 		</dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=$(${pwd})/.tfolder -Y '#
-		set record=.trec'${2}'; '${1}' 1 ex1@am.ple
-		echo 1:$?/$^ERRNAME; set record-resent; '${1}' 1 ex2@am.ple
-		echo 2:$?/$^ERRNAME; set outfolder norecord-resent; '${1}' 2 ex1@am.ple
-		echo 3:$?/$^ERRNAME; set record-resent; '${1}' 2 ex2@am.ple
-		echo 4:$?/$^ERRNAME
+		se record=.trec'${2}'; '${1}' 1 ex1@am.ple
+		ec "1:$?/$^ERRNAME"; se record-resent; '${1}' 1 ex2@am.ple
+		ec "2:$?/$^ERRNAME"; se outfolder norecord-resent; '${1}' 2 ex1@am.ple
+		ec "3:$?/$^ERRNAME"; se record-resent; '${1}' 2 ex2@am.ple
+		ec "4:$?/$^ERRNAME"
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
 		ck_ex0 ${2}
@@ -7496,19 +8076,19 @@ t_copy() { #{{{
 	</dev/null ${MAILX} ${ARGS} -f -Y '#
 	headers
 	copy 10 .tf1
-	echo 0:$?/$^ERRNAME
+	ec "0:$?/$^ERRNAME"
 	headers
 	copy .tf1
-	echo 1:$?/$^ERRNAME
+	ec "1:$?/$^ERRNAME"
 	headers
 	copy .tf1 # no auto-advance
-	echo 2:$?/$^ERRNAME
+	ec "2:$?/$^ERRNAME"
 	headers
 	copy 2 .tf2
-	echo 3:$?/$^ERRNAME
+	ec "3:$?/$^ERRNAME"
 	headers
 	copy 1 2 .tf3
-	echo 4:$?/$^ERRNAME
+	ec "4:$?/$^ERRNAME"
 	headers
 	#' "${MBOX}" > ./.tall 2>${EX}
 	#}}}
@@ -7523,7 +8103,7 @@ t_copy() { #{{{
 		${chmod} 0444 .tf3
 		</dev/null ${MAILX} ${ARGS} -f -Y '#
 			copy 1 2 .tf3
-			echo 5:$?/$^ERRNAME' "${MBOX}" > ./.tall 2>${EX}
+			ec "5:$?/$^ERRNAME"' "${MBOX}" > ./.tall 2>${EX}
 		ck 2-5 - ./.tall '1553358948 10' '2555077523 32'
 	else
 		t_echoskip '[!2-5:!READONLY-AWARE-FS/USER]'
@@ -7542,19 +8122,19 @@ t_copy() { #{{{
 		</dev/null ${MAILX} ${ARGS} -f -Y "${3}"'
 		'"${2}"'
 		Copy
-		echo 1:$?/$^ERRNAME
+		ec "1:$?/$^ERRNAME"
 		'"${2}"'
 		Copy
-		echo 2:$?/$^ERRNAME
+		ec "2:$?/$^ERRNAME"
 		'"${2}"'
 		Copy 2
-		echo 3:$?/$^ERRNAME
+		ec "3:$?/$^ERRNAME"
 		'"${2}"'
 		Copy 3
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		'"${2}"'
 		Copy *
-		echo 5:$?/$^ERRNAME
+		ec "5:$?/$^ERRNAME"
 		'"${2}"'
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
@@ -7585,17 +8165,17 @@ t_copy() { #{{{
 
 	t_it() {
 		<< '__EOT' ${MAILX} ${ARGS} -Sarg="${1}" -Rf ./.tmbox > ./.tall 2>${E0}
-eval $arg
-echo 1:$?/$^ERRNAME
+eval "$arg"
+ec "1:$?/$^ERRNAME"
 headerpick save retain cc date from subject to
-eval $arg
-echo 2:$?/$^ERRNAME
+eval "$arg"
+ec "2:$?/$^ERRNAME"
 unheaderpick save retain *
-eval $arg
-echo 3:$?/$^ERRNAME
+eval "$arg"
+ec "3:$?/$^ERRNAME"
 headerpick save ignore status in-reply-to
-eval $arg
-echo 4:$?/$^ERRNAME
+eval "$arg"
+ec "4:$?/$^ERRNAME"
 __EOT
 		return ${?}
 	}
@@ -7627,19 +8207,19 @@ t_save() { #{{{
 	</dev/null ${MAILX} ${ARGS} -f -Y '#
 	headers
 	save 10 .tf1
-	echo 0:$?/$^ERRNAME
+	ec "0:$?/$^ERRNAME"
 	headers
 	save .tf1
-	echo 1:$?/$^ERRNAME
+	ec "1:$?/$^ERRNAME"
 	headers
 	save .tf1 # no auto-advance
-	echo 2:$?/$^ERRNAME
+	ec "2:$?/$^ERRNAME"
 	headers
 	save 2 .tf2
-	echo 3:$?/$^ERRNAME
+	ec "3:$?/$^ERRNAME"
 	headers
 	save 1 2 .tf3
-	echo 4:$?/$^ERRNAME
+	ec "4:$?/$^ERRNAME"
 	headers
 	#' "${MBOX}" > ./.tall 2>${EX}
 	#}}}
@@ -7654,7 +8234,7 @@ t_save() { #{{{
 		${chmod} 0444 .tf3
 		</dev/null ${MAILX} ${ARGS} -f -Y '#
 			save 1 2 .tf3
-			echo 5:$?/$^ERRNAME
+			ec "5:$?/$^ERRNAME"
 			#' "${MBOX}" > ./.tall 2>${EX}
 		ck 2-5 - ./.tall '1553358948 10' '2555077523 32'
 	else
@@ -7674,19 +8254,19 @@ t_save() { #{{{
 		</dev/null ${MAILX} ${ARGS} -f -Y "${3}"'
 		'"${2}"'
 		Save
-		echo 1:$?/$^ERRNAME
+		ec "1:$?/$^ERRNAME"
 		'"${2}"'
 		Save
-		echo 2:$?/$^ERRNAME
+		ec "2:$?/$^ERRNAME"
 		'"${2}"'
 		Save 2
-		echo 3:$?/$^ERRNAME
+		ec "3:$?/$^ERRNAME"
 		'"${2}"'
 		Save 3
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		'"${2}"'
 		Save *
-		echo 5:$?/$^ERRNAME
+		ec "5:$?/$^ERRNAME"
 		'"${2}"'
 		#' \
 			"${MBOX}" > ./.tall 2>${E0}
@@ -7722,18 +8302,18 @@ t_save() { #{{{
 		[ ${#} -gt 3 ] && a="${a}"' -S inbox=./.tmbox -Snohold -Snokeep -Snokeepsave'
 		<< '__EOT' ${MAILX} ${ARGS} -Sarg="${2}" -f ${a} ./.tmbox > ./.tall 2>${E0}
 headers
-eval $arg
-echo 1:$?/$^ERRNAME
+eval "$arg"
+ec "1:$?/$^ERRNAME"
 headers
 headerpick save retain cc date from subject to
-eval $arg
-echo 2:$?/$^ERRNAME
+eval "$arg"
+ec "2:$?/$^ERRNAME"
 unheaderpick save retain *
-eval $arg
-echo 3:$?/$^ERRNAME
+eval "$arg"
+ec "3:$?/$^ERRNAME"
 headerpick save ignore status in-reply-to
-eval $arg
-echo 4:$?/$^ERRNAME
+eval "$arg"
+ec "4:$?/$^ERRNAME"
 __EOT
 		return ${?}
 	}
@@ -7782,13 +8362,13 @@ t_move() { #{{{
 	</dev/null ${MAILX} ${ARGS} -f -Y '#
 	headers
 	move 10 .tf1
-	echo 0:$?/$^ERRNAME
+	ec "0:$?/$^ERRNAME"
 	headers
 	move .tf1
-	echo 1:$?/$^ERRNAME
+	ec "1:$?/$^ERRNAME"
 	headers
 	move 2 .tf2
-	echo 2:$?/$^ERRNAME
+	ec "2:$?/$^ERRNAME"
 	headers
 	#' "${MBOX}" > ./.tall 2>${EX}
 	#}}}
@@ -7802,7 +8382,7 @@ t_move() { #{{{
 		${chmod} 0444 .tf2
 		</dev/null ${MAILX} ${ARGS} -f -Y '#
 			move 1 .tf2
-			echo 3:$?/$^ERRNAME
+			ec "3:$?/$^ERRNAME"
 			#' -R ./.tf1 > ./.tall 2>${EX}
 		ck 2-4 - ./.tall '1090472814 10' '417055732 32'
 	else
@@ -7822,19 +8402,19 @@ t_move() { #{{{
 		</dev/null ${MAILX} ${ARGS} -f -Y "${3}"'
 		'"${2}"'
 		Move
-		echo 1:$?/$^ERRNAME
+		ec "1:$?/$^ERRNAME"
 		'"${2}"'
 		Move 2
-		echo 2:$?/$^ERRNAME
+		ec "2:$?/$^ERRNAME"
 		'"${2}"'
 		Move 3
-		echo 3:$?/$^ERRNAME
+		ec "3:$?/$^ERRNAME"
 		'"${2}"'
 		undelete *
-		echo 4:$?/$^ERRNAME
+		ec "4:$?/$^ERRNAME"
 		'"${2}"'
 		Move *
-		echo 5:$?/$^ERRNAME
+		ec "5:$?/$^ERRNAME"
 		'"${2}"'
 		#' \
 			"${MBOX}" > ./.tall 2>${EX}
@@ -7865,17 +8445,17 @@ t_move() { #{{{
 
 	t_it() {
 		<< '__EOT' ${MAILX} ${ARGS} -Sarg="${1}" -Rf ./.tmbox > ./.tall 2>${E0}
-eval $arg
-echo 1:$?/$^ERRNAME
+eval "$arg"
+ec "1:$?/$^ERRNAME"
 headerpick save retain cc date from subject to
-eval $arg
-echo 2:$?/$^ERRNAME
+eval "$arg"
+ec "2:$?/$^ERRNAME"
 unheaderpick save retain *
-eval $arg
-echo 3:$?/$^ERRNAME
+eval "$arg"
+ec "3:$?/$^ERRNAME"
 headerpick save ignore status in-reply-to
-eval $arg
-echo 4:$?/$^ERRNAME
+eval "$arg"
+ec "4:$?/$^ERRNAME"
 __EOT
 		return ${?}
 	}
@@ -8138,7 +8718,7 @@ t_maildir() { #{{{
 	cke0 1 0 "${MBOX}" '2366902811 13332'
 
 	<< '__EOT' ${MAILX} ${ARGS} -Sarg="${MBOX}" -Snewfolders=maildir -Sshowlast > .tlst 2>${E0}
-eval File $arg
+eval File "$arg"
 copy * .tmdir1
 File .tmdir1
 from*
@@ -8148,7 +8728,7 @@ __EOT
 	ck_ex0 2-isdircpl ${?}
 
 	<< '__EOT' ${MAILX} ${ARGS} -Sarg="${MBOX}" -Sshowlast > .tlst 2>${E0}
-File $arg
+File "$arg"
 copy * maildir://.tmdir2
 File maildir://.tmdir2
 from*
@@ -8236,7 +8816,7 @@ __EOT
 File ./.tinv1
 sort date
 copy * maildir://./.tmdir10
-eval !{ for f in ./.tmdir10/new/*\; do echo ===\; $cat \$f\; done\; } > ./.t11
+eval !{ for f in ./.tmdir10/new/*\; do echo ===\; "$cat" \$f\; done\; } > ./.t11
 File ./.tmdir10
 sort date
 copy * ./.t10warp
@@ -8909,7 +9489,7 @@ __EOT
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
-commandalias x echo '$?/$^ERRNAME'
+commandalias x echo '"$?/$^ERRNAME"'
 ec 1
 alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
 a a:bra!; x
@@ -9020,7 +9600,7 @@ t_charsetalias() { #{{{
 
 	#{{{
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME'
+	commandalias x echo '"$?/$^ERRNAME"'
 	echo 1
 	charsetalias latin1 latin15;x
 	charsetalias latin1;x
@@ -9052,7 +9632,7 @@ t_shortcut() { #{{{
 
 	#{{{
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME'
+	commandalias x echo '"$?/$^ERRNAME"'
 	echo 1
 	shortcut file1 expansion-of-file1;x
 	shortcut file2 expansion-of-file2;x
@@ -9116,14 +9696,14 @@ netrc loo x.local
 netrc loo y.local
 netrc loo z.local
 ec ==(re)load cache
-netrc load;ec $?/$^ERRNAME
+netrc load;ec "$?/$^ERRNAME"
 ec ==usr@host
 netrc loo a1@x.local
 netrc loo a2@x.local
 netrc loo a3@x.local
 netrc loo a4@x.local
 ec ==clear cache
-netrc clear;echo $?/$^ERRNAME
+netrc clear;ec "$?/$^ERRNAME"
 ec ==usr@x.host
 netrc loo a2@pop.x.local
 netrc loo a2@imap.x.local
@@ -9155,73 +9735,73 @@ t_states_and_primary_secondary() { #{{{
 
 	#{{{
 	${cat} << '__EOT' > ./t.p
-commandalias x ec '$?/$^ERRNAME'
-\if ! [ -N hold && -N keep && -N keepsave ]; \xit 100; \end
+commandalias x ec '"$?/$^ERRNAME"'
+\if ! [ -N hold && -N keep && -N keepsave ]; \xit 100; \en
 ! > ./t.rash
 >cwd cwd # TODO v15-compat so that maildir:// can be tested <> MBOX relative path!
-set MBOX=$p://$cwd/t-mbox.$p noinbox
-\if $f == %; \set inbox=$p://t.$p; \end
+se MBOX=$p://$cwd/t-mbox.$p noinbox
+if $f == %; se inbox="$p://t.$p"; en
 Fi ./t.tpl;x
-c * $p://t.$p;x
-eval i $o t.$p;ec y;el;ec n;en
+c * "$p://t.$p"; x
+eval i "$o" "t.$p"; ec y; el; ec n; en
 #
 ec =N
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
-fi $f;x;fi
+fi "$f";x;fi
 h;x
 Fi nix
 #
 ec =U
-fi $f;x;fi
+fi "$f";x;fi
 h;x
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
 Fi nix
 #
 ec =-hold
 unset hold
-fi $f;x;fi
+fi "$f";x;fi
 h;x
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
 Fi nix
 #
 ec =state
-fi $f;x
+fi "$f";x
 h;x
 mbox 1;x # (is default)
 copy 2 ./t.rash;x
 Fi nix
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
 Fi &;fi
 h;x
 Fi nix
 #
 ec =save
-fi $f;x;fi
-s ./t-save.$p;x
+fi "$f";x;fi
+s "./t-save.$p";x
 h;x
 ec empty!
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
 Fi &;fi
 h;x
-Fi ./t-save.$p;fi
+Fi "./t-save.$p";fi
 h;x
 Fi nix
 #
 #
 ec =refill,nokeepsave
 Fi ./t.tpl;x
-c * $p://t.$p;x
+c * "$p://t.$p";x
 unset keepsave
-fi $f;x;fi
+fi "$f";x;fi
 h;x
 s * &;x
 h;x
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
 Fi &;fi
 h;x
@@ -9230,12 +9810,12 @@ Fi nix
 #
 ec =refill,hold
 Fi ./t.tpl;x
-c * $p://t.$p;x
+c * "$p://t.$p";x
 set hold
-fi $f;x;fi
+fi "$f";x;fi
 s * &;x
 h;x
-Fi $f;x;fi
+Fi "$f";x;fi
 h;x
 Fi &;fi
 h;x
@@ -9244,15 +9824,15 @@ Fi nix
 #
 ec =refill,nohold,nokeep
 Fi ./t.tpl;x
-c * $p://t.$p;x
+c * "$p://t.$p";x
 unset hold keep
-fi $f;x;fi
+fi "$f";x;fi
 s * &;x
 h;x
 Fi &;fi
 h;x
 Fi nix
-eval i $o t.$p;ec n;el;ec y;en
+eval i "$o" "t.$p";ec n;el;ec y;en
 __EOT
 	#}}}
 
@@ -9296,16 +9876,16 @@ __EOT
 
 # TODO`seen' for "states" test above
 	# touch,mbox,hold,preserve {{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t5 2>${EX}
-\if ! -N hold; \xit 100; \end
-commandalias x ec '$?/$^ERRNAME'
+	${cat} << '__EOT' | ${MAILX} ${ARGS} > ./t5 2>${EX}
+\if ! -N hold; \xit 100; \en
+commandalias x ec '"$?/$^ERRNAME"'
 ec =1;set MBOX=./t5-2m;Fi ./t.tpl;x;c * ./t5-2;x;fi ./t5-2;x;tou 1;x;mb 2;x;ho 3;x;pre 3;x;Fi nix
 ec =2;set MBOX=./t5-3m;Fi ./t.tpl;x;c * ./t5-3;x;fi %:./t5-3;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
-ec =3;set MBOX=./t5-4m inbox=./t5-4;Fi ./t.tpl;x;c * $inbox;x;fi %;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
+ec =3;set MBOX=./t5-4m inbox=./t5-4;Fi ./t.tpl;x;c * "$inbox";x;fi %;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
 set nohold noinbox
 ec =4;set MBOX=./t5-5m;Fi ./t.tpl;x;c * ./t5-5;x;fi %:./t5-5;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
-ec =5;set MBOX=./t5-6m inbox=./t5-6;Fi ./t.tpl;x;c * $inbox;x;fi %;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
-	__EOT
+ec =5;set MBOX=./t5-6m inbox=./t5-6;Fi ./t.tpl;x;c * "$inbox";x;fi %;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
+__EOT
 	#}}}
 	ck 5-1 0 ./t5 '474585476 594' '1800982073 209'
 	ck 5-2 - ./t5-2 '2981580159 962'; [ -f ./t5-2m ]; ck_exx 5-2m
@@ -9366,7 +9946,7 @@ h
 	#{{{
 	${cp} ./t.tpl ./t.tpl.mod
 	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -f ./t.tpl.mod > ./t2 2>${EX}
-commandalias x echo '$?/$^ERRNAME'
+commandalias x echo '"$?/$^ERRNAME"'
 ec 1,`,`
 sea 1;x
 sea `;x
@@ -9477,7 +10057,7 @@ sea :d;x
 	if have_feat regex; then
 		#{{{
 		${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t3 2>${E0}
-commandalias x echo '$?/$^ERRNAME'
+commandalias x echo '"$?/$^ERRNAME"'
 ec @
 sea @hey.*@;x
 sea @~t@'e[123]@a|to[13]@exam\.ple';x
@@ -9880,32 +10460,32 @@ t_mta_aliases() { #{{{
 se expandaddr=-name
 mail a1
 !c a2
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !^header insert bcc a3
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !:se expandaddr
 !t a1
 !c a2
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !^h i bcc a3
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !.
 ec and, once again, check that cache is updated
 # Enclose one pipe in quotes: immense stress for our stupid address parser:(
-eval !echo \"a10:./t.f1,|$cat>./t.p1,\\\"|$cat > ./t.p2\\\",./t.f2\" >> ./t.ali
+eval !echo \"a10:./t.f1,|"$cat">./t.p1,\\\"|"$cat" > ./t.p2\\\",./t.f2\" >> ./t.ali
 mtaaliases load
 mail a1
 !c a2
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !^h i bcc a3
-!:echo $?/$^ERRNAME
+!:echo "$?/$^ERRNAME"
 !.
 ec trigger happiness
 mail a1
 !c a2
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !^h i bcc "a3 a10"
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !.
 __EOT
 	#}}}
@@ -10659,8 +11239,8 @@ t_alternates() { #{{{
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
-commandalias x ec '$?/$^ERRNAME'
-commandalias y ec '$?/$^ERRNAME <$rv>'
+commandalias x ec '"$?/$^ERRNAME"'
+commandalias y ec '"$?/$^ERRNAME <$rv>"'
 ec --0
 alt;x
 alt a1@b1 a2@b2 a3@b3;x
@@ -11403,33 +11983,33 @@ ec --two
 ! > ./t4
 File ./t4
 ec --three
-dig 1 h; ec $?/$^ERRNAME
-dig c -; ec $?/$^ERRNAME
+dig 1 h; ec "$?/$^ERRNAME"
+dig c -; ec "$?/$^ERRNAME"
 ec ==========
-eval ! $cat ./t3 > ./t5
-eval ! $sed \"s/This subject is/There subject was/\" < ./t3 >> ./t5
+eval ! "$cat" ./t3 > ./t5
+eval ! "$sed" \"s/This subject is/There subject was/\" < ./t3 >> ./t5
 File ./t5
 mail nowhere@exam.ple
 !:ec ===1
-!:dig c -; ec $?/$^ERRNAME; dig c 1; ec $?/$^ERRNAME; dig c 2; ec $?/$^ERRNAME
+!:dig c -; ec "$?/$^ERRNAME"; dig c 1; ec "$?/$^ERRNAME"; dig c 2; ec "$?/$^ERRNAME"
 !:ec ===2.1
-!:dig - h l;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:dig - h l;ec "$?/$^ERRNAME";readall d;ec "$?/$^ERRNAME <$d>"
 !:ec =2.2
-!:dig 1 h l;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:dig 1 h l;ec "$?/$^ERRNAME";readall d;ec "$?/$^ERRNAME <$d>"
 !:ec =2.3
 !^ h l
 !:ec =2.4
-!:dig 2 h l;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:dig 2 h l;ec "$?/$^ERRNAME";readall d;ec "$?/$^ERRNAME <$d>"
 !:ec ===3.1
-!:dig - h s to;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:dig - h s to;ec "$?/$^ERRNAME";readall d;ec "$?/$^ERRNAME <$d>"
 !:ec =3.2
-!:dig 1 h s subject;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:dig 1 h s subject;ec "$?/$^ERRNAME";readall d;ec "$?/$^ERRNAME <$d>"
 !:ec =3.3
 !^ h s to
 !:ec =3.4
-!:dig 2 h s subject;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:dig 2 h s subject;ec "$?/$^ERRNAME";readall d;ec "$?/$^ERRNAME <$d>"
 !:ec ==4.1
-!:dig r -; ec $?/$^ERRNAME; dig r 1; ec $?/$^ERRNAME; dig r 2; ec $?/$^ERRNAME
+!:dig r -; ec "$?/$^ERRNAME"; dig r 1; ec "$?/$^ERRNAME"; dig r 2; ec "$?/$^ERRNAME"
 !x
 ec ======= new game new fun!
 mail one@to.invalid
@@ -11437,19 +12017,19 @@ mail one@to.invalid
 !:se expandaddr=-name
 !:ec -one
 !^ h i to two@to.invalid
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !:ec --two
 !^ h i cc no-name-allowed
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !^ h i cc one@cc.invalid
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !:ec --three
 !:alias abcc one@bcc.invalid
 !^ h i bcc abcc
-!:ec $?/$^ERRNAME
+!:ec "$?/$^ERRNAME"
 !:se expandaddr=+addr
 !^ h i bcc abcc
-!:ec $!/$?/$^ERRNAME
+!:ec "$!/$?/$^ERRNAME"
 !.
 ec ======= in-mem
 mail one@to.invalid
@@ -11457,19 +12037,19 @@ mail one@to.invalid
 !:se expandaddr=-name
 !:ec -one
 !^^ h i to two@to.invalid
-!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME"
 !:ec --two
 !^^ h i cc no-name-allowed
-!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME"
 !^^ h i cc one@cc.invalid
-!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME"
 !:ec --three
 !:alias abcc one@bcc.invalid
 !^^ h i bcc abcc
-!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME"
 !:se expandaddr=+addr
 !^^ h i bcc abcc
-!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME"
 !.
 ec --bye
 __EOT
@@ -11520,7 +12100,7 @@ ec "back !<$!> ?<$?> xy<$xy>"
 #
 dig c 1 ^
 dig 1 h show to
-ec \#=$^# 0<$^0> 1<$^1> 2<$^2> 3<$^3> *<$^*> !=$! ?=$?
+ec "#=$^# 0<$^0> 1<$^1> 2<$^2> 3<$^3> *<$^*> !=$! ?=$?"
 dig r 1
 __EOT
 	#}}}
@@ -11542,7 +12122,7 @@ xit
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -Y '#
-commandalias x \ec '"'"'--- $?/$^ERRNAME, '"'"'
+commandalias x \ec \"--- \$?/\$^ERRNAME,\"
 ec ==1
 dig c 1 -;x 1; dig 1 h; x 2
 headerpick create t;x 3
@@ -11555,7 +12135,7 @@ headerpick t retain date subject to; x 13
 dig 1 h headerp t; dig 1 h; dig r 1; x 14
 headerpick remove t;x 15
 #
-commandalias x \ec '"'"'--- $^#/$^0/<$^1> $?/$^ERRNAME, '"'"'
+commandalias x \ec \"--- \$^#/\$^0/<\$^1> \$?/\$^ERRNAME,\"
 ec ==20
 dig c 1 ^;x 21; dig 1 h;x 22
 headerpick create t;x 23
@@ -11578,17 +12158,17 @@ mail l@d
 !s This subject is
 This body is
 !:digmsg - header insert h1 $'b\n1\t\a2\n'
-!:ec ^#=$^# ^0<$^0> ^1<$^1> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> $?/$^ERRNAME"
 !^^ h i h2 $'b\n31\t\a4\n'
-!:ec ^#=$^# ^0<$^0> ^1<$^1> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> $?/$^ERRNAME"
 !^ h i h2 $'b\n5\t\a6\n'
 !:ec 501
 !^^ h i h2 $'b\n7\t8\n'
-!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec "^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME"
 !.
 ec ou
 __EOT
-	cke0 10 0 ./t10 '2918013860 146'
+	cke0 10 0 ./t10 '118680374 145'
 	ck 11 - ./t11 '2967121016 122'
 
 	t_epilog "${@}"
@@ -11923,9 +12503,9 @@ define bail {
 	xit
 }
 define x {
-	if $1 -ne $2; xcall bail "$3: $1!=$2"; el; ec $3: ok; en
+	if $1 -ne $2; xcall bail "$3: $1!=$2"; el; ec "$3": ok; en
 }
-commandali x 'ec $^0=$^#="$^@"; \call x $^0'
+commandali x 'ec "$^0=$^#=$^@"; \call x $^0'
 define ia {
 	local se xh=$1 mls=$2
 	if -z "$mls"; se mls=211; en
@@ -12182,9 +12762,9 @@ define t_ocm {
 	!:call t_attach
 	oce=
 	!^^h
-	!:ec $^0: $^*
+	!:ec "$^0: $^*"
 	!^^a
-	!:ec $^0: $^*
+	!:ec "$^0: $^*"
 	!p
 	oce<
 }
@@ -12253,7 +12833,7 @@ __EOT
 		MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sescape=! -Sstealthmua=noagent -Smta=test://tm2 \
 			-St_remove=1 > ./tm2.out 2>${E0}
 	cke0 m2 0 ./tm2 '161605867 167'
-	ck m2-out - ./tm2.out '3179236083 25546'
+	ck m2-out - ./tm2.out '1305538478 25702'
 
 	## OLD v15-compat
 
@@ -12267,7 +12847,7 @@ define xerr {
 	if "$es" -ne 2; xcall bail "$2: $1"; en
 }
 define read_mline_res {
-	readsh hl; set len=$? es=$! en=$^ERRNAME; ec $len/$es/$^ERRNAME: $hl
+	readsh hl; set len=$? es=$! en=$^ERRNAME; ec "$len/$es/$^ERRNAME: $hl"
 	if $es -ne $^ERR-NONE; xcall bail read_mline_res
 	eli $len -ne 0; \xcall read_mline_res
 	en
@@ -12569,7 +13149,7 @@ define t_oce {
 	alternates
 	set autocc='alter1@exam.ple autocc'
 	alias autocc alter2@exam.ple
-	digmsg create - -;ec $?/$!/$^ERRNAME;\
+	digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea list;\
 		digmsg - hea show mailX-command;\
 		digmsg - hea show sUbject;\
@@ -12584,10 +13164,10 @@ define t_oce {
 		digmsg - hea show mailx-orig-tO;\
 		digmsg - hea show mailx-orig-Cc;\
 		digmsg - hea show mailx-oriG-bcc;\
-		digmsg remove -;ec $?/$!/$^ERRNAME
-	digmsg create -;ec $?/$!/$^ERRNAME;\
-		digmsg - hea list;readall x;echon $x;\
-		digmsg remove -;ec $?/$!/$^ERRNAME
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
+	digmsg create -;ec "$?/$!/$^ERRNAME";\
+		digmsg - hea list;readall x;echon "$x";\
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
 }
 define t_ocl {
 	ec on-compose-leave
@@ -12597,7 +13177,7 @@ define t_ocl {
 	set autobcc=autobcc
 	alias autobcc alter3@exam.ple alter4@exam.ple # always metoo in Bcc:!
 	alternates
-	digmsg create - -;ec $?/$!/$^ERRNAME;\
+	digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea list;\
 		digmsg - hea show mailX-command;\
 		digmsg - hea show sUbject;\
@@ -12612,16 +13192,16 @@ define t_ocl {
 		digmsg - hea show mailx-orig-tO;\
 		digmsg - hea show mailx-orig-Cc;\
 		digmsg - hea show mailx-oriG-bcc;\
-		digmsg remove -;ec $?/$!/$^ERRNAME
-	digmsg create -;ec $?/$!/$^ERRNAME;\
-		digmsg - hea list;readall x;echon $x;\
-		digmsg remove -;ec $?/$!/$^ERRNAME
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
+	digmsg create -;ec "$?/$!/$^ERRNAME";\
+		digmsg - hea list;readall x;echon "$x";\
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
 }
 define t_occ {
 	ec on-compose-cleanup
 	unalternates *
 	alternates
-	# XXX error message variable digmsg create - -;ec $?/$!/$^ERRNAME;\
+	# XXX error message variable digmsg create - -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea list;\
 		digmsg - hea show mailX-command;\
 		digmsg - hea show sUbject;\
@@ -12636,10 +13216,10 @@ define t_occ {
 		digmsg - hea show mailx-orig-tO;\
 		digmsg - hea show mailx-orig-Cc;\
 		digmsg - hea show mailx-oriG-bcc;\
-		digmsg remove -;ec $?/$!/$^ERRNAME
-	# ditto digmsg create -;ec $?/$!/$^ERRNAME;\
-		digmsg - hea list;readall x;echon $x;\
-		digmsg remove -;ec $?/$!/$^ERRNAME
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
+	# ditto digmsg create -;ec "$?/$!/$^ERRNAME";\
+		digmsg - hea list;readall x;echon "$x";\
+		digmsg remove -;ec "$?/$!/$^ERRNAME"
 }
 set on-compose-splice=t_ocs \
 	on-compose-enter=t_oce on-compose-leave=t_ocl \
@@ -12651,13 +13231,13 @@ __EOT__
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://t1 > ./t1-x 2>${E0}
 	ck_ex0 1-estat
 	${cat} ./t1-x >> ./t1
-	cke0 1 - ./t1 '3586279020 10382'
+	cke0 1 - ./t1 '3222895007 10351'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -St_remove=1 -X'source ./t.rc' -Smta=test://t2 > ./t2-x 2>${E0}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> ./t2
-	cke0 2 - ./t2 '1033439970 12630'
+	cke0 2 - ./t2 '2486820557 12570'
 
 	##
 
@@ -12677,7 +13257,7 @@ define xerr {
 	if "$es" != 2; xcall bail "$2"; en
 }
 define read_mline_res {
-	read hl; set len=$? es=$! en=$^ERRNAME;echo $len/$es/$^ERRNAME: $hl
+	read hl; set len=$? es=$! en=$^ERRNAME;echo "$len/$es/$^ERRNAME: $hl"
 	if $es -ne $^ERR-NONE; xcall bail read_mline_res
 	elif $len -ne 0; \xcall read_mline_res
 	end
@@ -12699,9 +13279,9 @@ define _work {
 	return $i
 }
 define _read {
-	set line; read line;set es=$? en=$^ERRNAME ; echo read:$es/$en: $line
+	set line; read line;set es=$? en=$^ERRNAME ; echo "read:$es/$en: $line"
 	if ${es} -ne -1; xcall _read; end
-	readctl remove $cwd/t.readctl; echo readctl remove:$?/$^ERRNAME
+	readctl remove $cwd/t.readctl; echo "readctl remove:$?/$^ERRNAME"
 }
 define t_ocs {
 	read ver
@@ -12756,7 +13336,7 @@ define t_ocs {
 		i=0;\
 		while [ $i -lt 24 ]; do printf "%s " $i; i=$(expr $i + 1); done;\
 		echo relax
-	echon shell-cmd says $?/$^ERRNAME: $i
+	echon "shell-cmd says $?/$^ERRNAME: $i"
 	echo "~x  will not become interpreted, we are reading until __EOT"
 	echo "__EOT"
 	read r_status; echo "~~r status output: $r_status"
@@ -12767,7 +13347,7 @@ define t_ocs {
 	#
 	call _work 4; echo $?
 	>cwd cwd;echo cwd:$?
-	readctl create $cwd/t.readctl ;echo readctl:$?/$^ERRNAME; call _read
+	readctl create $cwd/t.readctl ;echo "readctl:$?/$^ERRNAME"; call _read
 
 	#
 	call _work 5; echo $?
@@ -12783,7 +13363,7 @@ define t_oce {
 	set t_oce autobcc=oce@exam.ple
 	alternates alter1@exam.ple alter2@exam.ple
 	alternates
-	digmsg create - -;echo $?/$!/$^ERRNAME;\
+	digmsg create - -;echo "$?/$!/$^ERRNAME";\
 		digmsg - header list;\
 		digmsg - header show mailX-command;\
 		digmsg - header show sUbject;\
@@ -12798,7 +13378,7 @@ define t_oce {
 		digmsg - header show mailx-orig-tO;\
 		digmsg - header show mailx-orig-Cc;\
 		digmsg - header show mailx-oriG-bcc;\
-		digmsg remove -;echo $?/$!/$^ERRNAME
+		digmsg remove -;echo "$?/$!/$^ERRNAME"
 }
 define t_ocl {
 	echo on-compose-leave
@@ -12806,7 +13386,7 @@ define t_ocl {
 	unalternates *
 	alternates alter3@exam.ple alter4@exam.ple
 	alternates
-	digmsg create - -;echo $?/$!/$^ERRNAME;\
+	digmsg create - -;echo "$?/$!/$^ERRNAME";\
 		digmsg - header list;\
 		digmsg - header show mailX-command;\
 		digmsg - header show sUbject;\
@@ -12821,14 +13401,14 @@ define t_ocl {
 		digmsg - header show mailx-orig-tO;\
 		digmsg - header show mailx-orig-Cc;\
 		digmsg - header show mailx-oriG-bcc;\
-		digmsg remove -;echo $?/$!/$^ERRNAME
+		digmsg remove -;echo "$?/$!/$^ERRNAME"
 }
 define t_occ {
 	echo on-compose-cleanup
 	set t_occ autocc=occ@exam.ple
 	unalternates *
 	alternates
-	# XXX error message digmsg create - -;echo $?/$!/$^ERRNAME;\
+	# XXX error message digmsg create - -;echo "$?/$!/$^ERRNAME";\
 		digmsg - header list;\
 		digmsg - header show mailX-command;\
 		digmsg - header show sUbject;\
@@ -12843,7 +13423,7 @@ define t_occ {
 		digmsg - header show mailx-orig-tO;\
 		digmsg - header show mailx-orig-Cc;\
 		digmsg - header show mailx-oriG-bcc;\
-		digmsg remove -;echo $?/$!/$^ERRNAME
+		digmsg remove -;echo "$?/$!/$^ERRNAME"
 }
 set on-compose-splice=t_ocs \
 	on-compose-splice-shell="read ver;echo t_ocs-shell;\
@@ -12854,7 +13434,7 @@ set on-compose-splice=t_ocs \
 	#}}}
 	ck_ex0 3-estat
 	${cat} ./t3-x >> ./t3
-	cke0 3 - ./t3 '2390285044 2354'
+	cke0 3 - ./t3 '3042144775 2351'
 
 	# Reply, forward, resend, Resend
 
@@ -12916,7 +13496,7 @@ __EOT
 				if "$es" != 2; xcall bail "$2"; end
 			}
 			define read_mline_res {
-				readsh hl; set len=$? es=$! en=$^ERRNAME;echo \ \ mline_res:$len/$es/$^ERRNAME: $hl
+				readsh hl; set len=$? es=$! en=$^ERRNAME;echo "  mline_res:$len/$es/$^ERRNAME: $hl"
 				if $es -ne $^ERR-NONE
 					xcall bail read_mline_res
 				elif $len -ne 0
@@ -12944,7 +13524,7 @@ __EOT
 			define t_oce {
 				echo on-XY-enter
 				set t_oce autobcc=oce@exam.ple
-				digmsg create - -;echo $?/$!/$^ERRNAME;\
+				digmsg create - -;echo "$?/$!/$^ERRNAME";\
 					digmsg - header list;\
 					digmsg - header show mailX-command;\
 					digmsg - header show sUbject;\
@@ -12959,12 +13539,12 @@ __EOT
 					digmsg - header show mailx-orig-tO;\
 					digmsg - header show mailx-orig-Cc;\
 					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo $?/$!/$^ERRNAME
+					digmsg remove -;echo "$?/$!/$^ERRNAME"
 			}
 			define t_ocl {
 				echo on-XY-leave
 				set t_ocl autocc=ocl@exam.ple
-				digmsg create - -;echo $?/$!/$^ERRNAME;\
+				digmsg create - -;echo "$?/$!/$^ERRNAME";\
 					digmsg - header list;\
 					digmsg - header show mailX-command;\
 					digmsg - header show sUbject;\
@@ -12979,12 +13559,12 @@ __EOT
 					digmsg - header show mailx-orig-tO;\
 					digmsg - header show mailx-orig-Cc;\
 					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo $?/$!/$^ERRNAME
+					digmsg remove -;echo "$?/$!/$^ERRNAME"
 			}
 			define t_occ {
 				echo on-XY-cleanup
 				set t_occ autocc=occ@exam.ple
-				# XXX error message digmsg create - -;echo $?/$!/$^ERRNAME;\
+				# XXX error message digmsg create - -;echo "$?/$!/$^ERRNAME";\
 					digmsg - header list;\
 					digmsg - header show mailX-command;\
 					digmsg - header show sUbject;\
@@ -12999,7 +13579,7 @@ __EOT
 					digmsg - header show mailx-orig-tO;\
 					digmsg - header show mailx-orig-Cc;\
 					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo $?/$!/$^ERRNAME
+					digmsg remove -;echo "$?/$!/$^ERRNAME"
 			}
 			define t_oce_r { # XXX use normal callbacks
 				echo on-resend-enter
@@ -13013,7 +13593,7 @@ __EOT
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
-	ck 4 - ./t4 '3350979868 10060' '1312459649 605'
+	ck 4 - ./t4 '1750465950 10025' '1312459649 605'
 
 	t_epilog "${@}"
 } #}}}
@@ -13028,17 +13608,17 @@ define bail {
 }
 define ins_addr {
 	local set nr=$1 hn=$2
-	ec "~$hn $hn$nr@$hn"; ec '~:echo $?'; read es
+	ec "~$hn $hn$nr@$hn"; ec '~:echo "$?"'; read es
 	i "$es" -ne 0; xcall bail "ins_addr $hn 1-$nr"; en
 	: $((nr += 1))
-	i "$nr" -le "$maximum"; xcall ins_addr $nr $hn;  en
+	i $nr -le $maximum; xcall ins_addr "$nr" "$hn";  en
 }
 define bld_alter {
 	local set nr=$1 hn=$2
-	alternates $hn$nr@$hn
-	alias $hn$((nr + 1))@$hn $hn$nr@$hn
+	alternates "$hn$nr@$hn"
+	alias "$hn$((nr + 1))@$hn" "$hn$nr@$hn"
 	: $((nr += 2))
-	i "$nr" -le "$maximum"; xcall bld_alter $nr $hn; en
+	i $nr -le $maximum; xcall bld_alter "$nr" "$hn"; en
 }
 define t_ocs {
 	local read ver
@@ -13047,7 +13627,7 @@ define t_ocs {
 	call ins_addr 1 b
 }
 define t_ocl {
-	i -n "$t_remove"
+	i -n $t_remove
 		call bld_alter 2 t
 		call bld_alter 1 c
 	en
@@ -13340,7 +13920,7 @@ t_pipe_handlers() { #{{{
 	else
 		# Let us fill in tmpfile, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t5.one-link\n'\
-'eval set $v;echo should be $st_nlink link\nx\n' |
+'eval se "$v";ec "should be $st_nlink link"\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \
 				-S 'pipe-text/plain=?' \
 				-S 'pipe-image/jpeg=?=++?'\
@@ -13358,7 +13938,7 @@ t_pipe_handlers() { #{{{
 
 		# Fill in ourselves, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t6.one-link\n'\
-'eval set $v;echo should be $st_nlink link\nx\n' |
+'eval se "$v";ec "should be $st_nlink link"\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \
 				-S 'pipe-text/plain=?' \
 				-S 'pipe-image/jpeg=?++?'\
@@ -13377,7 +13957,7 @@ t_pipe_handlers() { #{{{
 
 		# And the same, via copiousoutput (fake)
 		printf 'Fi ./t3_7\np\n>v fop stat .t7.one-link\n'\
-'eval set $v;echo should be $st_nlink link\nx\n' |
+'eval se "$v";ec "should be $st_nlink link"\nx\n' |
 			${MAILX} ${ARGS} ${ADDARG_UNI} \
 				-S 'pipe-text/plain=?' \
 				-S 'pipe-image/jpeg=?*++?'\
@@ -13407,14 +13987,14 @@ mimetype application/y-fun x.tar
 mimetype application/y-xfun x
 mimetype application/y-tar  tar
 mimetype application/y-gzip  tgz gz emz
-mimetype ${x} application/x-unix-readme README INSTALL TODO COPYING NEWS
-mimetype ${x} application/x-tar-gz tgz tar.gz
-mimetype ${x} application/x-ma-tar-gz ma.tar.gz
-mimetype ${x} application/x-x-ma-tar-gz x.ma.tar.gz
-mimetype ${x} application/x-fun x.tar
-mimetype ${x} application/x-xfun x
-mimetype ${x} application/x-tar	tar
-mimetype ${x} application/x-gzip  tgz gz emz
+mimetype "${x}" application/x-unix-readme README INSTALL TODO COPYING NEWS
+mimetype "${x}" application/x-tar-gz tgz tar.gz
+mimetype "${x}" application/x-ma-tar-gz ma.tar.gz
+mimetype "${x}" application/x-x-ma-tar-gz x.ma.tar.gz
+mimetype "${x}" application/x-fun x.tar
+mimetype "${x}" application/x-xfun x
+mimetype "${x}" application/x-tar	tar
+mimetype "${x}" application/x-gzip  tgz gz emz
 '
 
 	tfs='README x.gz x.ma.tar.gz x.tar x.tar.gz '\
@@ -13742,17 +14322,17 @@ body2-5
 
 	${MAILX} ${ARGS} -Rf -Y '#
 \top 1
-\echo --- $?/$^ERRNAME, 1; \set toplines=10
+\ec --- "$?/$^ERRNAME", 1; \se toplines=10
 \top 1
-\echo --- $?/$^ERRNAME, 2; \set toplines=5
+\ec --- "$?/$^ERRNAME", 2; \se toplines=5
 \headerpick top retain subject # For top
 \headerpick type retain to subject # For Top
 \top 1
-\echo --- $?/$^ERRNAME, 3; \set topsqueeze
+\ec --- "$?/$^ERRNAME", 3; \se topsqueeze
 \top 1 2
-\echo --- $?/$^ERRNAME, 4
+\ec --- "$?/$^ERRNAME", 4
 \Top 1
-\echo --- $?/$^ERRNAME, 5
+\ec --- "$?/$^ERRNAME", 5
 #	' ./t.mbox > ./t1 2>${E0}
 	cke0 1 0 ./t1 '2556125754 705'
 
@@ -14885,40 +15465,40 @@ t__scope_monster() { #{{{ $NTICK[if set `eval'ed after setup!], $SCOPE[=],$CALL1
 \i -Z CALL1; \se CALL1=call; \en
 \i -Z CALL2; \se CALL2=xcall; \en
 \define bla {
-	\ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
+	\ec "bla: $i y<$y> DEAD<$DEAD> crt<$crt>"
 }
 \define v {
-	\ec in v: $i, y<$y> DEAD<$DEAD> crt<$crt>
+	\ec "in v: $i, y<$y> DEAD<$DEAD> crt<$crt>"
 	\i $((i++)) -gt 3
 		\i $i -eq 5
-			\eval $CALL1 x
+			\eval "$CALL1" x
 		\el
-			\eval $SCOPE $CALL1 x
+			\eval "$SCOPE" "$CALL1" x
 		\en
-		\ec out v: $i, y<$y> DEAD<$DEAD> crt<$crt>
+		\ec "out v: $i, y<$y> DEAD<$DEAD> crt<$crt>"
 	\en
 }
 \define x {
-	\eval $SCOPE se DEAD=d\$i y=y\$i
-	\ec x i=$i y=$y DEAD=$DEAD crt=$crt
+	\eval "$SCOPE" se DEAD=d\$i y=y\$i
+	\ec "x i=$i y=$y DEAD=$DEAD crt=$crt"
 	\i $i -gt 6
-		\eval $CALL2 y
+		\eval "$CALL2" y
 	\el
-		\eval $CALL1 y
+		\eval "$CALL1" y
 	\en
 }
 \define y {
 	\se crt=$i
-	\ec y i=$i y=$y DEAD=$DEAD crt=$crt
-	\eval $SCOPE $CALL2 z
+	\ec "y i=$i y=$y DEAD=$DEAD crt=$crt"
+	\eval "$SCOPE" "$CALL2" z
 }
 \define z {
 	\eval local pp se crt=$((i + 10))
-	\ec z i=$i y=$y DEAD=$DEAD crt=$crt
+	\ec "z i=$i y=$y DEAD=$DEAD crt=$crt"
 }
-\ec 0: SCOPE=$SCOPE CALL1=$CALL1 CALL2=$CALL2; \se i=1
+\ec "0: SCOPE=$SCOPE CALL1=$CALL1 CALL2=$CALL2"; \se i=1
 \ec 1
-\i -Z NTICK; \call v; \el; eval $NTICK; \en
+\i -Z NTICK; \call v; \el; eval "$NTICK"; \en
 \ec 2
 \i -Z NTICK; \call v; \en
 \ec 3
@@ -14927,9 +15507,9 @@ t__scope_monster() { #{{{ $NTICK[if set `eval'ed after setup!], $SCOPE[=],$CALL1
 \i -Z NTICK; \call v; \en
 \call bla
 \i -Z NTICK; \call v; \en
-\ec 4 y=$y DEAD=$DEAD crt=$crt
+\ec "4 y=$y DEAD=$DEAD crt=$crt"
 \i -Z NTICK; \call v; \en
-\ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
+\ec "bye: i=$i y=$y DEAD=$DEAD crt=$crt"
 \i -Z NTICK; \call v; \en
 \xit
 __EOT

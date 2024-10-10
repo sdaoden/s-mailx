@@ -2261,15 +2261,12 @@ a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, BITENUM(u8,a_amv_var_spec
 
 	switch(avst){
 	default:
-	case a_AMV_VST_STAR:{
+	case a_AMV_VST_STAR:
+	case a_AMV_VST_AT:{
 		uz i, j;
 		char sep;
 
-		sep = *ok_vlook(ifs);
-		if(0){
-	case a_AMV_VST_AT:
-			sep = ' ';
-		}
+		sep = (avst == a_AMV_VST_AT) ? ' ' : *ok_vlook(ifs);
 
 		for(i = j = 0; i < argc; ++i)
 			j += su_cs_len(argv[i]) + 1;
@@ -3886,7 +3883,7 @@ jleave:
 
 FL s32
 mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *remp){
-	union {char **pp; char *p;} c;
+	union {char **pp; char *p; uz z;} c;
 	uz i, j;
 	s32 rv;
 	struct a_amv_pospar *appp;
@@ -3909,8 +3906,11 @@ mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *
 		appp->app_idx = 1;
 	}
 
-	for(i = j = 0; i < group_count; ++i)
+	/* Note: shexp_parse*() *requires* that entries in *argv_or_nil are ALIGN_Z_PZ() aligned! */
+	for(i = j = 0; i < group_count; ++i){
 		j += sizeof(char const*) +1 + remp[i].rem_end - remp[i].rem_start; /* XXX ERR_OVERFLOW? */
+		j = ALIGN_Z_PZ(j);
+	}
 	j += sizeof(char const*);
 
 	/* XXX Optimize: store it all in one chunk! */
@@ -3925,6 +3925,7 @@ mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *
 		su_mem_copy(c.p, &dat[remp->rem_start], i);
 		c.p += i;
 		*c.p++ = '\0';
+		c.z = ALIGN_Z_PZ(c.z);
 	}
 
 	rv = su_ERR_NONE;

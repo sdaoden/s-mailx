@@ -160,8 +160,10 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 				break;
 			}
 
-			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
+			if(cadp->cad_ent_flags[i][1] & n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT)
+				rv = n_string_push_cp(rv, _(" [no *ifs* splitting]"));
 
+			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
 			}else{
 				if(flags & mx_CMD_ARG_DESC_GREEDY)
 					rv = n_string_push_c(rv, ':');
@@ -189,7 +191,6 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		rv = n_string_push_cp(rv, _(" | `>'"));
 	if(cdp->cd_caflags & mx_CMD_ARG_EM)
 		rv = n_string_push_cp(rv, _(" | *!*"));
-
 
 	if(cdp->cd_caflags & (mx_CMD_ARG_A | mx_CMD_ARG_I | mx_CMD_ARG_M | mx_CMD_ARG_X | mx_CMD_ARG_NEEDMAC)){
 		rv = n_string_push_cp(rv, _(" | yay:"));
