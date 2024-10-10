@@ -412,7 +412,7 @@ jrestart:
 	case sizeof("pp") -1:
 		if(!su_cs_cmp_case(word, "pp")){
 			if(!(flags & a__SCOPE_MASK)){
-				ccp = N_("`pp' command modifier senseless without scope");
+				ccp = N_("`pp' command modifier: only in conjunction with scope (local,our..)");
 				goto jenotsup;
 			}
 			scope_pp = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
@@ -1125,6 +1125,8 @@ a_go_evaluate__vput(struct str *line, char **vput, u8 scope_pp, boole v15_compat
 
 	ccp = line->s;
 	*vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
+				n_SHEXP_PARSE_IGN_SUBST_XPLODE |
+				n_SHEXP_PARSE_IGN_SUBST_FS_SPLIT |
 				n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
 				n_SHEXP_PARSE_META_KEEP), scope_pp, &ccp);
 	if(ccp == NIL){

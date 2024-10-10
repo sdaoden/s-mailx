@@ -238,7 +238,8 @@ FL boole n_var_okclear(enum okeys okey);
  * _vexplode() is to be used by the shell expansion stuff when encountering
  * $@/$^@ in double-quotes, in order to provide sh(1)ell compatible behaviour;
  * it returns whether there are any elements in argv (*cookie): TRUM1 is
- * returned if all elements are empty strings.
+ * returned if all elements are empty strings (elements may point to static
+ * constant and non-aligned data).
  * Calling vset with val==NIL is a clear request */
 FL char const *n_var_vlook(char const *vokey, boole try_getenv);
 FL boole n_var_vexplode(void const **cookie, boole rset);
@@ -1003,8 +1004,9 @@ FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
  * EQ UZ_MAX su_cs_len(->s) is used) and append the resulting output to store.
- * If cookie is not NULL and we are in double-quotes then ${@} will be exploded
- * just as known from the sh(1)ell */
+ * If cookie is not NIL then if $@/$* explosion may happen dependent upon quote
+ * state and IGN_SUBST_XPLODE, and field splitting may happen unless
+ * IGN_SUBST_FS_SPLIT is set */
 FL BITENUM(u32,n_shexp_state) n_shexp_parse_token(
       BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
       struct n_string *store, struct str *input, void const **cookie);

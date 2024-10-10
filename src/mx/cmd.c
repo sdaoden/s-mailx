@@ -160,8 +160,12 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 				break;
 			}
 
-			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
+			if(cadp->cad_ent_flags[i][1] & n_SHEXP_PARSE_IGN_SUBST_XPLODE)
+				rv = n_string_push_cp(rv, _(" [$*/$@ expand in field]"));
+			if(cadp->cad_ent_flags[i][1] & n_SHEXP_PARSE_IGN_SUBST_FS_SPLIT)
+				rv = n_string_push_cp(rv, _(" [no field splitting]"));
 
+			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
 			}else{
 				if(flags & mx_CMD_ARG_DESC_GREEDY)
 					rv = n_string_push_c(rv, ':');
@@ -177,19 +181,18 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 
 	/* Note: on updates, change the manual! */
 	if(cdp->cd_caflags & mx_CMD_ARG_G)
-		rv = n_string_push_cp(rv, _(" | `global'"));
+		rv = n_string_push_cp(rv, _(" | global"));
 	if(cdp->cd_caflags & mx_CMD_ARG_L)
-		rv = n_string_push_cp(rv, _(" | `local'"));
+		rv = n_string_push_cp(rv, _(" | local"));
 	if(cdp->cd_caflags & mx_CMD_ARG_O)
-		rv = n_string_push_cp(rv, _(" | `our'"));
+		rv = n_string_push_cp(rv, _(" | our"));
 	if(cdp->cd_caflags & mx_CMD_ARG_U)
-		rv = n_string_push_cp(rv, _(" | `u'"));
+		rv = n_string_push_cp(rv, _(" | u")); /* XXX not in manual*/
 
 	if(cdp->cd_caflags & mx_CMD_ARG_V)
-		rv = n_string_push_cp(rv, _(" | `>'"));
+		rv = n_string_push_cp(rv, _(" | >"));
 	if(cdp->cd_caflags & mx_CMD_ARG_EM)
 		rv = n_string_push_cp(rv, _(" | *!*"));
-
 
 	if(cdp->cd_caflags & (mx_CMD_ARG_A | mx_CMD_ARG_I | mx_CMD_ARG_M | mx_CMD_ARG_X | mx_CMD_ARG_NEEDMAC)){
 		rv = n_string_push_cp(rv, _(" | yay:"));
@@ -207,10 +210,10 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		rv = n_string_push_cp(rv, _(" | nay:"));
 		if(cdp->cd_caflags & mx_CMD_ARG_R)
 			rv = n_string_push_cp(rv, _(" compose-mode"));
+		if(cdp->cd_caflags & mx_CMD_ARG_SC)
+			rv = n_string_push_cp(rv, _(" startup-conf"));
 		if(cdp->cd_caflags & mx_CMD_ARG_S)
 			rv = n_string_push_cp(rv, _(" startup"));
-		if(cdp->cd_caflags & mx_CMD_ARG_SC)
-			rv = n_string_push_cp(rv, _(" startup (pre -X)"));
 		if(cdp->cd_caflags & mx_CMD_ARG_W)
 			rv = n_string_push_cp(rv, _(" read-only-mailbox"));
 	}
@@ -704,7 +707,6 @@ jredo:
 		switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){ /* {{{ */
 		default:
 		case mx_CMD_ARG_DESC_SHEXP:
-
 			if(UNLIKELY(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_OPTION_RESULT_SET) &&
 					cacp->cac_option_result_set == 0)
 				f |= a_RESULT_SET;
@@ -894,8 +896,7 @@ jshexp_restart_inner:
 		if(f & a_STOPLOOP)
 			goto jleave;
 
-		if((shin.l > 0 || cookie != NIL) &&
-				(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY)){
+		if((shin.l > 0 || cookie != NIL) && (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY)){
 			if(!(f & a_GREEDYJOIN) && ((ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY_JOIN) &&
 					(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP)))
 				f |= a_GREEDYJOIN;
@@ -1109,7 +1110,6 @@ getrawlist(enum mx_scope scope, boole wysh/* v15-cpmpat */, boole skip_aka_dryru
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
 						(cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
 						(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
-						/* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
 						n_SHEXP_PARSE_META_SEMICOLON), scope,
 						(skip_aka_dryrun ? NIL : &store), &input, &cookie);
 
@@ -1148,7 +1148,7 @@ boole
 mx_cmd_eval(u32 cnt, enum mx_scope scope, struct str *io, char const *prefix_or_nil){
 	mx_CMD_ARG_DESC_SUBCLASS_DEF(eval, 1, a_cmd_cad_eval){
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
-		 n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
+		 n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
 	}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 	static struct mx_cmd_desc const a_cmd_eval = {

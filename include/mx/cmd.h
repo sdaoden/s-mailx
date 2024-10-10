@@ -33,7 +33,7 @@ struct mx_cmd_desc; /* Command implementation, constant */
  *
  * mx_CMD_ARG_DESC_SUBCLASS_DEF(evalset, 1, a_pseudo_evalset_arg){
  *   {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
- *   n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_IGN_SUBST_ALL}
+ *   n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_IGN_SUBST_ALL}
  * }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
  *
  * static struct mx_cmd_desc const a_pseudo_evalset = {

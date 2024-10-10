@@ -38,12 +38,13 @@
 .ds BO (Boolean)
 .ds CM (Compose mode)
 .ds ID [v15 behaviour may differ]
+.ds NF [No field splitting]
 .ds NQ [Only new quoting rules]
 .ds OB [Obsolete]
 .ds OP [Option]
 .ds oP [option]
-.ds PO POSIX.1-202x \" FIXME
-.ds PO POSIX.1-2017
+.\"IEEE Std 1003.1-2024
+.ds PO POSIX.1-2024
 .ds RO (Read-only)
 .ds SM (Send mode)
 .ds OU #-> \:
@@ -2729,7 +2730,7 @@ indeed means
 .Dq interactive ) :
 .
 .Bd -literal -offset indent
-if terminal && "$features" =% ,+colour,
+if terminal && $features =% ,+colour,
   colour iso view-msginfo ft=bold,fg=green
   colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
@@ -3377,7 +3378,7 @@ a handy suggestion may thus be:
 .
 .Bd -literal -offset indent
 define xverbose {
-  \elocal set verbose; eval ignerr local pp "${@}";  \ereturn ${?}
+  \elocal set verbose; eval ignerr local pp "$@";  \ereturn $?
 }
 commandalias xv '\ecall xverbose'
 xv ? set
@@ -3447,7 +3448,7 @@ define hi {
   xcall t "$@"
 }
 define t {
-  echo args<$*> i2<$i2> i<$i>
+  echo "args<$*> i2<$i2> i<$i>"
 }
 vpospar set three four
 call hi one two
@@ -3501,9 +3502,9 @@ set to
 .Ql -1 ,
 but some commands deviate, then documented.
 .Bd -literal -offset indent
->msgno =; echo $msgno
+>msgno =; echo "$msgno"
 \*(OU1
->i$((i = 1 + 1)) echon some output; ec i2<$i2>, i<$i>.
+>i$((i = 1 + 1)) echon some output; ec "i2<$i2>, i<$i>".
 \*(OUi2<some output>, i<2>.
 .Ed
 .Pp
@@ -3620,7 +3621,7 @@ will be created in
 scope (with value 4).
 .Bd -literal -offset indent
 local set i=3
-eval local pp echo hello \e$((j = $i + 1))
+eval local pp echo hello \e$((j = "$i" + 1))
 .Ed
 .
 .Mx
@@ -3693,16 +3694,18 @@ and the following character is treated literally as part of the argument.
 .Ss "Shell-style argument quoting"
 .
 .Ev SHELL Ns
--style, and therefore \*(PO standardized, argument parsing, expansion,
+-style, and therefore \*(PO standardized argument parsing, expansion,
 and quoting rules are used by most commands.
-\*(ID Most new commands only support these new rules and are flagged
-\*(NQ, some elder ones can use them via
-.Cm wysh ;
-in the future only this type of argument quoting will remain.
+(\*(ID Most new commands already support these and are flagged \*(NQ,
+some elder can optionally use them via
+.Cm wysh . )
+The command line that resulted from input scanning as described for
+.Sx COMMANDS
+is parsed from left to right,
+and an input token is completed whenever an unquoted, otherwise ignored,
+metacharacter is seen.
 .
 .Pp
-The command line is parsed from left to right and an input token is
-completed whenever an unquoted, otherwise ignored, metacharacter is seen.
 Metacharacters are vertical bar
 .Cm \&| ,
 semicolon
@@ -3731,32 +3734,10 @@ An unquoted dollar sign
 starts
 .Sx "Shell-style expansions" .
 .
-.Bd -filled -offset indent
-.Sy Compatibility note:
-\*(ID Note that even many new-style commands do not yet honour
-.Va ifs
-to parse their arguments: whereas the
-.Ev SHELL
-is a language with syntactic elements of clearly defined semantics,
-\*(Xx parses entire input lines and decides on a per-command base what
-to do with the rest of the line.
-This also means that whenever an unknown command is seen all that can be
-done is cancellation of the processing of the remains of the line.
 .Pp
-It also often depends on an actual subcommand of a multiplexer command
-how the rest of the line should be treated, and until v15 we are not
-capable to perform this deep inspection of arguments.
-Nonetheless, at least the following commands which work with positional
-parameters fully support
-.Va ifs
-for an almost shell-compatible field splitting:
-.Ic call , call_if , read , vpospar , xcall .
-.Ed
-.
-.Pp
-Whereas the metacharacters
+Different to the metacharacters
 .Cm space , tabulator , newline
-only complete an input token, vertical bar
+that only complete an input token, vertical bar
 .Cm \&|
 and semicolon
 .Cm \&;
@@ -3771,9 +3752,10 @@ and without
 .Va v15-compat ;
 for example, the first of the following will cause surprising results:
 .
-.Pp
-.Dl ? echo one; set verbose; echo verbose=$verbose.
-.Dl ? echo one; wysh set verbose; echo verbose=$verbose.
+.Bd -literal -offset indent
+? echo one; set verbose; echo "verbose=$verbose."
+? echo one; wysh set verbose; echo "verbose=$verbose."
+.Ed
 .
 .Pp
 Quoting is a mechanism that removes the special meaning of
@@ -3916,6 +3898,7 @@ Not yet supported, just to raise awareness: Non-standard extension.
 .El
 .El
 .
+.
 .Pp
 Caveats:
 .
@@ -3924,22 +3907,23 @@ echo 'Quotes '${HOME}' and 'tokens" differ!"# no comment
 echo Quotes ${HOME} and tokens differ! # comment
 echo Don"'"t you worry$'\ex21' The sun shines on us. $'\eu263A'
 
-# Note: different to sh(1)ell _language_:
 define xy {
-  echo $#, $1, $2, $*
+  ec "$# 1<$1> 2<$2> 3<$3> <$*>"
 }
-set x='one two three'
+se x='one two three'
 call xy $x four
-\*(OU1, one two three, four, one two three four
+\*(OU4 1<one> 2<two> 3<three> <one two three four>
+call xy "$x" four
+\*(OU2 1<one two three> 2<four> 3<> <one two three four>
 .Ed
 .\" }}}
 .
 .\" .Ss "Shell-style expansions" {{{
 .Ss "Shell-style expansions"
 .
-Within
-.Sx "Shell-style argument quoting"
-an unquoted dollar sign
+When and how these expansions occur is documented in
+.Sx "Shell-style argument quoting" .
+An unquoted dollar sign
 .Ql $
 triggers expression expansions.
 The simplemost expression is an optionally brace enclosed variable name,
@@ -3954,6 +3938,13 @@ which must honour
 as well as
 .Sx ENVIRONMENT
 (shell) variables can be accessed and expanded through this mechanism.
+Shell-style
+.Mx -sx
+.Sx "field splitting"
+is performed on non-empty such expansions unless quoting is active,
+or
+.Sx COMMANDS
+explicitly mention \*(NF.
 .
 .Pp
 Within pairs of double parenthesis
@@ -3999,7 +3990,7 @@ The following list of operators is sorted in decreasing precedence.
 set i=0; echo $((i + i)), $((i+=1)), $((i + i)); varshow i
 \*(OU0, 1, 2
 \*(OUset i=1
-set i=-2; eval echo \e$(( 10# $i))
+set i=-2; eval echo \e$(( 10# "$i"))
 \*(OU-2
 .Ed
 .
@@ -4113,11 +4104,11 @@ uated first, for example
 .
 .Bd -literal -offset indent
 >res shcodec encode /usr/Sch\[:o]nes Wetter/heute.txt
-echo $res
+echo "$res"
 \*(OU$'/usr/Sch\eu00F6nes Wetter/heute.txt'
-shcodec d $res
+shcodec d "$res"
 \*(OU$'/usr/Sch\eu00F6nes Wetter/heute.txt'
-eval shcodec d $res
+eval shcodec d "$res"
 \*(OU/usr/Sch\(:ones Wetter/heute.txt
 .Ed
 .\" }}}
@@ -4312,7 +4303,7 @@ is supported.
 .
 .Mx
 .It Ic \&:
-No-effect command: does nothing but expanding arguments.
+\*(NF No-effect command: does nothing but expanding arguments.
 .Sy Remarks:
 as a command-less line invokes the default command
 .Pf ( Ic next )
@@ -5249,12 +5240,12 @@ define name {
 }
 
 define exmac {
-  echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
+  echo "Parameter 1 of ${#} is ${1}, all: ${*} / ${@}"
   return 1000 0
 }
 call exmac Hello macro exmac!
 \*(IX
-echo ${?}/${!}/${^ERRNAME}
+echo "${?}/${!}/${^ERRNAME}"
 .Ed
 .
 .
@@ -5278,7 +5269,7 @@ d; also see
 .
 .Mx
 .It Ic digmsg
-\*(NQ An inspection object can be
+\*(NQ\*(NF(first two arguments) An inspection object can be
 .Cm create Ns
 d for the given message number; in
 .Sx "Compose mode"
@@ -5454,7 +5445,7 @@ conditional execution block.
 .
 .Mx
 .It Ic environ
-\*(NQ The process
+\*(NQ\*(NF The process
 .Sx ENVIRONMENT
 and
 .Sx "INTERNAL VARIABLES"
@@ -5527,7 +5518,7 @@ if $? -ne 0
   environ set PERL5LIB=~/.perl5
 endif
 set PERL5LIB=$PERL5LIB:/home/shared/perl5
->storvar environ lookup PERL5LIB; echo $storvar
+>storvar environ lookup PERL5LIB; echo "$storvar"
 .Ed
 .
 .
@@ -6185,7 +6176,7 @@ commands will remove the preserve mark.
 .
 .Mx
 .It Ic if
-\*(NQ(i) Part of the
+\*(NQ\*(NF(i) Part of the
 .Ic \&\&if , Ic elif , else , endif
 conditional execution: if the given expression(s) evaluate to true
 the encapsulated block is executed.
@@ -6449,21 +6440,21 @@ reverses the result of individual expressions or entire groups.
 .
 .Bd -literal -offset indent
 i -N debug; ec *debug* set; el; ec not; en
-if "$ttycharset" == UTF-8 || "$ttycharset" ==?cas UTF8
+if $ttycharset == UTF-8 || $ttycharset ==?cas UTF8
   echo ttycharset is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
 i ${t1} == ${t2}
   ec The non-empty variables are byte-wise equal
 en
-if $features =% ,+regex, && "$TERM" =~?case ^xterm\&.*
+if $features =% ,+regex, && $TERM =~?case ^xterm\&.*
   ec ..in an X terminal
 en
-if [ [ true ] && [ [ "${t1}" != '' ] || \e
-    [ "$t2" != '' ] ] ]
+if [ [ true ] && [ [ $t1 != '' ] || \e
+    [ $t2 != '' ] ] ]
   echo Noisy, noisy
 endif
-i true && [ -n "$t1" || -n "${t2}" ]
+i true && [ -n $t1 || -n $t2 ]
   ec Left associativity as known from the shell
 en
 .Ed
@@ -6486,45 +6477,66 @@ mode argument types and documentation abstracts, flags and supported
 are shown:
 .Pp
 .Bl -tag -compact -width ".It Ql NEEDS_BOX"
-.It Ql "`local'"
+.It Ql global
+supports
+.Cm global .
+.It Ql local
 supports
 .Cm local .
-.It Ql "`our'"
+.It Ql our
 supports
 .Cm our .
-.It Ql "`>'"
+.It Ql >
 supports
 .Cm > .
 .It Ql "*!*"
 the error number is tracked in
 .Va \&! .
-.It Ql needs-box
-needs an active
-.Ic folder .
-.It Ql ok:
-is \&.\h'.3m'.\h'.3m'.
+.
+.It Ql command yay:
 .Bl -tag -compact -width ".It Ql SUBPROCESS"
+.It Ql active-mailbox
+usable with a current
+.Ic folder .
 .It Ql batch/interactive
 usable in interactive or batch mode
 .Pf ( Fl # ) .
 .It Ql send-mode
 usable in send mode.
+.It Ql macro/account
+(only) usable in a
+.Ic define Ns
+d macro or an
+.Ic account .
 .El
-.It Ql not ok:
-is not \&.\h'.3m'.\h'.3m'.
+.
+.It Ql command nay:
 .Bl -tag -compact -width ".It Ql COMPOSE_MODE"
-.It Ql compose mode
-available in
-.Sx "Compose mode".
+.It Ql compose-mode
+enters
+.Sx "Compose mode" ,
+non-recursively.
+.It Ql startup-conf
+not available during program startup before
+.Fl X
+commands run, for example in
+.Sx "Resource files" .
 .It Ql startup
-available during program startup, for example in
-.Sx "Resource files"
-(usually given as
-.Dq nay ) .
+not available during program startup (usable via
+.Fl Y
+at earliest).
+.It Ql read-only-mailbox
+cannot be used in a read-only
+.Ic Folder .
 .El
-.It Ql "gabby"
-The command produces
+.
+.It Ql history:gabby
+produces
 .Va history-gabby
+.Ic history
+entries.
+.It Ql history:ignored
+does not generate
 .Ic history
 entries.
 .El
@@ -6947,12 +6959,12 @@ echo "$? <$a> <$b> <$c>"
 
 set ifs=:; read a b c;unset ifs
 hey2.0,:"'you    ",:world!:mars.:
-echo <$a><$b><$c><$d>
+echo "<$a><$b><$c><$d>"
 \*(OU<hey2.0,><"'you    ",><world!:mars.:><>
 
 read ^
 \*(OU  H e l l o
-ec $^# <$^0> <$^5> <$^*>
+ec "$^# <$^0> <$^5> <$^*>"
 \*(OU5 <11> <o> <H e l l o>
 .Ed
 .
@@ -7027,12 +7039,12 @@ $ LC_ALL=C printf 'echon "hey, "\enread a\enecho $a' |\e
 hey, you
 
 set fn=/tmp/members.dat
-readctl create $fn
+readctl create "$fn"
 set rv=$? es=$! ed=$^ERRDOC
 if $rv -eq 0
-  readctl Lock $fn # ignore error
+  readctl Lock "$fn" # ignore error
   call .read-and-handle-until-eof "$fn"
-  readctl remove $fn
+  readctl remove "$fn"
 else
   echoerr $'Cannot read file \e$fn: \e$ed'
 endif
@@ -7180,7 +7192,7 @@ Any error stops processing of further messages.
 .
 .Mx
 .It Ic return
-Returns control of execution to the outer scope of a
+\*(NQ\*(NF Returns control of execution to the outer scope of a
 .Mx -sx
 .Sx Macro
 (or
@@ -7263,7 +7275,7 @@ Marks all given messages as having been read.
 .Mx
 .Mx
 .It Ic set , unset
-(se, \*(NQ uns) Manage (set and clear)
+\*(NQ\*(NF(se, uns) Manage (set and clear)
 .Sx "Built-in variables"
 and free-form user custom
 .Sx "INTERNAL VARIABLES" .
@@ -7305,11 +7317,11 @@ equals
 set atab=$'\et' aspace=' ' zero=0 noprompt
 
 define mboxfix {
-  local set mbox-rfc4155 mf=${mailbox-resolved}
-  File "${1}"; copy * "${2}"; file "${mf}"
+  local set mbox-rfc4155 mf=$mailbox-resolved
+  File "${1}"; copy * "$2"; file "$mf"
 }
 
-commandalias e 'echon x=$x y=$y z=$z,\e ; env look x'
+commandalias e 'echon "x=$x y=$y z=$z, "; env look x'
 define l1 {
   e; our set x=x2 y=y2 z=z2; e; xcall l2
 }
@@ -7605,7 +7617,7 @@ and
 .
 .Bd -literal -offset indent
 >result tls fingerprint pop3s://ex.am.ple
-echo $?/$!/$^ERRNAME: $result
+echo "$?/$!/$^ERRNAME: $result"
 .Ed
 .
 .Bl -hang -width ".It Cm random"
@@ -7974,7 +7986,7 @@ to
 .
 .Bd -literal -offset indent
 >res vexpr -? +1 -9223372036854775808
-echo $?/$!/$^ERRNAME:$res
+echo "$?/$!/$^ERRNAME:$res"
 \*(OU0/75/OVERFLOW:-9223372036854775808
 .Ed
 .
@@ -8060,11 +8072,11 @@ as if specified within dollar-single-quote
 .Bd -literal -offset indent
 >res vexpr regex bananarama \e
     (.*)NanA(.*) '\e${^1}au\e$^2'
-echo $?/$!/$^ERRNAME:$res:
+echo "$?/$!/$^ERRNAME:$res:"
 \*(OU1/61/NODATA::
 >res vexpr regex?case bananarama \e
     (.*)NanA(.*) '\e${^1}uauf\e$^2'
-echo $?/$!/$^ERRNAME:$res:
+echo "$?/$!/$^ERRNAME:$res:"
 \*(OU0/0/NONE:bauauframa:
 .Ed
 .El
@@ -8131,34 +8143,38 @@ to losslessly (re)create an argument stack from and to a single variable.
 .
 .Bd -literal -offset indent
 vpospar set hey, "'you    ", world!
-echo $#: <$1><$2><$3>
+ec "$#: <$1><$2><$3>"
 \*(OU3: <hey,><'you    ,><world!>
 
 >x vpospar quote
 
-vpospar clear
-echo $#: <$1><$2><$3>
+vpospar clear; ec "$#: <$1><$2><$3>"
 \*(OU0: <><><>
 
-eval vpospar ^ set $x
-echo $^#: <$^1><$^2><$^3>
+eval vpospar ^ set "$x"
+ec "$^#: <$^1><$^2><$^3>"
 \*(OU3: <hey,><'you    ,><world!>
 
-set x=$'a b\en#c d\ene f\en'
-set ifs=$'\en'; vpospar set $x; unset ifs
-echo $#: <$1><$2><$3>
+se e=E x=$'a b\en#c d\en$e f\en'
+
+se ifs=$'\en'; vpospar set "$x"; uns ifs
+ec "$#: <$1><$2><$3>"
 \*(OU1: <a b
 \*(OU#c d
-\*(OUe f
+\*(OU$e f
 \*(OU><><>
 
-set ifs=$'\en'; eval vpospar set $x; unset ifs
-echo $#: <$1><$2><$3>
-\*(OU1: <a b><><>
+se ifs=$'\en'; eval vpospar set "$x"; uns ifs
+ec "$#: <$1><$2><$3>"
+\*(OU2: <a><b><>
 
-set ifs=$'\en'; vpospar evalset $x; unset ifs
-echo $#: <$1><$2><$3>
-\*(OU3: <a b><#c d><e f>
+se ifs=$'\en'; vpospar evalset "$x"; uns ifs
+ec "$#: <$1><$2><$3>"
+\*(OU3: <a b><#c d><$e f>
+
+vpospar evalset "$x"
+ec "$#: <$1><$2><$3><$4><$5><$6>"
+\*(OU6: <a><b><#c><d><$e><f>
 .Ed
 .
 .
@@ -8883,7 +8899,7 @@ can be used to convert times, for example:
 dig cre 1 ^
 dig 1 epo
 if $^0 -eq 210
-  vex date-utc $^1
+  vex date-utc "$^1"
 en
 dig rem 1
 \*(OUdutc_year=2023 [..]
@@ -9445,11 +9461,11 @@ and
 .Bd -literal -offset indent
 define x {
   if abrakadabra =~ (.+)ka.*(b.+)a
-    echo $^#: <$^0> <$^1> <$^2>
+    echo "$^#: <$^0> <$^1> <$^2>"
     return ^ says $^2
   end
 }
-call x; echo $^?, $^#, $^0 $^1 $^2
+call x; echo "$^?, $^#, $^0 $^1 $^2"
 \*(OU3: <abrakadabra> <abra> <br>
 \*(OU1, 3, x says br
 .Ed
@@ -9468,13 +9484,13 @@ Errors directly map to (a subset of) the system error values,
 with (high numbered) fallbacks for unsupported constants:
 .Bd -literal -offset indent
 define work {
-  \eeval echo \e$1: \e$^ERR-$1: \e
-    \e$^ERRNAME-$1: \e$^ERRDOC-$1
+  \eeval echo \e"\e$1: \e$^ERR-$1: \e
+    \e$^ERRNAME-$1: \e$^ERRDOC-$1\e"
   \eif $1 -lt 16
-    \eeval xcall work \e$(($1 + 1))
+    \eeval xcall work \e$(("$1" + 1))
   \eend
 }
-\ecall work $^ERR-NONE
+\ecall work "$^ERR-NONE"
 .Ed
 .
 .Mx
@@ -9496,21 +9512,21 @@ includes
 \*(RO Expands all positional parameters (see
 .Va 1 ) ,
 separated by the first character of
-.Va ifs .
-\*(ID The special semantics of the corresponding
-.Ev SHELL
-parameter are not yet supported.
+.Va ifs
+in quoted mode (see
+.Sx "Shell-style argument quoting" ) .
 .
 .Mx
 .It Va @
 \*(RO Expands all positional parameters (see
 .Va 1 ) ,
 separated by a space character.
-If placed in double quotation marks, each positional parameter is
-properly quoted to expand to a single parameter again.
+When placed in double quotation marks
+.Pf ( Sx "Shell-style argument quoting" )
+each parameter expands to a separate properly quoted token.
 (For example, to recreate arguments when
 .Ic call Ns
-ing another
+ing a
 .Mx -sx
 .Sx Macro . )
 .
@@ -10649,7 +10665,13 @@ addrcodec enc root@\(:apfel.example
 .
 .Mx
 .It Va ifs
-Input field separators used (\*(ID everywhere) for splitting input data.
+Input field separators used for
+.Mx -ix "field splitting"
+field splitting (see
+.Sx "Shell-style argument quoting" ) ,
+and for the
+.Ic read
+command to split lines into words.
 .Pp
 .Bl -bullet -compact
 .It
@@ -10657,24 +10679,18 @@ Input field separators used (\*(ID everywhere) for splitting input data.
 (re)establishes the default value
 .Ql \& \et\en .
 .It
-No field splitting occurs when empty.
+No field splitting occurs when set to the empty value.
+.It
+The first byte has special meaning for how field splitting is performed;
+it is also used as a separator for quoted forms of
+.Va * ,
+for example.
 .It
 Whitespace characters of the value are assigned to
 .Va ifs-ws .
-.El
-.Pp
-.Bl -tag -compact
-.It 1.
-.Va \&\&ifs-ws
-will be ignored at the front and back of input.
-Diverging from \*(PO shells the whitespace default value is always
-removed in addition.
-.It 2.
-Any occurrence of a member of
-.Va \&\&ifs
-causes field-splitting, thereafter adjacent
-.Va \&\&ifs-ws
-members are skipped.
+.It
+.Sx COMMANDS
+which mention \*(NF explicitly suppress field splitting.
 .El
 .
 .Mx
@@ -10906,7 +10922,7 @@ setting it and reopening the folder may be a saveable corrective
 (\*(ID: no MIME re-encode yet):
 .Bd -literal -offset indent
 define mboxfix {
-  local set mbox-rfc4155; File "${1}"; copy * "${2}"
+  local set mbox-rfc4155; File "$1"; copy * "$2"
 }
 
 call mboxfix /tmp/bad.mbox /tmp/good.mbox
@@ -11567,18 +11583,18 @@ define .ocm {
   echo normal macro: no body access
 
   digmsg - h l
-  ec 1:$^0: $^*
+  ec "1:$^0: $^*"
 
   # via I/O protocol
   digmsg create -
   digmsg - h l
   local readall x
-  ec 2:$x
+  ec "2:$x"
   digmsg remove -
 
   # back to built-in "in-memory"
   digmsg - h l
-  ec 3:$^0: $^*
+  ec "3:$^0: $^*"
 }
 .Ed
 .
@@ -11610,7 +11626,7 @@ define ocl {
   if $? -eq 0
     local readall i
     if $? -gt 0
-      our >message-inject-tail csop trim-end $i
+      our >message-inject-tail csop trim-end "$i"
     en
     readctl remove ~/.mysig
   en
@@ -11645,8 +11661,8 @@ etc.
 .Bd -literal -offset indent
 se on-history-addition=oha
 def oha {
-  if "$2" == fuzz || "$2" == errors; return 1; en
-  if ${#} -eq 3
+  if $2 == fuzz || $2 == errors; return 1; en
+  if $# -eq 3
     if " $3" =% ' set ' || " $3" =% ' unset '; return 3; en
     if " $3" =% ' chdir '; return 2; en
   el
@@ -15455,21 +15471,21 @@ define o-c-e {
 
 set access_token_=0
 define update_access_token {
-  local set i epoch_sec epoch_nsec
+  local se i epoch_sec epoch_nsec
   >i vexpr epoch
-  eval set $i # set epoch_sec/_nsec of vexpr epoch
-  >i vexpr + $access_token_ 2100
+  eval se $i # set epoch_sec/_nsec of vexpr epoch
+  >i vexpr + "$access_token_" 2100
   if $epoch_sec -ge $i
     >password ! python oauth2.py --user=EMAIL \e
         --client-id=THE-ID --client-secret=THE-SECRET \e
         --refresh-token=THE-REFRESH-TOKEN |\e
       sed '1b PASS;d; :PASS s/^.\e{1,\e}:\e(.\e{1,\e}\e)$/\e1/'
     >password csop trim "$password"
-    if -n "$verbose"
-      echo password is <$password>
-    endif
-    set access_token_=$epoch_sec
-  endif
+    if -n $verbose
+      ec "password is <$password>"
+    end
+    se access_token_=$epoch_sec
+  end
 }
 .Ed
 .\" }}}
@@ -16063,7 +16079,7 @@ may be helpful:
 .
 .Bd -literal -offset indent
 set escape=! verbose; >xy version; unset verbose;\e
-  eval mail $contact-mail
+  eval mail "$contact-mail"
 Bug subject
 !I xy
 !.

@@ -1579,8 +1579,7 @@ n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
       mx_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
          {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
                mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
-            n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IFS_VAR |
-               n_SHEXP_PARSE_IGN_EMPTY}
+            n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IGN_EMPTY}
       }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
       struct mx_cmd_arg_ctx cac;
 

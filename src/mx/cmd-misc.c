@@ -269,7 +269,7 @@ jitall:
 				}
 			}else{
 jsh_redo:
-				if(n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IFS_VAR |
+				if(n_shexp_parse_token((n_SHEXP_PARSE_LOG |
 							n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
 							n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_IGN_SUBST_ALL),
 						cacp->cac_scope_pp, s, &trim, NIL) & n_SHEXP_STATE_STOP)

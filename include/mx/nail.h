@@ -300,57 +300,62 @@ enum n_shexp_parse_flags{
     * Output may be NIL, otherwise the possibly trimmed non-expanded input is
     * used as output (implies _PARSE_META_KEEP) */
    n_SHEXP_PARSE_DRYRUN = 1u<<0,
-   n_SHEXP_PARSE_TRUNC = 1u<<1, /* Truncate result storage on entry */
-   n_SHEXP_PARSE_TRIM_SPACE = 1u<<2, /* ..surrounding tokens */
-   n_SHEXP_PARSE_TRIM_IFSSPACE = 1u<<3, /* " */
-   n_SHEXP_PARSE_LOG = 1u<<4, /* Log errors */
-   n_SHEXP_PARSE_LOG_D_V = 1u<<5, /* Log errors if n_PO_D_V */
-   n_SHEXP_PARSE_IFS_VAR = 1u<<6, /* IFS is *ifs*, not su_cs_is_blank() */
+   n_SHEXP_PARSE_LOG = 1u<<1, /* Log errors */
+   n_SHEXP_PARSE_LOG_D_V = 1u<<2, /* Log errors if n_PO_D_V */
+
+   n_SHEXP_PARSE_TRUNC = 1u<<3, /* Truncate result storage on entry */
+   n_SHEXP_PARSE_TRIM_SPACE = 1u<<4, /* ..surrounding tokens */
+   n_SHEXP_PARSE_TRIM_IFSSPACE = 1u<<5, /* " */
+
+   /* IFS is *ifs*, not su_cs_is_white() (only for `vpospar evalset') */
+   n_SHEXP_PARSE_IFS_VAR = 1u<<6,
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<7, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
+
    n_SHEXP_PARSE_IGN_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
    n_SHEXP_PARSE_IGN_COMMENT = 1u<<10, /* # does not start a comment */
    n_SHEXP_PARSE_IGN_QUOTES = 1u<<11, /* ', ", $' quotes have no meaning */
-   n_SHEXP_PARSE_IGN_ALL = n_SHEXP_PARSE_IGN_COMMENT |
-         n_SHEXP_PARSE_IGN_QUOTES,
+
    n_SHEXP_PARSE_IGN_SUBST_VAR = 1u<<12, /* ${} are skipped not expanded */
-   n_SHEXP_PARSE_IGN_SUBST_ARITH = 1u<<13, /* $(()) is skipped not expanded */
+   n_SHEXP_PARSE_IGN_SUBST_XPLODE = 1u<<13, /* unquoted $@/$* acts as quoted */
+   n_SHEXP_PARSE_IGN_SUBST_FS_SPLIT = 1u<<14, /* no unquoted field splitting */
+   n_SHEXP_PARSE_IGN_SUBST_ARITH = 1u<<15, /* $(()) is skipped not expanded */
    n_SHEXP_PARSE_IGN_SUBST_ALL = n_SHEXP_PARSE_IGN_SUBST_VAR |
+         n_SHEXP_PARSE_IGN_SUBST_XPLODE | n_SHEXP_PARSE_IGN_SUBST_FS_SPLIT |
          n_SHEXP_PARSE_IGN_SUBST_ARITH,
    /* Skip anything "dangerous" or environment changing, like command TODO
     * substitation or arithmetic expansions TODO not enough callees! */
    n_SHEXP_PARSE_IGN_SUBST_ACTIVE = n_SHEXP_PARSE_IGN_SUBST_ARITH,
+
    /* Ignore mx_scope: create a temporary environment for all changes! */
-   n_SHEXP_PARSE_SCOPE_CAPSULE = 1u<<14, /* TODO NOT IMPLEMENTED YET! SEARCH! */
+   n_SHEXP_PARSE_SCOPE_CAPSULE = 1u<<20, /* TODO NOT IMPLEMENTED YET! SEARCH! */
 
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
     * quote mode to be permanently active (cannot be closed) */
-   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1u<<16,
-   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1u<<17,
-   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1u<<18,
-   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1u<<19,
-   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1u<<20, /* Ignore an open quote at EOS */
+   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1u<<21,
+   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1u<<22,
+   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1u<<23,
    n__SHEXP_PARSE_QUOTE_AUTO_MASK = n_SHEXP_PARSE_QUOTE_AUTO_SQ |
          n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_DSQ,
+   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1u<<24,
+   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1u<<25, /* Ignore an open quote at EOS */
 
    /* Recognize metacharacters to separate tokens */
-   n_SHEXP_PARSE_META_VERTBAR = 1u<<21,
-   /*n_SHEXP_PARSE_META_AMPERSAND = 1u<<22, * NEVER for this mailer! */
+   n_SHEXP_PARSE_META_VERTBAR = 1u<<26,
+   /*n_SHEXP_PARSE_META_AMPERSAND = 1u<<27, * NEVER for this mailer! */
    /* Interpret ; as a sequencing operator, go_input_inject() remainder */
-   n_SHEXP_PARSE_META_SEMICOLON = 1u<<23,
+   n_SHEXP_PARSE_META_SEMICOLON = 1u<<28,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
-
    n_SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
          /*n_SHEXP_PARSE_META_AMPERSAND |*/ n_SHEXP_PARSE_META_SEMICOLON,
-
    /* Keep the metacharacter (or IFS character), do not skip over it */
-   n_SHEXP_PARSE_META_KEEP = 1u<<24,
+   n_SHEXP_PARSE_META_KEEP = 1u<<29,
    /* If shexp_state will contain SHEXP_STATE_SUBST, flag SHEXP_STATE_OUTPUT:
     * allow "uns i; if -z $i; ec ya; end": "we have seen something" ([[  ]]) */
-   n_SHEXP_PARSE_SUBST_FLAG_OUTPUT = 1u<<25,
+   n_SHEXP_PARSE_SUBST_FLAG_OUTPUT = 1u<<30,
 
-   n__SHEXP_PARSE_LAST = 25
+   n__SHEXP_PARSE_LAST = 30
 };
 
 enum n_shexp_state{
@@ -363,7 +368,7 @@ enum n_shexp_state{
    n_SHEXP_STATE_STOP = 1u<<1,
 
    n_SHEXP_STATE_UNICODE = 1u<<2, /* \[Uu] used */
-   n_SHEXP_STATE_QUOTE = 1u<<3, /* Any quotes seen */
+   n_SHEXP_STATE_QUOTE = 1u<<3, /* Any quotes seen (even "$@" expanding NIL) */
    n_SHEXP_STATE_SUBST = 1u<<4, /* Any ${/( substitution seen */
    n_SHEXP_STATE_CHANGE = 1u<<5, /* Any other expansion/change */
    n_SHEXP_STATE_CHANGE_MASK = n_SHEXP_STATE_UNICODE | n_SHEXP_STATE_QUOTE |
