@@ -1125,6 +1125,7 @@ a_go_evaluate__vput(struct str *line, char **vput, u8 scope_pp, boole v15_compat
 
 	ccp = line->s;
 	*vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
+				n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT |
 				n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
 				n_SHEXP_PARSE_META_KEEP), scope_pp, &ccp);
 	if(ccp == NIL){

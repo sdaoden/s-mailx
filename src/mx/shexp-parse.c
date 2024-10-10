@@ -1,5 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Shell parser; shexp_is_valid_varname()
+ *@ TODO - massively undercommented convoluted complicated non-Unicode aware mess
+ *@ TODO - should not use auto-memory
  *
  * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -42,7 +44,6 @@
 #include "mx/cmd-shortcut.h"
 #include "mx/iconv.h"
 
-/* TODO fake */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
@@ -71,17 +72,18 @@ enum a_shexp_parse_flags{
 	a_SHEXP_PARSE_SKIPT = 1u<<1, /* Skip entire token (\c@) */
 	a_SHEXP_PARSE_SKIPMASK = a_SHEXP_PARSE_SKIPQ | a_SHEXP_PARSE_SKIPT,
 	a_SHEXP_PARSE_SURPLUS = 1u<<2, /* Extended sequence interpretation */
-	a_SHEXP_PARSE_NTOKEN = 1u<<3, /* "New token": e.g., comments are possible */
-	a_SHEXP_PARSE_BRACE = 1u<<4, /* Variable substitution: brace enclosed */
-	a_SHEXP_PARSE_DIGIT1 = 1u<<5, /* ..first character was digit */
-	a_SHEXP_PARSE_NONDIGIT = 1u<<6,  /* ..has seen any non-digits */
-	a_SHEXP_PARSE_VARSUBST_MASK = su_BITENUM_MASK(4, 6),
+	a_SHEXP_PARSE_TOKEN_NEW = 1u<<3, /* e.g., comments are possible */
+	a_SHEXP_PARSE_TOKEN_QUOTE_NIL = 1u<<4, /* within " quote, $@ may still "expand-away" (to nothing) */
+	a_SHEXP_PARSE_BRACE = 1u<<5, /* Variable substitution: brace enclosed */
+	a_SHEXP_PARSE_DIGIT1 = 1u<<6, /* ..first character was digit */
+	a_SHEXP_PARSE_NONDIGIT = 1u<<7, /* ..has seen any non-digits */
+	a_SHEXP_PARSE_VARSUBST_MASK = su_BITENUM_MASK(5, 7),
 
 	a_SHEXP_PARSE_ROUND_MASK = a_SHEXP_PARSE_SKIPT | S(s32,~su_BITENUM_MASK(0, 7)),
-	a_SHEXP_PARSE_COOKIE = 1u<<8,
-	a_SHEXP_PARSE_EXPLODE = 1u<<9,
-	/* Remove one more byte from the input after pushing data to output */
-	a_SHEXP_PARSE_CHOP_ONE = 1u<<10,
+	a_SHEXP_PARSE_COOKIE = 1u<<8, /* Cookie processing in progress */
+	a_SHEXP_PARSE_EXPLODE = 1u<<9, /* "$@" / "$*" (latter with !IGN_IFS_SPLIT) explosion to be performed */
+	a_SHEXP_PARSE_IFS_SPLIT = 1u<<10, /* $@/$*, unquoted */
+	a_SHEXP_PARSE_CHOP_ONE = 1u<<11, /* Remove one more byte from the input after pushing data to output */
 	a_SHEXP_PARSE_TMP = 1u<<30
 };
 
@@ -104,6 +106,9 @@ struct a_shexp_parse_ctx{
 	char const *spc_ib_save;
 	struct n_string *spc_store;
 	struct str *spc_input; /* Only for orig display; normally spc_ib, spc_il */
+	/* "$@" or IFS_SPLIT explosion char** storage (if cookie storage passed by user only).
+	 * If any !NIL *X has bit 0 set, IFS_SPLIT mode; if terminating NIL has, " quote mode to be re-entered.
+	 * GROSS HACK: *X = char**, still void** not void***; i have forgotten why :( */
 	void const **spc_cookie;
 	char const *spc_ifs;
 	char const *spc_ifs_ws;
@@ -116,6 +121,13 @@ static enum a_shexp_parse_action a_shexp_parse_quote(struct a_shexp_parse_ctx *s
 
 static enum a_shexp_parse_action a_shexp_parse__charbyte(struct a_shexp_parse_ctx *spcp, char c);
 static enum a_shexp_parse_action a_shexp_parse__shexp(struct a_shexp_parse_ctx *spcp);
+
+/* Returns new tail if splits occurred and data has to be worked (appended to *slpp, then), NIL otherwise */
+static struct n_strlist **a_shexp_parse__ifs_split(struct a_shexp_parse_ctx *spcp, struct n_strlist **slpp,
+		char const *cp);
+
+/* Create new spcp->spc_cookie from slp_head upon success; this sets cookie to indicate IFS_SPLIT mode! */
+static boole a_shexp_parse__strlist_to_cookie(struct a_shexp_parse_ctx *spcp, struct n_strlist *slp_head);
 
 #define a_SHEXP_ARITH_COOKIE enum mx_scope
 #define a_SHEXP_ARITH_ERROR_TRACK
@@ -148,19 +160,28 @@ a_shexp_parse_raw(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 		--spcp->spc_il, c = *spcp->spc_ib++;
 
 		if(c == '"' || c == '\''){
-			state &= ~a_SHEXP_PARSE_NTOKEN;
+			state &= ~a_SHEXP_PARSE_TOKEN_NEW;
 			last_known_meta_trim_len = U32_MAX;
 			if(flags & n_SHEXP_PARSE_IGN_QUOTES)
 				goto Jnormal_char;
-			spcp->spc_quotec = c;
-			if(c == '"')
-				state |= a_SHEXP_PARSE_SURPLUS;
-			else
-				state &= ~a_SHEXP_PARSE_SURPLUS;
-			spcp->spc_res_state |= n_SHEXP_STATE_QUOTE;
-			break;
+			/* Empty quotes are pretty common for "" and '', do that quick */
+			else if(spcp->spc_il > 0 && *spcp->spc_ib == c){
+				ASSERT(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED));
+				--spcp->spc_il, ++spcp->spc_ib;
+				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
+				state &= a_SHEXP_PARSE_ROUND_MASK;
+				continue;
+			}else{
+				spcp->spc_quotec = c;
+				if(c == '"')
+					state |= a_SHEXP_PARSE_SURPLUS | a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
+				else
+					ASSERT(!(state & a_SHEXP_PARSE_SURPLUS));
+				spcp->spc_res_state |= n_SHEXP_STATE_QUOTE;
+				break;
+			}
 		}else if(c == '$'){
-			state &= ~a_SHEXP_PARSE_NTOKEN;
+			state &= ~a_SHEXP_PARSE_TOKEN_NEW;
 			last_known_meta_trim_len = U32_MAX;
 			if((flags & n_SHEXP_PARSE_IGN_SUBST_VAR) || spcp->spc_il == 0)
 				goto Jnormal_char;
@@ -182,7 +203,7 @@ a_shexp_parse_raw(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 			spcp->spc_res_state |= n_SHEXP_STATE_QUOTE;
 			break;
 		}else if(c == '\\'){
-			state &= ~a_SHEXP_PARSE_NTOKEN;
+			state &= ~a_SHEXP_PARSE_TOKEN_NEW;
 			last_known_meta_trim_len = U32_MAX;
 			/* Outside of quotes this just escapes any next character, but a sole <reverse solidus>
 			 * at EOS is left unchanged */
@@ -193,7 +214,7 @@ a_shexp_parse_raw(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 		}
 		/* A comment may it be if no token has yet started */
 		else if(c == '#'){
-			if(!(state & a_SHEXP_PARSE_NTOKEN) || (flags & n_SHEXP_PARSE_IGN_COMMENT))
+			if(!(state & a_SHEXP_PARSE_TOKEN_NEW) || (flags & n_SHEXP_PARSE_IGN_COMMENT))
 				goto Jnormal_char;
 			spcp->spc_ib += spcp->spc_il;
 			spcp->spc_il = 0;
@@ -266,9 +287,9 @@ a_shexp_parse_raw(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 					break;
 				}
 
-				state |= a_SHEXP_PARSE_NTOKEN;
+				state |= a_SHEXP_PARSE_TOKEN_NEW;
 			}else
-				state &= ~a_SHEXP_PARSE_NTOKEN;
+				state &= ~a_SHEXP_PARSE_TOKEN_NEW;
 
 			if(blnk && spcp->spc_store != NIL){
 				if(last_known_meta_trim_len == U32_MAX)
@@ -312,18 +333,20 @@ a_shexp_parse_quote(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 		ASSERT(spcp->spc_il > 0);
 		--spcp->spc_il, c = *spcp->spc_ib++;
 
-		ASSERT(!(state & a_SHEXP_PARSE_NTOKEN));
+		ASSERT(!(state & a_SHEXP_PARSE_TOKEN_NEW));
 		if(c == spcp->spc_quotec){
 			if(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)
 				goto jquote_normal_char;
+			/* Users may need to recognize the presence of empty quotes, yet "$@" may expand NIL */
+			if(!(state & a_SHEXP_PARSE_TOKEN_QUOTE_NIL))
+				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 			state &= a_SHEXP_PARSE_ROUND_MASK;
 			spcp->spc_quotec = '\0';
-			/* Users may need to recognize the presence of empty quotes */
-			spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 			break;
 		}else if(c == '\\'){
 			if(!(state & a_SHEXP_PARSE_SURPLUS))
 				goto jquote_normal_char;
+			state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
 
 			spcp->spc_ib_save = spcp->spc_ib - 1;
 			/* A sole <reverse solidus> at EOS is treated as-is!  This is ok since the "closing
@@ -444,12 +467,14 @@ jvar_expand:
 			ASSERT(!(spcp->spc_res_state & n_SHEXP_STATE_STOP));
 			continue;
 		}else if(c == '`'){ /* TODO sh command */
+			state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL; /* xxx ??? */
 			if(spcp->spc_quotec != '"' || spcp->spc_il == 0)
 				goto jquote_normal_char;
 			continue;
 		}
 
-jquote_normal_char:;
+jquote_normal_char:
+		state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
 		if(!(state & a_SHEXP_PARSE_SKIPMASK)){
 			spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 			if(su_cs_is_cntrl(c))
@@ -666,7 +691,10 @@ a_shexp_parse__shexp(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 	flags = spcp->spc_flags;
 	state = spcp->spc_state;
 
+	ASSERT(!(state & a_SHEXP_PARSE_TOKEN_NEW));
+
 	state &= ~a_SHEXP_PARSE_VARSUBST_MASK;
+	ASSERT(spcp->spc_il > 0);
 	c2 = *spcp->spc_ib;
 
 	/* 1. Arithmetic expression {{{ */
@@ -676,9 +704,10 @@ a_shexp_parse__shexp(struct a_shexp_parse_ctx *spcp){ /* {{{ */
 		s64 res;
 		uz i, parens;
 
+		state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
 		spcp->spc_ib_save = spcp->spc_ib++;
 		i = spcp->spc_il--;
-		if(spcp->spc_il < 3 || *spcp->spc_ib != '(')
+		if(i < 4 /*spcp->spc_il < 3*/ || *spcp->spc_ib != '(')
 			goto jearith;
 		++spcp->spc_ib;
 		--spcp->spc_il;
@@ -750,7 +779,8 @@ jearith:
 			for(;;){
 				BITENUM(u32,n_shexp_state) xyzs;
 
-				xyzs = n_shexp_parse_token(((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY) |
+				xyzs = n_shexp_parse_token(((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY |
+							n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT) |
 						/* XXX SHEXP_PARSE_RECURSIVE_MASK?? */
 						(flags & (n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_IFS_IS_COMMA |
 							n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_IGN_SUBST_VAR |
@@ -795,22 +825,24 @@ jearith:
 		spcp->spc_res_state |= n_SHEXP_STATE_ERR_BADSUB;
 		goto jerr_ib_save;
 	} /* }}} */
-
-	/* 2. Enbraced variable name */
-	if(c2 == '{')
-		state |= a_SHEXP_PARSE_BRACE;
-
-	/* Scan variable name */
-	if(!(state & a_SHEXP_PARSE_BRACE) || spcp->spc_il > 1){ /* {{{ */
+	/* Scan variable name, possibly in braces; expand, possibly explode *@, IFS split etc {{{ */
+	else{
 		uz i;
 		boole rset;
 		char const *vp;
 
 		spcp->spc_ib_save = spcp->spc_ib - 1;
-		if(state & a_SHEXP_PARSE_BRACE)
+
+		/* Embraced variable name? */
+		if(c2 == '{'){
+			state |= a_SHEXP_PARSE_BRACE;
+			if(spcp->spc_il <= 1)
+				goto jebracenoc;
 			--spcp->spc_il, ++spcp->spc_ib;
+		}
+
 		vp = spcp->spc_ib;
-		state &= ~a_SHEXP_PARSE_EXPLODE;
+		state &= ~(a_SHEXP_PARSE_EXPLODE | a_SHEXP_PARSE_IFS_SPLIT);
 
 		/* In order to support $^# we need to treat circumflex especially */
 		for(rset = FAL0, i = 0; spcp->spc_il > 0; --spcp->spc_il, ++spcp->spc_ib){
@@ -819,20 +851,26 @@ jearith:
 			 * that manages internal variables! */
 			c = *spcp->spc_ib;
 			if(!a_SHEXP_ISVARC(c)){
-				if(i == 0){
-					/* Skip over multiplexer, do not count it for now */
-					if(c == '^'){
-						rset = TRU1;
-						continue;
+				if(i != 0)
+					break;
+				switch(c){
+				case '^': /* Skip over multiplexer, do not count it for now */
+					rset = TRU1;
+					continue;
+				case '*':
+					/* $* is easier for us to handle via normal variable lookup otherwise */
+					if(spcp->spc_quotec != '"' && !(flags & n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT)){
+						FALLTHRU
+				case '@':
+						state |= a_SHEXP_PARSE_EXPLODE;
 					}
-					if(c == '*' || c == '@' || c == '#' || c == '?' || c == '!'){
-						if(c == '@'){
-							if(spcp->spc_quotec == '"')
-								state |= a_SHEXP_PARSE_EXPLODE;
-						}
-						--spcp->spc_il, ++spcp->spc_ib;
-						++i;
-					}
+					FALLTHRU
+				case '#': case '?': case '!':
+					--spcp->spc_il, ++spcp->spc_ib;
+					++i;
+					break;
+				default:
+					break;
 				}
 				break;
 			}else if(a_SHEXP_ISVARC_BAD1ST(c)){
@@ -868,22 +906,10 @@ jearith:
 					S(int,P2UZ(spcp->spc_ib - spcp->spc_ib_save)), spcp->spc_ib_save);
 			spcp->spc_res_state |= n_SHEXP_STATE_ERR_IDENTIFIER;
 			goto jerr_ib_save;
-		}else if(i == 0){
-			if(state & a_SHEXP_PARSE_BRACE){
-				if(spcp->spc_il == 0 || *spcp->spc_ib != '}')
-					goto jebracenoc;
-				--spcp->spc_il, ++spcp->spc_ib;
-				if(i == 0)
-					goto jebracesubst;
-			}
-			/* Simply write dollar as-is? */
-			if(!(state & a_SHEXP_PARSE_SKIPMASK)){
-				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
-				if(!(flags & n_SHEXP_PARSE_DRYRUN))
-					n_string_push_c(spcp->spc_store, '$');
-			}
-			goto jleave;
-		}else{
+		}
+
+		/* Empty variable? */
+		if(UNLIKELY(i <= ((state & a_SHEXP_PARSE_BRACE) != 0))){
 			if(state & a_SHEXP_PARSE_BRACE){
 				if(spcp->spc_il == 0 || *spcp->spc_ib != '}'){
 jebracenoc:
@@ -895,10 +921,8 @@ jebracenoc:
 					spcp->spc_res_state |= n_SHEXP_STATE_ERR_GROUPOPEN;
 					goto jerr_ib_save;
 				}
-				--spcp->spc_il, ++spcp->spc_ib;
 
 				if(i == 0){
-jebracesubst:
 					if(flags & n_SHEXP_PARSE_LOG)
 						n_err(_("Bad ${} substitution: %.*s: %.*s\n"),
 							S(int,spcp->spc_input->l), spcp->spc_input->s,
@@ -908,61 +932,233 @@ jebracesubst:
 					goto jerr_ib_save;
 				}
 			}
-
-			spcp->spc_res_state |= n_SHEXP_STATE_SUBST;
-			if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_IGN_SUBST_VAR))
+			/* Simply write dollar as-is? */
+			else if(!(state & a_SHEXP_PARSE_SKIPMASK)){
+				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
+				if(!(flags & n_SHEXP_PARSE_DRYRUN))
+					n_string_push_c(spcp->spc_store, '$');
 				goto jleave;
+			}
+		}
 
-			/* We may shall explode "${@}" to a series of successive, properly quoted tokens (instead).
-			 * The first exploded cookie will join with the current token */
-			if(UNLIKELY(state & a_SHEXP_PARSE_EXPLODE) && spcp->spc_cookie != NIL){
-				if(n_var_vexplode(spcp->spc_cookie, rset))
-					state |= a_SHEXP_PARSE_COOKIE;
-				/* On the other hand, if $@ expands to nothing and is the sole content of this quote
-				 * then act like the shell does and throw away the entire atxplode construct */
-				else if(!(spcp->spc_res_state & n_SHEXP_STATE_OUTPUT) &&
-						spcp->spc_il == 1 && *spcp->spc_ib == '"' &&
-						spcp->spc_ib_save == &spcp->spc_input->s[1] &&
-						spcp->spc_ib_save[-1] == '"')
-					++spcp->spc_ib, --spcp->spc_il;
-				else
-					goto jleave;
+		if(state & a_SHEXP_PARSE_BRACE){
+			ASSERT(i > 0);
+			ASSERT(spcp->spc_il > 0);
+			--spcp->spc_il, ++spcp->spc_ib;
+		}
 
-				spcp->spc_input->s = UNCONST(char*,spcp->spc_ib);
-				spcp->spc_input->l = spcp->spc_il;
-				rv = a_SHEXP_PARSE_ACTION_RESTART_EMPTY;
+		spcp->spc_res_state |= n_SHEXP_STATE_SUBST;
+
+		/* Dry run stops now */
+		if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_IGN_SUBST_VAR)){
+			state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL; /* xxx not needed */
+			goto jleave;
+		}
+
+		ASSERT(!(flags & n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT) || !(state & a_SHEXP_PARSE_IFS_SPLIT));
+		/* Not an explosion or $*-to-be-split */
+		if(!(state & a_SHEXP_PARSE_EXPLODE) || (state & a_SHEXP_PARSE_IFS_SPLIT)){
+			state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
+			if(spcp->spc_quotec == '\0' && !(flags & n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT))
+				state |= a_SHEXP_PARSE_IFS_SPLIT;
+		}
+		ASSERT(!(flags & n_SHEXP_PARSE_IGN_SUBST_IFS_SPLIT) || !(state & a_SHEXP_PARSE_IFS_SPLIT));
+state&=~a_SHEXP_PARSE_IFS_SPLIT;/* FIXME*/
+
+		/* $@,$*; POSIX 2.5.2, Special Parameters:
+		 *	Expands to the positional parameters, starting from one,
+		 *	initially producing one field for each positional parameter that is set.
+		 * The first exploded cookie will join with the current token in quotes, etc. */
+		if(UNLIKELY(state & a_SHEXP_PARSE_EXPLODE) && spcp->spc_cookie != NIL){
+			boole xrv;
+
+			ASSERT(!(state & a_SHEXP_PARSE_COOKIE));
+			xrv = n_var_vexplode(spcp->spc_cookie, rset);
+			if(!xrv){
+				*spcp->spc_cookie = NIL;
 				goto jleave;
 			}
 
-			/* Check getenv(3) shall no internal variable exist!
-			 * XXX We have some common idioms, avoid memory for them
-			 * XXX Even better would be var_vlook_buf()! */
-			if(i == 1){
-				switch(*vp){
-				case '?': vp = n_qm; break;
-				case '!': vp = n_em; break;
-				case '*': vp = n_star; break;
-				case '@': vp = n_at; break;
-				case '#': vp = n_ns; break;
-				default: goto j_var_look_buf;
-				}
-			}else
-j_var_look_buf:
-				vp = savestrbuf(vp, i);
+			spcp->spc_input->s = UNCONST(char*,spcp->spc_ib);
+			spcp->spc_input->l = spcp->spc_il;
 
-			if((cp = n_var_vlook(vp, TRU1)) != NIL){
-j_var_push_cp:
-				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
-				n_string_push_cp(spcp->spc_store, cp);
-				for(; (c = *cp) != '\0'; ++cp)
-					if(su_cs_is_cntrl(c)){
-						spcp->spc_res_state |= n_SHEXP_STATE_CONTROL;
-						break;
+			if(spcp->spc_quotec == '"'){
+				char const **xcookie;
+
+				state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
+				/* NIL terminator needs bit 0 to indicate quote mode */
+				xcookie = S(char const**,*spcp->spc_cookie);
+				while(*xcookie != NIL)
+					++xcookie;
+				*xcookie = S(char const*,S(void*,0x1));
+			}else if(state & a_SHEXP_PARSE_IFS_SPLIT){
+				struct n_strlist *slp_head, **slpp, **xslpp;
+				char const **xcookie;
+				boole z1, zx, ismulti;
+
+				ASSERT(!(state & a_SHEXP_PARSE_TOKEN_QUOTE_NIL));
+				ASSERT(spcp->spc_quotec == '\0');
+
+				xcookie = S(char const**,*spcp->spc_cookie);
+				ASSERT(xcookie != NIL && *xcookie != NIL);
+				*spcp->spc_cookie = NIL;
+				ismulti = (xcookie[1] != NIL);
+
+				/* If $# is 1 and expansion is empty, no field splitting is to be done.
+				 * We simply continue processing as if this did not exist */
+				if(xrv < FAL0 && !ismulti){
+					rv = a_SHEXP_PARSE_ACTION_GO;
+					goto jleave;
+				}
+
+				z1 = (**xcookie == '\0');
+				UNINIT(zx, FAL0);
+
+				slp_head = NIL;
+				for(slpp = &slp_head; *xcookie != NIL; ++xcookie){
+					zx = (**xcookie == '\0');
+					/* Skip an empty trailing field */
+					if(!zx || xcookie[1] != NIL){
+						xslpp = a_shexp_parse__ifs_split(spcp, slpp, *xcookie);
+						if(xslpp != NIL)
+							slpp = xslpp;
 					}
-			}else if(flags & n_SHEXP_PARSE_SUBST_FLAG_OUTPUT)
+				}
+				if(slp_head == NIL){
+					/* Mysteriously this ended up all empty; we must terminate an existing token */
+					ASSERT(ismulti);
+					rv = (spcp->spc_state & a_SHEXP_PARSE_TOKEN_NEW)
+							? a_SHEXP_PARSE_ACTION_RESTART_EMPTY : a_SHEXP_PARSE_ACTION_STOP;
+					goto jleave;
+				}
+
+				if(!a_shexp_parse__strlist_to_cookie(spcp, slp_head)){
+					spcp->spc_res_state |= n_SHEXP_STATE_ERR_BADSUB;
+					goto jerr_ib_save;
+				}
+
+				if(zx){
+					/* Indicate whether last cookie may be joined with rest */
+					xcookie = S(char const**,S(void*,R(up,*spcp->spc_cookie) & ~0x1));
+					while(*xcookie != NIL)
+						++xcookie;
+					zx = ((R(up,*xcookie) & 0x1) != 0) | 0x2;
+					*xcookie = S(char const*,R(void*,S(up,zx)));
+				}
+
+				if(z1 && !(spcp->spc_state & a_SHEXP_PARSE_TOKEN_NEW)){
+					if(!ismulti){
+					}
+					state |= a_SHEXP_PARSE_COOKIE;
+					rv = (spcp->spc_quotec == '\0') ? a_SHEXP_PARSE_ACTION_STOP
+							: a_SHEXP_PARSE_ACTION_RESTART_EMPTY;
+					goto jleave;
+				}
+
+
+				if(!(spcp->spc_state & a_SHEXP_PARSE_TOKEN_NEW)){
+					rv = a_SHEXP_PARSE_ACTION_STOP;
+					goto jleave;
+				}
+			}
+			/* All empty?  Avoid work */
+			else if(xrv < FAL0){
+/* FIXME */
+				ASSERT(rv == a_SHEXP_PARSE_ACTION_GO);
+				*spcp->spc_cookie = NIL;
+				goto jleave;
+			}
+
+			state |= a_SHEXP_PARSE_COOKIE;
+			rv = a_SHEXP_PARSE_ACTION_RESTART_EMPTY;
+			goto jleave;
+		}
+		ASSERT(!(state & a_SHEXP_PARSE_TOKEN_QUOTE_NIL));
+
+		/* We have some common idioms we avoid memory for; xxx Even better would be var_vlook_buf()! */
+		if(i == 1){
+			switch(*vp){
+			case '?': vp = n_qm; state &= ~a_SHEXP_PARSE_IFS_SPLIT; break;
+			case '!': vp = n_em; state &= ~a_SHEXP_PARSE_IFS_SPLIT; break;
+			case '*': vp = n_star; break;
+			case '@': vp = n_at; break;
+			case '#': vp = n_ns; state &= ~a_SHEXP_PARSE_IFS_SPLIT; break;
+			default: goto j_var_look_buf;
+			}
+		}else
+j_var_look_buf:
+			vp = savestrbuf(vp, i);
+
+		/* Check getenv(3) shall no internal variable exist */
+		if(UNLIKELY((cp = n_var_vlook(vp, TRU1)) == NIL)){
+			if(flags & n_SHEXP_PARSE_SUBST_FLAG_OUTPUT)
 				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 			goto jleave;
 		}
+		/* An unquoted expansion of $@ and $* undergoes word splitting */
+		else if(0&&UNLIKELY(state & a_SHEXP_PARSE_IFS_SPLIT) && spcp->spc_cookie != NIL){
+			struct n_strlist *slp_head;
+
+			ASSERT(!(state & a_SHEXP_PARSE_COOKIE));
+			ASSERT(spcp->spc_quotec == '\0');
+
+			if(*cp == '\0'){
+				rv = a_SHEXP_PARSE_ACTION_GO;
+				goto jleave;
+			}
+
+			spcp->spc_input->s = UNCONST(char*,spcp->spc_ib);
+			spcp->spc_input->l = spcp->spc_il;
+			slp_head = NIL;
+
+			if(a_shexp_parse__ifs_split(spcp, &slp_head, cp) != NIL){
+				if(slp_head->sl_next == NIL){
+					cp = slp_head->sl_dat;
+					/*goto j_var_push_cp;*/
+				}else{
+					char const **xcookie;
+
+					if(!a_shexp_parse__strlist_to_cookie(spcp, slp_head)){
+						spcp->spc_res_state |= n_SHEXP_STATE_ERR_BADSUB;
+						goto jerr_ib_save;
+					}
+
+					/* Indicate whether last cookie may be joined with rest */
+					xcookie = S(char const**,S(void*,R(up,*spcp->spc_cookie) & ~0x1));
+					while(*xcookie != NIL)
+						++xcookie;
+					*xcookie = S(char const*,R(void*,
+							S(up,((R(up,*xcookie) & 0x1) != 0) | 0x2)));
+
+/* FIXME join to front */
+					state |= a_SHEXP_PARSE_COOKIE;
+					rv = (spcp->spc_state & a_SHEXP_PARSE_TOKEN_NEW)
+							? a_SHEXP_PARSE_ACTION_RESTART_EMPTY
+							: a_SHEXP_PARSE_ACTION_STOP;
+					goto jleave;
+				}
+			}else{
+				/* Only whitespace */
+				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
+				flags &= ~a_SHEXP_PARSE_IFS_SPLIT;
+				rv = (spcp->spc_state & a_SHEXP_PARSE_TOKEN_NEW)
+						? a_SHEXP_PARSE_ACTION_RESTART_EMPTY
+						: a_SHEXP_PARSE_ACTION_STOP;
+				goto jleave;
+			}
+		}
+
+j_var_push_cp:
+		spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
+		n_string_push_cp(spcp->spc_store, cp);
+		for(; (c = *cp) != '\0'; ++cp)
+			if(su_cs_is_cntrl(c)){
+				spcp->spc_res_state |= n_SHEXP_STATE_CONTROL;
+				break;
+			}
+
+		flags &= ~a_SHEXP_PARSE_IFS_SPLIT;
+		/*goto jleave;*/
 	} /* }}} */
 
 jleave:
@@ -974,10 +1170,110 @@ jleave:
 
 	/* Write unchanged */
 jerr_ib_save:
+	state &= ~a_SHEXP_PARSE_TOKEN_QUOTE_NIL;
 	spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 	if(!(flags & n_SHEXP_PARSE_DRYRUN))
 		n_string_push_buf(spcp->spc_store, spcp->spc_ib_save, P2UZ(spcp->spc_ib - spcp->spc_ib_save));
 	goto jleave;
+} /* }}} */
+
+static struct n_strlist **
+a_shexp_parse__ifs_split(struct a_shexp_parse_ctx *spcp, struct n_strlist **tailp, char const *cp){ /* {{{ */
+	struct str trim;
+	boole any, dowsp;
+	uz i;
+	NYD_IN;
+
+	trim.s = UNCONST(char*,cp);
+	trim.l = su_cs_len(cp);
+	any = FAL0;
+	dowsp = (*spcp->spc_ifs == '\0' ? FAL0 : su_cs_is_space(*spcp->spc_ifs) ? TRU1 : TRUM1);
+
+	/* Non-empty, non-WS delimits a field */
+	i = trim.l;
+
+	if(dowsp < FAL0){
+#if 0
+		spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT; /* FIXME  ONLY WITH *ANY* DATA*/
+		if(i == 0)
+			goto jnode;
+#endif
+	}else{
+		if(dowsp > FAL0 && (spcp->spc_res_state & n_SHEXP_STATE_OUTPUT))
+			dowsp = TRUM1;
+
+		if(!(spcp->spc_state & a_SHEXP_PARSE_TOKEN_NEW))
+			dowsp = TRUM1;
+	}
+
+jouter:
+	while(trim.l > 0){
+		if(dowsp > FAL0 && n_str_trim_ifs(&trim, n_STR_TRIM_FRONT, FAL0)->l == 0)
+			break;
+
+		for(cp = trim.s, i = 1; i <= trim.l; ++cp, ++i){
+			char c;
+
+			c = *cp;
+
+			if(*spcp->spc_ifs != '\0' && su_cs_find_c(spcp->spc_ifs, c) != NIL){
+				--i;
+jnode:
+				any = TRU1;
+				*tailp = n_STRLIST_AUTO_ALLOC(i);
+				(*tailp)->sl_next = NIL;
+				su_mem_copy((*tailp)->sl_dat, trim.s, (*tailp)->sl_len = i);
+				(*tailp)->sl_dat[i] = '\0';
+				tailp = &(*tailp)->sl_next;
+				if(i < trim.l)
+					++i;
+				trim.s += i;
+				ASSERT(i <= trim.l);
+				trim.l -= i;
+
+				if(dowsp)
+					dowsp = TRU1;
+				goto jouter;
+			}
+		}
+
+		if(trim.l > 0){
+			i = trim.l;
+			goto jnode;
+		}
+		break;
+	}
+
+	NYD_OU;
+	return (any ? tailp : NIL);
+} /* }}} */
+
+static boole
+a_shexp_parse__strlist_to_cookie(struct a_shexp_parse_ctx *spcp, struct n_strlist *slp_head){ /* {{{ */
+	char const **rv, **cppx;
+	struct n_strlist *slp;
+	uz i;
+	NYD_IN;
+
+	for(i = 0, slp = slp_head; slp != NIL; ++i, slp = slp->sl_next){
+	}
+
+	if(i == 0)
+		rv = NIL;
+	else{
+		++i;
+		cppx = rv = su_AUTO_TALLOC(char const*, i);
+
+		/* Cookie needs bit 0 to indicate IFS_SPLIT mode, bit 1 to indicate may-not-join */
+		*spcp->spc_cookie = S(char const**,R(void*,R(up,rv) | 0x1));
+
+		for(slp = slp_head; slp != NIL; slp = slp->sl_next)
+			*cppx++ = slp->sl_dat;
+		*cppx = NIL;
+	}
+
+	NYD_OU;
+	return (rv != NIL);
 } /* }}} */
 
 FL BITENUM(u32,n_shexp_state)
@@ -1018,15 +1314,16 @@ n_shexp_parse_token(BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
 	if(flags & (n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE)){
 		spc.spc_ifs = ok_vlook(ifs);
 		spc.spc_ifs_ws = ok_vlook(ifs_ws);
-	}
+	}else
+		spc.spc_ifs_ws = spc.spc_ifs = " ";
 
 	state = a_SHEXP_PARSE_NONE;
 	spc.spc_ib = input->s;
 	if((spc.spc_il = input->l) == UZ_MAX)
 		input->l = spc.spc_il = su_cs_len(spc.spc_ib);
 	spc.spc_input = input;
-	spc.spc_cookie = cookie;
 
+	spc.spc_cookie = cookie;
 	if(cookie != NIL && *cookie != NIL){
 		ASSERT(!(flags & n_SHEXP_PARSE_DRYRUN));
 		state |= a_SHEXP_PARSE_COOKIE;
@@ -1039,31 +1336,50 @@ jrestart_empty:
 
 	/* In cookie mode, the next ARGV entry is the token already, unchanged, since it has been expanded before! */
 	if(state & a_SHEXP_PARSE_COOKIE){
-		char c;
-		uz i;
+		boole lastsep;
 		char const * const *xcookie, *cp;
+		uz i, nbytes;
 
 		ASSERT(spc.spc_store != NIL);
-		i = spc.spc_store->s_len;
-		xcookie = *cookie;
-		if(n_string_push_cp(spc.spc_store, *xcookie)->s_len > 0)
-			spc.spc_res_state |= n_SHEXP_STATE_OUTPUT;
-		if(*++xcookie == NIL){
-			*cookie = NIL;
-			state &= ~a_SHEXP_PARSE_COOKIE;
-			flags |= n_SHEXP_PARSE_QUOTE_AUTO_DQ; /* ..why we are here! */
-		}else
-			*cookie = UNCONST(void*,xcookie);
 
-		for(cp = &n_string_cp(spc.spc_store)[i]; (c = *cp++) != '\0';)
+		i = spc.spc_store->s_len;
+		xcookie = S(char const* const*,*spc.spc_cookie);
+
+		lastsep = FAL0;
+		if(R(up,xcookie) & 0x1){
+			xcookie = S(char const* const*,R(void*,R(up,xcookie) ^ 0x1));
+			state |= a_SHEXP_PARSE_IFS_SPLIT;
+		}
+
+		if((nbytes = n_string_push_cp(spc.spc_store, *xcookie)->s_len) > 0)
+			nbytes -= i;
+		spc.spc_res_state |= n_SHEXP_STATE_OUTPUT;
+
+		for(cp = &spc.spc_store->s_dat[i]; nbytes-- > 0;){
+			char c;
+
+			c = *cp++;
 			if(su_cs_is_cntrl(c)){
 				spc.spc_res_state |= n_SHEXP_STATE_CONTROL;
 				break;
 			}
+		}
+
+		lastsep = FAL0;
+		if(R(up,*++xcookie) <= 0x3){
+			state &= ~(a_SHEXP_PARSE_COOKIE | a_SHEXP_PARSE_EXPLODE | a_SHEXP_PARSE_IFS_SPLIT);
+			if(R(up,*xcookie) & 0x2)
+				lastsep = TRU1;
+			spc.spc_quotec = (R(up,*xcookie) & 0x1) ? '"' : '\0';
+			xcookie = NIL;
+		}
+		*spc.spc_cookie = xcookie;
 
 		/* The last exploded cookie will join with the yielded input token, so simply fall through then */
 		if(state & a_SHEXP_PARSE_COOKIE)
 			goto jleave_quick;
+		if(lastsep && !(spc.spc_res_state & n_SHEXP_STATE_OUTPUT))
+			goto jleave;
 	}else{
 jrestart:
 		if(flags & n_SHEXP_PARSE_TRIM_SPACE){
@@ -1084,6 +1400,7 @@ jrestart:
 
 		spc.spc_input->s = UNCONST(char*,spc.spc_ib);
 		spc.spc_input->l = spc.spc_il;
+		spc.spc_quotec = '\0';
 	}
 
 	if(spc.spc_il == 0){
@@ -1102,6 +1419,7 @@ jrestart:
 	case n_SHEXP_PARSE_QUOTE_AUTO_DQ:
 		spc.spc_quotec = '"';
 		if(0){
+		FALLTHRU
 	case n_SHEXP_PARSE_QUOTE_AUTO_DSQ:
 			spc.spc_quotec = '\'';
 		}
@@ -1109,8 +1427,8 @@ jrestart:
 		state |= a_SHEXP_PARSE_SURPLUS;
 		break;
 	default:
-		spc.spc_quotec = '\0';
-		state |= a_SHEXP_PARSE_NTOKEN;
+		if(spc.spc_quotec == '\0')
+			state |= a_SHEXP_PARSE_TOKEN_NEW;
 		break;
 	}
 
@@ -1123,16 +1441,19 @@ jrestart:
 		flags = spc.spc_flags;
 		state = spc.spc_state;
 
-		if(rv == a_SHEXP_PARSE_ACTION_STOP)
+		if(rv == a_SHEXP_PARSE_ACTION_STOP){
+			if(state & a_SHEXP_PARSE_COOKIE)
+				goto jleave_quick;
 			break;
+		}
 		ASSERT(!(spc.spc_res_state & n_SHEXP_STATE_STOP));
 		if(rv == a_SHEXP_PARSE_ACTION_RESTART)
 			goto jrestart;
-		if(rv == a_SHEXP_PARSE_ACTION_RESTART_EMPTY){
-			ASSERT(*cookie == *spc.spc_cookie);
+		if(rv == a_SHEXP_PARSE_ACTION_RESTART_EMPTY)
 			goto jrestart_empty;
-		}
 		ASSERT(rv == a_SHEXP_PARSE_ACTION_GO);
+		if(state & a_SHEXP_PARSE_COOKIE)
+			goto jleave_quick;
 	}while(spc.spc_il != 0);
 
 	if(spc.spc_quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_CLOSE)){
