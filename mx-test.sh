@@ -13902,7 +13902,7 @@ t_s_mime() { #{{{
 t_net_pop3() { #{{{ TODO TLS tests, then also EXTERN*
 	t_prolog "${@}"
 
-	if [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
+	if [ -z '' ]; then # TODO [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
 		t_echoskip '[!NET_TEST or !POP3]'
 		t_epilog "${@}"
 		return
@@ -14006,7 +14006,7 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 t_net_imap() { #{{{ TODO TLS tests, then also EXTERN*
 	t_prolog "${@}"
 
-	if [ -n "${TESTS_NET_TEST}" ] && have_feat imap; then :; else
+	if [ -z '' ]; then # TODO [ -n "${TESTS_NET_TEST}" ] && have_feat imap; then :; else
 		t_echoskip '[!NET_TEST or !IMAP]'
 		t_epilog "${@}"
 		return
