@@ -959,7 +959,8 @@ j_var_push_cp:
 						spcp->spc_res_state |= n_SHEXP_STATE_CONTROL;
 						break;
 					}
-			}
+			}else if(flags & n_SHEXP_PARSE_SUBST_FLAG_OUTPUT)
+				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 			goto jleave;
 		}
 	} /* }}} */

@@ -4162,6 +4162,20 @@ t_ifelse() { #{{{
 	#}}}
 	cke0 fileops 0 ./tfops '571055761 33'
 
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./tsubst_flag_output 2>${E0}
+\uns i;
+\if -z $i;\ec 1;\el;\ec 1e;\en
+\if -n $i;\ec 2e;\el;\ec 2;\en
+\if $i = $i;\ec 3;\el;\ec 3e;\en
+\if $i != $i;\ec 4e;\el;\ec 4;\en
+\if $i = '';\ec 5;\el;\ec 5e;\en
+\if $i -eq 0;\ec 6;\el;\ec 6e;\en
+\if $i -ne 0;\ec 7e;\el;\ec 7;\en
+__EOT
+	#}}}
+	cke0 subst_flag_output 0 ./tsubst_flag_output '35733853 14'
+
 	t_epilog "${@}"
 } #}}}
 
