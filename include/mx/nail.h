@@ -346,8 +346,11 @@ enum n_shexp_parse_flags{
 
    /* Keep the metacharacter (or IFS character), do not skip over it */
    n_SHEXP_PARSE_META_KEEP = 1u<<24,
+   /* If shexp_state will contain SHEXP_STATE_SUBST, flag SHEXP_STATE_OUTPUT:
+    * allow "uns i; if -z $i; ec ya; end": "we have seen something" ([[  ]]) */
+   n_SHEXP_PARSE_SUBST_FLAG_OUTPUT = 1u<<25,
 
-   n__SHEXP_PARSE_LAST = 24
+   n__SHEXP_PARSE_LAST = 25
 };
 
 enum n_shexp_state{
