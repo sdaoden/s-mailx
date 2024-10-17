@@ -1160,7 +1160,6 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 	/* Note: regarding -Y injections, we document:
 	 *   before interactive prompting begins in interactive mode, after standard input has been consumed otherwise */
 	struct a_coll_ctx cc;
-	struct a_coll_ocs_arg *coap;
 	int c;
 	int volatile gfield, getfields;
 	char const * volatile cp;
@@ -1372,8 +1371,9 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 
 	/* TODO v15-compat: remove SPLICE aka *on-compose-splice-shell*, or *on-compose-splice* */
 	if(cc.cc_coap == NIL && (cp = ok_vlook(on_compose_splice_shell)) != NIL) Jocs:{
-		union {int (*ptf)(void); char const *sh;} u;
+		struct a_coll_ocs_arg *coap;
 		char const *cmd;
+		union {int (*ptf)(void); char const *sh;} u;
 
 		n_OBSOLETE(_("please use the much easier *on-compose-embed*, not *on-compose-splice*"));
 
@@ -1417,7 +1417,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 
 			temporary_compose_mode_hook_call(NIL, FAL0);
 			mx_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
-				(n_psonce & ~n_PSO_INTERACTIVE), &a_coll_ocs__finalize, &coap);
+				(n_psonce & ~n_PSO_INTERACTIVE), &a_coll_ocs__finalize, &cc.cc_coap);
 			fputs("0 0 3\n", n_stdout/*coap->coa_stdout*/); /* (last supported version before removal) */
 			goto jloop;
 		}
@@ -1603,17 +1603,18 @@ j_leave:
 jerr:
 	sigprocmask(SIG_BLOCK, &cc.cc_sig_nset, NIL);
 jerr_nosig:
-	if(cc.cc_coap != NIL && cc.cc_coap != R(struct a_coll_ocs_arg*,-1)){
-		if(!(cc.cc_flags & a_COLL_COAP_NOSIGTERM))
-			mx_fs_pipe_signal(cc.cc_coap->coa_stdout, SIGTERM);
-		mx_go_splice_hack_remove_after_jump();
-	}
 	if(cc.cc_ifs_saved != NIL)
 		ok_vset(ifs, cc.cc_ifs_saved);
 
 	if(cc.cc_fp != NIL){
 		mx_fs_close(cc.cc_fp);
 		cc.cc_fp = NIL;
+	}
+
+	if(cc.cc_coap != NIL && cc.cc_coap != R(struct a_coll_ocs_arg*,-1)){
+		if(!(cc.cc_flags & a_COLL_COAP_NOSIGTERM))
+			mx_fs_pipe_signal(cc.cc_coap->coa_stdout, SIGTERM);
+		mx_go_splice_hack_remove_after_jump();
 	}
 
 	/* TODO We don't save in $DEAD upon error because msg not readily composed?
