@@ -1230,16 +1230,35 @@ a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp, int ap
 {
 	char *rv;
 	int c;
+	uz ls;
 	NYD2_IN;
 
 	ASSERT(*linesize == 0 || *line != NULL);
 
 	/* Always leave room for NETNL, not only \n */
-	for (rv = *line;;) {
-		if (*linesize <= mx_LINESIZE || n >= *linesize - 128) {
-			*linesize += ((rv == NULL) ? mx_LINESIZE + n + 2 : 256);
-			*line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize, su_DVL_LOC_ARGS_ORUSE);
+	rv = *line;
+	ls = *linesize;
+
+	/* C99 */{
+		uz i;
+
+		i = n + MAX(mx_LINESIZE / 8, 256);
+		i = MAX(i, mx_LINESIZE);
+
+		if(UNLIKELY(ls < i)){
+			ls = i;
+			goto jlnrealloc;
 		}
+	}
+
+	for(;;){
+		if(UNLIKELY(n >= ls - MIME_LINELEN - sizeof(NETNL) +1)){
+			ls += MAX(mx_LINESIZE / 8, 256);
+jlnrealloc:
+			*linesize = ls;
+			*line = rv = su_MEM_REALLOC_LOCOR(rv, ls, su_DVL_LOC_ARGS_ORUSE);
+		}
+
 		c = getc(fp);
 		if (c != EOF) {
 			rv[n++] = c;
