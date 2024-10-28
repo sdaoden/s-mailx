@@ -1648,8 +1648,7 @@ e a$'\c@'b c d
 	cke0 3 0 ./t3 '380053216 54'
 
 	# $(())-good {{{
-	# env:I=10,J=33
-	${cat} <<- '__EOT' > ./tarith-good.in
+	${cat} << '__EOT' > ./tarith-good.in
 # make this work with (ba)sh \
 command -v shopt && shopt -s expand_aliases;\
 alias p=printf;alias e=echo;alias s=export
@@ -2578,13 +2577,25 @@ e '= TEND'
 e "<$((0?44/0:99))>"
 e "<$((0?4**-1:99))>"
 e "<$((0?4**-10:99))>"
-	__EOT
+e '= T+1 (contractions)'
+s I=10 J=33 J-I=11
+e "<$((I + ((J - I) / 2)))>"
+e "<$((I+(J-I/2)))>"
+e "<$((I+(((J)-I)/2)))>"
+e "<$((10 + ((33 - 10) / 2)))>"
+e "<$((10+((33-10)/2)))>"
+p "<$((I=I + ((J - I) / 2)))>"; e "<$I>"
+s I=10; p "<$((I=I+(J-I/2)))>"; e "<$I>"
+s I=10; p "<$((I=I+(((J)-I)/2)))>"; e "<$I>"
+s I=10; p "<$((I=10 + ((33 - 10) / 2)))>"; e "<$I>"
+s I=10; p "<$((I=10+((33-10)/2)))>"; e "<$I>"
+__EOT
 	#}}}
 	< ./tarith-good.in ${MAILX} ${ARGS} \
 		-Y 'commandalias ca \\commandalias' \
 		-Y 'ca p \\echon' -Y 'ca e \\echo' -Y 'ca s \\set' \
 		> ./tarith-good 2>${E0}
-	cke0 arith-good 0 ./tarith-good '1950434634 6582'
+	cke0 arith-good 0 ./tarith-good '635915883 6673'
 
 	# $(())-bad {{{
 	${cat} <<- '__EOT' > ./tarith-bad.in
