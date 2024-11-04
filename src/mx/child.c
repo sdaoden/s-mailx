@@ -64,6 +64,8 @@ struct a_child_ent{
 
 static struct a_child_ent *a_child_head;
 
+DVL( static void a_child__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
+
 /* Cleanup internal structures which have been rendered obsolete (children have terminated) in the meantime; returns
  * list to be freed.  Note: signals including SIGCHLD need to be blocked when calling this */
 static struct a_child_ent *a_child_manager_cleanup(void);
@@ -77,6 +79,28 @@ static void a_child__sigchld(int signo);
 
 /* Handle job control signals */
 static boole a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig);
+
+#if DVLOR(1, 0)
+static void
+a_child__on_gut(BITENUM(u32,su_state_gut_flags) flags){
+	NYD2_IN;
+
+	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+		struct a_child_ent *cep;
+
+		cep = a_child_manager_cleanup();
+		while(cep != NIL){
+			void *vp;
+
+			vp = cep;
+			cep = cep->ce_link;
+			su_FREE(vp);
+		}
+	}
+
+	NYD2_OU;
+}
+#endif
 
 static struct a_child_ent *
 a_child_manager_cleanup(void){
@@ -206,6 +230,8 @@ mx_child_controller_setup(void){
 
 	if(sigaction(SIGCHLD, &nact, &oact) != 0)
 		n_panic(_("Cannot install signal handler for child process controller"));
+
+	DVL( su_state_on_gut_install(&a_child__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 
 	NYD_OU;
 }
