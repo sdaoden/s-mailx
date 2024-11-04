@@ -1161,16 +1161,13 @@ jeoverflow:
 
 void
 mx_fs_linepool_cleanup(boole completely){
-	struct a_fs_lpool_ent *lpep, *tmp, *keep;
+	struct a_fs_lpool_ent *lpep, *tmp;
 	NYD2_IN;
 
-	if(!completely)
-		completely = mx_LINEPOOL_QUEUE_MAX;
-	else
-		completely = FAL0;
+	completely = !completely ? mx_LINEPOOL_QUEUE_MAX : TRUM1;
 
 	lpep = a_fs_lpool_free;
-	a_fs_lpool_free = keep = NIL;
+	a_fs_lpool_free = NIL;
 jredo:
 	while((tmp = lpep) != NIL){
 		void *vp;
@@ -1178,7 +1175,7 @@ jredo:
 		lpep = tmp->fsle_last;
 
 		if((vp = tmp->fsle_dat) != NIL){
-			if(completely > 0 && tmp->fsle_size <= MAX(mx_BUFFER_SIZE, mx_LINESIZE)){
+			if(completely > FAL0 && tmp->fsle_size <= MAX(mx_BUFFER_SIZE, mx_LINESIZE)){
 				--completely;
 				tmp->fsle_last = a_fs_lpool_free;
 				a_fs_lpool_free = tmp;
@@ -1195,6 +1192,13 @@ jredo:
 		a_fs_lpool_used = NIL;
 		goto jredo;
 	}
+
+	DVL(
+		if(completely < FAL0 && !su_state_has(su_STATE_REPRODUCIBLE) &&
+				((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)))
+			su_log_write(su_LOG_NOTICE, "mx_fs_linepool_cleanup(): %sempty",
+				(a_fs_lpool_free == NIL ? su_empty : "NOT "));
+	)
 
 	NYD2_OU;
 }

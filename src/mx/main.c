@@ -1268,12 +1268,12 @@ jleave:
 	if(n_exit_status == su_EX_OK){
 		DVL( boole memdbg = ok_blook(memdebug); )
 
+		su_log_set_write_fun(NIL);
+
 		DVL(
 			mx_fs_linepool_cleanup(TRU1);
 			su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
 		)
-
-		su_log_set_write_fun(NIL);
 		su_state_gut(
 			((n_psonce & n_PSO_XIT) ? su_STATE_GUT_ACT_QUICK : su_STATE_GUT_ACT_NORM)
 			DVL(

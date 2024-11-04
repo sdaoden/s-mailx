@@ -87,6 +87,8 @@
 
 /* Max line width (less X so that PAGE_SIZE*2 usually suffices for all) */
 #define mx_LINESIZE ((su_PAGE_SIZE * 2) - (su_PAGE_SIZE / 2))
+
+/* mx_fs_linepool_*() queue: max. 7-bit! */
 #define mx_LINEPOOL_QUEUE_MAX 2
 
 /* Our I/O buffer size */

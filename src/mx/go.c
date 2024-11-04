@@ -1789,7 +1789,9 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 
 	if(gec.gec_have_ln_aq)
 		mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
-	mx_fs_linepool_cleanup(TRU1);
+
+	if(!main_call)
+		mx_fs_linepool_cleanup(FAL0);
 
 	mx_sigs_all_rele();
 
