@@ -52,7 +52,9 @@ struct quoteflt{
 	u32 qf_brkl; /* Breakpoint */
 	u32 qf_brkw; /* Visual width, breakpoint */
 	u32 qf_datw; /* Current visual output line width */
-	u8 qf__dummy2[4];
+	char qf_symbol; /* None if \0, default \ */
+	boole qf_no_fold; /* Only compress prefix, no folding at all */
+	u8 qf__dummy2[2];
 	struct str qf_dat; /* Current visual output line */
 	struct str qf_currq; /* Current quote, compressed */
 	mbstate_t qf_mbps[2];

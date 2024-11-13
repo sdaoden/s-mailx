@@ -63,6 +63,9 @@ struct a_qf_vc{
 /* Print out prefix and current quote */
 static sz a_qf_dump_prefix(struct quoteflt *self);
 
+/* Dump and reset */
+static sz a_qf_dump(struct quoteflt *self, boole with_prefix);
+
 /* Add one data character */
 static sz a_qf_add_data(struct quoteflt *self, wchar_t wc);
 
@@ -92,6 +95,30 @@ jerr:
 }
 
 static sz
+a_qf_dump(struct quoteflt *self, boole with_prefix){
+	sz rv;
+	NYD_IN;
+
+	rv = 0;
+	if(!with_prefix || (rv = a_qf_dump_prefix(self)) >= 0){
+		uz i;
+
+		i = self->qf_dat.l;
+		if(i == fwrite(self->qf_dat.s, 1, i, self->qf_os))
+			rv += i;
+		else
+			rv = -1;
+		self->qf_dat.l = 0;
+		self->qf_brk_isws = FAL0;
+		self->qf_wscnt = self->qf_brkl = self->qf_brkw = 0;
+		self->qf_datw = (with_prefix ? self->qf_pfix_len : 0) + self->qf_currq.l;
+	}
+
+	NYD_OU;
+	return rv;
+}
+
+static sz
 a_qf_add_data(struct quoteflt *self, wchar_t wc){
 	int w, l;
 	char *save_b;
@@ -101,7 +128,7 @@ a_qf_add_data(struct quoteflt *self, wchar_t wc){
 
 	rv = 0;
 	save_l = save_w = 0; /* silence cc */
-	save_b = NULL;
+	save_b = NIL;
 
 	/* <newline> ends state */
 	if(wc == L'\n'){
@@ -159,10 +186,16 @@ jneednl:
 			self->qf_dat.l = self->qf_brkl;
 		}
 
-		self->qf_dat.s[self->qf_dat.l++] = '\\';
+		if(LIKELY(!self->qf_no_fold)){
+			if(self->qf_symbol != '\0')
+				self->qf_dat.s[self->qf_dat.l++] = self->qf_symbol;
 jflush:
-		self->qf_dat.s[self->qf_dat.l++] = '\n';
-		rv = quoteflt_flush(self);
+			self->qf_dat.s[self->qf_dat.l++] = '\n';
+		}
+		rv = a_qf_dump(self, (self->qf_no_fold >= FAL0));
+
+		if(self->qf_no_fold)
+			self->qf_no_fold = (wc == L'\n') ? TRU1 : TRUM1;
 
 		/* Restore takeovers, if any */
 		if(save_b != NIL){
@@ -186,14 +219,16 @@ jflush:
 
 	/* Did we hold this back to avoid qf_fold_max excess?  Then do it now */
 	if(rv >= 0 && w == -1){
-		sz j = a_qf_add_data(self, wc);
+		sz j;
+
+		j = a_qf_add_data(self, wc);
 		if(j < 0)
 			rv = j;
 		else
 			rv += j;
 	}
 	/* If state changed to prefix, full reset (note this implies that quoteflt_flush() performs too much work..) */
-	else if(wc == '\n'){
+	else if(wc == L'\n'){
 		self->qf_state = a_QF_PREFIX;
 		self->qf_wscnt = self->qf_datw = 0;
 		self->qf_currq.l = 0;
@@ -354,23 +389,46 @@ quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass){
 #ifdef mx_HAVE_FILTER_QUOTE_FOLD
 	if(!bypass && (cp = ok_vlook(quote_fold)) != NIL){
 		u32 qmax, qmaxnws, qmin;
+		char const *cpmax;
+
+		if(*cp == '\0' || (*cp == '0' && cp[1] == '\0')){
+			xcp = cpmax = cp;
+			self->qf_no_fold = TRU1;
+			qmax = mx_LINESIZE;
+		}else{
+			char c;
+			uz i;
+
+			i = su_cs_len(cp);
+			cpmax = &cp[i];
+
+			if(i > 0 && !su_cs_is_digit((c = cpmax[-1]))){
+				self->qf_symbol = (c == '-') ? '\0' : c;
+				--cpmax;
+			}else
+				self->qf_symbol = '\\';
+
+			su_idec_u32(&qmax, cp, P2UZ(cpmax - cp), 10, &xcp);
+			qmax = MIN(qmax, mx_LINESIZE);
+		}
 
 		/* These magic values ensure we don't bail */
-		su_idec_u32_cp(&qmax, cp, 10, &xcp);
 		if(qmax < self->qf_pfix_len + 6)
 			qmax = self->qf_pfix_len + 6;
 		qmaxnws = --qmax; /* The newline escape */
-		if(cp == xcp || *xcp == '\0')
+		if(cp == xcp || ++xcp >= cpmax)
 			qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
 		else{
-			su_idec_u32_cp(&qmin, &xcp[1], 10, &xcp);
+			cp = xcp;
+			su_idec_u32(&qmin, cp, P2UZ(cpmax - cp), 10, &xcp);
 			if(qmin < qmax >> 1)
 				qmin = qmax >> 1;
 			else if(qmin > qmax - 2)
 				qmin = qmax - 2;
 
-			if(cp != xcp && *xcp != '\0'){
-				su_idec_u32_cp(&qmaxnws, &xcp[1], 10, &xcp);
+			if(cp != xcp && ++xcp < cpmax){
+				cp = xcp;
+				su_idec_u32(&qmaxnws, cp, P2UZ(cpmax - cp), 10, &xcp);
 				if(qmaxnws > qmax || qmaxnws < qmin)
 					qmaxnws = qmax;
 			}
@@ -528,21 +586,8 @@ quoteflt_flush(struct quoteflt *self){
 	rv = 0;
 
 #ifdef mx_HAVE_FILTER_QUOTE_FOLD
-	if(self->qf_dat.l > 0){
-		if((rv = a_qf_dump_prefix(self)) >= 0){
-			uz i;
-
-			i = self->qf_dat.l;
-			if(i == fwrite(self->qf_dat.s, 1, i, self->qf_os))
-				rv += i;
-			else
-				rv = -1;
-			self->qf_dat.l = 0;
-			self->qf_brk_isws = FAL0;
-			self->qf_wscnt = self->qf_brkl = self->qf_brkw = 0;
-			self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
-		}
-	}
+	if(self->qf_dat.l > 0)
+		rv = a_qf_dump(self, (self->qf_no_fold >= FAL0));
 #endif
 
 	NYD_OU;

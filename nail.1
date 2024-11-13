@@ -12176,24 +12176,25 @@ which shall be treated as quotation leaders, the default being
 .
 .Mx
 .It Va quote-fold
-\*(OP Can be set in addition to
-.Va indentprefix ,
-and creates a more fancy quotation in that leading quotation characters
-.Pf ( Va quote-chars )
-are compressed and overlong lines are folded.
-.Va \&\&quote-fold
-can be set to either one, two or three (space separated) numeric values,
-which are interpreted as the maximum (goal) and the minimum line length,
-respectively, in a spirit rather equal to the
-.Xr fmt 1
-program, but line- instead of paragraph-based.
-The third value is used as the maximum line length instead of the first
-if no better break point can be found; it is ignored unless it is larger
-than the minimum and smaller than the maximum.
-If not set explicitly the minimum will reflect the goal algorithmically.
-The goal cannot be smaller than the length of
+\*(OP A more fancy quotation that compresses leading quotation characters
+.Pf ( Va quote-chars ) ,
+and optionally (with arguments) folds overlong lines on top of
+.Va indentprefix .
+(Only a decimal 0 argument is
+.Dq ignored . )
+With arguments, if the value ends with a non-digit, that denotes the
+line-break indicator; the empty string is used for hyphen-minus
+.Ql - ;
+moreover one, two or three (space separated) positive numbers are
+expected, interpreted as maximum (goal) and minimum line lengths,
+as well as an alternative maximum to be used whenever no better break
+point (whitespace) can be found (ignored unless it is larger than the
+minimum and smaller than the maximum).
+The goal cannot really be smaller than the length of
 .Va indentprefix
-plus some additional pad; necessary adjustments take place silently.
+plus some additional pad.
+For example:
+.Ql set quote-fold="50 20 44 +" .
 .
 .
 .Mx
