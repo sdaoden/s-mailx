@@ -7108,85 +7108,6 @@ Repbody6
 	t_it followup Followup 16 17 yes
 	#${rm} -f from1 from2
 
-	#{{{ Quoting (if not cmd_escapes related)
-	${rm} -f "${MBOX}"
-	t__x2_msg > ./.tmbox
-
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! -Sindentprefix=' >' ./.tmbox >./.tall 2>${E0}
-set indentprefix=" |" quote
-reply
-b1
-!.
-set quote=noheading quote-inject-head
-reply
-b2
-!.
-headerpick type retain cc date from message-id reply-to subject to
-set quote=headers
-reply
-b3
-!.
-set quote=allheaders
-reply
-b4
-!.
-set quote-inject-head=%% quote-inject-tail=%% quote=headers
-reply
-b5
-!.
-set quote quote-inject-head=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n' \
-	quote-inject-tail=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n'
-reply
-b6
-!.
-set showname datefield=%y nodatefield-markout-older indentprefix=\ :
-reply
-b7
-!.
-__EOT
-	#}}}
-	ck_ex0 18-estat
-	${cat} ./.tall >> "${MBOX}"
-	cke0 18 - "${MBOX}" '385267528 3926'
-
-	# quote-as-attachment, fullnames
-	</dev/null ${MAILX} ${ARGS} -Rf \
-		-Sescape=! \
-		-S quote-as-attachment \
-		-Y reply -Y yb1 -Y !. \
-		-Y 'unset quote-as-attachment' \
-		-Y 'reply;yb2' -Y !. \
-		-Y 'set quote-as-attachment fullnames' \
-		-Y ';reply;yb3' -Y !. \
-		./.tmbox >./.tall 2>${E0}
-	cke0 19 0 ./.tall '2061651232 2575'
-
-	# Moreover, quoting of several parts with all*
-	gmX from 'ex1@am.ple' subject for-repl > ./.tmbox
-	ck 20 0 ./.tmbox '1958233015 670'
-
-	</dev/null ${MAILX} ${ARGS} -Rf -S pipe-text/html=@ \
-		-Sescape=! -Sindentprefix=' |' \
-		-Y 'set quote=allheaders' \
-		-Y reply -Y !. \
-		-Y 'set quote=allbodies' \
-		-Y reply -Y !. \
-		./.tmbox >./.tall 2>${E0}
-	cke0 21-nohtml - ./.tall '3380397445 1175'
-
-	if have_feat filter-html-tagsoup; then
-		</dev/null ${MAILX} ${ARGS} -Rf \
-			-Sescape=! -Sindentprefix=' |' \
-			-Y 'set quote=allheaders' \
-			-Y reply -Y !. \
-			-Y 'set quote=allbodies' \
-			-Y reply -Y !. \
-			./.tmbox >./.tall 2>${E0}
-		cke0 21-html - ./.tall '3677737714 1115'
-	else
-		t_echoskip '[!21-html:!FILTER_HTML_TAGSOUP]'
-	fi
-
 	t_epilog "${@}"
 } #}}}
 
@@ -10204,6 +10125,120 @@ t_message_injections() { #{{{
 		-Smessage-inject-tail="$(${cat} ./t.mysig)\n"'tail-inject' \
 		> ${E0} 2>&1
 	cke0 3 0 ./t3 '2646789247 218'
+
+	t_epilog "${@}"
+} #}}}
+
+t_quotes() { #{{{ Quoting (if not cmd_escapes related)
+	t_prolog "${@}"
+
+	# (moved from t_reply(), keep cksums)
+	JOB_MSG_ID=3
+	t__x2_msg > ./.tmbox
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! -Sindentprefix=' >' ./.tmbox >./.tall 2>${E0}
+se indentprefix=" |" quote
+reply
+b1
+!.
+se quote=noheading quote-inject-head
+reply
+b2
+!.
+headerpick type retain cc date from message-id reply-to subject to
+se quote=headers
+reply
+b3
+!.
+se quote=allheaders
+reply
+b4
+!.
+se quote-inject-head=%% quote-inject-tail=%% quote=headers
+reply
+b5
+!.
+se quote quote-inject-head=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n' \
+	quote-inject-tail=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n'
+reply
+b6
+!.
+se showname datefield=%y nodatefield-markout-older indentprefix=\ :
+reply
+b7
+!.
+__EOT
+	#}}}
+	ck_ex0 1-estat
+	${cat} ./.tall >> "${MBOX}"
+	cke0 1 - "${MBOX}" '385267528 3926'
+
+	# quote-as-attachment, fullnames
+	</dev/null ${MAILX} ${ARGS} -Rf \
+		-Sescape=! \
+		-S quote-as-attachment \
+		-Y reply -Y yb1 -Y !. \
+		-Y 'unset quote-as-attachment' \
+		-Y 'reply;yb2' -Y !. \
+		-Y 'set quote-as-attachment fullnames' \
+		-Y ';reply;yb3' -Y !. \
+		./.tmbox >./.tall 2>${E0}
+	cke0 2 0 ./.tall '2061651232 2575'
+
+	# Moreover, quoting of several parts with all*
+	gmX from 'ex1@am.ple' subject for-repl > ./.tmbox
+	ck 3 0 ./.tmbox '1958233015 670'
+
+	</dev/null ${MAILX} ${ARGS} -Rf -S pipe-text/html=@ \
+		-Sescape=! -Sindentprefix=' |' \
+		-Y 'set quote=allheaders' \
+		-Y reply -Y !. \
+		-Y 'set quote=allbodies' \
+		-Y reply -Y !. \
+		./.tmbox >./.tall 2>${E0}
+	cke0 4-nohtml - ./.tall '3380397445 1175'
+
+	if have_feat filter-html-tagsoup; then
+		</dev/null ${MAILX} ${ARGS} -Rf \
+			-Sescape=! -Sindentprefix=' |' \
+			-Y 'set quote=allheaders' \
+			-Y reply -Y !. \
+			-Y 'set quote=allbodies' \
+			-Y reply -Y !. \
+			./.tmbox >./.tall 2>${E0}
+		cke0 4-html - ./.tall '3677737714 1115'
+	else
+		t_echoskip '[!4-html:!FILTER_HTML_TAGSOUP]'
+	fi
+
+	if have_feat filter-quote-fold; then
+		{ t__x2_msg; printf '   Few lead WS\n             Much lead WS\n'; } > ./.tmbox
+		</dev/null ${MAILX} ${ARGS} -Rf \
+			-Sescape=! -Sindentprefix=' |' \
+			-Y 'set quote quote-fold' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=0' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=1' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=10' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=20' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=20@' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=20\ 10' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=30\ 15' \
+			-Y reply -Y !. \
+			-Y 'set quote quote-fold=10\ 5\ 6\ \ +' \
+			-Y reply -Y !. \
+			./.tmbox >./.tall 2>${E0}
+		cke0 5-fold - ./.tall '595108633 4781'
+	else
+		t_echoskip '[!5-fold:!FILTER_QUOTE_FOLD]'
+	fi
 
 	t_epilog "${@}"
 } #}}}
@@ -15481,6 +15516,7 @@ t_all() { #{{{
 	jspawn on_mailbox
 	jspawn q_t_etc_opts
 	jspawn message_injections
+	jspawn quotes
 	jspawn attachments
 	jspawn rfc2231 # (after attachments)
 	jspawn mimetype

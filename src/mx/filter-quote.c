@@ -163,7 +163,9 @@ a_qf_add_data(struct quoteflt *self, wchar_t wc){
 jbad:
 		++self->qf_datw;
 		self->qf_dat.s[self->qf_dat.l++] = '?';
-	}else if(self->qf_datw > self->qf_qfold_max - w){
+	}
+	/* Allow placing 1 data byte on a line, even on excess of user desired width in conjunction with qf_currq */
+	else if(self->qf_dat.l > 0 && self->qf_datw > self->qf_qfold_max - w){
 		w = -1;
 		goto jneednl;
 	}else{
