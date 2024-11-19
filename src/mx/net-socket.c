@@ -688,12 +688,26 @@ mx_socket_close(struct mx_socket *sop)
          su_FREE(sop->s_wbuf);
 # ifdef mx_HAVE_XTLS
       if (sop->s_use_tls) {
-         void *s_tls = sop->s_tls;
+         void *s_tls;
 
+         s_tls = sop->s_tls;
          sop->s_tls = NIL;
          sop->s_use_tls = 0;
-         if(SSL_shutdown(s_tls) == 0) /* XXX proper error handling;signals! */
+
+         if(SSL_shutdown(s_tls) == 0){ /* XXX proper error handling;signals! */
+            int s_p, s_r;
+
+            s_p = SSL_pending(s_tls);
+            while(s_p > 0){
+               s_r = SSL_read(s_tls, sop->s_rbuf, sizeof(sop->s_rbuf));
+               if(s_r < 0)
+                  break;
+               s_p -= s_r;
+            }
+
+            ERR_clear_error();
             SSL_shutdown(s_tls);
+         }
          SSL_free(s_tls);
       }
 # endif
