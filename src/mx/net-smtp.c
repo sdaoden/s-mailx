@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of net-smtp.h.
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
+ *@ TODO - we need *smtp-debug* -- debug output apart -d (mem logs etc)
  *
  * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC

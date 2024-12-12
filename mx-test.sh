@@ -7751,7 +7751,7 @@ t_can_send_rfc() { #{{{
 		-c cc@no.1,cc@no.2 -c cc@no.3 \
 		to@no.1,to@no.2 to@no.3 \
 		> ${EX} 2>&1
-	ck 2no 4 ./t.mbox '3350946897 468' '3397557940 190'
+	ck 2no 4 ./t.mbox '3350946897 468' '1108872063 205'
 
 	# XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
 	# XXX would not treat that as a list but look for "," as a separator
@@ -7944,7 +7944,7 @@ t_mta_args() { #{{{
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t -S mta-arguments='-t -X "/tmp/my log"' \
 		r@e.c -- -x -y -z > ${E0} 2>${EX}
 	ck_exx 9
-	ck0 9-err - ${E0} '1656006414 94'
+	ck0 9-err - ${E0} '3261692955 91'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S mta-arguments='-t -X "/tmp/my log"' -S expandargv r@e.c -- -x -y -z > ${E0} 2>&1
@@ -7958,12 +7958,12 @@ t_mta_args() { #{{{
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S expandargv=fail r@e.c -- -x -y -z > ${E0} 2>${EX}
 	ck_exx 12
-	ck0 12-err - ${E0} '1656006414 94'
+	ck0 12-err - ${E0} '3261692955 91'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S expandargv=restrict r@e.c -- -x -y -z > ${E0} 2>${EX}
 	ck_exx 13
-	ck0 13-err - ${E0} '1656006414 94'
+	ck0 13-err - ${E0} '3261692955 91'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S expandargv=restrict -~ r@e.c -- -x -y -z > ${E0} 2>&1
@@ -8040,7 +8040,7 @@ body3
 	ec "4:$?/$^ERRNAME"
 	#' \
 		> ./.tall 2>${EX}
-	ck 5 0 ./.tall '3088217220 382' '522145961 578'
+	ck 5 0 ./.tall '3088217220 382' '1811194911 563'
 
 	# ..but Maildir will not
 	if have_feat maildir; then
@@ -8062,7 +8062,7 @@ body3
 		ec "4:$?/$^ERRNAME"
 		#' \
 			> ./.tall 2>${EX}
-		ck 7 0 ./.tall '3631170341 244' '2337093063 663'
+		ck 7 0 ./.tall '3631170341 244' '1895344544 648'
 	else
 		t_echoskip '[!7:!MAILDIR]'
 	fi
@@ -8220,10 +8220,10 @@ b8
 	#}}}
 
 	t_it forward
-	ck 1 0 ./.tall '2356713156 2219' '3210435868 425'
+	ck 1 0 ./.tall '2356713156 2219' '3379271374 422'
 
 	t_it Forward
-	ck 3 0 ./.tall '2356713156 2219' '3210435868 425'
+	ck 3 0 ./.tall '2356713156 2219' '3379271374 422'
 	${rm} -f ex*
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
@@ -8354,10 +8354,10 @@ t_resend() { #{{{
 	#}}}
 
 	t_it resend
-	ck 1 0 ./.tall '1461006932 1305' '2849514883 330'
+	ck 1 0 ./.tall '1461006932 1305' '1343911617 327'
 
 	t_it Resend
-	ck 3 0 ./.tall '3674535444 958' '2849514883 330'
+	ck 3 0 ./.tall '3674535444 958' '1343911617 327'
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
 	${mkdir} .tfolder
@@ -10492,7 +10492,7 @@ sea @>@^b10?$;x
 # Operational basics with easy tests {{{
 t_expandaddr() { #{{{
 	# after: t_alias
-	# MTA alias specific part in t_mta_aliases()
+	# MTA alias (and "forcename") specific part in t_mta_aliases()
 	# This only tests from command line, rest later on (iff any)
 	t_prolog "${@}"
 
@@ -10504,7 +10504,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat > ./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 1 4 ./t.mbox '1216011460 138' '3404105912 162'
+	ck 1 4 ./t.mbox '1216011460 138' '1873868530 156'
 	ck0 2 - ${E0}
 
 	#
@@ -10535,7 +10535,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 11 4 ./t.mbox '1010907786 552' '2897686659 70'
+	ck 11 4 ./t.mbox '1010907786 552' '782022112 67'
 	ck0 12 - ${E0}
 	ck 13 - t.file '847567042 276'
 	ck 14 - t.pipe '1216011460 138'
@@ -10546,7 +10546,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 15 4 ./t.mbox '1010907786 552' '50695798 179'
+	ck 15 4 ./t.mbox '1010907786 552' '1386151458 176'
 	ck0 16 - ${E0}
 	ck 17 - t.file '847567042 276'
 	ck0 18 - t.pipe
@@ -10557,7 +10557,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 19 4 ./t.mbox '3359494254 690' '1751120754 91'
+	ck 19 4 ./t.mbox '3359494254 690' '1572385656 88'
 	ck0 20 - ${E0}
 	ck 21 - t.file '3682360102 414'
 	ck0 22 - t.pipe
@@ -10567,7 +10567,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 23 4 ./t.mbox '3359494254 690' '4118644033 200'
+	ck 23 4 ./t.mbox '3359494254 690' '4216713276 197'
 	ck0 24 - ${E0}
 	ck 25 - t.file '3682360102 414'
 	ck0 26 - t.pipe
@@ -10587,7 +10587,7 @@ t_expandaddr() { #{{{
 		-Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 31 4 ./t.mbox '4225234603 949' '3486613973 73'
+	ck 31 4 ./t.mbox '4225234603 949' '379141463 88'
 	ck0 32 - ${E0}
 	ck 33 - t.file '452731060 673'
 	ck 34 - t.pipe '1905076731 121'
@@ -10597,7 +10597,7 @@ t_expandaddr() { #{{{
 		-Sexpandaddr=fail,-all,+file,+pipe,+name,-name,+addr \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 35 4 ./t.mbox '4225234603 949' '3032065285 182'
+	ck 35 4 ./t.mbox '4225234603 949' '974325359 197'
 	ck0 36 - ${E0}
 	ck 37 - t.file '452731060 673'
 	ck0 38 - t.pipe
@@ -10608,7 +10608,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 39 4 ./t.mbox '4225234603 949' '3863610168 169'
+	ck 39 4 ./t.mbox '4225234603 949' '2504805608 163'
 	ck0 40 - ${E0}
 	ck 41 - t.file '1975297706 775'
 	ck 42 - t.pipe '130065764 102'
@@ -10618,7 +10618,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 43 4 ./t.mbox '4225234603 949' '3863610168 169'
+	ck 43 4 ./t.mbox '4225234603 949' '2504805608 163'
 	ck0 44 - ${E0}
 	ck 45 - t.file '1004872610 877'
 	ck 46 - t.pipe '130065764 102'
@@ -10629,7 +10629,7 @@ t_expandaddr() { #{{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	ck 47 4 ./t.mbox '4225234603 949' '851041772 278'
+	ck 47 4 ./t.mbox '4225234603 949' '1683527595 272'
 	ck0 48 - ${E0}
 	ck 49 - t.file '1004872610 877'
 	ck0 50 - t.pipe
@@ -10639,14 +10639,14 @@ t_expandaddr() { #{{{
 		-Sexpandaddr=-all,+addr \
 		taddr@exam.ple this@@c.example \
 		> ${E0} 2>${EX}
-	ck 51 4 ./t.mbox '473729143 1070' '2646392129 66'
+	ck 51 4 ./t.mbox '473729143 1070' '1486413575 72'
 	ck0 52 - ${E0}
 
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=-all,failinvaddr \
 		taddr@exam.ple this@@c.example \
 		> ${E0} 2>${EX}
-	ck 53 4 ./t.mbox '473729143 1070' '887391555 175'
+	ck 53 4 ./t.mbox '473729143 1070' '1717880882 181'
 	ck0 54 - ${E0}
 
 	#
@@ -10654,7 +10654,7 @@ t_expandaddr() { #{{{
 		-Sthis=taddr@exam.ple -Sexpandaddr \
 		-c '\$this' -b '\$this' '\$this' \
 		> ${E0} 2>${EX}
-	ck 55 4 ./t.mbox '473729143 1070' '3680176617 141'
+	ck 55 4 ./t.mbox '473729143 1070' '2798478776 150'
 	ck0 56 - ${E0}
 
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
@@ -10708,7 +10708,7 @@ t_expandaddr() { #{{{
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
-	ck0 71 4 ./t.mbox '2936929607 223'
+	ck0 71 4 ./t.mbox '966005619 217'
 	ck0 72 - ${E0}
 	ck 73 - t.file1 '878848030 306'
 	ck 74 - t.file2 '878848030 306'
@@ -10721,7 +10721,7 @@ t_expandaddr() { #{{{
 	Fcc: t.file2
 	To: never@exam.ple
 	_EOT
-	ck0 75 4 ./t.mbox '4156837575 247'
+	ck0 75 4 ./t.mbox '1348243337 241'
 	ck0 76 - ${E0}
 	ck 77 - t.file1 '878848030 306'
 	ck 78 - t.file2 '878848030 306'
@@ -10741,7 +10741,7 @@ t_expandaddr() { #{{{
 		> ${E0} 2>${EX}
 	To: one@localhost  ,	 	Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-	ck 81 4 ./t.mbox '2659464839 240' '1119895397 158'
+	ck 81 4 ./t.mbox '2659464839 240' '1783661302 158'
 	ck0 82 - ${E0}
 
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
@@ -10749,7 +10749,7 @@ t_expandaddr() { #{{{
 		> ${E0} 2>${EX}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-	ck 83 4 ./t.mbox '2659464839 240' '1577313789 267'
+	ck 83 4 ./t.mbox '2659464839 240' '1981116683 267'
 	ck0 84 - ${E0}
 
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
@@ -10789,27 +10789,27 @@ t_mta_aliases() { #{{{
 	fi
 
 	#{{{
-	${cat} > ./t.ali <<- '__EOT'
-	
-		# Comment
-	
-	
-	a1: ex1@a1.ple  , 
-	  ex2@a1.ple, ex 3 <ex3@a1.ple> ,
-	  ex4@a1.ple	 
-	a2:	  ex1@a2.ple  , 	ex2@a2.ple,a2_2
-	a2_2:ex3@a2.ple,ex4@a2.ple
-	a3: a4
-	a4: a5,
+	${cat} > ./t.ali << '__EOT'
+
 	# Comment
-		 	# More comment
-	 	ex1@a4.ple
-	# Comment
-	a5: a6
-	a6: a7  , ex1@a6.ple
-	a7: a8,a9
-	a8: ex1@a8.ple
-	__EOT
+
+
+a1: ex1@a1.ple  , 
+  ex2@a1.ple, ex 3 <ex3@a1.ple> ,
+  ex4@a1.ple	 
+a2:	  ex1@a2.ple  , 	ex2@a2.ple,a2_2
+a2_2:ex3@a2.ple,ex4@a2.ple
+a3: a4
+a4: a5,
+# Comment
+	 	# More comment
+ 	ex1@a4.ple
+# Comment
+a5: a6
+a6: a7  , ex1@a6.ple
+a7: a8,a9
+a8: ex1@a8.ple
+__EOT
 	#}}}
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox -Smta-aliases=./t.ali -X mtaaliases -X xit > ./tlist 2>${E0}
@@ -10834,15 +10834,25 @@ t_mta_aliases() { #{{{
 
 	# May not send plain names over SMTP!
 	if have_feat smtp; then
-		echo | ${MAILX} ${ARGS} \
+		</dev/null ${MAILX} ${ARGS} -Snoexpandaddr \
 			-Smta=smtp://laber.backe -Ssmtp-config=-ehlo \
 			-Smta-aliases=./t.ali \
 			-b a3 -c a2 a1 > ${E0} 2>${EX}
 		ck_exx 3
-		ck 4 - ./t.mbox '3950607105 236'
-		ck0 5 - ${E0} '771616226 179'
+		ck 4 - ./t.mbox '3950607105 236' # (unchanged)
+		ck0 5 - ${E0} '4148718303 252'
+
+		# TODO no *smtp-debug*, yet uses "-Sescape=! -Y '!: set debug'"
+		</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Sexpandaddr=fail,-all,+addr,+forcename \
+			-Smta=smtp://laber.backe -Ssmtp-config=-ehlo \
+			-Smta-aliases=./t.ali \
+			-Sescape=! -Y '!: set debug' \
+			-b a3 -c a2 a1 > ${E0} 2>${EX}
+		ck0 5ok.1 0 ${E0}
+		${sed} -e '1d' -e '$d' < ${EX} > ./t5ok
+		ck 5ok.2 - ./t5ok '1528002393 1284'
 	else
-		t_echoskip '[!5:!SMTP]'
+		t_echoskip '[!3-5ok:!SMTP]'
 	fi
 
 	# xxx for false-positive SMTP test we would need some mocking
@@ -10850,12 +10860,12 @@ t_mta_aliases() { #{{{
 		-b a3 -c a2 a1 > ${E0} 2>${EX}
 	ck_exx 6
 	ck 7 - ./t.mbox '3950607105 236'
-	ck0 8 - ${E0} '2834389894 178'
+	ck0 8 - ${E0} '1698487609 193'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=-name -Smta-aliases=./t.ali \
 		-Sfullnames -b a3 -c a2 a1 > ${E0} 2>${EX}
 	ck 9 4 ./t.mbox '1478069304 475'
-	ck0 10 - ${E0} '2136559508 69'
+	ck0 10 - ${E0} '1809306196 84'
 
 	echo 'a9:nine@nine.nine' >> ./t.ali
 
@@ -10898,7 +10908,7 @@ mail a1
 !.
 __EOT
 	#}}}
-	ck 13 0 ./t.mbox '53891473 1478' '2654195888 315'
+	ck 13 0 ./t.mbox '53891473 1478' '4242347829 345'
 	ck 14 - ./t14 '2924332769 158'
 	ck 15 - ./t.f1 '2635873594 247'
 	ck 16 - ./t.p1 '2635873594 247'
@@ -12226,7 +12236,7 @@ body
 __EOT
 	#}}}
 	ck 4 0 ./t4 "3422189437 200"
-	ck 5 - ./t5 '1818580177 59' '4278315359 153'
+	ck 5 - ./t5 '1818580177 59' '3860094852 183'
 
 	# Modifiers and whitespace indulgence; first matches t_eval():1
 	#{{{
@@ -12578,7 +12588,7 @@ ec --bye
 __EOT
 	#}}}
 	ck 1 0 ./t1 '2857830423 358'
-	ck 2 - ./t2 '2066473197 1538' '1339985655 422'
+	ck 2 - ./t2 '2066473197 1538' '742351069 482'
 	ck 3 - ./t3 '3993703854 127'
 	ck0 4 - ./t4
 	ck 5 - ./t5 '2157992522 256'

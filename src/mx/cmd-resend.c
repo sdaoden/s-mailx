@@ -987,11 +987,12 @@ jedar:
    /* C99 */{
       s8 snderr;
 
+      /* For SMTP user must explicitly specify expandaddr=+forcename */
       snderr = 0;
       myto = n_namelist_vaporise_head(&head, (mx_EACM_NORMAL |
                   mx_EACM_DOMAINCHECK |
                   (mta_isexe ? mx_EACM_NONE
-                  : mx_EACM_NONAME | mx_EACM_NONAME_OR_FAIL)),
+                  : mx_EACM_NONAME_BUT_FORCE | mx_EACM_HARD_FAIL_ON_NONAME_ERROR)),
             &snderr);
 
       if(snderr < 0){

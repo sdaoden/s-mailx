@@ -10166,9 +10166,15 @@ user names still unexpanded after
 .Ic alias
 and
 .Va mta-aliases
-processing, and thus left for expansion by the
-.Va mta
-(invalid for the built-in SMTP one), and
+processing (left for expansion by the
+.Va mta Ns
+\(em invalid at times, for example with a SMTP MTA unless
+.Ql forcename
+is set: it implies
+.Ql name
+(which excludes
+.Ql forcename ! ) ,
+and
 .Ql addr
 email addresses.
 Unless hard errors are enforced via

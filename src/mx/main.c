@@ -1141,7 +1141,7 @@ jgetopt_done:
 			/* _TILDE_ is implied by _BATCH_ */
 			if(isfail || (isrestrict && !((n_poption & n_PO_TILDE_FLAG) || (n_psonce & n_PSO_INTERACTIVE)))){
 je_expandargv:
-				n_err(_("*expandargv* does not allow MTA arguments; consider using *mta-arguments*\n"));
+				n_err(_("*expandargv*: MTA arguments disallowed; consider using *mta-arguments*\n"));
 				n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
 				goto jleave;
 			}
@@ -1276,7 +1276,8 @@ jleave:
 		su_state_gut(
 			((n_psonce & n_PSO_XIT) ? su_STATE_GUT_ACT_QUICK : su_STATE_GUT_ACT_NORM)
 			DVL(
-				| ((!memdbg || (!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_D_VV)))
+				| ((!memdbg || (!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_D_VV)) ||
+						su_state_has(su_STATE_REPRODUCIBLE))
 					? 0 : su_STATE_GUT_MEM_TRACE)
 			));
 	}/*else

@@ -39,9 +39,10 @@ enum mx_expand_addr_flags{
 	mx_EAF_FILE = 1u<<9, /* +"file" targets */
 	mx_EAF_PIPE = 1u<<10, /* +"pipe" command pipe targets */
 	mx_EAF_NAME = 1u<<11, /* +"name"s (non-address) names / MTA aliases */
-	mx_EAF_ADDR = 1u<<12, /* +"addr" network address (contain "@") */
+	mx_EAF_FORCENAME = 1u<<12, /* *do* allow _EAF_NAME, always */
+	mx_EAF_ADDR = 1u<<13, /* +"addr" network address (contain "@") */
 
-	mx_EAF_TARGET_MASK = mx_EAF_FCC | mx_EAF_FILE | mx_EAF_PIPE | mx_EAF_NAME | mx_EAF_ADDR,
+	mx_EAF_TARGET_MASK = mx_EAF_FCC | mx_EAF_FILE | mx_EAF_PIPE | mx_EAF_NAME | mx_EAF_FORCENAME | mx_EAF_ADDR,
 	mx_EAF_RESTRICT_TARGETS = mx_EAF_NAME | mx_EAF_ADDR /* (default set if not set) */
 	/* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
 	 * TODO design problem): if n_collect() calls makeheader(), e.g., for -t or
@@ -69,9 +70,10 @@ enum mx_expand_addr_check_mode{
 	/* Some special overwrites of EAF_TARGETs.
 	 * May NOT clash with EAF_* bits which may be ORd to these here! */
 
-	mx_EACM_NONAME = 1u<<16,
-	mx_EACM_NONAME_OR_FAIL = 1u<<17,
-	mx_EACM_DOMAINCHECK = 1u<<18 /* Honour it! */
+	mx_EACM_NONAME = 1u<<16, /* Name targets are not allowed */
+	mx_EACM_NONAME_BUT_FORCE = (1u<<17), /* Ditto (additional!!), except for expandaddr=forcename */
+	mx_EACM_HARD_FAIL_ON_NONAME_ERROR = 1u<<18, /* a name-is-seen error is a hard failure */
+	mx_EACM_DOMAINCHECK = 1u<<19 /* Honour it! */
 };
 
 enum mx_name_flags{

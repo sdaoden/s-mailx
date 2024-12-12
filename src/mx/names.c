@@ -342,7 +342,8 @@ a_nm_expandaddr_to_eaf(void){ /* TODO should happen at var assignment time {{{ *
 			{"fcc", TRU1, mx_EAF_NONE, mx_EAF_FCC}, /* Fcc: only */
 			{"file", TRU1, mx_EAF_NONE, mx_EAF_FILE | mx_EAF_FCC}, /* Fcc: + other addr */
 			{"pipe", TRU1, mx_EAF_NONE, mx_EAF_PIPE}, /* TODO No Pcc: yet! */
-			{"name", TRU1, mx_EAF_NONE, mx_EAF_NAME},
+			{"name", TRU1, mx_EAF_FORCENAME, mx_EAF_NAME},
+			{"forcename", TRU1, mx_EAF_NONE, mx_EAF_NAME | mx_EAF_FORCENAME},
 			{"addr", TRU1, mx_EAF_NONE, mx_EAF_ADDR}
 	}, *eafp;
 
@@ -367,18 +368,18 @@ a_nm_expandaddr_to_eaf(void){ /* TODO should happen at var assignment time {{{ *
 			for(eafp = eafa;; ++eafp){
 				if(eafp == &eafa[NELEM(eafa)]){
 					if(n_poption & n_PO_D_V)
-						n_err(_("Unknown *expandaddr* value: %s\n"), cp);
+						n_err(_("*expandaddr*: unknown value: %s\n"), cp);
 					break;
 				}else if(!su_cs_cmp_case(cp, eafp->eafd_name)){
 					if(minus){
 						if(eafp->eafd_is_target){
 							if(minus != TRU1)
 								goto jandor;
-							else
-								rv &= ~eafp->eafd_or;
+							else{
+								rv &= ~(eafp->eafd_andoff | eafp->eafd_or);
+							}
 						}else if(n_poption & n_PO_D_V)
-							n_err(_("- or + prefix invalid for *expandaddr* value: %s\n"),
-								--cp);
+							n_err(_("*expandaddr*: - or + prefix invalid: %s\n"), --cp);
 					}else{
 jandor:
 						rv &= ~eafp->eafd_andoff;
@@ -402,9 +403,9 @@ jandor:
 			rv |= mx_EAF_TARGET_MASK;
 		else if(n_poption & n_PO_D_V){
 			if(!(rv & mx_EAF_TARGET_MASK))
-				n_err(_("*expandaddr* does not allow any addressees\n"));
+				n_err(_("*expandaddr*: all addressees disallowed\n"));
 			else if((rv & mx_EAF_FAIL) && (rv & mx_EAF_TARGET_MASK) == mx_EAF_TARGET_MASK)
-				n_err(_("*expandaddr* with fail, but no restrictions to apply\n"));
+				n_err(_("*expandaddr*: fail set, but no restrictions to apply\n"));
 		}
 	}
 
@@ -1655,7 +1656,7 @@ mx_name_is_invalid(struct mx_name *np, enum mx_expand_addr_check_mode eacm){ /* 
 	/* TODO This is called much too often!  Message->DOMTree->modify->..
 	 * TODO I.e., [verify once before compose-mode], verify once after
 	 * TODO compose-mode, store result in object */
-	char cbuf[sizeof "'\\U12340'"];
+	char cbuf[sizeof "'\\U12340': "];
 	char const *cs;
 	int f;
 	s8 rv;
@@ -1674,19 +1675,21 @@ mx_name_is_invalid(struct mx_name *np, enum mx_expand_addr_check_mode eacm){ /* 
 			boole ok8bit;
 			char const *fmt;
 
-			fmt = "'\\x%02X'";
+			fmt = "'\\x%02X': ";
 			ok8bit = TRU1;
 
+			cbuf[0] = '\0';
 			if(f & mx_NAME_ADDRSPEC_ERR_IDNA) {
-				cs = _("Invalid domain name: %s, character %s\n");
-				fmt = "'\\U%04X'";
+				cs = _("Address is an invalid domain name: character %s: %s\n");
+				fmt = "'\\U%04X': ";
 				ok8bit = FAL0;
 			}else if(f & mx_NAME_ADDRSPEC_ERR_ATSEQ)
-				cs = _("%s contains invalid %s sequence\n");
-			else if(f & mx_NAME_ADDRSPEC_ERR_NAME)
-				cs = _("%s is an invalid name (alias)\n");
-			else
-				cs = _("%s contains invalid byte %s\n");
+				cs = _("Address is an invalid %s sequence: %s\n");
+			else if(f & mx_NAME_ADDRSPEC_ERR_NAME){
+				cs = _("Address is an invalid name (alias): %s%s\n");
+				goto jprint;
+			}else
+				cs = _("Address with invalid byte %s: %s\n");
 
 			c = mx_name_flags_get_err_wc(f);
 			if(ok8bit && c >= 040 && c <= 0177)
@@ -1706,13 +1709,15 @@ mx_name_is_invalid(struct mx_name *np, enum mx_expand_addr_check_mode eacm){ /* 
 	if((eacm & mx_EACM_STRICT) && (f & mx_NAME_ADDRSPEC_ISFILEORPIPE)){
 		if(eaf & mx_EAF_FAIL)
 			rv = -rv;
-		cs = _("%s%s: file or pipe addressees not allowed here\n");
+		cs = _("*expandaddr*: file or pipe addressees disallowed: %s%s\n");
 		goto j0print;
 	}
 
 	eaf |= (eacm & mx_EAF_TARGET_MASK);
-	if(eacm & mx_EACM_NONAME)
-		eaf &= ~mx_EAF_NAME;
+	if(eacm & (mx_EACM_NONAME | mx_EACM_NONAME_BUT_FORCE)){
+		if(!(eacm & mx_EACM_NONAME_BUT_FORCE) || !(eaf & mx_EAF_FORCENAME))
+			eaf &= ~(mx_EAF_NAME | mx_EAF_FORCENAME);
+	}
 	if(eaf & mx_EAF_FAIL)
 		rv = -rv;
 
@@ -1720,36 +1725,32 @@ mx_name_is_invalid(struct mx_name *np, enum mx_expand_addr_check_mode eacm){ /* 
 	case mx_NAME_ADDRSPEC_ISFILE:
 		if((eaf & mx_EAF_FILE) || ((eaf & mx_EAF_FCC) && (np->n_type & GBCC_IS_FCC)))
 			goto jgood;
-		cs = _("%s%s: *expandaddr* does not allow file target\n");
+		cs = _("*expandaddr*: file target disallowed: %s%s\n");
 		break;
 	case mx_NAME_ADDRSPEC_ISPIPE:
 		if(eaf & mx_EAF_PIPE)
 			goto jgood;
-		cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
+		cs = _("*expandaddr*: command pipe target disallowed: %s%s\n");
 		break;
 	case mx_NAME_ADDRSPEC_ISNAME:
 		if((eaf & mx_EAF_NAMETOADDR) &&
-				(!su_cs_cmp(np->n_name, ok_vlook(LOGNAME)) ||
-					getpwnam(np->n_name) != NIL)){
+				(!su_cs_cmp(np->n_name, ok_vlook(LOGNAME)) || getpwnam(np->n_name) != NIL)){
 			np->n_flags ^= mx_NAME_ADDRSPEC_ISADDR | mx_NAME_ADDRSPEC_ISNAME;
-			np->n_name = np->n_fullname = savecatsep(np->n_name, '@',
-					n_nodename(TRU1));
+			np->n_name = np->n_fullname = savecatsep(np->n_name, '@', n_nodename(TRU1));
 			goto jisaddr;
 		}
 
-		if(eaf & mx_EAF_NAME)
+		if(eaf & (mx_EAF_NAME | mx_EAF_FORCENAME))
 			goto jgood;
-		if(!(eaf & mx_EAF_FAIL) && (eacm & mx_EACM_NONAME_OR_FAIL)){
+		if(!(eaf & mx_EAF_FAIL) && (eacm & mx_EACM_HARD_FAIL_ON_NONAME_ERROR))
 			rv = -rv;
-			cs = _("%s%s: user name (MTA alias) targets are not allowed\n");
-		}else
-			cs = _("%s%s: *expandaddr* does not allow user name target\n");
+		cs = _("*expandaddr*: plain user name (MTA alias) target disallowed: %s%s\n");
 		break;
 	default:
 	case mx_NAME_ADDRSPEC_ISADDR:
 jisaddr:
 		if(!(eaf & mx_EAF_ADDR)){
-			cs = _("%s%s: *expandaddr* does not allow mail address target\n");
+			cs = _("*expandaddr*: mail address target disallowed: %s%s\n");
 			break;
 		}
 		if(!(eacm & mx_EACM_DOMAINCHECK) || !(eaf & mx_EAF_DOMAINCHECK))
@@ -1777,7 +1778,7 @@ jisaddr:
 						goto jgood;
 			}
 		}
-		cs = _("%s%s: *expandaddr*: not \"domaincheck\" whitelisted\n");
+		cs = _("*expandaddr*: not \"domaincheck\" whitelisted: %s%s\n");
 		break;
 	}
 
@@ -1785,7 +1786,7 @@ j0print:
 	cbuf[0] = '\0';
 	if(!(eacm & mx_EACM_NOLOG))
 jprint:
-		n_err(cs, n_shexp_quote_cp(np->n_name, TRU1), cbuf);
+		n_err(cs, cbuf, n_shexp_quote_cp(np->n_name, TRU1));
 	goto jleave;
 jgood:
 	rv = FAL0;

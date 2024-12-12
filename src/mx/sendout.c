@@ -2713,9 +2713,11 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
       goto jfail_dead;
    mta_isexe = (mta_isexe != TRU1);
 
+   /* For SMTP user must explicitly specify expandaddr=+smtpname */
    to = n_namelist_vaporise_head(hp, (mx_EACM_NORMAL | mx_EACM_DOMAINCHECK |
                (mta_isexe ? mx_EACM_NONE
-               : mx_EACM_NONAME | mx_EACM_NONAME_OR_FAIL)), &_sendout_error);
+               : mx_EACM_NONAME_BUT_FORCE | mx_EACM_HARD_FAIL_ON_NONAME_ERROR)),
+            &_sendout_error);
 
    if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
