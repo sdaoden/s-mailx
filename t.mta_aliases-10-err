@@ -1,1 +1,1 @@
-reproducible_build: a9: *expandaddr* does not allow user name target
+reproducible_build: *expandaddr*: plain user name (MTA alias) target disallowed: a9

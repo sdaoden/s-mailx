@@ -1,1 +1,1 @@
-reproducible_build: this@@c.example contains invalid '@' sequence
+reproducible_build: Address is an invalid '@' sequence: this@@c.example

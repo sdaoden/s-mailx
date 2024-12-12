@@ -1,2 +1,2 @@
-reproducible_build: talias@exam.ple: *expandaddr* does not allow mail address target
-reproducible_build: taddr@exam.ple: *expandaddr* does not allow mail address target
+reproducible_build: *expandaddr*: mail address target disallowed: talias@exam.ple
+reproducible_build: *expandaddr*: mail address target disallowed: taddr@exam.ple

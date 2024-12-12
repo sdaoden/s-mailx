@@ -1,6 +1,6 @@
 reproducible_build: digmsg: message number invalid: 1
 reproducible_build: digmsg: create: message number invalid: -
-reproducible_build: no-name-allowed: *expandaddr* does not allow user name target
-reproducible_build: abcc: *expandaddr* does not allow user name target
-reproducible_build: no-name-allowed: *expandaddr* does not allow user name target
-reproducible_build: abcc: *expandaddr* does not allow user name target
+reproducible_build: *expandaddr*: plain user name (MTA alias) target disallowed: no-name-allowed
+reproducible_build: *expandaddr*: plain user name (MTA alias) target disallowed: abcc
+reproducible_build: *expandaddr*: plain user name (MTA alias) target disallowed: no-name-allowed
+reproducible_build: *expandaddr*: plain user name (MTA alias) target disallowed: abcc

@@ -1,3 +1,4 @@
-reproducible_build: a9: user name (MTA alias) targets are not allowed
+reproducible_build: No message, no subject; hope that's ok
+reproducible_build: *expandaddr*: plain user name (MTA alias) target disallowed: a9
 reproducible_build: Some addressees were classified as "hard error"
 reproducible_build: ... message not sent

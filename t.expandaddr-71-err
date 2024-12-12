@@ -1,4 +1,4 @@
-reproducible_build: t.file1: *expandaddr* does not allow file target
-reproducible_build: t.file2: *expandaddr* does not allow file target
+reproducible_build: *expandaddr*: file target disallowed: t.file1
+reproducible_build: *expandaddr*: file target disallowed: t.file2
 reproducible_build: No recipients specified
 reproducible_build: ... message not sent

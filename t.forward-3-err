@@ -1,6 +1,6 @@
 reproducible_build: 1:done
 reproducible_build: 2:done
-reproducible_build: ex3@am.ple: *expandaddr* does not allow mail address target
+reproducible_build: *expandaddr*: mail address target disallowed: ex3@am.ple
 reproducible_build: No recipients specified
 reproducible_build: ... message not sent
 reproducible_build: 3:done

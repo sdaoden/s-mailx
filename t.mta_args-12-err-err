@@ -1,1 +1,1 @@
-reproducible_build: *expandargv* does not allow MTA arguments; consider using *mta-arguments*
+reproducible_build: *expandargv*: MTA arguments disallowed; consider using *mta-arguments*
