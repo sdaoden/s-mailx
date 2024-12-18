@@ -1318,7 +1318,10 @@ set verbose=2; help reply; unset verbose
 .Ic type
 (alias
 .Ic print )
-displays headers and text content of the dot or the specified messages.
+displays headers and text content of specified messages or the dot.
+Technical message information is displayed if
+.Va quiet
+is not set.
 Whether and when
 .Ev PAGER
 is used for display instead of dumping to the
@@ -12112,8 +12115,13 @@ The default is
 .
 .Mx
 .It Va quiet
-\*(BO Suppresses the printing of the version when first invoked,
-and any obsoletion warnings.
+\*(BO Suppresses the printing of
+.Ic version
+upon startup,
+and modifies the technical message part information display of
+.Ic type
+etc.
+Disables obsoletion warnings.
 .
 .Mx
 .It Va quote

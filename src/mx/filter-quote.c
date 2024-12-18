@@ -478,11 +478,17 @@ quoteflt_push(struct quoteflt *self, char const *dat, uz len){
 	sz rv;
 	NYD_IN;
 
-	self->qf_nl_last = (len > 0 && dat[len - 1] == '\n'); /* TODO HACK */
 	rv = 0;
 
-	if(len == 0)
+	/* TODO qf_{empty,nl}_last are hacks */
+	if(len == 0){
+		self->qf_empty_last = TRU1;
+		self->qf_nl_last = FAL0;
 		goto jleave;
+	}
+
+	self->qf_empty_last = FAL0;
+	self->qf_nl_last = (dat[len - 1] == '\n');
 
 	/* Bypass? TODO Finally, this filter simply should not be used, then
 	 * (TODO It supersedes prefix_write() or something) */

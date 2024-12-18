@@ -10197,7 +10197,7 @@ __EOT
 		-Y 'set quote=allbodies' \
 		-Y reply -Y !. \
 		./.tmbox >./.tall 2>${E0}
-	cke0 4-nohtml - ./.tall '3380397445 1175'
+	cke0 4-nohtml - ./.tall '1213961219 1181'
 
 	if have_feat filter-html-tagsoup; then
 		</dev/null ${MAILX} ${ARGS} -Rf \
@@ -10207,7 +10207,7 @@ __EOT
 			-Y 'set quote=allbodies' \
 			-Y reply -Y !. \
 			./.tmbox >./.tall 2>${E0}
-		cke0 4-html - ./.tall '3677737714 1115'
+		cke0 4-html - ./.tall '1698313020 1121'
 	else
 		t_echoskip '[!4-html:!FILTER_HTML_TAGSOUP]'
 	fi
@@ -11132,8 +11132,8 @@ __EOT
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '600677470 8507' '3575876476 49'
-	ck 3-nohtml - ./t3 '1553884295 4748'
+	ck 2-nohtml - ./t2-nohtml '956737168 8609' '3575876476 49'
+	ck 3-nohtml - ./t3 '1327297557 4917'
 
 	if have_feat filter-html-tagsoup; then
 		> ./t3
@@ -11141,8 +11141,8 @@ __EOT
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '996062905 8447' '3575876476 49'
-		ck 3-html - ./t3 '1553884295 4748'
+		ck 2-html - ./t2-html '1391219888 8549' '3575876476 49'
+		ck 3-html - ./t3 '1327297557 4917'
 	else
 		t_echoskip '[!{2,3}-html:!FILTER_HTML_TAGSOUP]'
 	fi

@@ -78,9 +78,9 @@
 static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
-static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
-                        struct mx_ignore const *doitp, int level,
-                        struct quoteflt *qf, u64 *stats);
+static void a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,
+      int action, int level, struct mx_ignore const *doitp,
+      struct quoteflt *qf, u64 *stats);
 
 /* Create a pipe; if mpp is not NULL, place some n_PIPEENV_* environment
  * variables accordingly */
@@ -179,8 +179,9 @@ _out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
 }
 
 static void
-_print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
-   struct mx_ignore const *doitp, int level, struct quoteflt *qf, u64 *stats)
+a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,/* TODO str2fmt */
+   int action, int level, struct mx_ignore const *doitp, struct quoteflt *qf,
+   u64 *stats)
 {
    char buf[64];
    struct str ti, to;
@@ -188,6 +189,14 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    struct str const *cpre, *csuf;
    char const *cp;
    NYD2_IN;
+
+   if(su_state_has(su_STATE_REPRODUCIBLE) && level == 0)
+      goto jleave;
+
+   if(action != SEND_TODISP && action != SEND_TODISP_ALL && action != SEND_TODISP_PARTS)
+      goto jleave;
+
+   needsep = (action != SEND_TODISP_PARTS && ok_blook(quiet));
 
    cpre = csuf = NULL;
 #ifdef mx_HAVE_COLOUR
@@ -201,21 +210,41 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 #endif
 
    /* Take care of "99.99", i.e., 5 */
-   if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
-      cp = n_qm;
-   if (level || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
-         cp[1] == '.' && cp[2] != '1')) /* TODO code should not look like so */
+   if(level == 0)
+      cp = (mpp->m_multipart != NIL || mpp->m_nextpart != NIL) ? "1.0 " : " ";
+   else{
+      if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
+         cp = n_qm;
+      if (level || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
+            cp[1] == '.' && cp[2] != '1')) /* TODO code should not look like so */
+         _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   }
+
+   if(needsep && !su_state_has(su_STATE_REPRODUCIBLE)){
+      if(level == 0)
+         goto jleave;
+      if(cpre != NIL)
+         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      _out(":", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      if(csuf != NIL)
+         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      goto jleave;
+   }
 
    /* Part id, content-type, encoding, charset */
    if (cpre != NULL)
       _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+
    _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
-   to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
-         (uz)mpp->m_lines, (uz)mpp->m_size);
-   _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   if(level != 0){
+      to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
+            (uz)mpp->m_lines, (uz)mpp->m_size);
+      _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   }
 
    needsep = FAL0;
 
@@ -329,6 +358,11 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
    }
+
+   if(level == 0 && mpp->m_multipart == NIL)
+      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+
+jleave:
    NYD2_OU;
 }
 
@@ -535,9 +569,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          action == SEND_TOSRCH){
       dostat |= 4;
 
-      if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level != 0 &&
-            action != SEND_QUOTE && action != SEND_QUOTE_ALL){
-         _print_part_info(obuf, ip, doitp, level, qf, stats);
+      if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level != 0){
+         a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
          hany = TRU1;
       }
       if(ip->m_parent != NIL && ip->m_parent->m_mime_type == mx_MIME_TYPE_822){
@@ -727,6 +760,11 @@ jhdrtrunc:
       }
    }
    } /* C99 */
+
+   if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level == 0){
+      a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
+      hany = TRU1;
+   }
 
    quoteflt_flush(qf);
 
@@ -938,9 +976,9 @@ jheaders_skip:
 
          for(np = ip->m_multipart;;){
 jalter_redo:
-            level = -ABS(level);
             for(; np != NIL; np = np->m_nextpart){
-               level = -ABS(level);
+               ASSERT(level >= 0);
+               ++level;
                flags |= a_NEEDNL;
 
                switch(np->m_mime_type){
@@ -961,11 +999,9 @@ jalter_redo:
                   goto jalter_redo;
                default:
                   if(!(np->m_flag & MDISPLAY)){
-                     if(np->m_mime_type != mx_MIME_TYPE_DISCARD &&
-                           (action == SEND_TODISP ||
-                            action == SEND_TODISP_ALL ||
-                            action == SEND_TODISP_PARTS))
-                        _print_part_info(obuf, np, doitp, level, qf, stats);
+                     if(np->m_mime_type != mx_MIME_TYPE_DISCARD)
+                        a_send_print_part_info(obuf, np, action, level,
+                           doitp, qf, stats);
                      break;
                   }
 
@@ -973,13 +1009,8 @@ jalter_redo:
                   quoteflt_flush(qf);
                   flags |= a_HADPART;
                   flags &= ~a_NEEDNL;
-                  rv = ABS(level) + 1;
-                  if(level < 0){
-                     level = -level;
-                     rv = -rv;
-                  }
                   rv = sendpart(zmp, np, obuf, doitp, qf, action,
-                        linedat, linesize, stats, rv, anyoutput,
+                        linedat, linesize, stats, level + 1, anyoutput,
                         store_prefix_or_nil);
                   quoteflt_reset(qf, origobuf);
                   if (rv < 0)
@@ -1025,7 +1056,6 @@ jmulti:
                NULL,NULL);
          }
 
-         level = -ABS(level);
          for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
             boole volatile ispipe;
 
@@ -1066,17 +1096,13 @@ jmulti:
             }
 
             quoteflt_flush(qf);
-            {
-               int nlvl = ABS(level) + 1;
-               if(level < 0){
-                  level = -level;
-                  nlvl = -nlvl;
-               }
-               if(sendpart(zmp, np, obuf, doitp, qf, action, linedat,
-                     linesize, stats, nlvl, anyoutput, store_prefix_or_nil
-                     ) < 0)
-                  rv = -1;
-            }
+            if(sendpart(zmp, np, obuf, doitp, qf, action, linedat, linesize,
+                  stats, level + 1, anyoutput, store_prefix_or_nil) < 0)
+               rv = -1;
+            if(np->m_multipart == NULL &&
+                  (action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
+                  (!qf->qf_nl_last || !qf->qf_empty_last))
+               a_send_out_nl(obuf, NULL, stats);
             quoteflt_reset(qf, origobuf);
 
             if(action == SEND_QUOTE){

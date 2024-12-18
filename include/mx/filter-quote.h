@@ -36,16 +36,16 @@ struct quoteflt{
 	u32 qf_pfix_len; /* Length of prefix: 0: bypass */
 	u32 qf_qfold_min; /* Simple way: wrote prefix? */
 	boole qf_bypass; /* Simply write to .qf_os TODO BYPASS, then! */
-	/* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
+	/* TODO .qf_{nl,empty}_last are hacks that i have introduced so that we
 	 * TODO finally can gracefully place a newline last in the visual display.
 	 * TODO I.e., for cases where quoteflt shouldn't be used at all  */
+	boole qf_empty_last; /* Last "line" was all empty (and no NL) */
 	boole qf_nl_last; /* Last thing written/seen was NL */
 #ifndef mx_HAVE_FILTER_QUOTE_FOLD
-	u8 qf__dummy[6];
+	u8 qf__dummy[5];
 #else
-	u8 qf_state; /* *quote-fold* state machine */
-	boole qf_brk_isws; /* Breakpoint is at WS */
-	u32 qf_qfold_max; /* Otherwise: line lengths */
+	boole qf_no_fold; /* Only compress prefix, no folding at all */
+	u32 qf_qfold_max;
 	u32 qf_qfold_maxnws;
 	u32 qf_wscnt; /* Whitespace count */
 	char const *qf_quote_chars; /* *quote-chars* */
@@ -53,8 +53,9 @@ struct quoteflt{
 	u32 qf_brkw; /* Visual width, breakpoint */
 	u32 qf_datw; /* Current visual output line width */
 	char qf_symbol; /* None if \0, default \ */
-	boole qf_no_fold; /* Only compress prefix, no folding at all */
-	u8 qf__dummy2[2];
+	u8 qf_state; /* *quote-fold* state machine */
+	boole qf_brk_isws; /* Breakpoint is at WS */
+	u8 qf__dummy2[1];
 	struct str qf_dat; /* Current visual output line */
 	struct str qf_currq; /* Current quote, compressed */
 	mbstate_t qf_mbps[2];
