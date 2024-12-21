@@ -1990,7 +1990,7 @@ a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
 
       nra_v15compat = ok_blook(mta_no_receiver_arguments);
       if(nra_v15compat)
-         n_OBSOLETE(_("please use mta-no-recipient-arguments not -receiver-; "
+         mx_OBSOL_14_10_0(_("please use mta-no-recipient-arguments not -receiver-; "
             "a \"braino\", sorry!"));
 
       if(!nra_v15compat && !ok_blook(mta_no_recipient_arguments))

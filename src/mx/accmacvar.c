@@ -1167,7 +1167,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 				}
 			}
 			break;
-		case ok_v_replyto: FALLTHRU /* log in SET_POST! */
+		case ok_v_replyto: FALLTHRU /* (+ log in SET_POST!) */
 		case ok_v_from: FALLTHRU
 		case ok_v_sender: FALLTHRU
 		case ok_v_smtp_from: FALLTHRU
@@ -1199,6 +1199,17 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			}
 			break;
 #endif
+		case ok_v_obsoletion:{
+			u64 uib;
+			BITENUM(u32,su_idec_state) is;
+
+			is = su_idec_u64_cp(&uib, *val, 0, NIL);
+			if((is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
+					uib < mx__OBSOL_MIN || uib > mx__OBSOL_MAX){
+				emsg = N_("*obsoletion*: unsupported *version-hexnum*: %s\n");
+				goto jerr;
+			}
+			}break;
 		case ok_v_quote_chars:{
 			char c;
 
@@ -1319,6 +1330,9 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 #endif
 		case ok_b_memdebug:
 			DBGX( su_mem_set_conf(a_DEBUG_MEMCONF | su_MEM_CONF_ON_ERROR_EMERG, TRU1); )
+			break;
+		case ok_v_obsoletion:
+			su_idec_u32_cp(&mx_obsoletion, *val, 0, NIL);
 			break;
 		case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
 			if(!(n_pstate & n_PS_ROOT))
@@ -3373,7 +3387,7 @@ c_localopts(void *vp){
 	int rv;
 	NYD_IN;
 
-	n_OBSOLETE("`localopts': please use \"local|our (environ)? (un)?set\" for variables, and \"local|our x?call\" etc. for macros");
+	mx_OBSOL_14_10_0("`localopts': please use \"local|our (environ)? (un)?set\" for variables, and \"local|our x?call\" etc. for macros");
 
 	rv = su_EX_ERR;
 

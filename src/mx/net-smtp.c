@@ -640,10 +640,10 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
 	NYD_IN;
 
 	if(xok_blook(smtp_use_starttls, urlp, OXM_ALL)) /* v15-compat */
-		n_OBSOLETE("*smtp-use-starttls* became a default (please adjust *smtp-config* as necessary)");
+		mx_OBSOL_14_10_0("*smtp-use-starttls* became a default (please adjust *smtp-config* as necessary)");
 
 	if(xok_vlook(smtp_auth, urlp, OXM_ALL)) /* v15-compat */
-		n_OBSOLETE("*smtp-auth* is gone (please adjust *smtp-config* as necessary)");
+		mx_OBSOL_14_10_0("*smtp-auth* is gone (please adjust *smtp-config* as necessary)");
 
 	rv = TRU1;
 	flags = a_NETSMTP_ALL_AVAILABLE_AUTO_MASK;

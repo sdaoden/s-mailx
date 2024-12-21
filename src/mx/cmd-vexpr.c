@@ -692,7 +692,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
 			char const *name, **argv, **ccpp;
 			uz i, argc;
 
-			n_OBSOLETE(_("`vexpr': regex: search+replace: now uses regular expression result set accesses via \\$^NUMBER; \\$NUMBER positional parameter support will vanish in v15"));
+			mx_OBSOL_14_10_0(_("`vexpr': regex: search+replace: now uses regular expression result set accesses via \\$^NUMBER; \\$NUMBER positional parameter support will vanish in v15"));
 
 			name = savestrbuf(&vcp->vc_argv[0][re.re_match[0].rem_start],
 					re.re_match[0].rem_end - re.re_match[0].rem_start);

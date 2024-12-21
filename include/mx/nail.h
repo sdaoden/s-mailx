@@ -439,22 +439,35 @@ enum n_program_option{
 MCTA(n_PO_V << 1 == n_PO_VV, "PO_V* must be successive")
 MCTA(n_PO_VV << 1 == n_PO_VVV, "PO_V* must be successive")
 
-#define n_OBSOLETE(X) \
-do if(!su_state_has(su_STATE_REPRODUCIBLE) && !ok_blook(quiet)){\
-   static boole su_CONCAT(a__warned__, __LINE__);\
-   if(!su_CONCAT(a__warned__, __LINE__)){\
-      su_CONCAT(a__warned__, __LINE__) = TRU1;\
-      n_err("%s: %s\n", _("Obsoletion warning"), X);\
+/* Obsoletion warnings */
+#define mx__OBSOL_BASE(X,V,VS) \
+do if(!su_state_has(su_STATE_REPRODUCIBLE) && V > mx_obsoletion){\
+   static boole CONCAT(a__warned__, __LINE__);\
+   if(!CONCAT(a__warned__, __LINE__)){\
+      CONCAT(a__warned__, __LINE__) = TRU1;\
+      n_err(VS " *obsoletion* %s: %s\n", _("warning"), X);\
    }\
 }while(0)
-#define n_OBSOLETE2(X,Y) \
-do if(!su_state_has(su_STATE_REPRODUCIBLE) && !ok_blook(quiet)){\
-   static boole su_CONCAT(a__warned__, __LINE__);\
-   if(!su_CONCAT(a__warned__, __LINE__)){\
-      su_CONCAT(a__warned__, __LINE__) = TRU1;\
-      n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
+#define mx__OBSOL2_BASE(X,Y,V,VS) \
+do if(!su_state_has(su_STATE_REPRODUCIBLE) && V > mx_obsoletion){\
+   static boole CONCAT(a__warned__, __LINE__);\
+   if(!CONCAT(a__warned__, __LINE__)){\
+      CONCAT(a__warned__, __LINE__) = TRU1;\
+      n_err(VS " *obsoletion* %s: %s: %s\n", _("warning"), X, Y);\
    }\
 }while(0)
+
+/* v15-compat: n_OBSOLETE2?() */
+#define n_OBSOLETE(X) mx__OBSOL_BASE(X, 0x0E009000u, "pre v14.9.25")
+#define n_OBSOLETE2(X,Y) mx__OBSOL2_BASE(X, Y, 0x0E009000u, "pre v14.9.25")
+
+/* (Meant to be iterated over as time goes: adjust manual!) */
+#define mx__OBSOL_MIN 0x0E009019u
+#define mx_OBSOL_14_9_25(X) mx__OBSOL_BASE(X, 0x0E009019u, "v14.9.25")
+#define mx_OBSOL2_14_9_25(X,Y) mx__OBSOL2_BASE(X, Y, 0x0E009019u, "v14.9.25")
+#define mx__OBSOL_MAX 0x0E00A000u
+#define mx_OBSOL_14_10_0(X) mx__OBSOL_BASE(X, 0x0E00A000u, "v14.10.0")
+#define mx_OBSOL2_14_10_0(X,Y) mx__OBSOL2_BASE(X, Y, 0x0E00A000u, "v14.10.0")
 
 /* Program state bits which may regularly fluctuate.
  * P.S.: most of these actually hacks, but better ways are hard to find */
@@ -753,13 +766,14 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_newfolders,
    ok_v_newmail,
 
+   ok_v_obsoletion, /* {vip=1,notempty=1,posnum=1} */
    ok_v_on_account_cleanup, /* {notempty=1} */
    ok_v_on_compose_cleanup, /* {notempty=1} */
    ok_v_on_compose_embed, /* {notempty=1} */
    ok_v_on_compose_enter, /* {notempty=1} */
    ok_v_on_compose_leave, /* {notempty=1} */
-   ok_v_on_compose_splice, /* {notempty=1,obsolete=1} */
-   ok_v_on_compose_splice_shell, /* {notempty=1,obsolete=1} */
+ok_v_on_compose_splice, /* {notempty=1,obsolete=1} */
+ok_v_on_compose_splice_shell, /* {notempty=1,obsolete=1} */
    ok_v_on_history_addition, /* {notempty=1} */
    ok_v_on_mailbox_event, /* {notempty=1} */
    ok_v_on_main_loop_tick, /* {notempty=1} */
@@ -1345,6 +1359,8 @@ VL u32 n_pstate; /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
  * TODO status and may-place-in-history bit, need to manage global bypass.. */
+
+VL u32 mx_obsoletion; /* *version-hexnum* correlating to *ok_v_obsoletion* */
 
 #ifdef mx_HAVE_ERRORS
 VL u32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */

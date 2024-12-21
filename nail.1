@@ -11478,6 +11478,17 @@ then a Maildir mailbox will not be rescanned completely, but only
 timestamp changes are detected.
 .
 .Mx
+.It Va obsoletion
+Configure minimum version in
+.Va version-hexnum
+format of obsoletion messages to show.
+Current minimum and maximum are
+.Ql 0x0E009019
+(v14.9.25) and
+.Ql 0x0E00A000
+(v14.10.0).
+.
+.Mx
 .It Va outfolder
 \*(BO Causes a non-absolute pathname specified in
 .Va record ,
@@ -12121,7 +12132,6 @@ upon startup,
 and modifies the technical message part information display of
 .Ic type
 etc.
-Disables obsoletion warnings.
 .
 .Mx
 .It Va quote
@@ -13955,17 +13965,24 @@ Also see
 .Mx
 .It Va version , version-date , \
   version-hexnum , version-major , version-minor , version-update
-\*(RO \*(Xx version information: the first variable is a string with
-the complete version identification, the second the release date in ISO
-8601 notation without time.
+\*(RO Variables with specific
+.Ic version
+information.
+The first is a string with the complete version identification,
+the second the release date in ISO 8601 notation without time.
 The third is a 32-bit hexadecimal number with the upper 8 bits storing
 the major, followed by the minor and update version numbers which occupy
 12 bits each.
 The latter three variables contain only decimal digits: the major, minor
 and update version numbers.
-The output of the command
-.Ic version
-will include this information.
+An example to create the hexadecimal variant:
+.Bd -literal -offset indent
+vexpr pbase 16 \e
+  $(( (version-major << 24) | (version-minor << 12) | \e
+    version-update ))
+\*(OU...
+\*(OU0xE009019
+.Ed
 .
 .Mx
 .It Va writebackedited

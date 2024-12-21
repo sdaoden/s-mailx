@@ -1375,7 +1375,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 		char const *cmd;
 		union {int (*ptf)(void); char const *sh;} u;
 
-		n_OBSOLETE(_("please use the much easier *on-compose-embed*, not *on-compose-splice*"));
+		mx_OBSOL_14_10_0(_("please use the much easier *on-compose-embed*, not *on-compose-splice*"));
 
 		/* Reset *escape* and more to their defaults. On change update manual! */
 		if(cc.cc_ifs_saved == NIL)
@@ -1516,7 +1516,7 @@ jreasksend:
 		char const *cpq;
 		FILE *sigfp; /* auto-cleanup on error */
 
-		n_OBSOLETE(_("please use *on-compose-embed* and/or *message-inject-tail*, not *signature*"));
+		mx_OBSOL_14_10_0(_("please use *on-compose-embed* and/or *message-inject-tail*, not *signature*"));
 
 		if((cpq = mx_fexpand(cp, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 			n_err(_("*signature* expands to invalid file: %s\n"), n_shexp_quote_cp(cp, FAL0));

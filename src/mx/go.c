@@ -435,7 +435,7 @@ jrestart:
 			goto jrestart;
 		}
 		if(!su_cs_cmp_case(word, "vput")){ /* v15-compat */
-			n_OBSOLETE2(_("`vput CMD VAR' modifier changed to `>VAR CMD'"), line.s);
+			mx_OBSOL2_14_10_0(_("`vput CMD VAR' modifier changed to `>VAR CMD'"), line.s);
 			flags |= a_VPUT;
 			scope_vput = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
 			flags &= ~a__SCOPE_MASK;
