@@ -221,7 +221,6 @@ Message-ID: <20200204225307.FaKeD%bo@oo-2>
 Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
 Status: R
 
-
 Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
 
 Content-Type: text/plain; charset=3Dutf-8
@@ -241,9 +240,12 @@ Golden Brown
 Content-Type: text/x-uuencode
 
 Aprendimos a quererte
+
 51:f
 -------- Original Message --------
 Subject: sub6
+
+
 
 Body
 52:M
@@ -256,7 +258,6 @@ Body
  |Message-ID: <20200204225307.FaKeD%bo@oo-2>
  |Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
  |Status: R
-
 
  |Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
 
@@ -277,20 +278,29 @@ Body
  |Content-Type: text/x-uuencode
 
  |Aprendimos a quererte
+
 53:m
 -------- Original Message --------
  |Subject: sub6
+
+
 
  |Body
 54:Q
 ex6@am.ple wrote:
 
+
+
  |Body
 55:U
 -------- Original Message --------
+
+
  |Body
 56:u
 -------- Original Message --------
+
+
 Body
 Line escaping works
 

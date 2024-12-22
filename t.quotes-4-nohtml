@@ -16,7 +16,6 @@ ex1@am.ple wrote:
  |Content-Type: multipart/mixed; boundary="=BOUNDOUT="
  |Status: R
 
-
  |Content-Type: multipart/alternative; boundary==BOUNDIN=
 
  |Content-Type: text/plain; charset=utf-8
@@ -37,6 +36,7 @@ ex1@am.ple wrote:
 
  |Aprendimos a quererte
 
+
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: ex1@am.ple
@@ -46,11 +46,17 @@ References: <20200204225307.FaKeD%bo@oo-3>
 
 ex1@am.ple wrote:
 
+
+
  |Body
+
 
  |<HTML><BODY>Body<BR></BODY></HTML>
 
+
  |Golden Brown
 
+
  |Aprendimos a quererte
+
 
