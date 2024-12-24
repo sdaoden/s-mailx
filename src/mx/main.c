@@ -311,7 +311,7 @@ a_main_setup_vars(void){
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(struct a_main_ctx *mcp){
+a_main_rcv_mode(struct a_main_ctx *mcp){ /* {{{ */
 	n_sighdl_t prevint;
 	int i;
 	NYD_IN;
@@ -389,7 +389,7 @@ jquit:
 jleave:
 	NYD_OU;
 	return n_exit_status;
-}
+} /* }}} */
 
 static void
 a_main_hdrstop(int signo){
@@ -446,7 +446,7 @@ jleave:
 }
 
 static char const *
-a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
+a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){ /* {{{ */
 	struct str sin;
 	struct mx_cmd_arg ca;
 	struct mx_cmd_arg_ctx cac;
@@ -499,7 +499,7 @@ je_S:
 
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
 static void
 a_main_o_s(struct a_main_ctx *mcp, struct su_avopt *avop){
@@ -526,7 +526,7 @@ a_main_o_s(struct a_main_ctx *mcp, struct su_avopt *avop){
 }
 
 static char const *
-a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){
+a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){ /* {{{ */
 	struct str suffix;
 	struct mx_name **npp, *np;
 	BITENUM(u32,gfield) gf;
@@ -576,10 +576,10 @@ jeTuse:
 jleave:
 	NYD2_OU;
 	return rv;
-}
+} /* }}} */
 
 static void
-a_main_usage(FILE *fp){
+a_main_usage(FILE *fp){ /* {{{ */
 	/* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
 	char buf[7];
 	uz i;
@@ -641,7 +641,7 @@ a_main_usage(FILE *fp){
 			su_program, su_program);
 
 	NYD2_OU;
-}
+} /* }}} */
 
 static boole
 a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt, char const *doc){
@@ -666,7 +666,7 @@ a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt, ch
 }
 
 int
-main(int argc, char *argv[]){
+main(int argc, char *argv[]){ /* {{{ */
 	/* TODO Once v15 control flow/carrier rewrite took place main() should
 	 * TODO be rewritten and option parsing++ should be outsourced.
 	 * TODO Like so we can get rid of some stack locals etc.
@@ -1285,7 +1285,7 @@ jleave:
 
 	NYD_OU;
 	return n_exit_status;
-}
+} /* }}} */
 
 #include "su/code-ou.h"
 
