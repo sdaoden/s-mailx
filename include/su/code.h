@@ -1467,12 +1467,13 @@ enum su_err_number{
 /*! \SU exit status code constants.
  * They correspond in name, value and meaning the Berkely \c{sysexits.h} constants that are unchanged since the 1980s.
  * After \c{su_EX_ERR} there is a value hole that ends with the first Berkeley constant \c{su_EX_USAGE} (value 64),
- * the last is \c{su_EX_CONFIG} (78). */
+ * the last Berkeley constant is \c{su_EX_CONFIG} (78), our last is \c{su_EX_NOTFOUND} (79). */
 enum su_ex_status{
 	su_EX_OK = 0, /*!< Successful termination (this is 0). */
 	su_EX_SUCCESS = su_EX_OK, /*!< Alias for \r{su_EX_OK}. */
 	su_EX_ERR = 1, /*!< Failing termination, unspecified error (value 1). */
 	su_EX_FAILURE = su_EX_ERR, /*!< Alias for \r{su_EX_ERR}. */
+
 	su_EX_USAGE = 64, /*!< Command was used incorrectly. */
 	su_EX_DATAERR = 65, /*!< User input data format error. */
 	su_EX_NOINPUT = 66, /*!< Cannot open user input file / no user data. */
@@ -1487,7 +1488,9 @@ enum su_ex_status{
 	su_EX_TEMPFAIL = 75, /*!< Temporary failure; user is invited to retry. */
 	su_EX_PROTOCOL = 76, /*!< Remote error in protocol. */
 	su_EX_NOPERM = 77, /*!< Permission denied. */
-	su_EX_CONFIG = 78 /*!< Configuration error. */
+	su_EX_CONFIG = 78, /*!< Configuration error. */
+
+	su_EX_NOTFOUND = 79 /*!< Entry not found (Sun(OS) extension). */
 };
 
 #if DVLOR(1, 0) || defined DOXYGEN
