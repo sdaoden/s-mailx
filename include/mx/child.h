@@ -38,6 +38,8 @@ enum mx_child_flags{
 	mx_CHILD_SPAWN_CONTROL_LINGER = 1u<<1,
 	/* run(): handle all the lifetime, and wait etc., return final status */
 	mx_CHILD_RUN_WAIT_LIFE = 1u<<2,
+	/* run(): imply mx_child_forget() (see there) */
+	mx_CHILD_RUN_FORGET = 1u<<3,
 
 	/* Child uses terminal and requires termios handling */
 	mx__CHILD_JOBCTL = 1u<<8
@@ -77,20 +79,23 @@ struct mx_child_ctx{
 /* At program startup: initialize controller (panic on failure) */
 EXPORT void mx_child_controller_setup(void);
 
-/* Initialize (zero out etc.).  The .cc_fds are set to CHILD_FD_PASS */
+/* Initialize (zero out etc.); the .cc_fds are set to CHILD_FD_PASS */
 EXPORT void mx_child_ctx_setup(struct mx_child_ctx *ccp);
 
-/* Very often "sh -c -- cmd_string" is to be executed; sh_or_nil defaults to ok_vlook(SHELL). */
+/* Very often "sh -c -- cmd_string" is to be executed; sh_or_nil defaults to ok_vlook(SHELL) */
 EXPORT void mx_child_ctx_set_args_for_sh(struct mx_child_ctx *ccp, char const *sh_or_nil, char const *cmd_string);
 
 /* Start and run a command, with optional arguments and splicing of stdin and stdout, as defined by the ctx_setup()d
- * ccp, return whether the process has been started successfully.  With RUN_WAIT_LIFE the return value also indicates
- * whether the parent has child_wait()ed successfully, i.e., whether the child has terminated already; .cc_exit_status
- * etc. can be examined for more.  Otherwise _signal(), _forget() and _wait() can be used on ccp */
+ * ccp, return whether the process has been started successfully.
+ * With RUN_WAIT_LIFE the return value also indicates whether the parent has child_wait()ed successfully:
+ * .cc_exit_status etc. can be examined for more.
+ * With RUN_FORGET the child is immediately forgotten once started successfully.
+ * Otherwise _signal(), _forget() and _wait() can be used on ccp */
 EXPORT boole mx_child_run(struct mx_child_ctx *ccp);
 
-/* Fork a child process, "enable" the below functions upon success.  With SPAWN_CONTROL the parent will linger until
- * the child has called in_child_setup() or even (with SPAWN_CONTROL_LINGER) until it execve's.
+/* Fork a child process, "enable" the below functions upon success.
+ * With SPAWN_CONTROL the parent will linger until the child has called in_child_setup() or even (with
+ * SPAWN_CONTROL_LINGER) until it execve's.
  * If any of ::cc_fds[01] is _FD_PASS, and if n_psonce&n_PSO_INTERACTIVE, then we deal with sh(1)ell job control
  * and/aka create a mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_HANDS_OFF) environment for the child!
  * Children can start children themselves, but we do not care about termios.
@@ -102,21 +107,21 @@ EXPORT void mx_child_in_child_setup(struct mx_child_ctx *ccp);
 
 /* This can only be used if SPAWN_CONTROL_LINGER had been used.
  * It will pass err up to the parent, and close the control pipe.
- * It does not exit the program */
+ * It does not exit the forked process! */
 EXPORT void mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err);
 
 /* Send a signal to a managed process.
- * return 0 on success, a negative value if the process does no(t) (longer) exist, or an error constant */
+ * Return 0 on success, a negative value if the process does no(t) (longer) exist, or an error constant */
 EXPORT s32 mx_child_signal(struct mx_child_ctx *ccp, s32 sig);
+
+/* Wait on the managed child and return whether ccp was a known child and has been waited for successfully.
+ * Examine ccp for error / status */
+EXPORT boole mx_child_wait(struct mx_child_ctx *ccp);
 
 /* Loose any knowledge we might have regarding ccp.
  * Neither waiting nor any other status report will be available.
  * This must not be used in conjunction with FD_PASS. */
 EXPORT void mx_child_forget(struct mx_child_ctx *ccp);
-
-/* Wait on the child and return whether ccp was a known child and has been waited for successfully.
- * Examine ccp for error / status */
-EXPORT boole mx_child_wait(struct mx_child_ctx *ccp);
 
 #include <su/code-ou.h>
 #endif /* mx_CHILD_H */

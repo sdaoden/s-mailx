@@ -1347,8 +1347,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
          sigaddset(&nset, SIGQUIT);
 
          mx_child_ctx_setup(&cc);
-         cc.cc_flags = mx_CHILD_SPAWN_CONTROL |
-               (swf & a_SENDOUT_SWF_PCC ? mx_CHILD_RUN_WAIT_LIFE : 0);
+         cc.cc_flags = mx_CHILD_SPAWN_CONTROL | (swf & a_SENDOUT_SWF_PCC
+                     ? mx_CHILD_RUN_WAIT_LIFE : mx_CHILD_RUN_FORGET);
          cc.cc_mask = &nset;
          cc.cc_fds[mx_CHILD_FD_IN] = fileno(fppa[xcnt]);
          cc.cc_fds[mx_CHILD_FD_OUT] = mx_CHILD_FD_NULL;
@@ -1367,9 +1367,6 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
             fppa[xcnt++] = NIL;
             mx_fs_close(tmp);
          }
-
-         if(!(swf & a_SENDOUT_SWF_PCC))
-            mx_child_forget(&cc);
       }else{
          int c;
          FILE *fout;
@@ -1795,11 +1792,14 @@ a_sendout_mta_start(struct mx_send_ctx *scp){ /* {{{ */
    sigaddset(&nset, SIGTSTP);
    sigaddset(&nset, SIGTTIN);
    sigaddset(&nset, SIGTTOU);
+
    mx_child_ctx_setup(&cc);
    dowait = ((n_poption & n_PO_D_V) ||
          (a_sendout_sendwait_to_swf() & a_SENDOUT_SWF_MTA));
    if(rv != TRU1 || dowait)
       cc.cc_flags |= mx_CHILD_SPAWN_CONTROL;
+   if(!dowait)
+      cc.cc_flags |= mx_CHILD_RUN_FORGET;
    cc.cc_mask = &nset;
 
    if(rv != TRU1){
@@ -1866,10 +1866,8 @@ jstop:
       rv = (mx_child_wait(&cc) && cc.cc_exit_status == su_EX_OK);
       if(!rv)
          goto jstop;
-   }else{
-      mx_child_forget(&cc);
+   }else
       rv = TRU1;
-   }
 
 jleave:
    NYD_OU;

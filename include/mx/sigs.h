@@ -88,10 +88,13 @@ EXPORT n_sighdl_t n_signal(int signo, n_sighdl_t hdl);
 /* Block all signals except some fatal trap ones and SIGCHLD.
  * sigadjust starts an optional 0 terminated list of signal adjustments: a positive one will be sigdelset()ted,
  * a negative one will be added.
- * Adjusts the list if already active */
+ * Adjusts the list if already active.
+ * _rele decrements level and unblocks all the signals if level becomes 0.
+ * _get_set() accesses level: one *must not* !get a 0 level to !0, or a !0 to 0!  With !get args are constant */
 EXPORT void mx_sigs_all_hold(s32 sigadjust, ...);
 #define mx_sigs_all_holdx() mx_sigs_all_hold(0)
 EXPORT void mx_sigs_all_rele(void);
+EXPORT void mx_sigs_all_level_get_set(boole get, uz *lvlp, sigset_t *setp);
 
 /* Hold HUP/QUIT/INT */
 EXPORT void hold_sigs(void);

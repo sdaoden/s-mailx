@@ -1165,23 +1165,9 @@ void mx_go_onintr_for_imap(void){a_go_onintr(0);}
 #endif
 
 static void
-a_go_onintr(int s){ /* TODO block signals while acting */
-	NYD; /* Signal handler */
+a_go_onintr(int s){
 	UNUSED(s);
-
-	safe_signal(SIGINT, a_go_onintr);
-
-	mx_termios_cmdx(mx_TERMIOS_CMD_RESET);
-
-	/* TODO Each event_loop yet has its own INT layer, therefore when we come
-	 * TODO here to UNWIND we are, effectively, already at outermost layer :( */
-	ASSERT(a_go_ctx->gc_outer == NIL);
-	a_go_cleanup(a_go_ctx, a_GO_CLEANUP_UNWIND | /* XXX FAKE */a_GO_CLEANUP_HOLDALLSIGS);
-
-	if(interrupts != 1)
-		n_err_sighdl(_("Interrupt\n"));
-	safe_signal(SIGPIPE, a_go_oldpipe);
-	siglongjmp(a_go_srbuf, 0); /* FIXME get rid */
+	siglongjmp(a_go_srbuf, 1); /* FIXME get rid */
 }
 
 static void
@@ -1596,6 +1582,8 @@ mx_go_init(boole pre_su_init){
 boole
 mx_go_main_loop(boole main_call){ /* FIXME */
 	struct a_go_eval_ctx gec;
+	sigset_t sigholdctx;
+	uz sigholdlvl;
 	int n, eofcnt;
 	boole volatile rv;
 	NYD_IN;
@@ -1611,10 +1599,27 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 	a_go_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
 	safe_signal(SIGPIPE, a_go_oldpipe);
 
-	su_mem_set(&gec, 0, sizeof gec);
+	STRUCT_ZERO(struct a_go_eval_ctx, &gec);
 
-	(void)sigsetjmp(a_go_srbuf, 1); /* FIXME get rid */
 	mx_sigs_all_holdx();
+	mx_sigs_all_level_get_set(TRU1, &sigholdlvl, &sigholdctx);
+
+	if(sigsetjmp(a_go_srbuf, 1) != 0){ /* FIXME get rid */
+		mx_sigs_all_level_get_set(FAL0, &sigholdlvl, &sigholdctx);
+
+		mx_termios_cmdx(mx_TERMIOS_CMD_RESET);
+
+		/* TODO Each event_loop yet has its own INT layer, therefore when we come
+		 * TODO here to UNWIND we are, effectively, already at outermost layer :( */
+		ASSERT(a_go_ctx->gc_outer == NIL);
+		a_go_cleanup(a_go_ctx, a_GO_CLEANUP_UNWIND | /* XXX FAKE */a_GO_CLEANUP_HOLDALLSIGS);
+
+		if(interrupts != 1)
+			n_err_sighdl(_("Interrupt\n"));
+
+		safe_signal(SIGINT, &a_go_onintr);
+		safe_signal(SIGPIPE, a_go_oldpipe);
+	}
 
 	for(eofcnt = 0;; gec.gec_ever_seen = TRU1){
 		interrupts = 0;

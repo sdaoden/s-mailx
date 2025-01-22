@@ -239,6 +239,7 @@ mx_sigs_all_hold(s32 sigadjust, ...){
 		ossp = NIL;
 
 	anyunbl = FAL0;
+
 	if(sigadjust != 0){
 		va_list val;
 
@@ -257,6 +258,7 @@ mx_sigs_all_hold(s32 sigadjust, ...){
 	}
 
 	sigprocmask(SIG_BLOCK, &a_sigs_all_nset, ossp);
+
 	if(!nounbl && anyunbl)
 		sigprocmask(SIG_UNBLOCK, &unbl, NIL);
 }
@@ -265,6 +267,17 @@ void
 mx_sigs_all_rele(void){
 	if(--a_sigs_all_depth == 0)
 		sigprocmask(SIG_SETMASK, &a_sigs_all_oset, NIL);
+}
+
+void
+mx_sigs_all_level_get_set(boole get, uz *lvlp, sigset_t *setp){
+	if(get){
+		*lvlp = a_sigs_all_depth;
+		su_mem_copy(setp, &a_sigs_all_oset, sizeof(*setp));
+	}else{
+		a_sigs_all_depth = *lvlp;
+		su_mem_copy(&a_sigs_all_oset, setp, sizeof(*setp));
+	}
 }
 
 void

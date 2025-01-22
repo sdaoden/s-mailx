@@ -1,5 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of child.h.
+ *@ TODO . we should split public and internal interface, make the former an
+ *@ TODO   asserting wrapper: could avoid some expensive things, like fork()
+ *@ TODO   storing in the a_child_list, and _wait() looking it up etc.
  *@ TODO . argument and environment space constraints not tested.
  *@ TODO . use a SU child, offer+use our own stuff for "wait status" checks.
  *@ TODO   (requires event loop then, likely).
@@ -7,6 +10,7 @@
  *@ TODO . STDERR is always "passed", yet not taken care of regarding termios!
  *@ TODO . we would need full and true job control handling
  *@ TODO   But at least notion of background and foreground, see termios.c!
+ *@ TODO . in _fork(), lesser work when no more jumping (again)
  *
  * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -53,11 +57,11 @@
 
 struct a_child_ent{
 	struct a_child_ent *ce_link;
-	s32 ce_pid; /* -1: struct can be gc'd */
+	s32 ce_pid;
 	s32 ce_status; /* wait status */
+	boole ce_gc; /* can be garbage collected */
 	boole ce_done; /* has terminated */
-	boole ce_forget; /* will not be wait()ed upon */
-	boole ce_tios; /* Counts against child_termios_users */
+	boole ce_tios; /* counts against child_termios_users */
 	boole ce_tios_suspended; /* Suspended via TERMIOS */
 	u8 ce__pad[4];
 };
@@ -66,12 +70,12 @@ static struct a_child_ent *a_child_head;
 
 DVL( static void a_child__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
-/* Cleanup internal structures which have been rendered obsolete (children have terminated) in the meantime; returns
- * list to be freed.  Note: signals including SIGCHLD need to be blocked when calling this */
-static struct a_child_ent *a_child_manager_cleanup(void);
+/* Cleanup lost internal structures that can be ce_gc'd.
+ * Note: signals including SIGCHLD must be blocked when calling this */
+static void a_child_manager_cleanup(void);
 
-/* It or NIL is returned; if ceppp is set then it will point to the linked storage of the return value: signals need to
- * be blocked in this case! */
+/* It or NIL is returned; if ceppp_or_nil is set it will point to the linked storage of the return value:
+ * signals need to be blocked in this case! */
 SINLINE struct a_child_ent *a_child_find(s32 pid, struct a_child_ent ***ceppp_or_nil);
 
 /* Handle SIGCHLD */
@@ -85,44 +89,28 @@ static void
 a_child__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
-	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
-		struct a_child_ent *cep;
-
-		cep = a_child_manager_cleanup();
-		while(cep != NIL){
-			void *vp;
-
-			vp = cep;
-			cep = cep->ce_link;
-			su_FREE(vp);
-		}
-	}
+	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+		a_child_manager_cleanup();
 
 	NYD2_OU;
 }
 #endif
 
-static struct a_child_ent *
+static void
 a_child_manager_cleanup(void){
-	struct a_child_ent *nlp, **nlpp, **cepp, *cep;
+	struct a_child_ent **cepp, *cep;
 	NYD_IN;
 
-	nlp = NIL;
-	nlpp = &nlp;
-
-	for(cepp = &a_child_head; *cepp != NIL;){
-		if((*cepp)->ce_pid == -1){
-			cep = *cepp;
+	for(cepp = &a_child_head; (cep = *cepp) != NIL;){
+		if(cep->ce_gc){
 			*cepp = cep->ce_link;
 
-			*nlpp = cep;
-			nlpp = &cep->ce_link;
+			su_FREE(cep);
 		}else
-			cepp = &(*cepp)->ce_link;
+			cepp = &cep->ce_link;
 	}
 
 	NYD_OU;
-	return nlp;
 }
 
 SINLINE struct a_child_ent *
@@ -149,7 +137,7 @@ a_child__sigchld(int signo){
 	for(;;){
 		pid = waitpid(-1, &status, WNOHANG);
 		if(pid <= 0){
-			if(pid == -1 && su_err_by_errno() == su_ERR_INTR)
+			if(pid == -1 && su_err_by_errno() == su_ERR_INTR) /* XXX: all blocked! */
 				continue;
 			break;
 		}
@@ -157,35 +145,16 @@ a_child__sigchld(int signo){
 		if((cep = a_child_find(S(s32,pid), NIL)) != NIL){
 			cep->ce_done = TRU1;
 			cep->ce_status = status;
-			if(cep->ce_forget)
-				cep->ce_pid = -1;
 		}
 	}
 }
 
 static boole
 a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig){/* TODO bad */
-	struct a_child_ent *cep;
+	struct a_child_ent *cep, **cepp;
 
-	if((cep = a_child_find(S(s32,cookie), NIL)) != NIL){
+	if((cep = a_child_find(S(s32,cookie), &cepp)) != NIL){
 		if(cep->ce_done){
-		}else if(tiossc & mx_TERMIOS_STATE_POP){
-			/* TODO this is bad - we should have a reaper timer in the (yet non-existing) event loop and
-			 * TODO shut this thing down gracefully */
-			n_err("Reaping child process %d\n", cep->ce_pid);
-			cep->ce_tios = FAL0;
-			kill(cep->ce_pid, (tiossc & mx_TERMIOS_STATE_SIGNAL ? sig : SIGTERM));
-			/* C99 */{
-				uz i;
-
-				for(i = 0; i < 10; ++i){
-					su_time_msleep(100, FAL0);
-					if(cep->ce_done)
-						break;
-				}
-				if(!cep->ce_done)
-					kill(cep->ce_pid, SIGKILL);
-			}
 		}else if(tiossc & mx_TERMIOS_STATE_SUSPEND){
 			if(!cep->ce_tios_suspended){
 				cep->ce_tios_suspended = TRU1;
@@ -208,6 +177,40 @@ a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig){/* TODO bad */
 				 * TODO impossible; for now we and termios assume au */
 				if(!(tiossc & mx_TERMIOS_STATE_SIGNAL))
 					kill(cep->ce_pid, SIGCONT);
+			}
+		}else if(tiossc & mx_TERMIOS_STATE_POP){
+			uz i;
+			pid_t cpid, wpid;
+
+			/* TODO this is bad - we should have a reaper timer in the (yet non-existing) event loop and
+			 * TODO shut this thing down gracefully */
+			cpid = cep->ce_pid;
+			cep->ce_gc = TRU1;
+
+			n_err("Reaping child process %d\n", cpid);
+
+			kill(cpid, (tiossc & mx_TERMIOS_STATE_SIGNAL ? sig : SIGTERM));
+
+			for(i = 0;; ++i){
+				if(i >= 10)
+					kill(cpid, SIGKILL);
+
+				su_time_msleep(100, FAL0); /* XXX likely busyloop :( */
+
+				wpid = waitpid(cpid, NIL, WNOHANG);
+				if(wpid > 0)
+					break;
+				if(wpid == 0)
+					continue;
+				if(wpid == -1){
+					int e;
+
+					e = errno;
+					if(e == su_ERR_CHILD)
+						break;
+					if(e != su_ERR_INTR)
+						i = 10;
+				}
 			}
 		}
 	}
@@ -241,7 +244,7 @@ mx_child_ctx_setup(struct mx_child_ctx *ccp){
 	NYD2_IN;
 	ASSERT(ccp);
 
-	su_mem_set(ccp, 0, sizeof *ccp);
+	STRUCT_ZERO(struct mx_child_ctx, ccp);
 	ccp->cc_fds[0] = ccp->cc_fds[1] = mx_CHILD_FD_PASS;
 
 	NYD2_OU;
@@ -266,10 +269,13 @@ boole
 mx_child_run(struct mx_child_ctx *ccp){
 	s32 e;
 	NYD_IN;
-
 	ASSERT(ccp);
 	ASSERT(ccp->cc_pid == 0);
 	ASSERT(!(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL_LINGER) || (ccp->cc_flags & mx_CHILD_SPAWN_CONTROL));
+	ASSERT(!(ccp->cc_flags & (mx_CHILD_RUN_WAIT_LIFE | mx_CHILD_RUN_FORGET)) ||
+		(!(ccp->cc_flags & mx_CHILD_RUN_WAIT_LIFE) ^ !(ccp->cc_flags & mx_CHILD_RUN_FORGET)));
+	ASSERT(!(ccp->cc_flags & mx_CHILD_RUN_FORGET) ||
+		(ccp->cc_fds[0] != mx_CHILD_FD_PASS && ccp->cc_fds[1] != mx_CHILD_FD_PASS));
 
 	e = su_ERR_NONE;
 
@@ -308,11 +314,11 @@ jchild:{
 		/* TODO note we don't check the POSIX limit:
 		 * the total space used to store the environment and the arguments to
 		 * the process is limited to {ARG_MAX} bytes */
-		for(ei = 0; environ[ei] != NIL; ++ei)
-			;
+		for(ei = 0; environ[ei] != NIL; ++ei){
+		}
 		ei_orig = ei;
-		for(ai = 0; env_addon[ai] != NIL; ++ai)
-			;
+		for(ai = 0; env_addon[ai] != NIL; ++ai){
+		}
 		ai_orig = ai;
 		env = su_LOFI_ALLOC(sizeof(*env) * (ei + ai +1));
 		su_mem_copy(env, environ, sizeof(*env) * ei);
@@ -368,12 +374,15 @@ jchild:{
 
 boole
 mx_child_fork(struct mx_child_ctx *ccp){
-	struct a_child_ent *nlp, *cep;
+	struct a_child_ent *cep, cep_s;
 	NYD_IN;
-
 	ASSERT(ccp);
 	ASSERT(ccp->cc_pid == 0);
 	ASSERT(!(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL_LINGER) || (ccp->cc_flags & mx_CHILD_SPAWN_CONTROL));
+	ASSERT(!(ccp->cc_flags & (mx_CHILD_RUN_WAIT_LIFE | mx_CHILD_RUN_FORGET)) ||
+		(!(ccp->cc_flags & mx_CHILD_RUN_WAIT_LIFE) ^ !(ccp->cc_flags & mx_CHILD_RUN_FORGET)));
+	ASSERT(!(ccp->cc_flags & mx_CHILD_RUN_FORGET) ||
+		(ccp->cc_fds[0] != mx_CHILD_FD_PASS && ccp->cc_fds[1] != mx_CHILD_FD_PASS));
 	ASSERT(ccp->cc_error == su_ERR_NONE);
 
 	if(n_poption & n_PO_D_VV)
@@ -395,10 +404,19 @@ mx_child_fork(struct mx_child_ctx *ccp){
 	}
 
 	/* TODO It is actually very bad to block all the signals for such a long
-	 * TODO time, especially when taking into account on what is done in here */
+	 * TODO time, especially when taking into account what is done in here */
 	mx_sigs_all_hold(SIGCHLD, 0);
 
-	cep = su_TCALLOC(struct a_child_ent, 1);
+	a_child_manager_cleanup(); /* XXX sigs held */
+
+	if(!(ccp->cc_flags & mx_CHILD_RUN_FORGET)){
+		cep = su_TCALLOC(struct a_child_ent, 1);
+		cep->ce_link = a_child_head;
+		a_child_head = cep;
+	}else{
+		STRUCT_ZERO(struct a_child_ent, &cep_s);
+		cep = &cep_s;
+	}
 
 	/* Does this child take the terminal? */
 	if(ccp->cc_fds[0] == mx_CHILD_FD_PASS || ccp->cc_fds[1] == mx_CHILD_FD_PASS){
@@ -408,8 +426,6 @@ mx_child_fork(struct mx_child_ctx *ccp){
 			cep->ce_tios = TRU1;
 		}
 	}
-
-	nlp = a_child_manager_cleanup();
 
 	/* If this child takes the terminal, adjust termios now, but do not yet install our handler */
 	if(cep->ce_tios)
@@ -421,20 +437,22 @@ mx_child_fork(struct mx_child_ctx *ccp){
 	case -1:
 		ccp->cc_error = su_err_by_errno();
 
-		/* Link in cleanup list on failure */
-		cep->ce_link = nlp;
-		nlp = cep;
-
-		/* And shutdown our termios environment */
-		if(cep->ce_tios)
-			mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_HANDS_OFF);
-
-		mx_sigs_all_rele();
+		if(cep != &cep_s){
+			/* Shutdown termios environment */
+			if(cep->ce_tios)
+				mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_HANDS_OFF);
+			cep->ce_gc = TRU1;
+		}else{
+			ASSERT(!cep->ce_tios);
+		}
 
 		if(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL){
 			close(S(int,ccp->cc__cpipe[0]));
 			close(S(int,ccp->cc__cpipe[1]));
 		}
+
+		mx_sigs_all_rele();
+
 		n_perr(_("child_fork(): fork failure"), ccp->cc_error);
 		break;
 	default:
@@ -449,7 +467,7 @@ mx_child_fork(struct mx_child_ctx *ccp){
 
 			switch(r){
 			case 0:
-				goto jlink_child;
+				goto jtios_for_child;
 			case sizeof(ccp->cc_error):
 				su_mem_copy(&ccp->cc_error, ebuf, sizeof(ccp->cc_error));
 				break;
@@ -458,33 +476,29 @@ mx_child_fork(struct mx_child_ctx *ccp){
 				break;
 			}
 
-			/* Link in cleanup list on failure */
-			cep->ce_link = nlp;
-			nlp = cep;
-
-			/* And shutdown our termios environment */
-			if(cep->ce_tios)
-				mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_HANDS_OFF);
+			if(cep != &cep_s){
+				/* Shutdown termios environment */
+				if(cep->ce_tios)
+					mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_HANDS_OFF);
+				cep->ce_gc = TRU1;
+			}else{
+				ASSERT(!cep->ce_tios);
+				cep = NIL;
+			}
 		}else{
-jlink_child:
-			cep->ce_link = a_child_head;
-			a_child_head = cep;
-
-			/* Time to install our termios handler */
-			if(cep->ce_tios)
-				mx_termios_on_state_change_set(&a_child__on_termios_state_change, cep->ce_pid);
+jtios_for_child:
+			if(cep != &cep_s){
+				/* Time to install our termios handler */
+				if(cep->ce_tios)
+					mx_termios_on_state_change_set(&a_child__on_termios_state_change, cep->ce_pid);
+			}else{
+				ASSERT(!cep->ce_tios);
+			}
 		}
 
 		/* in_child_setup() will procmask() for the child */
 		mx_sigs_all_rele();
 		break;
-	}
-
-	/* Free all stale children */
-	while(nlp != NIL){
-		cep = nlp;
-		nlp = nlp->ce_link;
-		su_FREE(cep);
 	}
 
 jleave:
@@ -529,8 +543,7 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
 			close(fd);
 	}
 
-	/* Close our side of the control pipe, unless we should wait for cloexec to
-	 * do that for us */
+	/* Close our side of the control pipe, unless we should wait for cloexec to do that for us */
 	if((ccp->cc_flags & (mx_CHILD_SPAWN_CONTROL | mx_CHILD_SPAWN_CONTROL_LINGER)) == mx_CHILD_SPAWN_CONTROL)
 		close(S(int,ccp->cc__cpipe[1]));
 
@@ -559,8 +572,7 @@ mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err){
 	ASSERT(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL_LINGER);
 
 	ccp->cc_error = err;
-	(void)write(S(int,ccp->cc__cpipe[1]), &ccp->cc_error,
-		sizeof(ccp->cc_error));
+	(void)write(S(int,ccp->cc__cpipe[1]), &ccp->cc_error, sizeof(ccp->cc_error));
 	close(S(int,ccp->cc__cpipe[1]));
 }
 
@@ -569,12 +581,11 @@ mx_child_signal(struct mx_child_ctx *ccp, s32 sig){
 	s32 rv;
 	struct a_child_ent *cep;
 	NYD_IN;
-
 	ASSERT(ccp);
 	ASSERT(ccp->cc_pid > 0);
+	ASSERT(!(ccp->cc_flags & mx_CHILD_RUN_FORGET));
 
 	if((cep = a_child_find(ccp->cc_pid, NIL)) != NIL){
-		ASSERT(!cep->ce_forget);
 		if(cep->ce_done)
 			rv = -1;
 		else if((rv = kill(S(pid_t,ccp->cc_pid), sig)) != 0)
@@ -586,44 +597,15 @@ mx_child_signal(struct mx_child_ctx *ccp, s32 sig){
 	return rv;
 }
 
-void
-mx_child_forget(struct mx_child_ctx *ccp){
-	struct a_child_ent *cep, **cepp;
-	NYD_IN;
-
-	ASSERT(ccp);
-	ASSERT(ccp->cc_pid > 0);
-
-	mx_sigs_all_hold(SIGCHLD, 0);
-
-	if((cep = a_child_find(ccp->cc_pid, &cepp)) != NIL){
-		/* XXX ASSERT sigprocmask blocked, need debug wrapper */
-		ASSERT(!cep->ce_forget);
-		ASSERT(!(ccp->cc_flags & mx__CHILD_JOBCTL));  ASSERT(!cep->ce_tios);
-		cep->ce_forget = TRU1;
-		if(cep->ce_done)
-			*cepp = cep->ce_link;
-	}
-
-	mx_sigs_all_rele();
-
-	if(cep != NIL && cep->ce_done)
-		su_FREE(cep);
-
-	ccp->cc_pid = -1;
-
-	NYD_OU;
-}
-
 boole
 mx_child_wait(struct mx_child_ctx *ccp){
 	s32 ws;
 	boole ok;
 	struct a_child_ent *cep, **cepp;
 	NYD_IN;
-
 	ASSERT(ccp);
 	ASSERT(ccp->cc_pid > 0);
+	ASSERT(!(ccp->cc_flags & mx_CHILD_RUN_FORGET));
 
 	/* TODO Unless we place children which take the terminal in their own
 	 * TODO thing (setsid();setlogin();ioctl(fd, TIOCSCTTY)), that is
@@ -636,28 +618,25 @@ mx_child_wait(struct mx_child_ctx *ccp){
 	ok = TRU1;
 	if((cep = a_child_find(ccp->cc_pid, &cepp)) != NIL){
 		/* XXX It would actually be better to sigsuspend on SIGCHLD */
-		while(!cep->ce_done && waitpid(S(pid_t,ccp->cc_pid), &cep->ce_status, 0) == -1){
-			if((ws = su_err_by_errno()) != su_ERR_INTR){
-				ok = FAL0;
-				break;
+		if(!cep->ce_done){
+			while(waitpid(S(pid_t,ccp->cc_pid), &cep->ce_status, 0) == -1){
+				if((ws = su_err_by_errno()) != su_ERR_INTR){
+					ok = FAL0;
+					break;
+				}
 			}
+			cep->ce_done = TRU1;
 		}
-
 		ws = cep->ce_status;
-		*cepp = cep->ce_link;
 
 		/* This must be the one which holds that level, no? */
 		if(cep->ce_tios)
 			mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_HANDS_OFF);
-	}else{
-		cepp = R(struct a_child_ent**,-1);
+		cep->ce_gc = TRU1;
+	}else
 		ws = 0;
-	}
 
 	mx_sigs_all_rele();
-
-	if(cep != NIL)
-		su_FREE(cep);
 
 	if(ok){
 		ccp->cc_exit_status = WEXITSTATUS(ws);
@@ -669,8 +648,35 @@ mx_child_wait(struct mx_child_ctx *ccp){
 	}
 
 	ccp->cc_pid = -1;
+
 	NYD_OU;
 	return (cep != NIL);
+}
+
+void
+mx_child_forget(struct mx_child_ctx *ccp){
+	struct a_child_ent *cep, **cepp;
+	pid_t cpid;
+	NYD_IN;
+	ASSERT(ccp);
+	ASSERT(ccp->cc_pid > 0);
+	ASSERT(!(ccp->cc_flags & mx_CHILD_RUN_FORGET));
+
+	cpid = ccp->cc_pid;
+	ccp->cc_flags |= mx_CHILD_RUN_FORGET;
+	ccp->cc_pid = -1;
+
+	mx_sigs_all_hold(SIGCHLD, 0);
+
+	if((cep = a_child_find(cpid, &cepp)) != NIL){
+		/* XXX ASSERT sigprocmask blocked, need debug wrapper */
+		cep->ce_gc = TRU1;
+		ASSERT(!(ccp->cc_flags & mx__CHILD_JOBCTL));  ASSERT(!cep->ce_tios);
+	}
+
+	mx_sigs_all_rele();
+
+	NYD_OU;
 }
 
 #include "su/code-ou.h"

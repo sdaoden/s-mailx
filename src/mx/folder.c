@@ -863,7 +863,7 @@ jlogname:
    mx_fs_close(ibuf);
    ibuf = NIL;
    if(lckfp != NIL && lckfp != R(FILE*,-1)){
-      mx_fs_pipe_close(lckfp, FAL0);
+      mx_fs_pipe_close(lckfp, TRU1);
       /*lckfp = NIL;*/
    }
 
@@ -898,7 +898,7 @@ jleave:
    if(ibuf != NIL){
       mx_fs_close(ibuf);
       if(lckfp != NIL && lckfp != R(FILE*,-1))
-         mx_fs_pipe_close(lckfp, FAL0);
+         mx_fs_pipe_close(lckfp, TRU1);
    }
 
    NYD_OU;

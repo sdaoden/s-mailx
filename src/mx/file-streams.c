@@ -72,7 +72,7 @@ enum{
 };
 
 enum a_fs_ent_flags{
-	a_FS_EF_RAW,
+	a_FS_EF_FD,
 	a_FS_EF_IMAP = 1u<<1,
 	a_FS_EF_MAILDIR = 1u<<2,
 	a_FS_EF_HOOK = 1u<<3,
@@ -222,7 +222,7 @@ a_fs_unregister_file(FILE *fp){
 		*fsepp = fsep->fse_link;
 
 		switch(fsep->fse_flags & a_FS_EF_MASK){
-		case a_FS_EF_RAW:
+		case a_FS_EF_FD:
 		case a_FS_EF_PIPE:
 			break;
 		default:
@@ -402,7 +402,7 @@ mx_fs_open(char const *file, BITENUM(u32,mx_fs_oflags) oflags){
 
 	if((fp = fdopen(fd, osflags)) != NIL){
 		if(!(oflags & mx_FS_O_NOREGISTER))
-			a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0L, NIL);
+			a_fs_register_file(fp, oflags, a_FS_EF_FD, NIL, NIL, 0L, NIL);
 	}else{
 		su_err_by_errno();
 		close(fd);
@@ -510,7 +510,7 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 					goto jleave;
 			}
 		}else{
-			/*flags |= a_FS_EF_RAW;*/
+			/*flags |= a_FS_EF_FD;*/
 			rv = mx_fs_open(file, oflags);
 			if(rv == NIL){
 				err = su_err();
@@ -702,7 +702,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM(u32
 		if(!(oflags & mx_FS_O_NOREGISTER)){
 			struct a_fs_ent *fsep;
 
-			fsep = a_fs_register_file(fp, oflags, (a_FS_EF_RAW |
+			fsep = a_fs_register_file(fp, oflags, (a_FS_EF_FD |
 						(oflags & mx_FS_O_REGISTER_UNLINK ? a_FS_EF_UNLINK : 0) |
 						(oflags & mx_FS_O_HOLDSIGS ? a_FS_EF_HOLDSIGS : 0)), NIL, cp_base,
 					0, NIL);
@@ -813,7 +813,7 @@ mx_fs_fd_open(sz fd, BITENUM(u32,mx_fs_oflags) oflags){
 
 	if((fp = fdopen(S(int,fd), osflags)) != NIL){
 		if(!(oflags & mx_FS_O_NOREGISTER))
-			a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0, NIL);
+			a_fs_register_file(fp, oflags, a_FS_EF_FD, NIL, NIL, 0, NIL);
 	}else{
 		su_err_by_errno();
 		if(oflags & mx_FS_O_NOCLOSEFD)
@@ -1038,14 +1038,14 @@ mx_fs_pipe_close(FILE *fp, boole dowait){
 	if(a_fs_unregister_file(fp) == su_ERR_NONE)
 		fclose(fp);
 
-	safe_signal(SIGPIPE, opipe);
-
 	if(dowait)
 		rv = (mx_child_wait(&cc) && cc.cc_exit_status == su_EX_OK);
 	else{
 		mx_child_forget(&cc);
 		rv = TRU1;
 	}
+
+	safe_signal(SIGPIPE, opipe);
 
 jleave:
 	NYD_OU;
