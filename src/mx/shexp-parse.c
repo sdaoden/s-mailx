@@ -3,7 +3,7 @@
  *@ TODO - massively undercommented convoluted complicated non-Unicode aware mess
  *@ TODO - should not use auto-memory
  *
- * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

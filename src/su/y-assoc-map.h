@@ -5,7 +5,7 @@
  *@ todo ** of assoc_map that store the ** when sizes get huge.
  *@ xxx Can be optimized, some functions be made inline wrappers.
  *
- * Copyright (c) 2001 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -52,7 +52,7 @@
 # undef a_LA_F
 
 # define a_TYPE_CSDICT 1
-#else
+#else /* a_ASSOC_MAP_H */
 # undef a_ASSOC_MAP_H
 
 # if a_TYPE == a_TYPE_CSDICT

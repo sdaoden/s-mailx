@@ -2,7 +2,7 @@
  *@ LZW file compression.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2024 Steffen Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2025 Steffen Nurpmeso <sdaoden@users.sf.net>.
  * SPDX-License-Identifier: BSD-4-Clause
  */
 /*-

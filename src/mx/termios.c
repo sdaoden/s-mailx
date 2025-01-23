@@ -13,7 +13,7 @@
  *@ TODO   What children do is up to them, managing them in stack: impossible
  *@ TODO . Not restartable (no devel-only on_gut())
  *
- * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

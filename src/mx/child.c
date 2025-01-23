@@ -12,7 +12,7 @@
  *@ TODO   But at least notion of background and foreground, see termios.c!
  *@ TODO . in _fork(), lesser work when no more jumping (again)
  *
- * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

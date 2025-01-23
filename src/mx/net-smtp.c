@@ -3,7 +3,7 @@
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
  *@ TODO - we need *smtp-debug* -- debug output apart -d (mem logs etc)
  *
- * Copyright (c) 2012 - 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
