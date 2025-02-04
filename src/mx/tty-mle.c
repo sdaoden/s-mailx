@@ -1116,6 +1116,9 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){ /* {{{ */
 				a_tty.tg_hist = othp;
 		}
 
+
+		fprintf(mx_stdout, _("history: %s %" PRIdZ ": %s\n"),
+			(dele ? _("deleting") : _("evaluating")), entry, thp->th_dat);
 		if(!dele){
 			if((thp->th_older = a_tty.tg_hist) != NIL)
 				a_tty.tg_hist->th_younger = thp;
@@ -1126,10 +1129,8 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){ /* {{{ */
 
 			mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, thp->th_dat, thp->th_len);
 			break;
-		}else{
-			fprintf(mx_stdout, _("history: deleting %" PRIdZ ": %s\n"), entry, thp->th_dat);
+		}else
 			su_cs_dict_remove(&a_tty.tg_hist_dict, thp->th_dat);
-		}
 	}
 
 jleave:
