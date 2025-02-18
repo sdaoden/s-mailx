@@ -203,7 +203,7 @@ jnext:
 
 			/* TODO shexp: take care: not include backtick eval once avail! */
 			shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-						n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
+						n_SHEXP_PARSE_QUOTE_AUTO_DQ),
 					mx_SCOPE_NONE, shoup, &shin, NIL);
 			if(shs & n_SHEXP_STATE_STOP)
 				break;
