@@ -63,7 +63,7 @@
  * }\li{
  * Most collection and string object types work on 32-bit (or even 31-bit) lengths a.k.a. counts a.k.a. sizes.
  * For simplicity of use, and because overflow is handled, the interface most often uses \r{su_uz} (i.e., \c{size_t}).
- * Other behaviour is explicitly declared with a "big" prefix, as in the hypothetic "struct su_biglist",
+ * Other behavior is explicitly declared with a "big" prefix, as in the hypothetic "struct su_biglist",
  * but none such object does exist at the time of this writing.
  * }\li{
  * \SU object instances have a \c{_create()} / \c{_gut()} life cycle.
@@ -1349,7 +1349,7 @@ enum su_state_err_flags{
 	/*! Handy mask for the entire family of error \SU error bits,
 	 * \r{su_state_err_type} and \r{su_state_err_flags}.
 	 * It can be used by functions or methods which allow fine-tuning of error
-	 * behaviour to strip down an user argument.
+	 * behavior to strip down an user argument.
 	 *
 	 * \remarks{This mask itself is covered by the mask \c{0xFF00}.
 	 * This condition is compile-time asserted.} */
@@ -1369,7 +1369,7 @@ enum su_state_flags{
 	 * \remarks{Only if this flag was set when \r{su_state_create_core()} has
 	 * been called \SU will be able to work with multiple \r{THREAD}.} */
 	su_STATE_MT = 1u<<18, /* TODO <> su_state_create_core() should act */
-	/*! Reproducible behaviour switch.
+	/*! Reproducible behavior switch.
 	 * See \r{su_reproducible_build},
 	 * and \xln{https://reproducible-builds.org}. */
 	su_STATE_REPRODUCIBLE = 1u<<19
@@ -1687,7 +1687,7 @@ EXPORT su_log_write_fun su_log_get_write_fun(void);
 
 /*! The builtin log "domain" that is used by \SU by default logs to a system
  * dependent error channel, which might even be a "null device".
- * It can be hooked by passing a \r{su_log_write_fun}, passing \NIL restores the default behaviour.
+ * It can be hooked by passing a \r{su_log_write_fun}, passing \NIL restores the default behavior.
  * See \r{su_log_write()} for more. */
 EXPORT void su_log_set_write_fun(su_log_write_fun funp);
 
@@ -2453,7 +2453,7 @@ NSPC_END(su)
  * In \SU, and by default, collections learn how to deal with managed objects through \r{su_toolbox} objects.
  * When creating instances which own the objects they manage, the \r{su_toolbox} and at least its members
  * \r{su_toolbox::tb_clone}, \r{su_toolbox::tb_del} and \r{su_toolbox::tb_assign} are asserted.
- * (For general behaviour peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
+ * (For general behavior peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
  *
  * The C++ variants deduce many more things, and automatically, through (specializations of) \r{type_traits},
  * \r{type_toolbox}, and \r{auto_type_toolbox}.

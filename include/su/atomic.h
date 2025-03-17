@@ -59,7 +59,7 @@ C_DECL_BEGIN
  *
  * If an atomic operation is performed in a loop until it succeeds the memory storage will be beaten continuously,
  * incurring cache noise and uselessly consuming energy.
- * Hardware architectures exist which offer instructions to improve this spinning behaviour,
+ * Hardware architectures exist which offer instructions to improve this spinning behavior,
  * like introducing short delays, or pausing until some memory cache effect is seen.
  * In order to make use of such improvements a \c{_busy_} interface series is available.
  * @{

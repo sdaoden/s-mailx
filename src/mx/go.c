@@ -1770,7 +1770,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 
 			/* TODO history handling is terrible; this should pass the command
 			 * TODO evaluation context carrier all along the way, so that commands
-			 * TODO can alter the "add history" behaviour at will; also the
+			 * TODO can alter the "add history" behavior at will; also the
 			 * TODO arguments as passed into ARGV should be passed along to
 			 * TODO addhist, see *on-history-addition* for the why of this */
 			cc = gec.gec_hist_cmd;

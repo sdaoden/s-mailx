@@ -1444,7 +1444,7 @@ xrun_check() {
 string_to_char_array() {
 	${awk} -v xy="${@}" '
 	BEGIN{
-		# POSIX: unspecified behaviour.
+		# POSIX: unspecified behavior.
 		# Does not work for SunOS /usr/xpg4/bin/awk!
 		if(split("abc", xya, "") == 3)
 			i = split(xy, xya, "")

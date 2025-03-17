@@ -157,9 +157,9 @@ EXPORT boole su_random_generate(struct su_random *self, void *buf, uz len);
 
 /*! Install a \r{su_RANDOM_TYPE_VSP} random number generator hook.
  * It will be used by all newly created objects, as long as those exist.
- * If \a{on_generate} is \NIL the default built-in behaviour is (re)established,
+ * If \a{on_generate} is \NIL the default built-in behavior is (re)established,
  * and be picked up by newly created objects.
- * (If \r{su_RANDOM_SEED} is \c{su_RANDOM_SEED_HOOK} the default behaviour is redirection through a hook already.)
+ * (If \r{su_RANDOM_SEED} is \c{su_RANDOM_SEED_HOOK} the default behavior is redirection through a hook already.)
  * \ESTATE_RV; the internal machinery is instantiated as necessary, which may fail; the internal seeder object
  * is not setup: that may still fail later (but see \r{su_STATE_CREATE_RANDOM}).
  *

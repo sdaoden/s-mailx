@@ -1056,7 +1056,7 @@ getrawlist(enum mx_scope scope, boole wysh/* v15-cpmpat */, boole skip_aka_dryru
 			cp2 = linebuf;
 			quotec = '\0';
 
-			/* TODO v15: complete switch in order mirror known behaviour */
+			/* TODO v15: complete switch in order mirror known behavior */
 			while((c = *line++) != '\0'){
 				if(quotec != '\0'){
 					if(c == quotec){

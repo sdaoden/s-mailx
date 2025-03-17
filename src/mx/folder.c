@@ -1024,7 +1024,7 @@ n_folder_announce(enum n_announce_flags af){
 
    if(af & n__ANNOUNCE_HEADER){
       if(!(af & n_ANNOUNCE_MAIN_CALL) && ok_blook(bsdannounce))
-         n_OBSOLETE(_("*bsdannounce* is now default behaviour"));
+         n_OBSOLETE(_("*bsdannounce* is now default behavior"));
       vec[0] = mdot;
       vec[1] = 0;
       print_header_group(vec); /* XXX errors? */

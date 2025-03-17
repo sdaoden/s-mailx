@@ -63,7 +63,7 @@ enum mx__mime_enc_flags{
 	/* (encode) Quote with header rules, do not generate soft NL breaks?
 	 * For mustquote(), specifies whether special RFC 2047 header rules should be used instead */
 	mx_MIME_ENC_F_ISHEAD = 1u<<5,
-	/* (encode) Ditto; for mustquote() this furtherly fine-tunes behaviour in that characters which would not be
+	/* (encode) Ditto; for mustquote() this furtherly fine-tunes behavior in that characters which would not be
 	 * reported as "must-quote" when detecting whether quoting is necessary at all will be reported as "must-quote"
 	 * if they have to be encoded in an encoded word */
 	mx_MIME_ENC_F_ISENCWORD = 1u<<6,

@@ -236,7 +236,7 @@ FL boole n_var_okclear(enum okeys okey);
  * If try_getenv is true we will getenv(3) _if_ vokey is not a known enum okey;
  * it will also cause obsoletion messages only for doing lookup (once).
  * _vexplode() is to be used by the shell expansion stuff when encountering
- * $@/$^@ in double-quotes, in order to provide sh(1)ell compatible behaviour;
+ * $@/$^@ in double-quotes, in order to provide sh(1)ell compatible behavior;
  * it returns whether there are any elements in argv (*cookie): TRUM1 is
  * returned if all elements are empty strings (elements may point to static
  * constant and non-aligned data).

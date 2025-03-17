@@ -56,7 +56,7 @@ struct su_spinlock;
  * They are implemented by means of \r{ATOMIC}, and dependent upon hardware
  * support busy spinning may be replaced with something better.
  * If unavailable spinlocks base themselves upon \r{su_mutex} objects, despite
- * the behaviour change that this implies.
+ * the behavior change that this implies.
  * Error numbers (\r{su_err()}, \r{su_err_number}) are not used but for \r{su_spinlock_create()}.
  *
  * Spinlocks can be used to protect smallest regions of code,

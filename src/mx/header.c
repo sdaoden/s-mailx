@@ -1792,7 +1792,7 @@ jredo_localtime:
       /* TODO eliminate this path, query the FROM_ date in setptr(),
        * TODO all other codepaths do so by themselves ALREADY ?????
        * TODO ASSERT(mp->m_time != 0);, then
-       * TODO ALSO changes behaviour of datefield_markout_older */
+       * TODO ALSO changes behavior of datefield_markout_older */
       a_header_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
    }else
       rv = savestr(mx_time_ctime(t, NIL));
@@ -1904,7 +1904,7 @@ setup_from_and_sender(struct header *hp){
 
    /* If -t parsed or composed From: then take it.  With -t we otherwise
     * want -r to be honoured in favour of *from* in order to have
-    * a behaviour that is compatible with what users would expect from e.g.
+    * a behavior that is compatible with what users would expect from e.g.
     * postfix(1) */
    if((np = hp->h_from) != NIL ||
          ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NIL)){

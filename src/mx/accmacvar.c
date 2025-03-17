@@ -1817,7 +1817,7 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 						ASSERT(avp->av_flags & a_AMV_VF_EXT_LOCAL);
 
 						/* Relink as head, hope it "sorts on usage" over time.
-						 * The code relies on this behaviour! */
+						 * The code relies on this behavior! */
 						if(lavp != NIL){
 							lavp->av_link = avp->av_link;
 							avp->av_link = *avpp;

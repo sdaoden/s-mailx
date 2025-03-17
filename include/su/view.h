@@ -62,7 +62,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \head1{Superclass requirements}
  *
  * The minimum required interface that the typesafe C++ templates require,
- * and its expected behaviour.
+ * and its expected behavior.
  * In general there is a basic interface and several type-specific additions
  * which stack upon each other.
  *
