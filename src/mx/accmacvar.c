@@ -3427,27 +3427,22 @@ jleave:
 FL int
 c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
 	struct mx_cmd_arg *cap;
-	boole ispp;
+	struct mx_cmd_arg_ctx *cacp;
 	s64 c, ca;
 	int rv;
 	NYD_IN;
 
 	rv = su_EX_ERR;
 	c = 1;
-	ispp = TRU1;
+	cacp = vp;
 
-	for(cap = S(struct mx_cmd_arg_ctx*,vp)->cac_arg; cap != NIL; cap = cap->ca_next){
+	if((cap = cacp->cac_arg) != NIL){
 		struct str *sp;
 
 		sp = &cap->ca_arg.ca_str;
 
-		if(sp->l == 1 && sp->s[0] == '^'){
-			if(ispp != TRU1)
-				goto jearg;
-			ispp = FAL0;
-		}else if((su_idec_s64_cp(&c, sp->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+		if((su_idec_s64_cp(&c, sp->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 				) != su_IDEC_STATE_CONSUMED){
-jearg:
 			n_err(_("shift: invalid or yet seen argument: %s\n"), sp->s);
 			goto jleave;
 		}
@@ -3461,9 +3456,9 @@ jearg:
 
 			ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
 			amcap = a_amv_lopts->as_amcap;
-			appp = ispp ? amcap->amca_pospar : amcap->amca_resset;
+			appp = (cacp->cac_option_result_set == 0) ? amcap->amca_pospar : amcap->amca_resset;
 		}else
-			appp = ispp ? &a_amv_pospar : &a_amv_resset;
+			appp = (cacp->cac_option_result_set == 0) ? &a_amv_pospar : &a_amv_resset;
 
 		ca = ABS(c);
 		if(UCMP(64, ca, >, appp->app_count)){
@@ -3484,65 +3479,63 @@ jleave:
 
 FL int
 c_return(void *vp){ /* TODO the exit status should be m_si64! */
-	struct mx_cmd_arg *cap, *cap_save;
-	struct mx_cmd_arg_ctx *cacp;
+	struct mx_cmd_arg *cap;
 	int rv;
+	u32 i;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
 	/* xxx Force EOF and thus end of macro processing */
 	mx_go_input_force_eof();
 
+	cacp = vp;
+
+	i = cacp->cac_option_result_set;
+	if(i != 0)
+		--i;
+	else
+		i = cacp->cac_no;
+	if(i > 2){
+		n_pstate_err_no = su_ERR_OVERFLOW;
+		rv = su_EX_ERR;
+		goto jleave;
+	}
+
 	n_pstate_err_no = su_ERR_NONE;
 	rv = su_EX_OK;
 
-	cacp = vp;
-	for(cacp->cac_no = 0, cap_save = NIL, cap = cacp->cac_arg; cap != NIL; ++cacp->cac_no, cap = cap->ca_next){
-		char const *cp;
+	for(cap = cacp->cac_arg; i-- != 0; cap = cap->ca_next){
+		/* First argument return code, second error value */
+		s32 j;
 
-		if(cap_save != NIL)
-			continue;
-
-		cp = cap->ca_arg.ca_str.s;
-
-		if(cp[0] == '^' && cp[1] == '\0'){
-			cap_save = cap;
-			cacp->cac_no = 0;
-		}else if(cacp->cac_no < 2){
-			/* First argument return code, second error value */
-			s32 i;
-
-			if((su_idec_s32_cp(&i, cp, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-					) != su_IDEC_STATE_CONSUMED || i < 0){
-				n_err(_("return: invalid return value or error number: %s\n"), cp);
-				n_pstate_err_no = su_ERR_INVAL;
-				rv = su_EX_ERR;
-				goto jleave;
-			}
-			if(cacp->cac_no == 0)
-				rv = S(int,i);
-			else
-				n_pstate_err_no = i;
-		}else{
-jeover:
-			n_pstate_err_no = su_ERR_OVERFLOW;
+		if((su_idec_s32_cp(&j, cap->ca_arg.ca_str.s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+				) != su_IDEC_STATE_CONSUMED || j < 0){
+			n_err(_("return: invalid return value or error number: %s\n"), cap->ca_arg.ca_str.s);
+			n_pstate_err_no = su_ERR_INVAL;
 			rv = su_EX_ERR;
 			goto jleave;
 		}
+		if(cap == cacp->cac_arg)
+			rv = S(int,j);
+		else
+			n_pstate_err_no = j;
 	}
 
 	/* Additional return values? */
-	if(cap_save != NIL){
+	if(cacp->cac_option_result_set != 0){
 		s32 xrv;
 		struct a_amv_pospar *appp;
 
 		appp = (a_amv_lopts->as_up != NIL) ? a_amv_lopts->as_up->as_amcap->amca_resset : &a_amv_resset;
 
-		ASSERT(cacp->cac_no > 0);
-		xrv = mx_var_result_set_set(appp, a_amv_lopts->as_amcap->amca_name, --cacp->cac_no, cap_save->ca_next, NIL);
+		i = cacp->cac_no + 1 - cacp->cac_option_result_set;
+		xrv = mx_var_result_set_set(appp, a_amv_lopts->as_amcap->amca_name, i, cap, NIL);
 		appp->app_is_ret = TRU1;
 
-		if(xrv != su_ERR_NONE)
-			goto jeover;
+		if(xrv != su_ERR_NONE){
+			n_pstate_err_no = su_ERR_OVERFLOW;
+			rv = su_EX_ERR;
+		}
 	}
 
 jleave:
@@ -4567,15 +4560,7 @@ c_vpospar(void *vp){ /* {{{ */
 	cap = cacp->cac_arg;
 
 	/* Result set mode? */
-	if(cap->ca_arg.ca_str.l == 1 && *cap->ca_arg.ca_str.s == '^'){
-		cap = cap->ca_next;
-		if(--cacp->cac_no == 0){
-			n_err(_("vpospar: ^: misses subcommand\n"));
-			n_pstate_err_no = su_ERR_INVAL;
-			f = a_ERR;
-			goto jleave;
-		}
-
+	if(cacp->cac_option_result_set != 0){
 		appp = ((cacp->cac_scope != mx_SCOPE_GLOBAL && a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
 				? a_amv_lopts->as_amcap->amca_resset : &a_amv_resset);
 		f = a_RESSET;

@@ -29,6 +29,25 @@ struct mx_cmd_arg_ctx; /* Argument parser control context */
 struct mx_cmd_arg; /* Argument parser in/output */
 struct mx_cmd_desc; /* Command implementation, constant */
 
+/* For example:
+ *
+ * mx_CMD_ARG_DESC_SUBCLASS_DEF(evalset, 1, a_pseudo_evalset_arg){
+ *   {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+ *   n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_IGN_SUBST_ALL}
+ * }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+ *
+ * static struct mx_cmd_desc const a_pseudo_evalset = {
+ *   "vpospar evalset", R(int(*)(void*),-1), mx_CMD_ARG_TYPE_ARG, 0, 0,
+ *    mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_pseudo_evalset_arg), NIL
+ * };
+ *
+ * STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
+ * cac.cac_desc = a_pseudo_evalset.cd_cadp;
+ * cac.cac_indat = ..;
+ * cac.cac_inlen = ..;
+ * mx_cmd_arg_parse(&cac, ...
+ */
+
 enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 	* TODO i rather see the mechanism that is used in c_bind() extended and used
 	* TODO anywhere, i.e. n_cmd_arg_parse().
@@ -90,8 +109,9 @@ enum mx_cmd_arg_desc_flags{
 
 	/* - Optional flags */
 
-	/* Needs su_avopt pass (-o --ptions -- delimiter support) */
-	mx_CMD_ARG_DESC_NEEDS_AVOPT = 1u<<13, /* TODO NOT YET */
+	/* Only with _SHEXP type: if the token parsed is a sole circumflex ^, then only set
+	 * mx_cmd_arg_ctx.cac_option_result_set, and parse another token as the actual argument (if any!) */
+	mx_CMD_ARG_DESC_OPTION_RESULT_SET = 1u<<13,
 	/* It is not an error if an optional argument is missing; once an argument
 	 * has been declared optional only optional arguments may follow */
 	mx_CMD_ARG_DESC_OPTION = 1u<<14,
@@ -108,7 +128,7 @@ enum mx_cmd_arg_desc_flags{
 	/* Ignore n_SHEXP_STATE_ERR_UNICODE */
 	mx_CMD_ARG_DESC_IGN_STATE_ERR_UNICODE = 1u<<20,
 
-	mx__CMD_ARG_DESC_FLAG_MASK = mx_CMD_ARG_DESC_NEEDS_AVOPT | mx_CMD_ARG_DESC_OPTION |
+	mx__CMD_ARG_DESC_FLAG_MASK = mx_CMD_ARG_DESC_OPTION_RESULT_SET | mx_CMD_ARG_DESC_OPTION |
 			mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_GREEDY_JOIN | mx_CMD_ARG_DESC_HONOUR_STOP |
 			mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE |
 			mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY |
@@ -164,11 +184,14 @@ struct mx_cmd_arg_ctx{
 	u32 cac_msgmask; /* Input (option): relevant flags of messages */
 	struct mx_cmd_arg *cac_arg; /* Output: parsed arguments */
 	u32 cac_no; /* Output: number of parsed arguments (LT U32_MAX!) */
+	/* Output: with _DESC_OPTION_RESULT_SET, ^ seen at idx (1 based!)
+	 * NOTE: may NOT be backed by following argument! */
+	u32 cac_option_result_set;
 	/* go related for command consumation */
 	ZIPENUM(u8,mx_scope) cac_scope; /* Desired scope, ... */
 	ZIPENUM(u8,mx_scope) cac_scope_vput; /* .cac_vput scope, ... */
 	ZIPENUM(u8,mx_scope) cac_scope_pp; /* positional parameter scope */
-	u8 cac__pad[1];
+	u8 cac__dummy[5];
 	/* TODO mx_cmd_arg_ctx should carry around per-cmd pstate_err_no! */
 	char const *cac_vput; /* `>' command modifier used: varname */
 };
@@ -179,8 +202,7 @@ struct mx_cmd_arg{
 	uz ca_inlen; /*[PRIV] of .ca_indat of this arg (no NUL) */
 	u32 ca_ent_flags[2]; /* Copy of cmd_arg_desc.cad_ent_flags[X] */
 	u32 ca_arg_flags; /* [Output: _WYSH: copy of parse result flags] */
-	boole ca_is_option; /* With _DESC_NEEDS_AVOPT; TRUM1: -- delim TODO notyet*/
-	u8 ca__dummy[3];
+	u8 ca__dummy[4];
 	union{
 		struct str ca_str; /* _CMD_ARG_DESC_SHEXP */
 		int *ca_msglist; /* _CMD_ARG_DESC_MSGLIST+ */

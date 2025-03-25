@@ -590,7 +590,7 @@ mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
 
 boole
 mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_aka_dryrun){
-	enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2};
+	enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2, a_RESULT_SET = 1u<<3};
 
 	struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
 	struct n_string shou, *shoup;
@@ -603,10 +603,11 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_ak
 	s32 nerr;
 	NYD_IN;
 
-	ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NIL);
-#if DVLDBGOR(1, 0)
+#if DVLDBGOR(1, 0) /* {{{ */
 	/* C99 */{
 		boole opt_seen = FAL0;
+
+		ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NIL);
 
 		for(cadp = cacp->cac_desc, cad_idx = 0; cad_idx < cadp->cad_no; ++cad_idx){
 			ASSERT(cadp->cad_ent_flags[cad_idx][0] & mx__CMD_ARG_DESC_TYPE_MASK);
@@ -626,6 +627,9 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_ak
 				opt_seen = TRU1;
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY) ||
 				cad_idx + 1 == cadp->cad_no);
+
+			ASSERT((cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_SHEXP) ||
+				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION_RESULT_SET));
 
 			/* TODO CMD_ARG_DESC_MSGLIST+ can only be CMD_ARG_DESC_GREEDY.
 			 * TODO And they may not be CMD_ARG_DESC_OPTION */
@@ -647,13 +651,13 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_ak
 				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY));
 		}
 	}
-#endif /* DVLDBGOR(1,0) */
+#endif /* }}} DVLDBGOR(1,0) */
 
 	nerr = su_ERR_NONE;
 	shin.s = UNCONST(char*,cacp->cac_indat);
 	shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
 	shin_orig = shin;
-	cacp->cac_no = 0;
+	cacp->cac_no = cacp->cac_option_result_set = 0;
 	cacp->cac_scope = cacp->cac_scope_vput = cacp->cac_scope_pp = mx_SCOPE_NONE;
 	cacp->cac_arg = lcap = NIL;
 	cacp->cac_vput = NIL;
@@ -688,18 +692,22 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_ak
 	/* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
 	 * TODO those use getmsglist() and that needs to deal with that situation.
 	 * TODO In the future that should change; see jloop_break TODO below */
-	for(; /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
+	for(; /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){ /* {{{ */
 jredo:
 		STRUCT_ZERO(struct mx_cmd_arg, &ncap);
 		ncap.ca_indat = shin.s;
 		/* >ca_inline once we know */
 		su_mem_copy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0], sizeof ncap.ca_ent_flags);
 		target_argpp = NIL;
-		f &= ~a_STOPLOOP;
+		f &= ~(a_STOPLOOP | a_RESULT_SET);
 
-		switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
+		switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){ /* {{{ */
 		default:
 		case mx_CMD_ARG_DESC_SHEXP:
+
+			if(UNLIKELY(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_OPTION_RESULT_SET) &&
+					cacp->cac_option_result_set == 0)
+				f |= a_RESULT_SET;
 jshexp_restart:
 			if(shin.l == 0){
 				if(!(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY) || cookie == NIL)
@@ -708,6 +716,7 @@ jshexp_restart:
 
 			shoup = n_string_creat_auto(&shou);
 
+jshexp_restart_inner:
 			ncap.ca_arg_flags =
 			shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
 						(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
@@ -725,10 +734,20 @@ jshexp_restart:
 			if(shs & n_SHEXP_STATE_ERR_MASK)
 				goto jerr;
 
+			if(UNLIKELY(f & a_RESULT_SET)){
+				f ^= a_RESULT_SET;
+				if(shoup->s_len == 1 && shoup->s_dat[0] == '^'){
+					n_string_trunc(shoup, 0);
+					ncap.ca_indat = shin.s;
+					cacp->cac_option_result_set = cacp->cac_no + 1;
+					goto jshexp_restart_inner;
+				}
+			}
+
 			ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
 			if(shs & n_SHEXP_STATE_OUTPUT){
+				ncap.ca_arg.ca_str.l = shoup->s_len;
 				ncap.ca_arg.ca_str.s = n_string_cp(shoup);
-				ncap.ca_arg.ca_str.l = shou.s_len;
 			}
 
 			if((shs & n_SHEXP_STATE_STOP) &&
@@ -830,7 +849,7 @@ jshexp_restart:
 			ncap.ca_arg.ca_str.l = shoup->s_len;
 			f |= a_STOPLOOP;
 			break;
-		}
+		} /* }}} */
 		++parsed_args;
 
 		if(f & a_GREEDYJOIN){ /* TODO speed this up! */
@@ -883,7 +902,7 @@ jshexp_restart:
 			f |= a_REDID;
 			goto jredo;
 		}
-	}
+	} /* }}} */
 
 jloop_break:
 	ASSERT(cad_idx < cadp->cad_no || !(f & a_REDID) ||
