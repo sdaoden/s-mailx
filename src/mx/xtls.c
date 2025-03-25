@@ -279,7 +279,7 @@ struct a_xtls_protocol{
 };
 
 struct a_xtls_cipher{
-   char const xc_name[8];
+   char const xc_name[16];
    EVP_CIPHER const *(*xc_fun)(void);
 };
 
@@ -320,11 +320,14 @@ static struct a_xtls_protocol const a_xtls_protocols[] = {
 /* Supported S/MIME cipher algorithms */
 static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_AES
-# define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_128_cbc /* According RFC 5751 */
-# define a_XTLS_SMIME_DEFAULT_CIPHER_S "AES128"
-   {"AES128", &EVP_aes_128_cbc},
-   {"AES256", &EVP_aes_256_cbc},
+# define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_256_cbc
+# define a_XTLS_SMIME_DEFAULT_CIPHER_S "AES256"
+   {"AES256", &EVP_aes_256_cbc}, /* default of OpenSSL 3.5.0 (2025) */
+      {"AES-256-CBC\0", &EVP_aes_256_cbc},
    {"AES192", &EVP_aes_192_cbc},
+      {"AES-192-CBC", &EVP_aes_192_cbc},
+   {"AES128", &EVP_aes_128_cbc}, /* mandated by RFC 5751 (2010) */
+      {"AES-128-CBC", &EVP_aes_128_cbc}, /* mandated by RFC 5751 (2010) */
 #endif
 #ifndef OPENSSL_NO_DES
 # ifndef a_XTLS_SMIME_DEFAULT_CIPHER
@@ -332,7 +335,9 @@ static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #  define a_XTLS_SMIME_DEFAULT_CIPHER_S "DES3"
 # endif
    {"DES3", &EVP_des_ede3_cbc},
+      {"DES-EDE3-CBC\0", &EVP_des_ede3_cbc},
    {"DES", &EVP_des_cbc},
+      {"DES-CBC", &EVP_des_cbc},
 #endif
 };
 #ifndef a_XTLS_SMIME_DEFAULT_CIPHER
@@ -343,9 +348,9 @@ static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_AES
 /* TODO obsolete a_xtls_smime_ciphers_obs */
 static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
-   {"AES-128", &EVP_aes_128_cbc},
    {"AES-256", &EVP_aes_256_cbc},
-   {"AES-192", &EVP_aes_192_cbc}
+   {"AES-192", &EVP_aes_192_cbc},
+   {"AES-128", &EVP_aes_128_cbc}
 };
 #endif
 

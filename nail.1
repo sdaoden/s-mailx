@@ -2809,7 +2809,7 @@ and henceforth be used to encrypt further communication:
 certsave FILENAME
 \*(IX
 set smime-encrypt-USER@HOST=FILENAME \e
-    smime-cipher-USER@HOST=AES256
+    smime-cipher-USER@HOST=AES-256-CBC
 .Ed
 .
 .Pp
@@ -12653,18 +12653,20 @@ used to TLS library to verify S/MIME signed messages.
 .It Va smime-cipher-USER@HOST , smime-cipher
 \*(OP Specifies the cipher to use when generating S/MIME encrypted
 messages (for the specified account).
-RFC 5751 mandates a default of
+Whereas RFC 5751 as of 2010 mandated a default of
 .Ql aes128
-(AES-128 CBC).
+(AES-128-CBC) we follow OpenSSL 3.5.0 (2025) and default to
+.Ql aes256
+(AES-256-CBC).
 Possible values are (case-insensitive and) in decreasing cipher strength:
 .Ql aes256
-(AES-256 CBC),
+(AES-256-CBC),
 .Ql aes192
-(AES-192 CBC),
+(AES-192-CBC),
 .Ql aes128
-(AES-128 CBC),
+(AES-128-CBC),
 .Ql des3
-(DES EDE3 CBC, 168 bits; default if
+(DES-EDE3-CBC, 168 bits; default if
 .Ql aes128
 is not available) and
 .Ql des
