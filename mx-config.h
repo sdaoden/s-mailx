@@ -24,6 +24,13 @@
 #define ACCOUNT_NULL "null" /* Name of "null" account */
 #define mx_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
 
+/* Whether (empty) Bcc: headers shall be generated to "announce" that
+ * a message really had Bcc recipients?  NOTE: affects tests! */
+#define mx_BCC_ANNOUNCE_PRESENCE 0
+
+/* *bind-inter-byte-timeout* default -- update manual on change! */
+#define mx_BIND_INTER_BYTE_TIMEOUT "200"
+
 #define mx_CONTENT_DESC_FORWARDED_MESSAGE "Forwarded message"
 #define mx_CONTENT_DESC_QUOTE_ATTACHMENT "Original message content"
 #define mx_CONTENT_DESC_SMIME_MESSAGE "S/MIME encrypted message"
@@ -54,9 +61,6 @@
 #define n_QUOTE_INJECT_TAIL NIL /* DOC! */
 
 #define REFERENCES_MAX 20 /* Maximum entries in References: */
-
-/* *bind-inter-byte-timeout* default -- update manual on change! */
-#define mx_BIND_INTER_BYTE_TIMEOUT "200"
 
 /* * */
 

@@ -568,17 +568,26 @@ jsend:
 				continue;
 			/* We know what we have generated first, so do not look for whitespace before the ':' */
 			else if(blen >= 4 && !su_cs_cmp_case_n(nscp->nsc_buf.s, "bcc:", 4)){
-				blen = sizeof("bcc:") -1;
 				f |= a_IN_BCC;
+#if mx_BCC_ANNOUNCE_PRESENCE
+				blen = sizeof("bcc:\012") -1;
+#else
+				continue;
+#endif
 			}else if(blen >= 11 && !su_cs_cmp_case_n(nscp->nsc_buf.s, "resent-bcc:", 11)){
-				blen = sizeof("resent-bcc:") -1;
 				f |= a_IN_BCC;
+#if mx_BCC_ANNOUNCE_PRESENCE
+				blen = sizeof("resent-bcc:\012") -1;
+#else
+				continue;
+#endif
 			}else
 				f &= ~a_IN_BCC;
 		}
 
 		if(*nscp->nsc_buf.s == '.' && !(n_poption & n_PO_D))
 			mx_socket_write1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
+		ASSERT(nscp->nsc_buf.l >= 3 && blen <= nscp->nsc_buf.l - 3);
 		nscp->nsc_buf.s[blen - 1] = NETNL[0];
 		nscp->nsc_buf.s[blen] = NETNL[1];
 		nscp->nsc_buf.s[blen + 1] = '\0';

@@ -1699,12 +1699,18 @@ jewritebcc:
                 * xxx We do not resent that yet , but place the logic today */
                if(su_cs_starts_with_case(buf, "bcc:")){
                   inskip = TRU1;
-                  buf[sizeof("bcc:") -1] = '\n';
-                  llen = sizeof("bcc:");
+#if mx_BCC_ANNOUNCE_PRESENCE
+                  buf[llen = sizeof("bcc:") -1] = '\n';
+#else
+                  continue;
+#endif
                }else if(resent && su_cs_starts_with_case(buf, "resent-bcc:")){
                   inskip = TRU1;
-                  buf[sizeof("resent-bcc:") -1] = '\n';
-                  llen = sizeof("resent-bcc:");
+#if mx_BCC_ANNOUNCE_PRESENCE
+                  buf[llen = sizeof("resent-bcc:") -1] = '\n';
+#else
+                  continue;
+#endif
                }
             }
          }

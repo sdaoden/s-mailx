@@ -1313,9 +1313,11 @@ char *
 		goto jleave;
 	}
 
-	if ((rv = *line) == NULL || *linesize < mx_LINESIZE)
+	if((rv = *line) == NULL || *linesize < mx_LINESIZE){
 		*line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = mx_LINESIZE, su_DVL_LOC_ARGS_ORUSE);
-	size = (*linesize <= *cnt) ? *linesize : *cnt + 1;
+	}
+
+	size = (*linesize - 3 <= *cnt) ? *linesize - 3: *cnt + 1;
 	if (size <= 1 || fgets(rv, size, fp) == NULL) {
 		/* Leave llen untouched; it is used to determine whether the last line
 		 * was \n-terminated in some callers */
@@ -1327,7 +1329,7 @@ char *
 	*cnt -= i_llen;
 	while (rv[i_llen - 1] != '\n') {
 		*line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256, su_DVL_LOC_ARGS_ORUSE);
-		size = *linesize - i_llen;
+		size = *linesize - 3 - i_llen;
 		size = (size <= *cnt) ? size : *cnt + 1;
 		if (size <= 1) {
 			if (appendnl) {
@@ -1352,7 +1354,7 @@ char *
 		*cnt -= size;
 	}
 
-	/* Always leave room for NETNL, not only \n */
+	/* Always leave room for NETNL+\0, not only \n */
 	if(appendnl && *linesize - i_llen < 3)
 		*line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256, su_DVL_LOC_ARGS_ORUSE);
 
