@@ -6,8 +6,7 @@
  * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
- * Copyright (c) 2004
- * Gunnar Ritter.  All rights reserved.
+ * Copyright (c) 2004 Gunnar Ritter.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

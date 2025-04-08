@@ -6,8 +6,7 @@
  * SPDX-License-Identifier: BSD-4-Clause TODO ISC (is taken from book!)
  */
 /*
- * Copyright (c) 2002
- * Gunnar Ritter.  All rights reserved.
+ * Copyright (c) 2002 Gunnar Ritter.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

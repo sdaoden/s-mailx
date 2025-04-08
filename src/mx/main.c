@@ -3,7 +3,17 @@
  *@ This file is also used to materialize externals.
  *@ TODO we need a program wide global ctx; furtherly split main();
  *@ TODO when arguments are parsed the a_main_ctx instance should be dropped
- *
+ */
+#define a_COPYRIGHT \
+	"Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.\n" \
+	"\tSPDX-License-Identifier: ISC\n" \
+	"Copyright (c) 2000 Gunnar Ritter.\n" \
+	"\tSPDX-License-Identifier: BSD-4-Clause\n" \
+	"Copyright (c) 1996 Christos Zoulas.\n" \
+	"\tSPDX-License-Identifier: BSD-2-Clause\n" \
+	"Copyright (c) 1980, 1993 The Regents of the University of California.\n" \
+	"\tSPDX-License-Identifier: BSD-3-Clause\n"
+/*
  * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
@@ -119,6 +129,7 @@ static char const *a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop);
 static void a_main_o_s(struct a_main_ctx *mcp, struct su_avopt *avop);
 
 /* */
+static void a_main_memyselfi(FILE *fp);
 static void a_main_usage(FILE *fp);
 static boole a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt, char const *doc);
 
@@ -578,6 +589,16 @@ jleave:
 } /* }}} */
 
 static void
+a_main_memyselfi(FILE *fp){
+	boole isne;
+
+	isne = (su_cs_cmp(su_program, n_uagent) != 0);
+
+	fprintf(fp, _("%s (%s%s%s): send and receive Internet mail\n"),
+		su_program, (isne ? n_uagent : su_empty), (isne ? " " : su_empty), ok_vlook(version));
+}
+
+static void
 a_main_usage(FILE *fp){ /* {{{ */
 	/* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
 	char buf[7];
@@ -590,13 +611,7 @@ a_main_usage(FILE *fp){ /* {{{ */
 		su_mem_set(buf, ' ', i);
 	buf[i] = '\0';
 
-	/* C99 */{
-		boole isne;
-
-		isne = (su_cs_cmp(su_program, n_uagent) != 0);
-		fprintf(fp, _("%s (%s%s%s): send and receive Internet mail\n"),
-			su_program, (isne ? n_uagent : su_empty), (isne ? " " : su_empty), ok_vlook(version));
-	}
+	a_main_memyselfi(fp);
 	if(fp != mx_stderr)
 		putc('\n', fp);
 
@@ -693,6 +708,7 @@ main(int argc, char *argv[]){ /* {{{ */
 		"cc:;c;" N_("add carbon copy recipient"),
 			"check-and-exit;e;" N_("note mail presence (of -L) via exit status"),
 			"cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
+			"copyright;-42;" N_("show copyright"),
 			"custom-header:;C;" N_("add custom header (\"header-field: body\")"),
 		"debug;d;" N_("identical to -Sdebug"),
 			"discard-empty-messages;E;" N_("identical to -Sskipemptybody"),
@@ -774,6 +790,11 @@ main(int argc, char *argv[]){ /* {{{ */
 			mc.mc_bcc = cat(mc.mc_bcc, mx_name_parse_as_one(avo.avo_current_arg,
 					GBCC | GSHEXP_PARSE_HACK | GTRASH_HACK));
 			break;
+		case -42:
+			a_main_memyselfi(n_stdout);
+			fprintf(n_stdout, a_COPYRIGHT);
+			n_exit_status = su_EX_OK;
+			goto jleave;
 		case 'C':{
 			/* Create custom header (at list tail) */
 			struct n_header_field **hflpp;

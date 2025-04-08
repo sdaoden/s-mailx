@@ -6,8 +6,7 @@
  * SPDX-License-Identifier: BSD-4-Clause
  */
 /*-
- * Copyright (c) 1985, 1986, 1992, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1985, 1986, 1992, 1993 The Regents of the University of California.
  *
  * This code is derived from software contributed to Berkeley by
  * Diomidis Spinellis and James A. Woods, derived from original
