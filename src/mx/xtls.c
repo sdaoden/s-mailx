@@ -1086,7 +1086,11 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "PrivateKey")){
       if(SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1){
-         emsg = N_("%s: cannot load from file %s\n");
+         emsg = N_("%s: cannot load from file: %s\n");
+         goto jerr;
+      }
+      if(SSL_CTX_check_private_key(ctxp) != 1){
+         emsg = N_("%s: private key consistency check failed: %s\n");
          goto jerr;
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Protocol")){
