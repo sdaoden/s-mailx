@@ -479,7 +479,7 @@ jerr_cred:
 		a_SMTP_OUT(sb.s);
 		break;
 
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 	case mx_CRED_AUTHTYPE_CRAM_MD5:{
 		char *cp;
 

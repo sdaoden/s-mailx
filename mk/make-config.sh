@@ -52,13 +52,13 @@ XOPTIONS="\
 	NET='Network support' \
 		GSSAPI='Generic Security Service authentication' \
 		IMAP='IMAP v4r1 client' \
-		MD5='MD5 message digest (APOP, CRAM-MD5)' \
 		NETRC='.netrc file support' \
 		NET_TEST='-' \
 		POP3='Post Office Protocol Version 3 client' \
 		SMTP='Simple Mail Transfer Protocol client' \
 		TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
 			TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
+			TLS_MD5='MD5 message digest (APOP, CRAM-MD5) via TLS library' \
 	SPAM_FILTER='Freely configurable *spam-filter-..*s' \
 	SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
 "
@@ -215,7 +215,7 @@ option_update() {
 	esac
 
 	if feat_no TLS; then
-		OPT_TLS_ALL_ALGORITHMS=0
+		OPT_TLS_ALL_ALGORITHMS=0 OPT_TLS_MD5=0
 	fi
 
 	if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
@@ -236,12 +236,11 @@ option_update() {
 		fi
 		OPT_GSSAPI=0
 		OPT_IMAP=0
-		OPT_MD5=0
 		OPT_NETRC=0
 		OPT_NET_TEST=0
 		OPT_POP3=0
 		OPT_SMTP=0
-		OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
+		OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0 OPT_TLS_MD5=0
 	fi
 	if feat_no SMTP && feat_no IMAP; then
 		OPT_GSSAPI=0
@@ -3234,9 +3233,13 @@ int main(void){
 	return 0;
 }
 !
+	else
+		feat_bail_required TLS_ALL_ALGORITHMS # feat_is_disabled?
+	fi # }}}
 
-		if feat_yes MD5 && feat_no NOEXTMD5; then
-			if run_check tls_md5 'TLS: MD5 digest' '#define mx_XTLS_HAVE_MD5' << \!
+
+	if feat_yes TLS && feat_yes TLS_MD5; then
+		if run_check tls_md5 'TLS: MD5 digest' '#define mx_HAVE_TLS_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -3261,19 +3264,16 @@ int main(void){
 	return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
-			then
-				:
-			else
-				msg 'WARN: OpenSSL without MD5, enabling OPT_NOEXTMD5=1!'
-				OPT_NOEXTMD5=1
-			fi
+		then
+			:
+		else
+			feat_bail_required TLS_MD5 # feat_is_disabled?
 		fi
-	else
-		feat_bail_required TLS_ALL_ALGORITHMS # feat_is_disabled?
-	fi # }}}
+	fi
 else
 	feat_is_disabled TLS
 	feat_is_disabled TLS_ALL_ALGORITHMS
+	feat_is_disabled TLS_MD5
 fi # }}} feat_yes TLS
 printf '#ifdef mx_SOURCE\n' >> ${h}
 printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"',"\n' >> ${h}
@@ -3763,7 +3763,6 @@ feat_def IMAP
 feat_def IMAP_SEARCH
 feat_def MAILCAP
 feat_def MAILDIR
-feat_def MD5 # XXX only sockets
 feat_def MTA_ALIASES
 feat_def NETRC
 feat_def POP3

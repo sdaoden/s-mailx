@@ -414,13 +414,12 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 # endif
 #endif
 
-#ifndef OPENSSL_NO_MD5
+#if !defined OPENSSL_NO_MD5 && defined mx_HAVE_TLS_MD5
    {TRU1, "MD5\0", &EVP_md5},
 #endif
 };
 
-#if !defined a_XTLS_SMIME_DEFAULT_DIGEST || \
-      !defined a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#if !defined a_XTLS_SMIME_DEFAULT_DIGEST || !defined a_XTLS_FINGERPRINT_DEFAULT_DIGEST
 # error Not enough supported message digest algorithms available
 #endif
 

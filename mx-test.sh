@@ -15099,9 +15099,8 @@ PASS Sway
 		pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
 	check 1 0 "${MBOX}" '3754674759 160'
 
-	if have_feat md5; then
-		t__net_script .t.sh pop3 \
-			-Spop3-auth=plain -Snopop3-use-starttls
+	if have_feat tls_md5; then
+		t__net_script t.sh pop3 -Spop3-auth=plain -Snopop3-use-starttls
 		{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \001
@@ -15110,7 +15109,7 @@ APOP steffen 4f66ea9bf092117b009b9f8d928c656d
 			pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
 		check 2 0 "${MBOX}" '3754674759 160'
 	else
-		t_echoskip '2:[!MD5]'
+		t_echoskip '2:[!TLS_MD5]'
 	fi
 
 	if false && have_feat tls; then # TODO TLS-NET-SERV
@@ -15243,9 +15242,8 @@ T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 		t_echoskip '2:[false/TODO/!TLS]'
 	fi
 
-	if have_feat md5; then
-		t__net_script .t.sh imap \
-			-Simap-auth=cram-md5 -Snoimap-use-starttls
+	if have_feat tls_md5; then
+		t__net_script t.sh imap -Simap-auth=cram-md5 -Snoimap-use-starttls
 		{ imap_hello && printf '\001
 T2 AUTHENTICATE CRAM-MD5
 \002
@@ -15256,7 +15254,7 @@ c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
 			imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
 		check 2 0 "${MBOX}" '4233548649 160'
 	else
-		t_echoskip '2:[!MD5]'
+		t_echoskip '2:[!TLS_MD5]'
 	fi
 
 	t_epilog "${@}"
@@ -15554,7 +15552,7 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 		t_echoskip 'auth-3:[!TLS]'
 	fi
 
-	if have_feat md5; then
+	if have_feat tls-md5; then
 		smtp_script smtp -Ssmtp-config=-all,ehlo,,cram-md5
 		{ smtp_ehlo && printf '\001
 AUTH CRAM-MD5
@@ -15566,7 +15564,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
 			smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-4 2>${E0}
 		ck0e0 auth-4 0 ./tauth-4
 	else
-		t_echoskip 'auth-4:[!MD5]'
+		t_echoskip 'auth-4:[!TLS_MD5]'
 	fi
 
 	# STARTTLS, and more TLS AUTH things

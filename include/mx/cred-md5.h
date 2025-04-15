@@ -16,38 +16,12 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_XTLS_HAVE_MD5
-/* MD5.H - header file for MD5C.C from RFC 1321 is */
-/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
-rights reserved.
-
-License to copy and use this software is granted provided that it
-is identified as the "RSA Data Security, Inc. MD5 Message-Digest
-Algorithm" in all material mentioning or referencing this software
-or this function.
-
-License is also granted to make and use derivative works provided
-that such works are identified as "derived from the RSA Data
-Security, Inc. MD5 Message-Digest Algorithm" in all material
-mentioning or referencing the derived work.
-
-RSA Data Security, Inc. makes no representations concerning either
-the merchantability of this software or the suitability of this
-software for any particular purpose. It is provided "as is"
-without express or implied warranty of any kind.
-
-These notices must be retained in any copies of any part of this
-documentation and/or software.
- */
-#endif /* !mx_XTLS_HAVE_MD5 */
 #ifndef mx_CRED_MD5_H
 #define mx_CRED_MD5_H
 
 #include <mx/nail.h>
-#ifdef mx_HAVE_MD5
-#ifdef mx_XTLS_HAVE_MD5
-# include <openssl/md5.h>
-#endif
+#ifdef mx_HAVE_TLS_MD5
+#include <openssl/md5.h>
 
 #define mx_HEADER
 #include <su/code-in.h>
@@ -59,31 +33,10 @@ documentation and/or software.
 #define mx_MD5_TOHEX_SIZE 32u
 
 /* MD5 (RFC 1321) related facilities */
-#ifdef mx_XTLS_HAVE_MD5
-# define mx_md5_t MD5_CTX
-# define mx_md5_init MD5_Init
-# define mx_md5_update MD5_Update
-# define mx_md5_final MD5_Final
-#else
-/* RFC 1321, MD5.H: */
-/*
- * This version of MD5 has been changed such that any unsigned type with
- * at least 32 bits is acceptable. This is important e.g. for Cray vector
- * machines which provide only 64-bit integers.
- */
-typedef u32 mx_md5_type;
-# define mx_MD5_TYPE_MAX U32_MAX
-
-typedef struct{
-	mx_md5_type state[4]; /* state (ABCD) */
-	mx_md5_type count[2]; /* number of bits, modulo 2^64 (lsb first) */
-	unsigned char buffer[64]; /* input buffer */
-} mx_md5_t;
-
-EXPORT void mx_md5_init(mx_md5_t *);
-EXPORT void mx_md5_update(mx_md5_t *, unsigned char *, unsigned int);
-EXPORT void mx_md5_final(unsigned char[mx_MD5_DIGEST_SIZE], mx_md5_t *);
-#endif /* !mx_XTLS_HAVE_MD5 */
+#define mx_md5_t MD5_CTX
+#define mx_md5_init MD5_Init
+#define mx_md5_update MD5_Update
+#define mx_md5_final MD5_Final
 
 /* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
  * using lowercase ASCII letters as defined in RFC 2195 */
@@ -101,6 +54,6 @@ EXPORT char *mx_md5_cram_string(struct str const *user, struct str const *pass, 
 EXPORT void mx_md5_hmac(unsigned char *text, int text_len, unsigned char *key, int key_len, void *digest);
 
 #include <su/code-ou.h>
-#endif /* mx_HAVE_MD5 */
+#endif /* mx_HAVE_TLS_MD5 */
 #endif /* mx_CRED_MD5_H */
 /* s-itt-mode */

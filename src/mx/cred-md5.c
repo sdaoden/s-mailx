@@ -25,7 +25,7 @@
 #endif
 
 su_EMPTY_FILE()
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
@@ -37,10 +37,6 @@ su_EMPTY_FILE()
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
-
-# ifndef mx_XTLS_HAVE_MD5
-#  include "mx/y-cred-md5.h" /* $(MX_SRCDIR) */
-# endif
 
 char *
 mx_md5_tohex(char hex[mx_MD5_TOHEX_SIZE], void const *vp){
@@ -174,7 +170,7 @@ mx_md5_hmac(uc *text, int text_len, uc *key, int key_len, void *digest){
 }
 
 #include "su/code-ou.h"
-#endif /* mx_HAVE_MD5 */
+#endif /* mx_HAVE_TLS_MD5 */
 #undef su_FILE
 #undef mx_SOURCE
 #undef mx_SOURCE_CRED_MD5

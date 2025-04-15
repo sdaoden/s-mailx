@@ -57,7 +57,7 @@ static struct mx_cred_authtype_info const
 		a_credauth_info[mx_CRED_AUTHTYPE_MECH_COUNT] = {
 	{mx_CRED_AUTHTYPE_CRAM_MD5,
 		(a_CREDAUTH_AUTO | a_CREDAUTH_PASS_REQ | a_CREDAUTH_USER_REQ
-#ifndef mx_HAVE_MD5
+#ifndef mx_HAVE_TLS_MD5
 			| a_CREDAUTH_UNAVAIL
 #endif
 		), FAL0, FAL0, "CRAM-MD5", "CRAM-MD5"},
@@ -130,7 +130,7 @@ static u8 const a_credauth_select[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT] = {
 #ifdef mx_HAVE_TLS
 		mx_CRED_AUTHTYPE_XOAUTH2, mx_CRED_AUTHTYPE_OAUTHBEARER,
 #endif
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 		mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
 		mx_CRED_AUTHTYPE_NONE
@@ -159,11 +159,11 @@ static u8 const a_credauth_select[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT] = {
 #ifdef mx_HAVE_TLS
 		mx_CRED_AUTHTYPE_XOAUTH2, mx_CRED_AUTHTYPE_OAUTHBEARER,
 #endif
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 		mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
 		mx_CRED_AUTHTYPE_LOGIN
-#if !defined mx_HAVE_TLS || !defined mx_HAVE_GSSAPI || !defined mx_HAVE_MD5
+#if !defined mx_HAVE_TLS || !defined mx_HAVE_GSSAPI || !defined mx_HAVE_TLS_MD5
 		,mx_CRED_AUTHTYPE_NONE
 #endif
 	}
@@ -174,7 +174,7 @@ static u8 const a_credauth_select_notls[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT
 #ifdef mx_HAVE_GSSAPI
 		mx_CRED_AUTHTYPE_GSSAPI,
 #endif
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 		mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
 		mx_CRED_AUTHTYPE_LOGIN,
@@ -191,7 +191,7 @@ static u8 const a_credauth_select_notls[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT
 #ifdef mx_HAVE_GSSAPI
 		mx_CRED_AUTHTYPE_GSSAPI,
 #endif
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 		mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
 		mx_CRED_AUTHTYPE_PLAIN,

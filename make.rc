@@ -381,10 +381,6 @@ OPT_NET=yes
 	# case it only warns.  Can be "require"d.
 	OPT_IMAP=yes
 
-	# The MD5 message digest (RFC 1321) enables several authentication
-	# possibilities for POP3 (APOP), IMAP and SMTP (CRAM-MD5).
-	OPT_MD5=yes
-
 	# Support for parsing of user and password credentials from the
 	# ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
 	OPT_NETRC=yes
@@ -409,16 +405,21 @@ OPT_NET=yes
 	# (http://www.libressl.org) libraries.
 	OPT_TLS=yes
 
-		# If $OPT_TLS: shall mechanisms to support more digest and cipher
-		# algorithms than the few that are documented be used?
+		# If $OPT_TLS: shall mechanisms to support more digest and
+		# cipher algorithms than the few that are documented be used?
 		# For S/MIME *smime-cipher* for example this will cause
-		# EVP_get_cipherbyname(3) to be tried shall the built-in knowledge
-		# not suffice to understand the user request.
-		# Will create a large statically linked binary; dynamically linked
-		# the costs only arise once the extended lookup is actually needed
-		# (the first time).  Some TLS libraries will always support all
-		# algorithms.  This can be "require"d.
+		# EVP_get_cipherbyname(3) to be tried shall the built-in
+		# knowledge not suffice to understand the user request.  Will
+		# create a large statically linked binary; dynamically linked
+		# the costs only arise once the extended lookup is actually
+		# needed (the first time).  Some TLS libraries will always
+		# support all algorithms.  This can be "require"d.
 		OPT_TLS_ALL_ALGORITHMS=yes
+
+		# If $OPT_TLS: the MD5 message digest (RFC 1321) enables
+		# several authentication possibilities for POP3 (APOP), IMAP
+		# and SMTP (CRAM-MD5).  This can be "require"d.
+		OPT_TLS_MD5=yes
 
 # Several different P(seudo) R(andom number) G(enerator) possibilities.
 # No need for somewhat strong random is necessary.
@@ -470,9 +471,6 @@ OPT_USAN=no
 # Development only, or to address a very specific program misbehavior.
 # Requires a rather large amount of runtime memory and run time.
 OPT_DEVEL=no
-
-# We use the crypto libraries' MD5 implementation if possible, unless..
-OPT_NOEXTMD5=no
 
 # If $OPT_DEVEL is true we will use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or

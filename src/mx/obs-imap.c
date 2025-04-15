@@ -234,7 +234,7 @@ static enum okay  imap_capability(struct mailbox *mp);
 static boole a_imap_capability_parse(struct mailbox *mp, char const *cp);
 static enum okay a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
       struct mx_cred_ctx *ccredp);
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 static enum okay  imap_cram_md5(struct mailbox *mp,
       struct mx_cred_ctx *ccred);
 #endif
@@ -1650,7 +1650,7 @@ a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
       case mx_CRED_AUTHTYPE_EXTERNANON:
          rv = a_imap_external(mp, ccredp);
          break;
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
       case mx_CRED_AUTHTYPE_CRAM_MD5:
          rv = imap_cram_md5(mp, ccredp);
          break;
@@ -1674,7 +1674,7 @@ a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
    return rv;
 }
 
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 static enum okay
 imap_cram_md5(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
@@ -1699,7 +1699,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_MD5 */
+#endif /* mx_HAVE_TLS_MD5 */
 
 static enum okay
 imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred)

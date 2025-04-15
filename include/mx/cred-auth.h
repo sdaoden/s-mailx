@@ -90,7 +90,7 @@ enum mx_cred_proto_authtypes{
  * Ugly, but configure-time evaluation as well as an external symbol: worse! */
 enum mx_cred_proto_authtypes_available{
 	mx_CRED_PROTO_AUTHTYPES_AVAILABLE_IMAP =
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 			mx_CRED_AUTHTYPE_CRAM_MD5 |
 #endif
 #ifdef mx_HAVE_TLS
@@ -118,7 +118,7 @@ enum mx_cred_proto_authtypes_available{
 			mx_CRED_AUTHTYPE_PLAIN,
 
 	mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP =
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 			mx_CRED_AUTHTYPE_CRAM_MD5 |
 #endif
 #ifdef mx_HAVE_TLS

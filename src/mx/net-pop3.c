@@ -88,7 +88,7 @@ static int volatile a_pop3_lock;
 /* Perform entire login handshake */
 static enum okay a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp);
 
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 /* APOP: get greeting credential or NIL... */
 static char *a_pop3_lookup_apop_timestamp(char const *bp);
 
@@ -146,7 +146,7 @@ do if(((RV) = a_pop3_answer(mp)) == STOP){\
 
 static enum okay
 a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
    char *ts;
 #endif
    enum okey_xlook_mode oxm;
@@ -157,7 +157,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
 
    /* Get the greeting, check whether APOP is advertised */
    a_POP3_ANSWER(rv, goto jleave);
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
    ts = (pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_PLAIN)
          ? a_pop3_lookup_apop_timestamp(a_pop3_realdat) : NIL;
 #endif
@@ -190,7 +190,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
 #endif
 
    /* Use the APOP single roundtrip? */
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
    if(ts != NIL && !xok_blook(pop3_no_apop, &pcp->pc_url, oxm)){
       if((rv = a_pop3_auth_apop(mp, pcp, ts)) != OKAY){
          char const *ccp;
@@ -242,7 +242,7 @@ jleave:
    return rv;
 }
 
-#ifdef mx_HAVE_MD5
+#ifdef mx_HAVE_TLS_MD5
 static char *
 a_pop3_lookup_apop_timestamp(char const *bp){
    /* RFC 1939:
@@ -326,7 +326,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_MD5 */
+#endif /* mx_HAVE_TLS_MD5 */
 
 static enum okay
 a_pop3_auth_plain(struct mailbox *mp, struct a_pop3_ctx const *pcp){
