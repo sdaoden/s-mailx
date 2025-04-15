@@ -1,5 +1,5 @@
 /*@ Implementation of imf.h.
- *@ TODO: add a su_imf_parse_msg_id_header(); add quoter function.
+ *@ TODO: add quoter function(s).
  *
  * Copyright (c) 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -50,9 +50,9 @@ NSPC_USE(su)
 # error Needs one of su_HAVE_MEM_BAG_LOFI and su_HAVE_MEM_BAG_AUTO
 #endif
 
-/* Internet Message Format ABNF (of relevant fields) from RFC 5234 and RFC 5322 {{{
+/* Internet Message Format ABNF (of relevant fields) from RFC 5234 and RFC 5322; plus whatever else ABNF we need {{{
  *
- * RFC 5234, B.1.  Core Rules:
+ * RFC 5234 (Augmented BNF for Syntax Specifications: ABNF), B.1. Core Rules:
  *
  * ALPHA  = %x41-5A / %x61-7A; A-Z / a-z
  * BIT    = "0" / "1"
@@ -74,10 +74,10 @@ NSPC_USE(su)
  * VCHAR  = %x21-7E; visible (printing) characters
  * WSP    = SP / HT; white space
  *
- * RFC 5322
+ * RFC 5322 (Internet Message Format) plus RFC 6854 (Allow Group Syntax in the "From:" and "Sender:"):
  *
  * CFWS           = (1*([FWS] comment) [FWS]) / FWS
- * FWS            = ([*WSP CRLF] 1*WSP) / obs-FWS; Folding white space; NOTE this implementation supports lone LF, too
+ * FWS            = ([*WSP CRLF] 1*WSP) / obs-FWS; Folding white space; NOTE lone LF, CR are FWS, too
  * addr-spec      = local-part "@" domain
  * address        = mailbox / group
  * address-list   = (address *("," address)) / obs-addr-list
@@ -134,6 +134,7 @@ NSPC_USE(su)
  * . Additional notes:
  *   - In order to accommodate that "3.2.2. Folding White Space and Comments" allows
  *     CFWS rather freely, Postel'ize that and allow it practically everywhere.
+ *     (To note standards like DMARC etc allow it in all portions of K=V, different to MIME RFC 2025.
  *   - obs-qp is supported WITHOUT NUL.
  *   - obs-utext only WITHOUT NUL.
  * }}} */
@@ -157,237 +158,7 @@ struct a_imf_actx{
 	char ac_dat[VFIELD_SIZE(0)]; /* Storage for any text (single chunk struct) */
 };
 
-/* Returns TRU1 if at least 1 WSP was skipped over, TRUM1 if *any* ws was seen, ie: it moved */
-static boole a_imf_skip_FWS(struct a_imf_actx *acp);
-
-/* Returns TRUM1 if FWS was parsed *outside* of comments */
-static boole a_imf_s_CFWS(struct a_imf_actx *acp);
-
-/* ASSERTs "at a_imf_c_DQUOTE()".  Skips to after the closing DQUOTE().
- * Places but leading or trailing FWS++ normalized to single SP in *buf.
- * Returns NIL on invalid content / missing closing quote error (unless relaxed), ptr to after written byte otherwise */
-static char *a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf);
-
-/**/
-static void a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp);
-
-/* _s_ and _skip_ series {{{ */
-static boole
-a_imf_skip_FWS(struct a_imf_actx *acp){ /* {{{ */
-	char const *cp;
-	boole rv;
-	NYD2_IN;
-
-	rv = FAL0;
-	cp = acp->ac_.hd;
-
-	/* As documented (adjust on change) do not classify, skip follow-up lines' leading whitespace, IF ANY */
-	for(;; ++cp){
-		char c;
-
-#if 1
-		if(su_imf_c_ANY_WSP((c = *cp))){
-			if(su_imf_c_WSP(c))
-				rv = TRU1;
-		}
-#else
-		if(su_imf_c_WSP((c = *cp))
-			rv = TRU1;
-		else if(su_imf_c_LF(c)){
-		}else if(su_imf_c2_CRLF(c, cp[1]))
-			++cp;
-#endif
-		else
-			break;
-	}
-
-	if(cp != acp->ac_.hd){
-		acp->ac_.hd = cp;
-		if(!rv)
-			rv = TRUM1;
-	}
-
-	NYD2_OU;
-	return rv;
-} /* }}} */
-
-static boole
-a_imf_s_CFWS(struct a_imf_actx *acp){ /* {{{ */
-	char const *xcp;
-	uz lvl;
-	boole rv, any;
-	NYD2_IN;
-
-	UNINIT(any, FAL0);
-	for(rv = TRU1, lvl = 0;; acp->ac_.hd = xcp){
-		char c;
-
-		if(a_imf_skip_FWS(acp) == TRU1){
-			if(lvl == 0)
-				rv = TRUM1;
-			else if(any < FAL0)
-				any = TRU2;
-		}
-
-		c = *(xcp = acp->ac_.hd);
-		++xcp;
-
-		if(UNLIKELY(lvl == 0)){
-			if(c != '(')
-				break;
-			any = (acp->ac_.comm > 0);
-			++lvl;
-			continue;
-		}else switch(c){
-		case ')':
-			--lvl;
-			continue;
-		case '(':
-			++lvl;
-			continue;
-		case '\0':
-jerr:
-			if(acp->ac_.mse & su_IMF_MODE_RELAX)
-				acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_ERR_COMMENT;
-			else{
-				acp->ac_.mse |= su_IMF_ERR_RELAX | su_IMF_ERR_COMMENT;
-				rv = FAL0;
-			}
-			goto jleave;
-		}
-
-		for(;;){
-			if(su_imf_c_ctext(c) || /* obs-ctext */su_imf_c_obs_NO_WS_CTL(c)){
-			}else if(c == '\\' && su_imf_c_quoted_pair_c2(*xcp))
-				++xcp;
-			else
-				break;
-			c = *xcp++;
-		}
-
-		if(UNLIKELY(--xcp == acp->ac_.hd))
-			goto jerr;
-		else{
-			uz i;
-
-			i = P2UZ(xcp - acp->ac_.hd);
-			if(any > FAL0)
-				acp->ac_comm[acp->ac_.comm++] = ' ';
-			any = TRUM1;
-			su_mem_copy(&acp->ac_comm[acp->ac_.comm], acp->ac_.hd, i);
-			acp->ac_.comm += S(u32,i);
-		}
-	}
-
-jleave:
-	NYD2_OU;
-	return rv;
-} /* }}} */
-
-static char *
-a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf){ /* {{{ */
-	boole any, lastws;
-	NYD2_IN;
-	ASSERT(su_imf_c_DQUOTE(*acp->ac_.hd));
-
-	for(lastws = any = FAL0, ++acp->ac_.hd;;){
-		char c;
-		char const *xcp;
-
-		if(a_imf_skip_FWS(acp) == TRU1 && any){
-			*buf++ = ' ';
-			lastws = TRU1;
-		}
-
-		xcp = acp->ac_.hd;
-
-		while(su_imf_c_qtext(c = *acp->ac_.hd)){
-			*buf++ = c;
-			++acp->ac_.hd;
-		}
-		any = (xcp != acp->ac_.hd);
-		if(any){
-			lastws = FAL0;
-			continue;
-		}
-
-		for(;;){
-			if(acp->ac_.hd[0] != '\\' || !su_imf_c_quoted_pair_c2(c = acp->ac_.hd[1]))
-				break;
-			buf[0] = '\\';
-			buf[1] = c;
-			buf += 2;
-			acp->ac_.hd += 2;
-		}
-		any = (xcp != acp->ac_.hd);
-		if(any){
-			lastws = FAL0;
-			continue;
-		}
-
-		if(su_imf_c_DQUOTE(*acp->ac_.hd)){
-			if(lastws)
-				--buf;
-			++acp->ac_.hd;
-		}else{
-			acp->ac_.mse |= su_IMF_ERR_DQUOTE;
-			buf = NIL;
-		}
-		break;
-	}
-
-	NYD2_OU;
-	return buf;
-} /* }}} */
-/* }}} */
-
-/* misc {{{ */
-static void
-a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp){ /* {{{ */
-	struct su_imf_addr *ap;
-	u32 i;
-	NYD2_IN;
-
-	i = VSTRUCT_SIZEOF(struct su_imf_addr,imfa_dat) +
-			acp->ac_.group_display_name +1 + acp->ac_.display_name +1 +
-			acp->ac_.locpar +1 + acp->ac_.domain +1 + acp->ac_.comm +1;
-
-	ap = a_IMF_ALLOC(membp, i);
-	**appp = ap;
-	*appp = &ap->imfa_next;
-
-	ap->imfa_next = NIL;
-	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_MASK;
-
-	ap->imfa_group_display_name = ap->imfa_dat;
-	if((ap->imfa_group_display_name_len = i = acp->ac_.group_display_name) > 0)
-		su_mem_copy(ap->imfa_group_display_name, acp->ac_group_display_name, i);
-	ap->imfa_group_display_name[i++] = '\0';
-
-	ap->imfa_display_name = &ap->imfa_group_display_name[i];
-	if((ap->imfa_display_name_len = i = acp->ac_.display_name) > 0)
-		su_mem_copy(ap->imfa_display_name, acp->ac_display_name, i);
-	ap->imfa_display_name[i++] = '\0';
-
-	ap->imfa_locpar = &ap->imfa_display_name[i];
-	if((ap->imfa_locpar_len = i = acp->ac_.locpar) > 0)
-		su_mem_copy(ap->imfa_locpar, acp->ac_locpar, i);
-	ap->imfa_locpar[i++] = '\0';
-
-	ap->imfa_domain = &ap->imfa_locpar[i];
-	if((ap->imfa_domain_len = i = acp->ac_.domain) > 0)
-		su_mem_copy(ap->imfa_domain, acp->ac_domain, i);
-	ap->imfa_domain[i++] = '\0';
-
-	ap->imfa_comm = &ap->imfa_domain[i];
-	if((ap->imfa_comm_len = i = acp->ac_.comm) > 0)
-		su_mem_copy(ap->imfa_comm, acp->ac_comm, i);
-	ap->imfa_comm[i++] = '\0';
-
-	NYD2_OU;
-} /* }}} */
-/* }}} */
-
+#include <stdio.h>
 /* Created by table_dump() */
 #undef a_X
 #define a_X(X) CONCAT(su_IMF_C_, X)
@@ -523,6 +294,232 @@ u16 const su__imf_c_tbl[su__IMF_TABLE_SIZE + 1] = { /* {{{ */
 }; /* }}} */
 #undef a_X
 
+/* Returns TRU1 if at least 1 WSP was skipped over, TRUM1 if *any* ws was seen, ie: it moved */
+static boole a_imf_skip_FWS(struct a_imf_actx *acp);
+
+/* Returns TRUM1 if FWS was parsed *outside* of comments */
+static boole a_imf_s_CFWS(struct a_imf_actx *acp);
+
+/* ASSERTs "at a_imf_c_DQUOTE()".  Skips to after the closing DQUOTE().
+ * Returns NIL on invalid content / missing closing quote error (unless relaxed), ptr to after written byte otherwise */
+static char *a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf);
+
+/**/
+static void a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp);
+
+/* _s_ and _skip_ series {{{ */
+static boole
+a_imf_skip_FWS(struct a_imf_actx *acp){ /* {{{ */
+	char const *cp;
+	boole rv;
+	NYD2_IN;
+
+	rv = FAL0;
+	cp = acp->ac_.hd;
+
+	/* As documented (adjust on change) do not classify, skip follow-up lines' leading whitespace, IF ANY */
+	for(;; ++cp){
+		char c;
+
+#if 1
+		if(su_imf_c_ANY_WSP((c = *cp)))
+			rv |= su_imf_c_WSP(c);
+#else
+		if(su_imf_c_WSP((c = *cp))
+			rv = TRU1;
+		else if(su_imf_c_LF(c)){
+		}else if(su_imf_c2_CRLF(c, cp[1]))
+			++cp;
+#endif
+		else
+			break;
+	}
+
+	if(cp != acp->ac_.hd){
+		acp->ac_.hd = cp;
+		if(!rv)
+			rv = TRUM1;
+	}
+
+	NYD2_OU;
+	return rv;
+} /* }}} */
+
+static boole
+a_imf_s_CFWS(struct a_imf_actx *acp){ /* {{{ */
+	char const *xcp;
+	uz lvl;
+	boole rv, any;
+	NYD2_IN;
+
+	UNINIT(any, FAL0);
+	for(rv = TRU1, lvl = 0;; acp->ac_.hd = xcp){
+		char c;
+
+		if(a_imf_skip_FWS(acp) == TRU1){
+			if(lvl == 0)
+				rv = TRUM1;
+			else if(any < FAL0)
+				any = TRU2;
+		}
+
+		c = *(xcp = acp->ac_.hd);
+		++xcp;
+
+		if(UNLIKELY(lvl == 0)){
+			if(c != '(')
+				break;
+			any = (acp->ac_.comm > 0);
+			++lvl;
+			continue;
+		}else switch(c){
+		case ')':
+			--lvl;
+			continue;
+		case '(':
+			++lvl;
+			continue;
+		case '\0':
+jerr:
+			if(acp->ac_.mse & su_IMF_MODE_RELAX)
+				acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_ERR_COMMENT;
+			else{
+				acp->ac_.mse |= su_IMF_ERR_RELAX | su_IMF_ERR_COMMENT;
+				rv = FAL0;
+			}
+			goto jleave;
+		}
+
+		for(;;){
+			if(su_imf_c_ctext(c) || /* obs-ctext */su_imf_c_obs_NO_WS_CTL(c)){
+			}else if(c == '\\' && su_imf_c_quoted_pair_c2(*xcp))
+				++xcp;
+			else
+				break;
+			c = *xcp++;
+		}
+
+		if(UNLIKELY(--xcp == acp->ac_.hd))
+			goto jerr;
+		else{
+			uz i;
+
+			i = P2UZ(xcp - acp->ac_.hd);
+			if(any > FAL0)
+				acp->ac_comm[acp->ac_.comm++] = ' ';
+			any = TRUM1;
+			su_mem_copy(&acp->ac_comm[acp->ac_.comm], acp->ac_.hd, i);
+			acp->ac_.comm += S(u32,i);
+		}
+	}
+
+jleave:
+	NYD2_OU;
+	return rv;
+} /* }}} */
+
+static char *
+a_imf_s_quoted_string(struct a_imf_actx *acp, char *buf){ /* {{{ */
+	boole any;
+	NYD2_IN;
+	ASSERT(su_imf_c_DQUOTE(*acp->ac_.hd));
+
+	for(any = FAL0, ++acp->ac_.hd;;){
+		char c;
+		char const *xcp;
+
+		xcp = acp->ac_.hd;
+
+		while(su_imf_c_ANY_WSP((c = *xcp))){
+			++xcp;
+			if(su_imf_c_WSP(c))
+				*buf++ = c;
+		}
+
+		acp->ac_.hd = xcp;
+		xcp = acp->ac_.hd;
+
+		while(su_imf_c_qtext(c = *acp->ac_.hd)){
+			*buf++ = c;
+			++acp->ac_.hd;
+		}
+		any = (xcp != acp->ac_.hd);
+		if(any)
+			continue;
+
+		for(;;){
+			if(acp->ac_.hd[0] != '\\' || !su_imf_c_quoted_pair_c2(c = acp->ac_.hd[1]))
+				break;
+			buf[0] = '\\';
+			buf[1] = c;
+			buf += 2;
+			acp->ac_.hd += 2;
+		}
+		any = (xcp != acp->ac_.hd);
+		if(any)
+			continue;
+
+		if(su_imf_c_DQUOTE(*acp->ac_.hd))
+			++acp->ac_.hd;
+		else{
+			acp->ac_.mse |= su_IMF_ERR_DQUOTE;
+			buf = NIL;
+		}
+		break;
+	}
+
+	NYD2_OU;
+	return buf;
+} /* }}} */
+/* }}} */
+
+/* misc {{{ */
+static void
+a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp){ /* {{{ */
+	struct su_imf_addr *ap;
+	u32 i;
+	NYD2_IN;
+
+	i = VSTRUCT_SIZEOF(struct su_imf_addr,imfa_dat) +
+			acp->ac_.group_display_name +1 + acp->ac_.display_name +1 +
+			acp->ac_.locpar +1 + acp->ac_.domain +1 + acp->ac_.comm +1;
+
+	ap = a_IMF_ALLOC(membp, i);
+	**appp = ap;
+	*appp = &ap->imfa_next;
+
+	ap->imfa_next = NIL;
+	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_MASK;
+
+	ap->imfa_group_display_name = ap->imfa_dat;
+	if((ap->imfa_group_display_name_len = i = acp->ac_.group_display_name) > 0)
+		su_mem_copy(ap->imfa_group_display_name, acp->ac_group_display_name, i);
+	ap->imfa_group_display_name[i++] = '\0';
+
+	ap->imfa_display_name = &ap->imfa_group_display_name[i];
+	if((ap->imfa_display_name_len = i = acp->ac_.display_name) > 0)
+		su_mem_copy(ap->imfa_display_name, acp->ac_display_name, i);
+	ap->imfa_display_name[i++] = '\0';
+
+	ap->imfa_locpar = &ap->imfa_display_name[i];
+	if((ap->imfa_locpar_len = i = acp->ac_.locpar) > 0)
+		su_mem_copy(ap->imfa_locpar, acp->ac_locpar, i);
+	ap->imfa_locpar[i++] = '\0';
+
+	ap->imfa_domain = &ap->imfa_locpar[i];
+	if((ap->imfa_domain_len = i = acp->ac_.domain) > 0)
+		su_mem_copy(ap->imfa_domain, acp->ac_domain, i);
+	ap->imfa_domain[i++] = '\0';
+
+	ap->imfa_comm = &ap->imfa_domain[i];
+	if((ap->imfa_comm_len = i = acp->ac_.comm) > 0)
+		su_mem_copy(ap->imfa_comm, acp->ac_comm, i);
+	ap->imfa_comm[i++] = '\0';
+
+	NYD2_OU;
+} /* }}} */
+/* }}} */
+
 s32
 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u32,su_imf_mode) mode, /* {{{ */
 		struct su_mem_bag *membp, char const **endptr_or_nil){
@@ -530,26 +527,32 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 		a_NONE,
 		a_STAGE_DOMAIN = 1u<<0, /* Parsing a domain */
 		a_STAGE_ANGLE = 1u<<1, /* Have seen a left angle bracket, parsing addr-spec (or obs-route) */
-		a_STAGE_DOT = 1u<<2, /* Have seen a DOT in a display-name, ie, could be a local-part, too! */
-		a_STAGE_REST_OR_SEP = 1u<<3, /* We are done, only comments or address-list separators may follow */
+		a_STAGE_DOT = 1u<<2, /* Have seen a DOT in a display-name: could be a local-part, too! */
+		a_STAGE_REST_OR_SEP = 1u<<3, /* Done address(-list): only comments or -list separators may follow */
 		a_STAGE_MASK = a_STAGE_DOMAIN | a_STAGE_ANGLE | a_STAGE_DOT | a_STAGE_REST_OR_SEP,
+
+		a_TMP = 1u<<7,
 
 		a_ANY = 1u<<8,
 		a_WS = 1u<<9,
-		a_WS_SEEN = 1u<<10, /* To strip FWS seen in local part in non-angle-bracket addresses */
-		a_QUOTE = 1u<<11, /* Had seen quote */
-		a_ROUTE = 1u<<12, /* With STAGE_ANGLE */
-		a_ROUTE_SEEN = 1u<<13,
-		a_NEED_SEP = 1u<<14,
-		a_MASK = a_ANY | a_WS | a_WS_SEEN | a_QUOTE | a_ROUTE | a_ROUTE_SEEN | a_NEED_SEP
+		a_WS_SEEN = 1u<<10, /* Strip FWS obs-local-part(->word->atom->[CFWS]1*atext) */
+		a_QUOTE = 1u<<11, /* Had seen non-empty quoted-string */
+		a_QUOTE_ANYHOW = 1u<<12, /* (..empty..) */
+		a_ROUTE = 1u<<13, /* With STAGE_ANGLE */
+		a_ROUTE_SEEN = 1u<<14,
+		a_NEED_SEP = 1u<<15, /* Beside WS or NUL an address(-list) separator must follow */
+		a_MASK = a_ANY | a_WS | a_WS_SEEN | a_QUOTE | a_QUOTE_ANYHOW | a_ROUTE | a_ROUTE_SEEN | a_NEED_SEP
 	};
 
-	char *cp;
+	char *cp, *cpalter;
 	u32 f, l;
 	struct a_imf_actx *acp;
 	s32 rv;
 	struct su_imf_addr **app_base;
 	NYD_IN;
+	ASSERT_NYD_EXEC(app != NIL, rv = -su_ERR_NODATA);
+	ASSERT_NYD_EXEC(header != NIL, rv = -su_ERR_NODATA);
+	ASSERT_NYD_EXEC(membp != NIL, rv = -su_ERR_NODATA);
 	ASSERT_EXEC((mode & ~su__IMF_MODE_ADDR_MASK) == 0, mode &= su__IMF_MODE_ADDR_MASK);
 
 	*(app_base = app) = NIL;
@@ -565,14 +568,14 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 			goto j_leave;
 		}
 
-		/* S32_MAX is mem-bag stuff, 3 is 2 strings of maximum size plus room for the structure as such.
-		 * We may re-quote dat, so reserve two bytes for quotes plus one for NUL */
-		if(i >= (S32_MAX - 6/*xxx too much*/*3) / 6){
+		/* S32_MAX is mem-bag stuff, 6 is 5 strings of maximum size plus room for the structure as such.
+		 * We may re-quote some data, so reserve two bytes for quotes, and one for NUL */
+		if(i >= (S32_MAX - 5*2 - 5*1) / 6){
 			rv = -su_ERR_OVERFLOW;
 			goto j_leave;
 		}else if(i < VSTRUCT_SIZEOF(struct a_imf_actx,ac_dat))
 			i = VSTRUCT_SIZEOF(struct a_imf_actx,ac_dat);
-		i += 3;
+		i += 2 +1;
 
 		acp = a_IMF_ALLOC(membp, i * 6);
 		if(acp == NIL){
@@ -592,12 +595,13 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 		acp->ac_comm = &acp->ac_domain[i];
 	}
 
-	/* address-list = (address *("," address)); parse one */
+	/* address-list = (address *("," address)): parse one */
 	f = a_NONE;
 jlist_next:
 	rv = su_ERR_NONE;
 	l = 0;
 	cp = acp->ac_display_name;
+	cpalter = acp->ac_locpar;
 
 	STRUCT_ZERO_FROM(struct a_imf_x, &acp->ac_, group_display_name);
 	acp->ac_.mse &= su__IMF_MODE_MASK | ((acp->ac_.mse & su_IMF_STATE_GROUP_END) ? 0 : su_IMF_STATE_GROUP);
@@ -622,7 +626,7 @@ jlist_next:
 		c = *acp->ac_.hd;
 
 		if(!(f & a_STAGE_MASK)){
-			/* Early watch for necessary separator */
+			/* Early check for necessary separator (without further validation) */
 			if((f & a_NEED_SEP) && (c != ';' && c != ',' && c != '\0'))
 				goto jleave;
 		}else if(UNLIKELY(f & a_STAGE_REST_OR_SEP)){
@@ -665,8 +669,8 @@ jaddr_create:
 			u32 j;
 			char *ncp;
 
-			f |= a_ANY /*| a_QUOTE*/;
-			if((f & (a_STAGE_ANGLE | a_STAGE_DOMAIN | a_WS)) == a_WS){
+			/*f |= a_ANY *//*| a_QUOTE*/;
+			if((f & (a_STAGE_ANGLE /*| a_STAGE_DOMAIN*/ | a_WS)) == a_WS){
 				cp[l++] = ' ';
 				f |= a_WS_SEEN;
 			}
@@ -681,9 +685,14 @@ jaddr_create:
 				goto jleave;
 			}
 			j = S(u32,P2UZ(ncp - xcp));
+			f |= a_QUOTE_ANYHOW;
 			if(j > 0){
 				f |= a_QUOTE;
 				l += j;
+				if(cpalter != NIL){
+					su_mem_copy(cpalter, xcp, j);
+					cpalter += j;
+				}
 			}
 			continue;
 		}
@@ -703,14 +712,22 @@ jpushany:
 			f |= a_ANY;
 			su_mem_copy(&cp[l], xcp, i);
 			l += i;
+			if(cpalter != NIL){
+				su_mem_copy(cpalter, xcp, i);
+				cpalter += i;
+			}
 			continue;
 		}
 
 		c = *acp->ac_.hd++;
 
 		if(f & a_STAGE_DOMAIN){
+			ASSERT(cp == acp->ac_domain);
+			ASSERT(cpalter == NIL);
 			switch(c){
 			case '.':
+				if(l == 0 || cp[l - 1] == '.')
+					goto jleave;
 				cp[l++] = c;
 				continue;
 			case '[':
@@ -752,6 +769,10 @@ jpushany:
 					goto jleave;
 jdomain_done:
 				ASSERT(cp == acp->ac_domain);
+				if(l == 0 || cp[l - 1] == '.')
+					goto jleave;
+jdomain_done_no_len_check:
+				ASSERT(cp == acp->ac_domain);
 				acp->ac_.domain = l;
 				l = 0;
 				f ^= a_STAGE_DOMAIN | a_STAGE_REST_OR_SEP;
@@ -768,7 +789,11 @@ jdomain_done:
 			switch(c){
 			case '.':
 				/* Inside an angle-addr it is dot-atom not atext */
+				if(l == 0 || cp[l - 1] == '.')
+					goto jleave;
 				cp[l++] = c;
+				if(cpalter != NIL)
+					*cpalter++ = c;
 				continue;
 			case '@':
 				if(f & a_ROUTE)
@@ -778,7 +803,7 @@ jdomain_done:
 					f |= a_ROUTE;
 					continue;
 				}
-				ASSERT(cp == acp->ac_locpar);
+				ASSERT(cp == acp->ac_domain);
 				goto jlocpar_copy;
 			case ',':
 				if(!(f & a_ROUTE))
@@ -792,6 +817,7 @@ jdomain_done:
 						goto jroute_end;
 					if(c != ',')
 						break;
+					/* Allow empty entries */
 				}
 				if(c != '@')
 					goto jleave;
@@ -802,9 +828,10 @@ jdomain_done:
 jroute_end:
 				/* Real address to follow */
 				f ^= a_ROUTE | a_ROUTE_SEEN;
-				l = 0;
 				acp->ac_.comm = 0;
-				ASSERT(cp == acp->ac_locpar);
+				l = 0;
+				cpalter = acp->ac_locpar;
+				ASSERT(cp == acp->ac_domain);
 				continue;
 			case '>':
 				if(f & a_ROUTE)
@@ -812,7 +839,7 @@ jroute_end:
 				if(acp->ac_.mse & su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN){
 					/* STAGE_ANGLE stripped by jdomain_done! */
 					acp->ac_.mse |= su_IMF_STATE_ADDR_SPEC_NO_DOMAIN;
-					ASSERT(cp == acp->ac_locpar);
+					ASSERT(cp == acp->ac_domain);
 					goto jlocpar_copy;
 				}
 				FALLTHRU
@@ -827,14 +854,25 @@ jroute_end:
 			case '@':
 				/* An AT "verifies" we were indeed a local-part, now parse domain */
 jlocpar_copy:
-				if(!(f & a_WS_SEEN))
-					su_mem_copy(acp->ac_locpar, cp, acp->ac_.locpar = l);
-				else{
-					for(; l > 0; ++cp, --l)
-						if((c = *cp) != ' ')
-							acp->ac_locpar[acp->ac_.locpar++] = c;
+				if(l == 0)
+					goto jleave;
+				acp->ac_.locpar = S(u32,P2UZ(cpalter - acp->ac_locpar));
+
+				/* Catch double-dot, and leading and trailing dot; eg "".@ parsed fine so far */
+				f |= a_TMP;
+				while(l-- != 0){
+					if(*--cpalter == '.'){
+						if(f & a_TMP)
+							goto jleave;
+						f |= a_TMP;
+					}else
+						f &= ~a_TMP;
 				}
+				if(f & a_TMP)
+					goto jleave;
+
 				cp = acp->ac_domain;
+				cpalter = NIL;
 				l = 0;
 				if(f & a_QUOTE){
 					*--acp->ac_locpar = '"';
@@ -844,22 +882,15 @@ jlocpar_copy:
 				f &= ~(a_STAGE_DOT | a_MASK);
 				f |= a_STAGE_DOMAIN;
 				if(acp->ac_.mse & su_IMF_STATE_ADDR_SPEC_NO_DOMAIN)
-					goto jdomain_done;
+					goto jdomain_done_no_len_check;
 				continue;
 			case '<':
 				/* Otherwise maybe a 'Dr. Z <y@x>' was falsely seen as a local-part?
 				 * .. Then this should be an angle-addr *now* for us to deal with it */
 				if(acp->ac_.mse & su_IMF_MODE_OK_DISPLAY_NAME_DOT){
 					acp->ac_.mse |= su_IMF_STATE_DISPLAY_NAME_DOT;
-					acp->ac_.display_name = l;
-					cp = acp->ac_locpar;
-					l = 0;
-					*--acp->ac_display_name = '"';
-					acp->ac_display_name[++acp->ac_.display_name] = '"';
-					++acp->ac_.display_name;
-					f ^= (a_STAGE_ANGLE | a_STAGE_DOT);
-					f &= ~a_MASK;
-					continue;
+					f |= a_QUOTE;
+					goto jangleme;
 				}
 				FALLTHRU
 			default:
@@ -870,17 +901,19 @@ jlocpar_copy:
 			switch(c){
 			case '<':
 				/* This switches to angle-addr parse mode for sure */
+jangleme:
 				ASSERT(cp == acp->ac_display_name);
 				acp->ac_.display_name = l;
-				cp = acp->ac_locpar;
-				l = 0;
-				f |= a_STAGE_ANGLE;
-				if(f & a_QUOTE){
-					f ^= a_QUOTE;
+				if(f & (a_QUOTE | a_QUOTE_ANYHOW)){
 					*--acp->ac_display_name = '"';
 					acp->ac_display_name[++acp->ac_.display_name] = '"';
 					++acp->ac_.display_name;
 				}
+				cp = acp->ac_domain; /* = /dev/null */
+				cpalter = acp->ac_locpar;
+				l = 0;
+				f &= ~(a_STAGE_MASK | a_MASK);
+				f |= a_STAGE_ANGLE;
 				continue;
 			case '.':
 				/* Either parse a local-part without knowing; else IMF_MODE_OK_DISPLAY_NAME_DOT */
@@ -889,6 +922,7 @@ jlocpar_copy:
 			case '@':
 				if(!(f & a_ANY))
 					goto jleave;
+				/* AT "verifies" we were indeed a local-part, now parse domain */
 				goto jlocpar_copy;
 			case ':':
 				/* Group start */
@@ -912,9 +946,10 @@ jlocpar_copy:
 						goto jleave;
 					}
 				}
-				l = 0;
 				acp->ac_.comm = 0;
-				f &= ~(a_ANY | a_QUOTE | a_WS);
+				cpalter = acp->ac_locpar;
+				l = 0;
+				f &= ~(a_ANY | a_WS | a_QUOTE | a_QUOTE_ANYHOW);
 				continue;
 			case ';':
 				if((f & a_NEED_SEP) || !(acp->ac_.mse & su_IMF_STATE_GROUP))
@@ -924,7 +959,7 @@ jlocpar_copy:
 				if(acp->ac_.mse & su_IMF_STATE_GROUP_START){
 					acp->ac_.mse |= su_IMF_STATE_GROUP_END | su_IMF_STATE_GROUP_EMPTY;
 					a_imf_addr_create(acp, membp, &app);
-					goto jlist_next; /* No STOP_EARLY, not an address */
+					goto jlist_next; /* No STOP_EARLY, there was no address */
 				}
 				acp->ac_.mse &= su__IMF_MODE_MASK;
 				if(*app_base != NIL){
@@ -950,7 +985,7 @@ jlocpar_copy:
 					acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_STATE_GROUP_END |
 							su_IMF_STATE_GROUP_EMPTY | su_IMF_ERR_GROUP_OPEN;
 					a_imf_addr_create(acp, membp, &app);
-					/* No STOP_EARLY, not an address */
+					/* No STOP_EARLY, there was no address */
 				}else if(*app_base == NIL)
 					goto jleave;
 				goto jlist_done;
@@ -980,6 +1015,9 @@ su_imf_parse_struct_header(struct su_imf_shtok **shtpp, char const *header, BITE
 	uz i;
 	struct su_imf_shtok **shtpp_base, *shtp;
 	NYD_IN;
+	ASSERT_NYD_EXEC(shtpp != NIL, rv = -su_ERR_NODATA);
+	ASSERT_NYD_EXEC(header != NIL, rv = -su_ERR_NODATA);
+	ASSERT_NYD_EXEC(membp != NIL, rv = -su_ERR_NODATA);
 	ASSERT_EXEC((mode & ~su__IMF_MODE_STRUCT_MASK) == 0, mode &= su__IMF_MODE_STRUCT_MASK);
 
 	*(shtpp_base = shtpp) = NIL;
@@ -994,16 +1032,15 @@ su_imf_parse_struct_header(struct su_imf_shtok **shtpp, char const *header, BITE
 	}
 
 	/* S32_MAX is mem-bag stuff, 2 is 1 string of maximum size plus room for the structure as such.
-	 * We may re-quote, so reserve two bytes for quotes plus one for NUL */
-	if(i >= (S32_MAX - 2/*xxx too much*/*3) / 2){
+	 * We may re-quote data, so reserve two bytes for quotes, and one for NUL */
+	if(i >= (S32_MAX - 1*2 - 1*1) / 2){
 		rv = -su_ERR_OVERFLOW;
 		goto j_leave;
 	}else if(i < VSTRUCT_SIZEOF(struct a_imf_actx,ac_dat))
 		i = VSTRUCT_SIZEOF(struct a_imf_actx,ac_dat);
-	i += 3;
-	i <<= 1;
+	i += 2 +1;
 
-	acp = a_IMF_ALLOC(membp, i);
+	acp = a_IMF_ALLOC(membp, i << 1);
 	if(acp == NIL){
 		rv = -su_ERR_NOMEM;
 		goto j_leave;
@@ -1248,8 +1285,8 @@ su_imf_table_dump(void){
 	}
 
 	fputs("}; /* }}} */\n", stdout);
-} /* }}} */
-#endif /* a_IMF_TABLE_DUMP */
+}
+#endif /* }}} a_IMF_TABLE_DUMP */
 
 #undef a_IMF_ALLOC
 

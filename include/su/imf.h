@@ -1,4 +1,4 @@
-/*@ Internet Message Format (RFC 822 -> 2822 -> 5322) parser.
+/*@ Internet Message Format (RFC 733 / 822 -> 2822 -> 5322+6854) parser.
  *
  * Copyright (c) 2024 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -48,21 +48,35 @@ struct su_imf_shtok;
  *
  * \list{\li{
  * The parser is meant to be used "as a second stage" that is fed in superficially preparsed content.
- * For example it does not verify that follow-up header lines start with white space.
+ * For example it does not handle follow-up header lines: whereas it removes the \c{CRLF},
+ * it does neither verify a following \c{WSP}, nor does it simply discard that
+ * (a problem in \c{quoted-string}s and more).
  * }\li{
- * Deviating from the standard \c{FWS} includes plain \c{LF} and \c{CR} bytes in addition to \c{CRLF}.
+ * It uses the rules of RFC 5322 (and, practically, incorporates the updates of RFC 6854).
+ * It also includes some erratas, like 3135, in order to not allow effectively empty \c{local-part}s,
+ * as well as empty (DNS) sublabels in local-parts.
+ * }\li{
+ * Deviating from the standard \c{FWS} includes single \c{LF} and \c{CR} bytes in addition to \c{CRLF}.
+ * (This for example eases working with \c{sendmail(1)}-style milters which only use \c{LF}.)
  * }\li{
  * "Postel's parser" as for example \c{CFWS} is accepted almost everywhere.
  * It is assumed that there is a desire to parse the message, if at all possible.
  * }\li{
+ * Further verifications may be necessary.
+ * A successful parse guarantees that only correct(able) tokens have been seen,
+ * not whether, for example, a \c{domain-literal} is a useful address in a useful network,
+ * or whether a domain name would succeed verification according to the rules of RFCs 1035 and 1123, section 2.1, etc.
+ * }\li{
  * Route addresses are foiled to the last hop, the real address.
  * (As via RFC 5322, "4.4. Obsolete Addressing".)
  * }\li{
- * Any whitespace in result strings is normalized.
+ * Any whitespace (that is semantically visible) in result strings is normalized to a single \c{SP},
+ * except for whitespace within \c{quoted-string}s (according to the RFC).
  * }\li{
  * Quotations in results strings are normalized.
  * This means that presence of (or, with \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}, necessity for) quotation marks will
  * result in the result to be embraced as such by a single pair of quotation marks.
+ * \remarks{Needless and empty quotations are not "normalized away".}
  * }\li{
  * No further normalization occurs.
  * (In particular, domain names may have any case, or be IDNA labels.)
@@ -85,7 +99,7 @@ struct su_imf_shtok;
 enum su_imf_mode{
 	su_IMF_MODE_NONE, /*!< Nothing (this is 0). */
 
-	/*! Ok \c{.} in display-name, support \c{Dr. X &lt;y&#40;z&gt;} user input.
+	/*! Ok \c{.} in display-name, support \c{Dr. X &lt;y&#40;z&gt;} user input (result correctly quoted).
 	 * For address headers. */
 	su_IMF_MODE_OK_DISPLAY_NAME_DOT = 1u<<0,
 	/*! Ok plain user name in angle-bracket address, that is \c{&lt;USERNAME&gt;}, without domain name.
@@ -127,7 +141,7 @@ enum su_imf_mode{
 
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_err}. */
 enum su_imf_state{
-	/*!< \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}, and an unquoted . was seen; result is correctly quoted. */
+	/*!< \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}, and an unquoted \c{.} was seen (result is correctly quoted). */
 	su_IMF_STATE_DISPLAY_NAME_DOT = 1u<<8,
 	/*! \r{su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN}, \c{&lt;USERNAME&gt;} was seen. */
 	su_IMF_STATE_ADDR_SPEC_NO_DOMAIN = 1u<<9,
@@ -192,9 +206,9 @@ enum su_imf_c_class{
 	su_IMF_C_SP = 1u<<13
 };
 
-/*! Parsed address structure; all buffers are accessible and \NUL terminated. */
+/*! Parsed \c{address-list} structure; all buffers are accessible and \NUL terminated. */
 struct su_imf_addr{
-	struct su_imf_addr *imfa_next; /*!< In case of address lists and/or groups. */
+	struct su_imf_addr *imfa_next; /*!< In case of \c{address-list}, \c{group}s with \c{mailbox-list}, etc. */
 	char *imfa_group_display_name; /*!< Only with \r{su_IMF_STATE_GROUP_START}. */
 	char *imfa_display_name; /*!< Any display-name content, joined together. */
 	char *imfa_locpar; /*!< Local part of address. */
@@ -214,7 +228,7 @@ struct su_imf_shtok{
 	struct su_imf_shtok *imfsht_next; /*!< Next token, if any. */
 	u32 imfsht_mse; /*!< Bitmix of \r{su_imf_mode}, \r{su_imf_state} and \r{su_imf_err}. */
 	u32 imfsht_len; /*!< Length of \c{imfsht_dat}. */
-	char imfsht_dat[VFIELD_SIZE(0)];
+	char imfsht_dat[VFIELD_SIZE(0)]; /*! \_ */
 };
 
 EXPORT_DATA u16 const su__imf_c_tbl[su__IMF_TABLE_SIZE + 1];
@@ -241,7 +255,8 @@ INLINE void su_imf_snap_gut(struct su_mem_bag *membp, void *snap){
 #endif
 }
 
-/*! Parse an (possibly multiline) Internet Message Format address(-list / mailbox(-list)) header field body.
+/*! Parse an (possibly multiline) \c{address-list} header field body.
+ * (Since RFC 6854 updated RFC 5322 this covers all address-related fields of IMF.)
  * Stores a result list in \a{*app}, or \NIL if nothing can be parsed.
  * A result without any data is not produced.
  * Results may contain \c{IMF_ERR_} entries with \r{su_IMF_MODE_RELAX}, or according to \c{IMF_MODE_OK_*}.
@@ -257,8 +272,7 @@ INLINE void su_imf_snap_gut(struct su_mem_bag *membp, void *snap){
 EXPORT s32 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u32,su_imf_mode) mode,
 		struct su_mem_bag *membp, char const **endptr_or_nil);
 
-/*! Parse a (possibly multiline) structured header field body.
- * This is interpreted as a mix of \c{CFWS} and \c{phrase} tokens.
+/*! Parse a (possibly multiline) structured header field body (a mix of \c{CFWS} and \c{phrase} tokens).
  * If (a non-empty) \c{quoted-string} is parsed within \c{phrase}, the entire result token will be (re-)quoted as such.
  * With \r{su_IMF_MODE_OK_DOT_ATEXT} RFC 5322 \c{phrase} is assumed to contain \c{dot-atom-text}, not \c{atext}.
  * With \r{su_IMF_MODE_TOK_COMMENT} comments create result tokens instead of being discarded:

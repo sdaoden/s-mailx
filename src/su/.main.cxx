@@ -2019,6 +2019,7 @@ C_DECL_END
 
 static void a_imf_addr(void);
 static void a_imf_tok(void);
+// TODO when there is a quoter, test: Dr  \\(  Dr  Dr  Z1 <x@y>
 #endif
 
 static void
@@ -2071,6 +2072,8 @@ a_imf(void){
 }
 
 #ifdef su_HAVE_IMF
+# define a_IMF_DVL 0
+
 static void
 a_imf_addr(void){ // {{{
 	struct a_ha{
@@ -2081,6 +2084,7 @@ a_imf_addr(void){ // {{{
 		char const *rp;
 		u32 rse[5]; // status/err
 	} const hat[] = { // {{{
+		// (xxx chaotic order, redundancy)
 # if 1
 		{0, imf::mode_none, 1,
 			"ba@by",
@@ -2096,11 +2100,11 @@ a_imf_addr(void){ // {{{
 			"\0\0ba\0[127.0.0.1]\0",
 			{imf::state_domain_literal,}},
 		{0, imf::mode_none, 1,
-			"ba@   [ 1 2 7  .  0 . \t0 .\t\t\t1   ]   ",
-			"\0\0ba\0[127.0.0.1]\0",
+			"ba@   [ 1 \\2 7  \\.  0 . \t0 .\t\t\t1   ]   ",
+			"\0\0ba\0[1\\27\\.0.0.1]\0",
 			{imf::state_domain_literal,}},
 		{0, imf::mode_none, 1,
-			"ba@[]",
+			"b a @[]",
 			"\0\0ba\0[]\0",
 			{imf::state_domain_literal,}},
 
@@ -2109,7 +2113,11 @@ a_imf_addr(void){ // {{{
 			"\0\0ba\0[ff02::3]\0",
 			{imf::state_domain_literal,}},
 		{0, imf::mode_none, 1,
-			"ba@   [ F f 0 2  : \t : 3   ]   ",
+			"ba@[ff02\\::\\3]",
+			"\0\0ba\0[ff02\\::\\3]\0",
+			{imf::state_domain_literal,}},
+		{0, imf::mode_none, 1,
+			"ba@   [ F \t f 0 2  : \t : 3   ]   ",
 			"\0\0ba\0[Ff02::3]\0",
 			{imf::state_domain_literal,}},
 
@@ -2122,25 +2130,38 @@ a_imf_addr(void){ // {{{
 			"\0\0ho.ha\0x.y\0bo hi\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"Real Name ((comment)) <addr...@example.com>",
-			"\0Real Name\0addr...\0example.com\0comment\0",
+			" \t (bo) \t h \t o \t . \t (hi) \t h \t a \t @ \t x \t . \t y \t ",
+			"\0\0ho.ha\0x.y\0bo hi\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			" \t A \t (B) \t C \t (D) \t E \t < \t F \t @ \t G \t > \t ",
+			"\0A C E\0F\0G\0B D\0",
 			{0,}},
 
 		{0, imf::mode_none, 1,
-			"John Doe <jdoe@(co(m)ment)mach(co(m)ment)ine(co(m)ment).(co(m)ment)example(co(m)ment)>",
-			"\0John Doe\0jdoe\0machine.example\0comment comment comment comment comment",
+			"Real Name ((comment)) <addr.a.b@ex.com>",
+			"\0Real Name\0addr.a.b\0ex.com\0comment\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"John Doe <jdoe@machine(co(((m))((())))ment).  example>",
-			"\0John Doe\0jdoe\0machine.example\0comment",
+			" \t Real \t Name \t \t ((comment)) \t < \t addr \t . \t a \t . \t b \t @ \t ex \t . \t com \t >",
+			"\0Real Name\0addr.a.b\0ex.com\0comment\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"John Doe <jdoe@(co(m)ment)mach(co(m)ment)ine(co(m)ment).(co(m)ment)ex(co(m)ment)>",
+			"\0John Doe\0jdoe\0machine.ex\0comment comment comment comment comment",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"John Doe <jdoe@machine.  example>",
-			"\0John Doe\0jdoe\0machine.example\0\0",
+			"John Doe <jdoe@machine(co(((m\\())((())))ment).  ex>",
+			"\0John Doe\0jdoe\0machine.ex\0com\\(ment",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"John Doe <jdoe@machine.(c)example>",
-			"\0John Doe\0jdoe\0machine.example\0c",
+			"John Doe <jdoe@machine.  ex>",
+			"\0John Doe\0jdoe\0machine.ex\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"John Doe <jdoe@machine.(c)ex>",
+			"\0John Doe\0jdoe\0machine.ex\0c",
 			{0,}},
 		{0, imf::mode_none, 1,
 			"John <jdoe@one.test> (my (dear (friend)))",
@@ -2155,47 +2176,80 @@ a_imf_addr(void){ // {{{
 			"\0Pete\0pete\0silly.test\0A nice \\) chap his account his host\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"Chris Jones <c@(Chris's host.)public.example>",
-			"\0Chris Jones\0c\0public.example\0Chris's host.\0",
+			"Chris Jones <c@(Chris's host.)public.ex>",
+			"\0Chris Jones\0c\0public.ex\0Chris's host.\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"    Chris Jones     < c @ (Chris's   host.) public . ex>",
+			"\0Chris Jones\0c\0public.ex\0Chris's host.\0",
 			{0,}},
 
 		{0, imf::mode_none, 1,
-			"jdoe@test  . example",
-			"\0\0jdoe\0test.example\0\0",
+			"jdoe@t1  . ex",
+			"\0\0jdoe\0t1.ex\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"jdoe  @   test  . example (johnny)  (be good) ",
-			"\0\0jdoe\0test.example\0johnny be good\0",
+			"jdoe  @   t2  . ex (johnny)  (be good) ",
+			"\0\0jdoe\0t2.ex\0johnny be good\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"jdoe  @   test  . example (johnny )  (be good) ",
-			"\0\0jdoe\0test.example\0johnny be good\0",
+			"jdoe  @   t3  . ex (johnny )  (be good) ",
+			"\0\0jdoe\0t3.ex\0johnny be good\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"jdoe  @   test  . example ( johnny )  (  be good\t) ",
-			"\0\0jdoe\0test.example\0johnny be good\0",
+			"jdoe  @   t4  . ex ( johnny )  (  be good\t) ",
+			"\0\0jdoe\0t4.ex\0johnny be good\0",
 			{0,}},
+
+		{0, imf::mode_none, 1,
+			"j  doe  @   t5  . ex ( johnny )",
+			"\0\0jdoe\0t5.ex\0johnny\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"j ( GoOd ) d\to e\t@   t6  . ex ( johnny ) ",
+			"\0\0jdoe\0t6.ex\0GoOd johnny\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"j ( GoOd ) d\t\"o\" e\t@   t7  . ex ( johnny ) ",
+			"\0\0\"jdoe\"\0t7.ex\0GoOd johnny\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"j \t ( \t GoOd \t ) \t d \t \" \t o \t \\\"\t \" \t e \t @ \t  t8  . ex ( johnny ) ",
+			"\0\0\"jd \t o \t \\\"\t e\"\0t8.ex\0GoOd johnny\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"j \t ( \t GoOd \t ) \t d \t \" \t o \t \\\"\t \"e \t @ \t  t8  . ex ( johnny ) ",
+			"\0\0\"jd \t o \t \\\"\t e\"\0t8.ex\0GoOd johnny\0"
+			, {0,}},
 
 		{0, imf::mode_none, 1,
 			"\"Dr. Z\" <x@y>",
 			"\0\"Dr. Z\"\0x\0y\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"\"   Dr. Z\" <x@y>",
-			"\0\"Dr. Z\"\0x\0y\0\0",
+			"\" \t  Dr. \t Z \t \" <x@y>",
+			"\0\" \t  Dr. \t Z \t \"\0x\0y\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
 			"\"Dr. Z    \" <x@y>",
+			"\0\"Dr. Z    \"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Dr \t . \t\n\r Z\" <x@y>",
+			"\0\"Dr \t . \t Z\"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"\n\rDr. Z\" <x@y>",
 			"\0\"Dr. Z\"\0x\0y\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"\"Dr  .  Z\" <x@y>",
-			"\0\"Dr . Z\"\0x\0y\0\0",
+			"\"Dr.\n\rZ\n\r\" <x@y>",
+			"\0\"Dr.Z\"\0x\0y\0\0",
 			{0,}},
 
 		{0, imf::mode_none, 1,
 			"\"\" Dr Z <x@y>",
-			"\0Dr Z\0x\0y\0\0",
+			"\0\"Dr Z\"\0x\0y\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
 			"\"\" \"Dr. Z\" <x@y>",
@@ -2203,49 +2257,106 @@ a_imf_addr(void){ // {{{
 			{0,}},
 
 		{0, imf::mode_none, 1,
-			"\"Full Name\" <foo@example.com>",
-			"\0\"Full Name\"\0foo\0example.com\0\0",
-			{0,}},
+			"Dr \t \"\" \t Dr \t \" \t Dr \t \" \t Z1 <x@y>",
+			"\0\"Dr  Dr  \t Dr \t  Z1\"\0x\0y\0\0"
+			,{0,}},
 		{0, imf::mode_none, 1,
-			"\"Mary Smith: Personal Account\" \"At Home\" <smith@home.example>",
-			"\0\"Mary Smith: Personal Account At Home\"\0smith\0home.example\0\0",
-			{0,}},
+			"Dr \t \"\" \t Dr \t \"\" \t Dr \t \"\" \t Z2 <x@y>",
+			"\0\"Dr  Dr  Dr  Z2\"\0x\0y\0\0"
+			,{0,}},
 		{0, imf::mode_none, 1,
-			"\"Joe Q. Public\" <john.q.public@example.com>",
-			"\0\"Joe Q. Public\"\0john.q.public\0example.com\0\0",
-			{0,}},
+			"Dr \t \"  \" \t Dr \t \"\" \t Dr \t \"\" \t Z3 <x@y>",
+			"\0\"Dr    Dr  Dr  Z3\"\0x\0y\0\0"
+			,{0,}},
 		{0, imf::mode_none, 1,
-			"\"Giant; \" \"\\\"Big\\\"\" \" Box\" <sysservices@example.net>",
-			"\0\"Giant; \\\"Big\\\" Box\"\0sysservices\0example.net\0\0",
-			{0,}},
+			"Dr \t \"\\ \\ \" \t Dr \t \"\" \t Dr \t \"\" \t Z4 <x@y>",
+			"\0\"Dr \\ \\  Dr  Dr  Z4\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\\\\ \" \t Dr \t \"\" \t Dr \t \"\" \t Z5 <x@y>",
+			"\0\"Dr \\\\  Dr  Dr  Z5\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\\\"\\\"\" \t Dr \t \"\" \t Dr \t \"\" \t Z6 <x@y>",
+			"\0\"Dr \\\"\\\" Dr  Dr  Z6\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\" \t Z7 <x@y>",
+			"\0\"Dr  Z7\"\0x\0y\0\0"
+			,{0,}},
 
 		{0, imf::mode_none, 1,
-			"Mary Smith\n \t\r\n  \t\n \r\n \t   \t   <mary@example.net>",
-			"\0Mary Smith\0mary\0example.net\0\0",
+			"\"Full Name\" <foo@ex.com>",
+			"\0\"Full Name\"\0foo\0ex.com\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Mary Smith: Personal Account\" \"At Home\" <smith@home.ex>",
+			"\0\"Mary Smith: Personal Account At Home\"\0smith\0home.ex\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Joe Q. Public\" <john.q.public@ex.com>",
+			"\0\"Joe Q. Public\"\0john.q.public\0ex.com\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Giant;    \"    \"\\\"Big\\\"\"   \"   Box\" <sysservices@ex.net>",
+			"\0\"Giant;     \\\"Big\\\"    Box\"\0sysservices\0ex.net\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"\"Giant;      \"      Big    Box      <sysservices@ex.net>",
+			"\0\"Giant;       Big Box\"\0sysservices\0ex.net\0\0"
+			, {0,}},
+
+		{0, imf::mode_none, 1,
+			"Mary Smith\n \t\r\n  \t\n \r\n \t   \t   <mary@ex.net>",
+			"\0Mary Smith\0mary\0ex.net\0\0",
 			{0,}},
 
 		{imf::err_display_name_dot, imf::mode_none, 0,
-			"Joe Q. Public <john.q.public@example.com>",
+			"Joe Q. Public <john.q.public@ex.com>",
 			"",
 			{0,}},
 		{0, imf::mode_ok_display_name_dot, 1,
-			"Joe Q. Public <john.q.public@example.com>",
-			"\0\"Joe Q. Public\"\0john.q.public\0example.com\0\0",
+			"Joe Q. Public <john.q.public@ex.com>",
+			"\0\"Joe Q. Public\"\0john.q.public\0ex.com\0\0",
 			{imf::state_display_name_dot,}},
+		{imf::err_display_name_dot, imf::mode_none, 0,
+			"\"\" Dr.. . Z \"\" <x@y>",
+			"",
+			{0,}},
+		{0, imf::mode_ok_display_name_dot, 1,
+			"\"\" Dr.. . Z \"\" <x@y>", // TODO could strip trail WS
+			"\0\"Dr.. . Z \"\0x\0y\0\0",
+			{imf::state_display_name_dot,}},
+		{0, imf::mode_ok_display_name_dot, 1,
+			"\"\" Dr.. . Z  <x@y>",
+			"\0\"Dr.. . Z\"\0x\0y\0\0",
+			{imf::state_display_name_dot,}},
+		{0, imf::mode_ok_display_name_dot, 1,
+			"\"\\ \\ \\ \" Dr.. . Z  <x@y>",
+			"\0\"\\ \\ \\  Dr.. . Z\"\0x\0y\0\0",
+			{imf::state_display_name_dot,}},
+		{imf::err_display_name_dot, imf::mode_none, 0,
+			"Dr \t \"\" \t Dr \t \"\" \t Dr. \t \"\" \t Z3 <x@y>",
+			"",
+			{0,}},
+		{0, imf::mode_ok_display_name_dot, 1,
+			"Dr \t \"\" \t Dr \t \"\" \t Dr. \t \"\" \t Z3 <x@y>",
+			"\0\"Dr  Dr  Dr.  Z3\"\0x\0y\0\0"
+			, {imf::state_display_name_dot,}},
 
 		{0, imf::mode_none, 1,
-			"Mary Smith <@node.test:mary@example.net>",
-			"\0Mary Smith\0mary\0example.net\0\0",
+			"Mary Smith <@node.test:mary@ex.net>",
+			"\0Mary Smith\0mary\0ex.net\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			" John Doe <  @dsda.e  ,   @mda.je  :   jdoe@machine.example  >  ",
-			"\0John Doe\0jdoe\0machine.example\0\0",
+			" John Doe <  @dsda.e  ,   @mda.je  :   jdoe@machine.ex  >  ",
+			"\0John Doe\0jdoe\0machine.ex\0\0",
 			{0,}},
 
 		{0, imf::mode_none, 3,
-			"Mary Smith <mary@x.test>, jdoe@example.org, Who? <one@y.test>",
+			"Mary Smith <mary@x.test>, jdoe@ex.org, Who? <one@y.test>",
 			"\0Mary Smith\0mary\0x.test\0\0"
-			"\0\0jdoe\0example.org\0\0"
+			"\0\0jdoe\0ex.org\0\0"
 			"\0Who?\0one\0y.test\0\0",
 			{0,}},
 		{0, imf::mode_none, 3,
@@ -2260,7 +2371,12 @@ a_imf_addr(void){ // {{{
 			"\0\0JJV\0BBN\0\0",
 			{0,}},
 		{0, imf::mode_none, 2,
-			"\"Joe & \t\n \t \n \n \n \n\t\n\t\n\tJ. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
+			"\"Joe &\"\n \t \n\t\n\t\"J. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",//XXX
+			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0"//XXX &J.
+			"\0\0JJV\0BBN2\0\0",
+			{0,}},
+		{0, imf::mode_none, 2,
+			"\"Joe &\r\n J. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
 			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0"
 			"\0\0JJV\0BBN2\0\0",
 			{0,}},
@@ -2270,9 +2386,25 @@ a_imf_addr(void){ // {{{
 			"\0\0\"ba\"\0by\0\0",
 			{0,}},
 		{0, imf::mode_none, 1,
-			"bu\"dd\"y(c\"o\"m.m)<t(e)\"i(%;)@\"@(n)g(t)h(s).(su)t(ck)>(, right?)",
-			"\0\"buddy\"\0\"ti(%;)@\"\0gh.t\0c\"o\"m.m e n t s su ck , right?\0",
+			"b\" a\"@by",
+			"\0\0\"b a\"\0by\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"b\"a \"@by",
+			"\0\0\"ba \"\0by\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"bu\"d d\"y(c\"o\"m.m)<t(e)\"i(%;)@\"@(n)g(t)h(s).(su)t(ck)>(, right?)",
+			"\0\"bud dy\"\0\"ti(%;)@\"\0gh.t\0c\"o\"m.m e n t s su ck , right?\0",
 			{0,}},
+		{0, imf::mode_none, 1,
+			"bu\"d  \t  d\"y <t    \"i \t(%;)\t \"\"@\"\"\"@gh.t>",
+			"\0\"bud  \t  dy\"\0\"ti \t(%;)\t @\"\0gh.t\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"bu\"d d\"y <t \" i (%;) \"\" @ \"\"\"@ g h  . t >",
+			"\0\"bud dy\"\0\"t i (%;)  @ \"\0gh.t\0\0"
+			, {0,}},
 
 		{0, imf::mode_none, 1,
 			"Undisclosed recipients:;",
@@ -2286,17 +2418,40 @@ a_imf_addr(void){ // {{{
 			"Undisclosed recipients:;x@y",
 			"Undisclosed recipients\0\0\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{imf::err_content, imf::mode_none, 1,
+			"Undisclosed recipients:;\tx\t@\ty",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
 		{0, imf::mode_none, 2,
 			"Undisclosed recipients:;,x@y",
 			"Undisclosed recipients\0\0\0\0\0"
 			"\0\0x\0y\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;\t,\tx\t@\ty",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
 		{imf::err_content, imf::mode_none, 1,
-			"Undisclosed recipients:;<x@y>",
+			"Undisclosed recipients:;< x @ y >",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{imf::err_content, imf::mode_none, 1,
+			"Undisclosed recipients:;\t<\tx\t@\ty\t>",
 			"Undisclosed recipients\0\0\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
 		{0, imf::mode_none, 2,
 			"Undisclosed recipients:;,<x@y>",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;,\t<\tx\t@\ty>",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;   \t , \t <x@y>",
 			"Undisclosed recipients\0\0\0\0\0"
 			"\0\0x\0y\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
@@ -2310,15 +2465,15 @@ a_imf_addr(void){ // {{{
 			"Mum\0\0ba\0by\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
 		{0, imf::mode_none, 1,
-			"Group:Mary Smith <@node.test:mary@example.net>;,,,",
-			"Group\0Mary Smith\0mary\0example.net\0\0",
+			"Group:Mary Smith <@node.test:mary@ex.net>;,,,",
+			"Group\0Mary Smith\0mary\0ex.net\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
 
 		{0, imf::mode_none, 3,
-			"A \"Group\":ba@by;,Bum <m@e.r>,rose:l<o@v.e>;",
-			"\"A Group\"\0\0ba\0by\0\0"
-			"\0Bum\0m\0e.r\0\0"
-			"rose\0l\0o\0v.e\0\0",
+			"A \" \t Gr \t \t ou \t \" p :   ba   @   by     ;,B \" \t u \t u \t \" m <m@e.r>,r\"o\"se:l<o@v.e>;",
+			"\"A  \t Gr \t \t ou \t  p\"\0\0ba\0by\0\0"
+			"\0\"B  \t u \t u \t  m\"\0m\0e.r\0\0"
+			"\"rose\"\0l\0o\0v.e\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group, 0,
 			 imf::state_group_start | imf::state_group_end | imf::state_group,}},
 		{0, imf::mode_none, 3,
@@ -2328,32 +2483,37 @@ a_imf_addr(void){ // {{{
 			"\0\0x\0y.z\0\0",
 			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
 		{0, imf::mode_none, 3,
-			"A Group  :  ba@by , Bum <m@e.r>(barmy) ;  , (ar )x@y.z(my)",
+			"A Group  :  ba@by , Bum < m @ e . r >(barmy) ;  , (ar )x @ y . z(my)",
 			"A Group\0\0ba\0by\0\0"
 			"\0Bum\0m\0e.r\0barmy\0"
 			"\0\0x\0y.z\0ar my\0",
 			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
 		{0, imf::mode_none, 3,
-			"A Group:ba@by, Bum <m@e.r>  ,,, \n\t , \n \n\t, , ; ,  , , x@y.z , , ,\n \n\t",
+			"A Group:\tba\t@\tby\t, Bum <m@e.r>  ,,, \n\t , \n \n\t, , ; ,  , , x@y.z , , ,\n \n\t",
 			"A Group\0\0ba\0by\0\0"
 			"\0Bum\0m\0e.r\0\0"
 			"\0\0x\0y.z\0\0",
 			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
 
 		{0, imf::mode_none, 4,
-			"A Group(Some people)\n        :Chris Jones <c@public.example(.host of Chris)>,\n \t\t  "
-				"Chris Jones2 <c@(Chris's host.)public.example>,   (  void comment  ) , "
-				"\t \n\tjoe@example.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
+			"A Group(Some people)\n        :Chris Jones <c@public.ex(.host of Chris)>,\n \t\t  "
+				"Chris Jones2 <c@(Chris's host.)public.ex>,   (  void comment  ) , "
+				"\t \n\tjoe@ex.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
 				"(the end of the group)",
-			"A Group\0Chris Jones\0c\0public.example\0.host of Chris\0"
-			"\0Chris Jones2\0c\0public.example\0Chris's host.\0"
-			"\0\0joe\0example.org\0\0"
+			"A Group\0Chris Jones\0c\0public.ex\0.host of Chris\0"
+			"\0Chris Jones2\0c\0public.ex\0Chris's host.\0"
+			"\0\0joe\0ex.org\0\0"
 			"\0John\0jdoe\0one.test\0my dear friend\0",
 			{imf::state_group_start | imf::state_group, imf::state_group, imf::state_group,
 				imf::state_group_end | imf::state_group,}},
 
-		{imf::err_content, imf::mode_none, 0, "<user>", "", {0,}},
-		{0, imf::mode_ok_addr_spec_no_domain, 1, "<user>", "\0\0user\0\0\0", {imf::state_addr_spec_no_domain,}},
+		{imf::err_content, imf::mode_none, 0, "<u1>", "", {0,}},
+		{0, imf::mode_ok_addr_spec_no_domain, 1, "<u2>", "\0\0u2\0\0", {imf::state_addr_spec_no_domain,}},
+		{imf::err_content, imf::mode_none, 0, "<u3@>", "", {0,}},
+		{imf::err_content, imf::mode_ok_addr_spec_no_domain, 0, "<u4@>", "", {0,}},
+		{imf::err_content, imf::mode_ok_addr_spec_no_domain, 0, "u5", "", {0,}},
+		{imf::err_content, imf::mode_ok_addr_spec_no_domain, 0, "u6@", "", {0,}},
+		{0, imf::mode_ok_addr_spec_no_domain, 1, "<u7@U7>", "\0\0u7\0U7\0", {0,}},
 
 		// stop_early with some things from above
 		{0, imf::mode_stop_early, 2,
@@ -2366,9 +2526,30 @@ a_imf_addr(void){ // {{{
 			"\"A Group\"\0\0ba\0by\0\0",
 			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
 		{0, imf::mode_stop_early, 1,
-			"\"Joe & \t\n \t \n \n \n \n\t\n\t\n\tJ. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
+			"\"Joe &\"\n\r\t\n\r\t\"J. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
 			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0",
 			{0,}},
+
+		// IETF RFC 5322 errata 3135 (why says invalid to latter three?)
+		{imf::err_content, imf::mode_none, 0, "\"\"@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "foo.\"\"@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "\"\".bar@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "foo.\"\".bar@by", "", {0,}},
+		{0, imf::mode_none, 1, "foo\"\"@by", "\0\0foo\0by\0", {0,}},
+		{0, imf::mode_none, 1, "\"\"bar@by", "\0\0bar\0by\0", {0,}},
+		{0, imf::mode_none, 1, "foo\"\"bar@by", "\0\0foobar\0by\0", {0,}},
+
+		{imf::err_content, imf::mode_none, 0, "<\"\"@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<foo.\"\"@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<\"\".bar@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<foo.\"\".bar@by>", "", {0,}},
+		{0, imf::mode_none, 1, "<foo\"\"@by>", "\0\0foo\0by\0", {0,}},
+		{0, imf::mode_none, 1, "<\"\"bar@by>", "\0\0bar\0by\0", {0,}},
+		{0, imf::mode_none, 1, "<foo\"\"bar@by>", "\0\0foobar\0by\0", {0,}},
+
+		// (adapt)
+		{imf::err_content, imf::mode_none, 0, "a.().b@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.().b@by>", "", {0,}},
 
 		// pure errors
 
@@ -2376,6 +2557,26 @@ a_imf_addr(void){ // {{{
 		{-err::nodata, imf::mode_none, 0, "         ", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "A Group:", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "d", "", {0,}},
+
+		{imf::err_content, imf::mode_none, 0, "a..b@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a..b@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, ".a.b@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<.a.b@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b.@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b.@by>", "", {0,}},
+
+		{imf::err_content, imf::mode_none, 0, "a.b@b..y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@b..y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@ b . \t . y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@ b . \t . y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@.b.y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@.b.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@\t \t . \t b\t.\ty", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@\t \t . \t b\t.\ty>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@b.y.", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@b.y.>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@\tb\t.\ty\t.\t ", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@\tb\t.\ty\t.\t >", "", {0,}},
 
 		//
 		{imf::err_content, imf::mode_none, 1,
@@ -2398,11 +2599,11 @@ a_imf_addr(void){ // {{{
 
 		// double group start
 		{imf::err_content, imf::mode_none, 1,
-			"A Group(Some people)\n        :Chris Jones <c@public.example(.host of Chris)>,\n \t\t  "
-				" : Chris Jones2 <c@(Chris's host.)public.example>,   (  void comment  ) , "
-				"\t \n\tjoe@example.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
+			"A Group(Some people)\n        :Chris Jones <c@public.ex(.host of Chris)>,\n \t\t  "
+				" : Chris Jones2 <c@(Chris's host.)public.ex>,   (  void comment  ) , "
+				"\t \n\tjoe@ex.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
 				"(the end of the group)",
-			"A Group\0Chris Jones\0c\0public.example\0.host of Chris\0",
+			"A Group\0Chris Jones\0c\0public.ex\0.host of Chris\0",
 			{imf::state_group_start | imf::state_group,}},
 
 		// missing list sep
@@ -2450,21 +2651,21 @@ a_imf_addr(void){ // {{{
 
 		// incompl. addresses
 		{imf::err_content, imf::mode_none, 2,
-			"A Group:T <e@s.t>,joe@x.  ;y, x@y.z",
+			"A Group:T <e@s.t>,joe@x.y  ;y, x@y.z",
 			"A Group\0T\0e\0s.t\0\0"
-			"\0\0joe\0x.\0\0",
+			"\0\0joe\0x.y\0\0",
 			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
 
 		// some specifics (display_name_dot above)
 		{imf::err_group_open, imf::mode_none, 1,
-			"A Group:T <e@s.t>,joe@x.  ",
+			"A Group:T <e@s.t>,joe@x.y  ",
 			"A Group\0T\0e\0s.t\0\0",
 			{imf::state_group_start | imf::state_group,
 				imf::state_group | imf::err_relax | imf::err_group_open}},
 		{0, imf::mode_relax, 2,
-			"A Group:T <e@s.t>,joe@x.  ",
+			"A Group:T <e@s.t>,joe@x.y  ",
 			"A Group\0T\0e\0s.t\0\0"
-			"\0\0joe\0x.\0\0",
+			"\0\0joe\0x.y\0\0",
 			{imf::state_group_start | imf::state_group,
 				imf::state_group | imf::state_relax | imf::err_group_open | imf::state_group_end,}},
 
@@ -2552,7 +2753,11 @@ a_imf_addr(void){ // {{{
 
 		char const *ep;
 		imf::addr *ap;
+
 		s32 se = imf::parse_addr_header(*&ap, hat[i].dat, hat[i].mode, *&mb, &ep);
+# if a_IMF_DVL
+		log::write(log::debug, "IMF %#X/%#X <%s>", se, hat[i].rv, hat[i].dat);
+# endif
 		if(se != hat[i].rv)
 			a_ERRIS(i, hat[i].dat);
 		else{
@@ -2574,6 +2779,11 @@ a_imf_addr(void){ // {{{
 
 			ep = hat[i].rp;
 			for(j = 0; ap != NIL; ++j, ap = ap->next()){
+# if a_IMF_DVL
+				log::write(log::debug, "\tIMF %zu %#X/%#X <%s> <%s> <%s> <%s> <%s>",
+					j, hat[i].rse[j], ap->mse(), ap->group_display_name(), ap->display_name(),
+					ap->locpar(), ap->domain(), ap->comm());
+# endif
 				if(hat[i].rse[j] != ap->mse())
 					a_ERRIS(i, ep);
 
@@ -2638,7 +2848,7 @@ a_imf_addr(void){ // {{{
 		}
 	}
 
-	mb.reset();
+	mb.reset(); // dtor DBG log..
 } // }}}
 
 static void
@@ -2688,17 +2898,19 @@ a_imf_tok(void){ // {{{
 			"one\0" "hello\0" "two\0" "you\0" "au\0"},
 
 		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
-			"  \"this is a long,   looong quoted one \"-/hey;au",
-			"\"this is a long, looong quoted one-/hey\"\0"  "au\0"},
+			"  \"this is a long, \t  looong quoted one \"-/hey;au",
+			"\"this is a long, \t  looong quoted one -/hey\"\0"  "au\0"
+			},
 		{0, imf::mode_tok_semicolon, 3, {0, imf::state_semicolon,},
 			"  \"this is a long, looong quoted one\"-/ hey  ;   au",
 			"\"this is a long, looong quoted one-/\"\0"  "hey\0"  "au\0"},
 		{0, imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
-			"  \"this is a long, looong   quoted one \";hey;au",
-			"\"this is a long, looong quoted one\"\0"  "hey\0"  "au\0"},
+			"  \"this is a long, looong \t quoted one \";hey;au",
+			"\"this is a long, looong \t quoted one \"\0"  "hey\0"  "au\0"
+			},
 		{0, imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
-			"  \"this is a long, looong   quoted one\"    ;    hey      ;     au",
-			"\"this is a long, looong quoted one\"\0"  "hey\0"  "au\0"},
+			"  \"this is a long, looong  quoted one\"    ;    hey      ;     au",
+			"\"this is a long, looong  quoted one\"\0"  "hey\0"  "au\0"},
 
 		{0, imf::mode_none, 1, {0,},
 			" \"\"\"\"\"\"hello\"\"",
@@ -2758,10 +2970,27 @@ a_imf_tok(void){ // {{{
 		{0, imf::mode_tok_semicolon | imf::mode_stop_early, 1, {imf::state_semicolon,},
 			"  (c3) ha3 (two) ; au ",
 			"ha3\0"},
+
 		{0, imf::mode_tok_semicolon | imf::mode_tok_comment | imf::mode_stop_early, 1,
 				{imf::state_comment | imf::state_semicolon,},
 			"  (c4); ha4 (two) ; au ",
 			"c4\0"},
+		{0, imf::mode_tok_semicolon, 2,
+				{imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"ha4\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3,
+				{imf::state_semicolon, imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"\0" "ha4\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment, 4,
+				{imf::state_comment | imf::state_semicolon, 0, imf::state_comment | imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"c4\0" "ha4\0" "two\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_tok_comment, 4,
+				{imf::state_comment | imf::state_semicolon, 0, imf::state_comment | imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"c4\0" "ha4\0" "two\0" "au\0"},
 
 		{0, imf::mode_stop_early, 1, {0,},
 			" \"\" hello \"\" ; \"au\" ",
@@ -2857,7 +3086,7 @@ a_imf_tok(void){ // {{{
 		}
 	}
 
-	mb.reset();
+	mb.reset(); // dtor DBG log..
 } // }}}
 #endif // su_HAVE_IMF
 // }}}
