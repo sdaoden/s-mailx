@@ -2911,7 +2911,7 @@ jspecial:
 
 					{a_AMV_VF_EXT_LOCAL, "`local'"},
 					{a_AMV_VF_EXT_LINKED, "`environ' linked"},
-					{a_AMV_VF_EXT_FROZEN, "frozen (set via -S)\0"}
+					{a_AMV_VF_EXT_FROZEN, "frozen (set via -S)"}
 				}, *tp;
 				ASSERT((flags & ~a_AMV_VF_EXT__CUSTOM_MASK) == 0);
 				ASSERT(!(flags & a_AMV_VF_EXT_LOCAL) || (flags & ~a_AMV_VF_EXT__LOCAL_MASK) == 0);
@@ -2934,7 +2934,7 @@ jspecial:
 				{a_AMV_VF_NODEL, "nodelete"},
 				{a_AMV_VF_I3VAL, "initial-value"},
 				{a_AMV_VF_DEFVAL, "default-value"},
-				{a_AMV_VF_IMPORT, "import-environ-first\0"},
+				{a_AMV_VF_IMPORT, "import-environ-first"},
 				{a_AMV_VF_ENV, "sync-environ"},
 				{a_AMV_VF_NOLOPTS, "no-localopts"},
 				{a_AMV_VF_NOTEMPTY, "notempty"},
@@ -2943,7 +2943,7 @@ jspecial:
 				{a_AMV_VF_OBSOLETE, "obsoleted"},
 
 				{a_AMV_VF_EXT_LINKED, "`environ' linked"},
-				{a_AMV_VF_EXT_FROZEN, "frozen (set via -S)\0"}
+				{a_AMV_VF_EXT_FROZEN, "frozen (set via -S)"}
 			}, *tp;
 			ASSERT(!isset || ((flags & a_AMV_VF__MASK) == (avc.avc_map->avm_flags & a_AMV_VF__MASK)));
 

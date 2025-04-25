@@ -307,7 +307,7 @@ static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
 static struct a_xtls_protocol const a_xtls_protocols[] = {
    {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, FAL0, TRU1, {0}},
-   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1,TRU1,FAL0,FAL0,{0}},
+   {"TLSv1.3", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1,TRU1,FAL0,FAL0,{0}},
    {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
    {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
    {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
@@ -322,7 +322,7 @@ static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 # define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_256_cbc
 # define a_XTLS_SMIME_DEFAULT_CIPHER_S "AES256"
    {"AES256", &EVP_aes_256_cbc}, /* default of OpenSSL 3.5.0 (2025) */
-      {"AES-256-CBC\0", &EVP_aes_256_cbc},
+      {"AES-256-CBC", &EVP_aes_256_cbc},
    {"AES192", &EVP_aes_192_cbc},
       {"AES-192-CBC", &EVP_aes_192_cbc},
    {"AES128", &EVP_aes_128_cbc}, /* mandated by RFC 5751 (2010) */
@@ -334,7 +334,7 @@ static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #  define a_XTLS_SMIME_DEFAULT_CIPHER_S "DES3"
 # endif
    {"DES3", &EVP_des_ede3_cbc},
-      {"DES-EDE3-CBC\0", &EVP_des_ede3_cbc},
+      {"DES-EDE3-CBC", &EVP_des_ede3_cbc},
    {"DES", &EVP_des_cbc},
       {"DES-CBC", &EVP_des_cbc},
 #endif
@@ -357,7 +357,7 @@ static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
  * Update manual on default changes! */
 static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #ifdef mx_XTLS_HAVE_SHA3
-   {TRU1, "SHA3-512\0", &EVP_sha3_512},
+   {TRU1, "SHA3-512", &EVP_sha3_512},
    {TRU1, "SHA3-384", &EVP_sha3_384},
    {TRU1, "SHA3-256", &EVP_sha3_256},
    {TRU1, "SHA3-224", &EVP_sha3_224},
@@ -372,7 +372,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #ifdef mx_XTLS_HAVE_BLAKE2
-   {FAL0, "BLAKE2b512\0", &EVP_blake2b512},
+   {FAL0, "BLAKE2b512", &EVP_blake2b512},
    {FAL0, "BLAKE2s256", &EVP_blake2s256},
 # ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
 #  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_blake2s256
@@ -381,7 +381,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #ifndef OPENSSL_NO_SHA512
-   {TRU1, "SHA512\0", &EVP_sha512},
+   {TRU1, "SHA512", &EVP_sha512},
    {TRU1, "SHA384", &EVP_sha384},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha512
@@ -390,7 +390,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #ifndef OPENSSL_NO_SHA256
-   {TRU1, "SHA256\0", &EVP_sha256},
+   {TRU1, "SHA256", &EVP_sha256},
    {TRU1, "SHA224", &EVP_sha224},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha256
@@ -403,7 +403,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #if !defined OPENSSL_NO_SHA || !defined OPENSSL_NO_SHA1
-   {TRU1, "SHA1\0", &EVP_sha1},
+   {TRU1, "SHA1", &EVP_sha1},
 # ifndef a_XTLS_SMIME_DEFAULT_DIGEST
 #  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1
 #  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA1"
@@ -415,7 +415,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #endif
 
 #if !defined OPENSSL_NO_MD5 && defined mx_HAVE_TLS_MD5
-   {TRU1, "MD5\0", &EVP_md5},
+   {TRU1, "MD5", &EVP_md5},
 #endif
 };
 

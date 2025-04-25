@@ -459,7 +459,7 @@ static struct a_tty_input_ctx_map const a_tty_input_ctx_maps[mx__GO_INPUT_CTX_MA
 /* Special functions which our MLE provides internally.  Update the manual upon change! */
 static char const a_tty_bind_fun_names[][24] = { /* {{{ */
 #  undef a_X
-#  define a_X(I,N) FIELD_INITI(a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## I)) "mle-" N "\0",
+#  define a_X(I,N) FIELD_INITI(a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## I)) "mle-" N,
 
 	a_X(BELL, "bell")
 	a_X(GO_BWD, "go-bwd") a_X(GO_FWD, "go-fwd")
@@ -1144,7 +1144,8 @@ j_leave:
 static boole
 a_tty_hist_is_gabby_ok(BITENUM(u32,mx_go_input_flags) gif, char const **gt){
 	enum{a_ERR = 1u<<0, a_FUZZ = 1u<<1, a_ALL = a_ERR | a_FUZZ};
-	static struct{char n[7]; u8 f;} const kwa[] = {{"errors\0", a_ERR}, {"fuzz", a_FUZZ}, {"all", a_ALL}};
+
+	static struct{char n[7]; u8 f;} const kwa[] = {{"errors", a_ERR}, {"fuzz", a_FUZZ}, {"all", a_ALL}};
 
 	char const *cp;
 	boole f, rv;

@@ -131,8 +131,8 @@ struct a_flthtml_ent{
 static struct mx_flthtml_tag const a_flthtml_tags[] = {
 # undef a_X
 # undef a_XC
-# define a_X(S,A) {A, '\0', sizeof(S) -1, S "\0"}
-# define a_XC(S,C,A) {A, C, sizeof(S) -1, S "\0"}
+# define a_X(S,A) {A, '\0', sizeof(S) -1, S}
+# define a_XC(S,C,A) {A, C, sizeof(S) -1, S}
 
 # if 0 /* This is treated very special (to avoid wasting space in .fht_tag) */
 	a_X("BLOCKQUOTE", a_FLTHTML_SA_BQUOTE),
@@ -178,11 +178,10 @@ static struct a_flthtml_ent const a_flthtml_ents[] = {
 # undef a_XU
 # undef a_XS
 # undef a_XSU
-# define a_X(E,C) {(sizeof(E) -1), C, 0x0u, "", E "\0"}
-# define a_XU(E,C,U) {(sizeof(E) -1) | a_FLTHTML_EF_HAVE_UNI, C, U, "", E "\0"}
-# define a_XS(E,S) {(sizeof(E) -1) | a_FLTHTML_EF_HAVE_CSTR, '\0', 0x0u,S "\0",E "\0"}
-# define a_XSU(E,S,U) \
-	{(sizeof(E) -1) | a_FLTHTML_EF_HAVE_UNI | a_FLTHTML_EF_HAVE_CSTR, '\0', U, S "\0", E "\0"}
+# define a_X(E,C) {(sizeof(E) -1), C, 0x0u, "", E}
+# define a_XU(E,C,U) {(sizeof(E) -1) | a_FLTHTML_EF_HAVE_UNI, C, U, "", E}
+# define a_XS(E,S) {(sizeof(E) -1) | a_FLTHTML_EF_HAVE_CSTR, '\0', 0x0u, S, E}
+# define a_XSU(E,S,U) {(sizeof(E) -1) | a_FLTHTML_EF_HAVE_UNI | a_FLTHTML_EF_HAVE_CSTR, '\0', U, S, E}
 
 	a_X("quot", '"'),
 	a_X("amp", '&'),

@@ -110,6 +110,8 @@ enum a_vexpr_flags{
 	a_VEXPR_MOD_SATURATED = 1u<<1, /* Saturated / case-insensitive / XY */
 	a_VEXPR_MOD_CASE = 1u<<2, /* Saturated / case-insensitive / XY */
 	a_VEXPR_MOD_MASK = a_VEXPR_MOD_SATURATED | a_VEXPR_MOD_CASE,
+	a_VEXPR__MOD_SHIFT = 3,
+
 	a_VEXPR_ISNUM = 1u<<3,
 	a_VEXPR_ISDECIMAL = 1u<<4, /* Print only decimal result */
 	a_VEXPR_UNSIGNED_OP = 1u<<5, /* Force unsigned interpretation */
@@ -122,8 +124,6 @@ enum a_vexpr_flags{
 	a_VEXPR__FCMDMASK = 0xFE00u,
 	a_VEXPR__TMP = 1u<<30
 };
-/* .vc_cmderr=8-bit, and so a_vexpr_subcmd can store CMD+MOD flags in 16-bit */
-CTA(((S(u32,a_VEXPR_CMD__MAX | a_VEXPR_ERR__MAX) << a_VEXPR__FSHIFT) & ~a_VEXPR__FCMDMASK) == 0, "Bit ranges overlap");
 
 struct a_vexpr_ctx{
 	u32 vc_flags;
@@ -138,15 +138,18 @@ struct a_vexpr_ctx{
 	char const *vc_argv[7];
 	char vc_iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
 };
+/* .vc_cmderr=8-bit, and so a_vexpr_subcmd can store CMD+MOD flags in 16-bit */
+CTA(((S(u32,a_VEXPR_CMD__MAX | a_VEXPR_ERR__MAX) << a_VEXPR__FSHIFT) & ~a_VEXPR__FCMDMASK) == 0, "Bit ranges overlap");
 
 struct a_vexpr_subcmd{
-	u16 vs_mpv;
-	char vs_name[14];
+	u8 vs_mpv; /* a_vexpr_cmd|a_VEXPR_MOD_MASK */
+	char vs_name[15];
 };
+CTA(((S(u32,a_VEXPR_CMD__MAX) << a_VEXPR__MOD_SHIFT) <= 0xFFu), "Bit range excess");
 
 static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
 #undef a_X
-#define a_X(C,F) (S(u16,C) << a_VEXPR__FSHIFT) | F
+#define a_X(C,F) (S(u8,C) << a_VEXPR__MOD_SHIFT) | F
 
 	{a_X(a_VEXPR_CMD_NUM_EQUAL, a_VEXPR_MOD_SATURATED), "="},
 	{a_X(a_VEXPR_CMD_NUM_NOT, a_VEXPR_MOD_SATURATED), "~"},
@@ -161,7 +164,7 @@ static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
 	{a_X(a_VEXPR_CMD_NUM_LSHIFT, a_VEXPR_MOD_SATURATED), "<<"},
 	{a_X(a_VEXPR_CMD_NUM_RSHIFT, a_VEXPR_MOD_SATURATED), ">>"},
 	{a_X(a_VEXPR_CMD_NUM_URSHIFT, a_VEXPR_MOD_SATURATED), ">>>"},
-	{a_X(a_VEXPR_CMD_NUM_PBASE, a_VEXPR_MOD_SATURATED), "pbase\0"},
+	{a_X(a_VEXPR_CMD_NUM_PBASE, a_VEXPR_MOD_SATURATED), "pbase/"},
 
 	{a_X(a_VEXPR_CMD_AGN_DATE_UTC, 0), "date-utc"},
 	{a_X(a_VEXPR_CMD_AGN_DATE_STAMP_UTC, 0), "date-stamp-utc"},
@@ -829,7 +832,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
 
 			vc.vc_arg = vc.vc_cmd_name;
 			vc.vc_flags = f;
-			i = (i & a_VEXPR__FCMDMASK) >> a_VEXPR__FSHIFT;
+			i >>= a_VEXPR__MOD_SHIFT;
 			if((vc.vc_cmderr = S(u8,i)) < a_VEXPR_CMD_NUM__MAX)
 				a_vexpr_numeric(&vc);
 			else if(i < a_VEXPR_CMD_AGN__MAX)

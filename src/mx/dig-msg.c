@@ -68,7 +68,7 @@ struct a_dmsg_sl{
 	char const *dmsl_dat;
 };
 
-static char const a_dmsg_hf_cmd[7][8] = {"forward\0", "mail", "Lreply", "Reply", "reply", "resend", ""};
+static char const a_dmsg_hf_cmd[7][8] = {"forward", "mail", "Lreply", "Reply", "reply", "resend", ""};
 static char const a_dmsg_subj[] = "Subject";
 
 struct mx_dig_msg_ctx *mx_dig_msg_read_overlay; /* XXX HACK */

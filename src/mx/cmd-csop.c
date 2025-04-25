@@ -115,7 +115,7 @@ static struct a_csop_subcmd const a_csop_subcmds[] = {
 	{a_X(a_CSOP_CMD_IFIND, 0), "ifind"},
 	{a_X(a_CSOP_CMD_SUBSTRING, 0), "substring"},
 	{a_X(a_CSOP_CMD_TRIM, 0), "trim"},
-	{a_X(a_CSOP_CMD_TRIM_FRONT, 0), "trim-front\0"},
+	{a_X(a_CSOP_CMD_TRIM_FRONT, 0), "trim-front"},
 	{a_X(a_CSOP_CMD_TRIM_END, 0), "trim-end"}
 
 #undef a_X

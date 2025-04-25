@@ -124,7 +124,7 @@ struct a_spam_vc{
 };
 
 /* Indices according to enum spam_action */
-static char const a_spam_cmds[][16] = {"spamrate", "spamham", "spamspam", "spamforget\0"};
+static char const a_spam_cmds[][16] = {"spamrate", "spamham", "spamspam", "spamforget"};
 
 /* Shared action setup */
 static boole a_spam_action(enum a_spam_action sa, int *ip);

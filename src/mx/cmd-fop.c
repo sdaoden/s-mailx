@@ -129,19 +129,19 @@ static void a_fop__touch(struct a_fop_ctx *fcp);
 
 static struct a_fop_subcmd const a_fop_subcmds[] = {
 	{&a_fop__close, 0, "close"},
-	{&a_fop__expand, 0, "expand\0"},
+	{&a_fop__expand, 0, "expand"},
 		{&a_fop__expand, a_FOP_MOD_GLOB | a_FOP_MOD_LARGER_ARGV, "glob"},
-	{&a_fop__ftruncate, 0, "ftruncate\0"},
+	{&a_fop__ftruncate, 0, "ftruncate"},
 #ifdef mx_HAVE_FLOCK
-	{&a_fop__lock, a_FOP_MOD_NOFOLLOW | a_FOP_MOD_FLOCK, "flock\0"},
+	{&a_fop__lock, a_FOP_MOD_NOFOLLOW | a_FOP_MOD_FLOCK, "flock"},
 #endif
 		{&a_fop__lock, a_FOP_MOD_NOFOLLOW, "lock"},
 	{&a_fop__mkdir, 0, "mkdir"},
 	{&a_fop__mktemp, 0, "mktemp"},
 	{&a_fop__open, 0, "open"},
 	{&a_fop__pass, 0, "pass"},
-	{&a_fop__rename, 0, "rename\0"},
-	{&a_fop__rewind, 0, "rewind\0"},
+	{&a_fop__rename, 0, "rename"},
+	{&a_fop__rewind, 0, "rewind"},
 	{&a_fop__rm, 0, "rm"},
 	{&a_fop__rmdir, 0, "rmdir"},
 	{&a_fop__stat, a_FOP_MOD_NOFOLLOW, "stat"},

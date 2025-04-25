@@ -287,7 +287,7 @@ a_netrc__token(FILE *fi, char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last){
 		{a_NETRC_NONE, ""},
 		{a_NETRC_DEFAULT, "default"},
 		{a_NETRC_LOGIN, "login"},
-		{a_NETRC_PASSWORD, "password\0"},
+		{a_NETRC_PASSWORD, "password"},
 		{a_NETRC_PASSWORD, "passwd"},
 		{a_NETRC_ACCOUNT, "account"},
 		{a_NETRC_MACDEF, "macdef"},

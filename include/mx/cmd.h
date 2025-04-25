@@ -162,7 +162,7 @@ struct mx_cmd_arg_desc{
 		char cad_name[mx__CMD_ARG_NAME_MAX];\
 		u32 cad_no;\
 		/*u32 cad_ent_flags[1][2];*/\
-	} const VAR = { NAME "\0", 0/*,*/};
+	} const VAR = { NAME, 0/*,*/};
 
 #define mx_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(CMD, su_STRING(CMD), NO, VAR)
 #define mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(CMD,NAME,NO,VAR) \
@@ -170,7 +170,7 @@ struct mx_cmd_arg_desc{
 		char cad_name[mx__CMD_ARG_NAME_MAX];\
 		u32 cad_no;\
 		u32 cad_ent_flags[NO][2];\
-	} const VAR = { NAME "\0", NO,
+	} const VAR = { NAME, NO,
 #define mx_CMD_ARG_DESC_SUBCLASS_DEF_END }
 
 #define mx_CMD_ARG_DESC_SUBCLASS_CAST(P) su_R(struct mx_cmd_arg_desc const*,P)

@@ -631,8 +631,8 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
 	} const cda[] = {
 		{a_NETSMTP_EXT_ALL, a_NETSMTP_ALL_MASK, "all"},
 		{a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_ALL, "ehlo"},
-		{a_NETSMTP_EXT_8BITMIME | a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_8BITMIME, "8bitmime\0"},
-		{a_NETSMTP_EXT_PIPELINING | a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_PIPELINING, "pipelining\0"},
+		{a_NETSMTP_EXT_8BITMIME | a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_8BITMIME, "8bitmime"},
+		{a_NETSMTP_EXT_PIPELINING | a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_PIPELINING, "pipelining"},
 		/* User desire to use STARTTLS for us always means: force it!
 		 * As of today (June 2020) all servers are expected to be TLS aware */
 		{a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS_IFF | a_NETSMTP_EXT_EHLO,

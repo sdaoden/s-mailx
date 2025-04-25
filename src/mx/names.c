@@ -333,8 +333,8 @@ a_nm_expandaddr_to_eaf(void){ /* TODO should happen at var assignment time {{{ *
 	} const eafa[] = {
 		{"restrict", FAL0, mx_EAF_TARGET_MASK, mx_EAF_RESTRICT | mx_EAF_RESTRICT_TARGETS},
 		{"fail", FAL0, mx_EAF_NONE, mx_EAF_FAIL},
-		{"failinvaddr\0", FAL0, mx_EAF_NONE, mx_EAF_FAILINVADDR | mx_EAF_ADDR},
-		{"domaincheck\0", FAL0, mx_EAF_NONE, mx_EAF_DOMAINCHECK | mx_EAF_ADDR},
+		{"failinvaddr", FAL0, mx_EAF_NONE, mx_EAF_FAILINVADDR | mx_EAF_ADDR},
+		{"domaincheck", FAL0, mx_EAF_NONE, mx_EAF_DOMAINCHECK | mx_EAF_ADDR},
 		{"nametoaddr", FAL0, mx_EAF_NONE, mx_EAF_NAMETOADDR},
 		{"shquote", FAL0, mx_EAF_NONE, mx_EAF_SHEXP_PARSE},
 		{"all", TRU1, mx_EAF_NONE, mx_EAF_TARGET_MASK},

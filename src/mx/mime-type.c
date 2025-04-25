@@ -1228,7 +1228,7 @@ mx_mime_type_classify_part(struct mimepart *mpp, boole is_hdl){ /* {{{ */
 			char mt_name[12];
 			enum mx_mime_type mt_mc;
 		} const mta[] = {
-			{"alternative\0", mx_MIME_TYPE_ALTERNATIVE},
+			{"alternative", mx_MIME_TYPE_ALTERNATIVE},
 			{"related", mx_MIME_TYPE_RELATED},
 			{"digest", mx_MIME_TYPE_DIGEST},
 			{"signed", mx_MIME_TYPE_SIGNED},

@@ -94,7 +94,7 @@ static struct mx_cred_authtype_info const
 #ifndef mx_HAVE_TLS
 			| a_CREDAUTH_UNAVAIL
 #endif
-		), TRU1, TRU1, "OAUTHBEARER\0", "OAUTHBEARER\0"},
+		), TRU1, TRU1, "OAUTHBEARER", "OAUTHBEARER"},
 
 		/* (Almost EQ OAUTHBEARER) */
 		{mx_CRED_AUTHTYPE_XOAUTH2,

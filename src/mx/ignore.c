@@ -86,10 +86,10 @@ struct a_ignore_bltin_map{
 static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
 	{mx_IGNORE_TYPE, "type"},
 	{mx_IGNORE_SAVE, "save"},
-	{mx_IGNORE_FWD, "forward\0"},
+	{mx_IGNORE_FWD, "forward"},
 	{mx_IGNORE_TOP, "top"},
 
-	{mx_IGNORE_TYPE, "print\0"},
+	{mx_IGNORE_TYPE, "print"},
 	{mx_IGNORE_FWD, "fwd"}
 };
 #if DVLOR(1, 0) /* Avoid gcc warn cascade "mx_ignore is defined locally" */

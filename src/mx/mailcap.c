@@ -125,7 +125,7 @@ static struct a_mailcap_flags const a_mailcap_flags[] = {
 	{a_MAILCAP_F_TEST_ONCE, "x-mailx-test-once"},
 	{mx_MIME_TYPE_HDL_TMPF, "x-mailx-tmpfile"},
 	{mx_MIME_TYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
-	{mx_MIME_TYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"},
+	{mx_MIME_TYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink"},
 	{a_MAILCAP_F_LAST_RESORT, "x-mailx-last-resort"},
 	{a_MAILCAP_F_IGNORE, "x-mailx-ignore"}
 };
@@ -815,7 +815,7 @@ a_mailcap_dump(char const *cmdname, char const *key, void const *dat){
 	static char const sfa[][20] = {
 		a_X(CMD, " "),
 		a_X(COMPOSE, " compose = "),
-		a_X(COMPOSETYPED, " composetyped = \0"),
+		a_X(COMPOSETYPED, " composetyped = "),
 		a_X(DESCRIPTION, " description = "),
 		a_X(EDIT, " edit = "),
 		a_X(NAMETEMPLATE, " nametemplate = "),
