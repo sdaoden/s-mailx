@@ -3384,7 +3384,7 @@ a handy suggestion may thus be:
 .
 .Bd -literal -offset indent
 define xverbose {
-  \elocal set verbose; eval ignerr local pp "$@";  \ereturn $?
+  \elocal set verbose; eval ignerr local pp "$@"; \ereturn $?
 }
 commandalias xv '\ecall xverbose'
 xv ? set
@@ -3626,8 +3626,11 @@ will be created in
 .Cm local
 scope (with value 4).
 .Bd -literal -offset indent
-local set i=3
-eval local pp echo hello \e$((j = "$i" + 1))
+define x {
+  local set i='3 + 1'
+  local pp echo hello $((j = $i + 1))
+}
+call x
 .Ed
 .
 .Mx
@@ -3947,8 +3950,7 @@ as well as
 Shell-style
 .Mx -sx
 .Sx "field splitting"
-is performed on non-empty such expansions unless quoting is active,
-or
+is performed on non-empty such expansions unless quoting is active, or
 .Sx COMMANDS
 explicitly mention \*(NF.
 .
@@ -3996,7 +3998,7 @@ The following list of operators is sorted in decreasing precedence.
 set i=0; echo $((i + i)), $((i+=1)), $((i + i)); varshow i
 \*(OU0, 1, 2
 \*(OUset i=1
-set i=-2; eval echo \e$(( 10# "$i"))
+set i=-2; echo $(( 10# $i))
 \*(OU-2
 .Ed
 .
@@ -5255,12 +5257,12 @@ define name {
 }
 
 define exmac {
-  echo "Parameter 1 of ${#} is ${1}, all: ${*} / ${@}"
+  echo "Parameter 1 of $# is $1, all: $* / $@"
   return 1000 0
 }
 call exmac Hello macro exmac!
 \*(IX
-echo "${?}/${!}/${^ERRNAME}"
+echo "$?/$!/$^ERRNAME"
 .Ed
 .
 .
@@ -10689,7 +10691,10 @@ addrcodec enc root@\(:apfel.example
 Input field separators used for
 .Mx -ix "field splitting"
 field splitting (see
-.Sx "Shell-style argument quoting" ) ,
+.Sx "Shell-style argument quoting" ,
+and also
+.Va posix
+for compatibility issues),
 and for the
 .Ic read
 command to split lines into words.
@@ -12031,15 +12036,23 @@ Directly using encrypted communication channels should be preferred.
 .
 .Mx
 .It Va posix
-\*(BO This flag enables \*(PO mode, which changes behaviour of \*(Xx
-where that deviates from standardized behaviour.
-It is automatically squared with the environment variable
+\*(BO This flag enables \*(PO mode,
+which is a best-effort behavior change towards the \*(PO standard.
+However, as mentioned in
+.Sx "A starter" ,
+.Sx "Shell-style argument quoting"
+is used instead of the standardized
+.Sx "Old-style argument quoting" :
+this is believed not to be an insurmountable problem if the program is
+used in a standard-compliant way.
+The variable as such is automatically squared with the
+.Sx ENVIRONMENT
+variable
 .Ev POSIXLY_CORRECT ,
-changing the one will adjust the other.
-The following behaviour is covered and enforced by this mechanism:
+changing one will update the other.
+The following behavior is covered and enforced by this mechanism:
 .
-.Pp
-.Bl -bullet -compact
+.Bl -bullet
 .It
 In non-interactive mode, any error encountered while loading resource
 files during program startup will cause a program exit, whereas in
@@ -12116,6 +12129,27 @@ set unless all sent messages were successfully sent out to the
 .Va mta ;
 also see
 .Va sendwait .
+.
+.It
+Shell-style
+.Mx -sx
+.Sx "field splitting"
+according to
+.Va ifs
+will follow ksh93 instead of ksh88 behavior as used by the popular
+.Xr bash 1
+shell, among others.
+This only affects the variables
+.Va *
+and
+.Va @ ,
+and only if
+.Va ifs
+is set to a non-empty string which begins with non-whitespace:
+in this case a field other than the last one which ends with
+a non-whitespace character included in
+.Va ifs
+will not generate an extra empty field.
 .El
 .
 .

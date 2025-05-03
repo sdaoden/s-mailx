@@ -1227,6 +1227,67 @@ __EOT
 	#}}}
 	cke0 ifs-basic-split 0 ./tifs-basic-split '4253125034 6649'
 
+	# identical to t_vpospar:ifs-posix-split, but *without* pospar  (=X= part differs) {{{
+# proof ({{{
+#a() {
+#	b() { echo "b=$# 1<$1> 2<$2> 3<$3> 4<$4> 5<$5>"; }
+#	echo $#
+#	echo ,$1,$2,$3,$4,$5,; b ,$1,$2,$3,$4,$5,
+#}
+#set -- a b: c
+#echo =1=
+#a $*
+#echo =2=
+#IFS='=: '; a $*; unset IFS
+##
+#set -- a: b: c:
+#echo =3=
+#a $*
+#echo =4=
+#IFS='=: '; a $*; unset IFS
+#}}}
+	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-posix-split 2>${E0}
+commandali b call b
+define b {
+	ec "b=$# 1<$1> 2<$2> 3<$3> 4<$4> 5<$5>"
+}
+define a {
+	ec $#
+	ec ,$1,$2,$3,$4,$5,; b ,$1,$2,$3,$4,$5,
+}
+vpospar se a b: c
+ec =1=
+call a $*
+ec =2=
+se ifs='=: '; call a $*; uns ifs
+#
+vpospar se a: b: c:
+ec =3=
+call a $*
+ec =4=
+se ifs'=: '; call a $*; uns ifs
+#
+se posix
+vpospar se a b: c
+ec =5=
+call a $*
+ec =6=
+se ifs='=: '; call a $*; uns ifs
+#
+vpospar se a: b: c:
+ec =7=
+call a $*
+ec =8=
+se ifs'=: '; call a $*; uns ifs
+#
+ec =X=
+uns posix
+vpospar se a= a; call b $*; se ifs=':= '; call b $*; uns ifs
+vpospar se a= a; call b $*; se ifs=':= ' posix; call b $*; uns ifs posix
+__EOT
+	#}}}
+	cke0 ifs-posix-split 0 ./tifs-posix-split '3899378142 518'
+
 	t_epilog "${@}"
 } #}}}
 
@@ -6271,6 +6332,69 @@ ec 100
 __EOT
 #	#}}}
 	cke0 ifs-split-xxx 0 ./tifs-split-xxx '2247120891 50484'
+
+	# identical to t_call_xcall:ifs-posix-split, but *with* pospar (=X= part differs) {{{
+# proof ({{{
+#a() {
+#	b() { echo "b=$# 1<$1> 2<$2> 3<$3> 4<$4> 5<$5>"; }
+#	set -- "$@"
+#	echo $#
+#	echo ,$1,$2,$3,$4,$5,; b ,$1,$2,$3,$4,$5,
+#}
+#set -- a b: c
+#echo =1=
+#a $*
+#echo =2=
+#IFS='=: '; a $*; unset IFS
+##
+#set -- a: b: c:
+#echo =3=
+#a $*
+#echo =4=
+#IFS='=: '; a $*; unset IFS
+#}}}
+	<< '__EOT' ${MAILX} ${ARGS} > ./tifs-posix-split 2>${E0}
+commandali b call b
+define b {
+	ec "b=$# 1<$1> 2<$2> 3<$3> 4<$4> 5<$5>"
+}
+define a {
+	vpospar se "$@"
+	ec $#
+	ec ,$1,$2,$3,$4,$5,; b ,$1,$2,$3,$4,$5,
+}
+vpospar se a b: c
+ec =1=
+call a $*
+ec =2=
+se ifs='=: '; call a $*; uns ifs
+#
+vpospar se a: b: c:
+ec =3=
+call a $*
+ec =4=
+se ifs'=: '; call a $*; uns ifs
+#
+se posix
+vpospar se a b: c
+ec =5=
+call a $*
+ec =6=
+se ifs='=: '; call a $*; uns ifs
+#
+vpospar se a: b: c:
+ec =7=
+call a $*
+ec =8=
+se ifs'=: '; call a $*; uns ifs
+#
+ec =X=
+uns posix
+vpospar se a= a; ec $#,$1,$2,$3,; se ifs=':= '; vpospar se $*; ec $#,$1,$2,$3,; uns ifs
+vpospar se a= a; ec $#,$1,$2,$3,; se ifs=':= ' posix; vpospar se $*; ec $#,$1,$2,$3,; uns ifs posix
+__EOT
+	#}}}
+	cke0 ifs-posix-split 0 ./tifs-posix-split '1453381618 446'
 
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}

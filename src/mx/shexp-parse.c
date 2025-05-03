@@ -110,8 +110,8 @@ struct a_shexp_parse_ctx{
 	BITENUM(u32,n_shexp_state) spc_res_state; /* As returned to user */
 	ZIPENUM(u8,mx_scope) spc_scope;
 	char spc_quotec;
-	u8 spc__pad[1];
 	boole spc_have_ifs_ws;
+	boole spc_posix_mode;
 	uz spc_il;
 	char const *spc_ib;
 	char const *spc_ib_save;
@@ -1060,10 +1060,10 @@ jebracenoc:
 				goto jleave;
 			}
 
-			/* In order to be compatible with bash, NetBSD sh and NetBSD ksh, at minimum, we need to
-			 * deviate from POSIX standardized behavior, and field split the quoted variant instead!
-			 * This applies to $@ as well as $*, and their result-set variants */
-			if(*spcp->spc_ifs != '\0' && !su_cs_is_space(*spcp->spc_ifs)){
+			/* If $IFS is non-empty, but does not start with (IFS) whitespace, bash and NetBSD k?sh
+			 * at minimum follow ksh88 and field split the quoted variant.
+			 * POSIX however standardized ksh93 behavior.  Go with No 1 but for *posix* */
+			if(!spcp->spc_posix_mode && *spcp->spc_ifs != '\0' && !su_cs_is_space(*spcp->spc_ifs)){
 				cp = n_var_vlook((!rset ? n_star : "^*"), TRU1);
 				goto jfs_split;
 			}
@@ -1141,8 +1141,8 @@ jebracenoc:
 			switch(vp[i != 1]){
 			case '?': vp = n_qm; state &= ~a_SHEXP_PARSE_FS_SPLIT; break;
 			case '!': vp = n_em; state &= ~a_SHEXP_PARSE_FS_SPLIT; break;
-			case '*': ASSERT(!(state & a_SHEXP_PARSE_FS_SPLIT)); vp = n_star; break;
-			case '@': ASSERT(!(state & a_SHEXP_PARSE_FS_SPLIT)); vp = n_at; break;
+			case '*': vp = n_star; break;
+			case '@': vp = n_at; break;
 			case '#': vp = n_ns; state &= ~a_SHEXP_PARSE_FS_SPLIT; break;
 			default: goto Jvar_dup_buf;
 			}
@@ -1424,6 +1424,7 @@ n_shexp_parse_token(BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
 		spc.spc_ifs_ws = spc.spc_ifs = " ";
 		spc.spc_have_ifs_ws = TRU1;
 	}
+	spc.spc_posix_mode = ok_blook(posix);
 
 	state = a_SHEXP_PARSE_NONE;
 	spc.spc_ib = input->s;
