@@ -1,2 +1,4 @@
-reproducible_build: No recipients specified for `Lreply'
-reproducible_build: No recipients specified for `Lreply'
+reproducible_build: No list recipients remain for `Lreply'
+reproducible_build: (Missing List-Post: header?  List (domain wildcard) not `mlist'ed?)
+reproducible_build: No list recipients remain for `Lreply'
+reproducible_build: (Missing List-Post: header?  List (domain wildcard) not `mlist'ed?)
