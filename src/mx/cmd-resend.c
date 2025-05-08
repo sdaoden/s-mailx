@@ -704,7 +704,9 @@ j_lt_redo:
       /* For `Lreply' only, fail immediately with DESTADDRREQ if there are no
        * recipients at all! */
       if(head.h_to == NIL && head.h_cc == NIL){
-         n_err(_("No recipients specified for `Lreply'\n"));
+         n_err(_("No list recipients remain for `Lreply'\n"
+            "(Missing List-Post: header?  "
+            "List (domain wildcard) not `mlist'ed?)\n"));
          if(msgvec[1] == 0){
             n_pstate_err_no = su_ERR_DESTADDRREQ;
             msgvec = NIL;
