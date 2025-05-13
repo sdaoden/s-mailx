@@ -1,6 +1,14 @@
 #!/bin/sh -
 #@ Please see INSTALL and make.rc instead.
 #@ TODO - Modularize
+#@ TODO - "option_update 2": this actually does not really work: since link_check() etc take an argument that
+#@ TODO   injects mx_HAVE_xy etc into the generated header, simply unsetting an OPT_xy at that stage is useless,
+#@ TODO   as that is what the sources look out for, the OPT_xy are not used at all.
+#@ TODO   For now it is ok since the tests do things like 'feat_yes OPT_mine && [ -n "what-i-need" ]'; ideally,
+#@ TODO   though, all the sources would look for mx_HAVE_OPT_ or mx_OPT_ instead of the mx_HAVE_ we now have,
+#@ TODO   those mx_HAVE_ then should vanish.  The benefit would be two-fold: obvious in the sources, and in here
+#@ TODO   "option_update 2" would really work, later on the final settings could then be dumped; and the conditions
+#@ TODO   could use "feat_yes OPT_mine && feat_yes OPT_other".  Caveat: some things have no _OPT_, etc etc
 
 LC_ALL=C
 export LC_ALL
@@ -3612,7 +3620,7 @@ else
 	feat_is_disabled KEY_BINDINGS
 fi
 
-if feat_yes TERMCAP; then # {{{
+if feat_yes TERMCAP && [ -n "${have_mle}" ]; then # {{{
 	ADDINC=
 	__termcaplib() {
 		link_check termcap "termcap(5) (via ${4}${ADDINC})" \
