@@ -350,7 +350,7 @@ struct a_tty_global{
 	u8 tg__pad0[4];
 # else
 	u32 tg_bind_cnt; /* Overall number of bindings */
-	char tg_bind_be_bd_pe[8]; /* mx_TERMCAP_QUERY_PE resolved (should be \E[201~) */
+	char tg_bind_be_bd_pe[mx__TERMCAP_QUERY_PE_RESOLVED_MAX]; /* mx_TERMCAP_QUERY_PE resolved */
 #  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
 	char tg_bind_shcut_cancel[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
 	char tg_bind_shcut_prompt_char[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
@@ -668,10 +668,11 @@ static u32 a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp);
 # endif
 
 # ifdef mx_HAVE_KEY_BINDINGS
+/* (See a_tty_fun() for len arg) */
 static u32 a_tty_be_bd_ps(struct a_tty_line *tlp, uz *len);
 # endif
 
-/* Handle a function */
+/* Handle a function; *len indicates take-over mode of that many bytes at &tlp->tl_defc.s[tlp->tl_defc.l] */
 static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len);
 
 /* Readline core */
@@ -2986,10 +2987,18 @@ jleave:
 # ifdef mx_HAVE_KEY_BINDINGS
 static u32
 a_tty_be_bd_ps(struct a_tty_line *tlp, uz *len){ /* {{{ */
+	/* Bitter: we are compatible to only (non-EBCDIC) POSIX (XXX), and all character sets i know seem to be
+	 * designed so sensitively that searching for the PE sequence should not interfere with multibyte state.
+	 * Therefore the initial variant simply reads bytes into the "take-over buffer" until PE: it will be
+	 * converted via mbrtowc() when taken over (anyway).
+	 * Later i had doubts, and wanted to be "really correct"; i added the much more expensive wchar variant.
+	 * (In any case TERMIOS_CMD_RAW input with minimum of 1 byte available is active..) */
 	u32 rv;
+	NYD2_IN;
+
+if(0){	/* The byte variant {{{ */
 	char *bp;
 	uz pelen, size, i, x;
-	NYD2_IN;
 
 	pelen = su_cs_len(a_tty.tg_bind_be_bd_pe);
 	UNINIT(bp, NIL);
@@ -3010,7 +3019,7 @@ a_tty_be_bd_ps(struct a_tty_line *tlp, uz *len){ /* {{{ */
 		if(r <= 0){
 			if(r == -1 && su_err_by_errno() == su_ERR_INTR)
 				continue;
-			/* Treat premature end as a hard error (XXX really?) */
+			/* Treat premature end as a hard error */
 			rv = a_TTY_FUN_STATUS_END;
 			goto jleave;
 		}
@@ -3070,8 +3079,159 @@ jdone:
 
 	*len = tlp->tl_defc.l = i;
 	rv = a_TTY_FUN_STATUS_RESTART;
+jleave:;
 
-jleave:
+} /* }}}*/
+else{	/* The wchar_t variant {{{ */
+	char b[mx__TERMCAP_QUERY_PE_RESOLVED_MAX + MB_LEN_MAX];
+	mbstate_t ps;
+	wchar_t *wp, wc, *xwp;
+	uz pelen, peread, woff, wsize, wlen;
+	void *lofi_snap;
+
+	rv = a_TTY_FUN_STATUS_RESTART;
+	lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
+
+	pelen = su_cs_len(a_tty.tg_bind_be_bd_pe);
+
+	STRUCT_ZERO(mbstate_t, &ps);
+	UNINIT(wp, NIL);
+	wlen = wsize = woff = peread = 0;
+	for(;;){
+		char *xb;
+		sz bmax, brd, bwc;
+
+		bmax = pelen - peread;
+		ASSERT(bmax > 0);
+jread:
+		brd = read(STDIN_FILENO, b, bmax);
+		if(brd <= 0){
+			if(brd == -1 && su_err_by_errno() == su_ERR_INTR)
+				goto jread;
+			/* Treat premature end as a hard error */
+			rv = a_TTY_FUN_STATUS_END;
+			goto jwleave;
+		}
+		xb = b;
+
+jtowc:
+		bwc = S(sz,mbrtowc(&wc, xb, brd, &ps));
+		if(bwc < 0){
+			/* Need more buffer */
+			if(bwc == -2){
+				ASSERT(n_mb_cur_max - brd > 0);
+				/* Unfortunately not, even aside that GNU C gives MB_CUR_MAX==6 for UTF-8 :(
+				 * bmax = (n_mb_cur_max - brd) + (pelen - peread);
+				 * ASSERT(bmax < sizeof(b));*/
+				bmax = 1 + pelen;
+				goto jread;
+			}else{
+				/* Conversion was invalid.  We will fail later, but we need to consume anything until
+				 * PE is seen; since conversion failure should not happen during PE sequence, simply
+				 * skip that failed byte, and reset peread thus, too */
+				STRUCT_ZERO(mbstate_t, &ps);
+				rv = a_TTY_FUN_STATUS_END;
+				peread = 0;
+				if(--brd == 0)
+					continue;
+				++xb;
+				goto jtowc;
+			}
+		}
+
+		/* We store a wc */
+		if(wsize <= wlen + 1 +1){
+			wsize += su_PAGE_SIZE / 8;
+			xwp = su_LOFI_TALLOC(wchar_t, wsize);
+			if(wlen > 0)
+				su_mem_copy(xwp, wp, wlen * sizeof(wchar_t));
+			wp = xwp;
+		}
+		wp[wlen] = wc;
+
+		if(wc != a_tty.tg_bind_be_bd_pe[peread]){
+			for(; woff < wlen; ++woff){
+				wc = wp[woff];
+				if(!iswprint(wc) && wc != '\n')
+					wp[woff] = L' ';
+			}
+			++wlen;
+			peread = 0;
+		}else{
+			if(peread == 0)
+				woff = wlen;
+			++wlen;
+			if(a_tty.tg_bind_be_bd_pe[++peread] == '\0'){
+				ASSERT(peread == pelen);
+				ASSERT(brd == bwc);
+				break;
+			}
+		}
+
+		/* More bytes to consume? */
+		if(bwc != brd){
+			brd -= bwc;
+			xb += bwc;
+			goto jtowc;
+		}
+	}
+
+	if(rv != a_TTY_FUN_STATUS_RESTART)
+		goto jwleave;
+
+	wlen -= pelen;
+	wp[wlen] = '\0';
+
+	/* MULTILINE Finally SPACEify \n */
+	for(xwp = wp; *xwp != L'\0'; ++xwp){
+		if(*xwp == '\\'){
+			if(xwp[1] == L'\0'){
+				++xwp;
+				break;
+			}
+			if(xwp[1] != L'\n')
+				xwp += (xwp[1] == L'\\'); /* escapes itself in this respect */
+			/* massage leading follow-line WS */
+			else{
+				wchar_t *xwp2, *xwp3;
+
+				for(xwp2 = &xwp[2]; iswspace((wc = *xwp2)) && wc != '\n'; ++xwp2){
+				}
+				for(xwp3 = xwp; *xwp2 != L'\0';) /* TODO su_[wu]s_pcopy(xwp, xwp2); */
+					*xwp3++ = *xwp2++;
+				*xwp3 = L'\0';
+			}
+		}else if(*xwp == L'\n'){
+			if(xwp[1] == L'\0'){
+				*xwp = L'\0';
+				break;
+			}else
+				*xwp = L';';
+		}
+	}
+	wlen = P2UZ(xwp - wp);
+
+	tlp->tl_defc.s = su_AUTO_ALLOC((wlen +1) * n_mb_cur_max);
+	STRUCT_ZERO(mbstate_t, &ps);
+	for(woff = 0; wlen-- != 0;){
+		int i;
+
+		i = wcrtomb(&tlp->tl_defc.s[woff], *wp++, &ps);
+		if(i <= 0){
+			rv = a_TTY_FUN_STATUS_END;
+			goto jwleave;
+		}
+		woff += i;
+	}
+	tlp->tl_defc.s[woff] = '\0';
+	tlp->tl_defc.l = woff;
+
+	*len = S(u32,woff);
+	ASSERT(rv == a_TTY_FUN_STATUS_RESTART);
+jwleave:
+	su_mem_bag_lofi_snap_gut(su_MEM_BAG_SELF, lofi_snap);
+} /* }}} */
+
 	NYD2_OU;
 	return rv;
 } /* }}} */

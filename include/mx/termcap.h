@@ -118,6 +118,7 @@ enum mx_termcap_query{
 # ifdef mx_HAVE_KEY_BINDINGS /* for now */
 	mx_TERMCAP_QUERY_PS, /* PS/-, STRING | begin bracketed paste */
 	mx_TERMCAP_QUERY_PE, /* PE/-, STRING | end bracketed paste */
+# define mx__TERMCAP_QUERY_PE_RESOLVED_MAX 8 /* (should be \E[201~) */
 # endif
 
 # ifdef mx_HAVE_COLOUR
