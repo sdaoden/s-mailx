@@ -429,8 +429,9 @@ static void a_amv_lopts_unroll(struct a_amv_var **avpp);
 static char *a_amv_var_copy(char const *str);
 static void a_amv_var_free(char *cp);
 
-/* _VIP_SET_POST and _VIP_CLEAR do not fail (or propagate errors), _VIP_SET_PRE may and should cause abortion */
-static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val);
+/* _VIP_SET_POST and _VIP_CLEAR do not fail (or propagate errors), _VIP_SET_PRE may and should cause abortion.
+ * only_import is set if an environment variable is imported, instead of actively set */
+static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val, boole only_import);
 static char const *a_amv_var__vips_addr(enum okeys okey, char const **val);
 
 /* _VF_NUM / _VF_POSNUM */
@@ -1131,7 +1132,7 @@ a_amv_var_free(char *cp){
 }
 
 static boole
-a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val){
+a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val, boole only_import){
 	struct n_string s_b, *s = &s_b;
 	char *cp;
 	char const *emsg, *ccp;
@@ -1248,9 +1249,11 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 		case ok_v_umask:
 			if(**val != '\0'){
 				u64 uib;
+				BITENUM(u32,su_idec_state) is;
 
-				su_idec_u64_cp(&uib, *val, 0, NIL);
-				if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
+				is = su_idec_u64_cp(&uib, *val, 0, NIL);
+				if((is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
+						(uib & ~0777u)){ /* (is valid _VF_POSNUM) */
 					emsg = N_("Invalid *umask* setting: %s\n");
 					goto jerr;
 				}
@@ -1326,7 +1329,8 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 		case ok_v_LANG:
 		case ok_v_LC_ALL:
 		case ok_v_LC_CTYPE:
-			mx_locale_init();
+			if(!only_import)
+				mx_locale_init();
 			break;
 #endif
 		case ok_b_memdebug:
@@ -1782,6 +1786,7 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 	u32 f;
 	struct a_amv_var *avp;
 	struct a_amv_var_map const *avmp;
+	boole only_import;
 	NYD2_IN;
 
 	ASSERT(!(avlf & a_AMV_VLOOK_LOCAL_ONLY) || (avlf & a_AMV_VLOOK_LOCAL));
@@ -1795,6 +1800,7 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 	}
 #endif
 
+	only_import = FAL0;
 	avcp->avc_prime = a_AMV_HASH2PRIME(avcp->avc_hash);
 	avmp = avcp->avc_map;
 
@@ -1883,7 +1889,7 @@ jskip_local:
 		}
 
 		/* The virtual variables */
-		if(UNLIKELY((f & a_AMV_VF_VIRT) != 0)){
+		if(UNLIKELY(f & a_AMV_VF_VIRT)){
 			/* TODO Use at least the su/prime.c approach to speed this up! */
 			for(i = 0; i < a_AMV_VAR_VIRTS_CNT; ++i)
 				if(a_amv_var_virts[i].avv_okey == avcp->avc_okey){
@@ -1894,7 +1900,7 @@ jskip_local:
 		}
 
 		/* Does it have an import-from-environment flag? */
-		if(UNLIKELY((f & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
+		if(UNLIKELY(f & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))){
 			if(LIKELY((cp = getenv(avcp->avc_name)) != NIL)){
 				/* May be better not to use that one, though? */
 				/* TODO Outsource tests to a _shared_ test function! _var_test(AVMP,[FLAG,]VALUE ..) */
@@ -1907,20 +1913,21 @@ jskip_local:
 					n_err(_("Environment variable must not be empty: %s\n"), avcp->avc_name);
 					if(!isbltin)
 						goto jerr;
-				}else if(LIKELY(*cp != '\0')){
-					if(UNLIKELY((f & a_AMV_VF_NUM) && !a_amv_var_check_num(cp, FAL0))){
-						n_err(_("Environment value no integer or out of range: %s\n"),
-							avcp->avc_name);
-						goto jerr;
-					}
-					if(UNLIKELY((f & a_AMV_VF_POSNUM) && !a_amv_var_check_num(cp, TRU1))){
-						n_err(_("Environment value no integer, negative or out of range: %s\n"),
-							avcp->avc_name);
-						goto jerr;
+				}else{
+					only_import = TRU1;
+					if(UNLIKELY(*cp == '\0'))
+						goto jnewval;
+					if(UNLIKELY(f & (a_AMV_VF_NUM | a_AMV_VF_POSNUM))){
+						isempty = ((f & a_AMV_VF_POSNUM) != 0);
+						if(!a_amv_var_check_num(cp, isempty)){
+							n_err(_("Environment value no integer%s or out of range: %s\n"),
+								/* I18N: whether number is negative */
+								(isempty ? _(", negative") : su_empty), avcp->avc_name);
+							goto jerr;
+						}
 					}
 					goto jnewval;
-				}else
-					goto jnewval;
+				}
 			}
 		}
 
@@ -2017,7 +2024,7 @@ jnewval:
 	ASSERT(!(avlf & a_AMV_VLOOK_I3VAL_NONEW));
 
 	/* E.g., $TMPDIR + non-existent: need to be able to catch that and redirect to a possible default value */
-	if((f & a_AMV_VF_VIP) && !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &cp)){
+	if((f & a_AMV_VF_VIP) && !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &cp, only_import)){
 #ifdef mx_HAVE_SETENV
 		if(f & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
 			unsetenv(avcp->avc_name); /* TODO should do _var__clearenv() instead! putenv(3) only!! */
@@ -2048,7 +2055,7 @@ jnewval:
 		if(f & a_AMV_VF_ENV)
 			a_amv_var__putenv(avcp, avp);
 		if(f & a_AMV_VF_VIP)
-			a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &cp);
+			a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &cp, only_import);
 		goto jleave;
 	}
 }
@@ -2379,7 +2386,8 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM(u32,a_a
 		}
 
 		/* Any more complicated inter-dependency? */
-		if(UNLIKELY((f & a_AMV_VF_VIP) != 0 && !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &value))){
+		if(UNLIKELY((f & a_AMV_VF_VIP) &&
+				!a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &value, FAL0))){
 			value = N_("Assignment of variable aborted: %s\n");
 jeavmp:
 			n_err(V_(value), avcp->avc_name);
@@ -2527,7 +2535,7 @@ joval_and_go:
 			rv = a_amv_var__putenv(avcp, avp);
 
 		if(f & a_AMV_VF_VIP)
-			a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &value);
+			a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &value, FAL0);
 
 		f &= ~a_AMV_VF_EXT__FROZEN_MASK;
 		if(!(n_psonce & n_PSO_STARTED_GETOPT) && (n_poption & n_PO_S_FLAG_TEMPORARY) != 0)
@@ -2603,7 +2611,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, BITENUM(u32,a_amv_var_setclr_fla
 			}
 		}
 
-		if(UNLIKELY((f & a_AMV_VF_VIP) != 0 && !a_amv_var_check_vips(a_AMV_VIP_CLEAR, avcp->avc_okey, NIL))){
+		if(UNLIKELY((f & a_AMV_VF_VIP) && !a_amv_var_check_vips(a_AMV_VIP_CLEAR, avcp->avc_okey, NIL, FAL0))){
 			n_err(_("Clearance of variable aborted: %s\n"), avcp->avc_name);
 			goto jleave;
 		}
