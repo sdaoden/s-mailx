@@ -6209,10 +6209,18 @@ ells; quoting literals that equal syntax elements, especially
 and unary operators, avoids syntax ambiguities.
 Syntax errors cause blocks to be skipped (as no-ops) until
 .Ic endif .
+.
+.Pp
 .Sy Remarks:
-in a whiteout (ignored block) the modifier
+In a whiteout (skipped block) the modifier
 .Cm eval
 does not work, even for the conditional command that toggles that state.
+As documented in
+.Sx COMMANDS
+.Ic \&\&if
+will act on a fully expanded command line:
+all tokens are evaluated,
+even if their position in an AND-OR list will not be reached.
 .
 .Bd -literal -offset indent
 i[f] expression

@@ -4510,9 +4510,11 @@ define x {
 	if $* = '10 + 10'; ec 8; el; ec 8e; en
 }
 call x 10 + 10
+\se i=1
+\if 8 -eq $((++i)) || 2 -eq $((i++)) || 9 -eq $((++i));\ec y=i=4=$i;\el;\ec n=i!=4=$i;\en
 __EOT
 	#}}}
-	cke0 subst_flag_output 0 ./tsubst_flag_output '3336706933 16'
+	cke0 subst_flag_output 0 ./tsubst_flag_output '1639301785 24'
 
 	t_epilog "${@}"
 } #}}}
