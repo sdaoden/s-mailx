@@ -349,7 +349,9 @@ a_main_rcv_mode(struct a_main_ctx *mcp){ /* {{{ */
 
 	i = setfile(mcp->mc_folder, i);
 	if(i < 0){
-		n_exit_status = su_EX_ERR; /* error already reported */
+		/* error already reported */
+		i = su_err();
+		n_exit_status = (i == su_ERR_ACCES || i == su_ERR_PERM) ? su_EX_NOPERM : su_EX_ERR;
 		goto jquit;
 	}
 	mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_OPEN);

@@ -9414,12 +9414,12 @@ t_eml_and_stdin_pipe() { #{{{
 	${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf eml://- >./t10 2>${E0}
 	cke0 10 0 ./t10 '269911796 177'
 
-	#
+	# EX_NOPERM
 	<./t.mbox ${MAILX} ${ARGS} -f - >${E0} 2>${EX}
-	ck0 11 1 ${E0} '2465941229 88'
+	ck0 11 77 ${E0} '2465941229 88'
 
 	<./t.eml ${MAILX} ${ARGS} -f eml://- >${E0} 2>${EX}
-	ck0 12 1 ${E0} '3267665338 77'
+	ck0 12 77 ${E0} '3267665338 77'
 
 	# The big nothing
 	echo A | ${MAILX} ${ARGS} -Y 'p;x' -Rf eml://- >./t13 2>${E0}

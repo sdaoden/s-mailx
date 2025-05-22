@@ -556,7 +556,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    uz offset;
    char const *who, *orig_name;
    enum protocol proto;
-   int rv, omsgCount = 0;
+   int rv, err, omsgCount;
    FILE *ibuf, *lckfp;
    u8 flags;
    NYD_IN;
@@ -564,6 +564,9 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    n_pstate &= ~n_PS_SETFILE_OPENED;
    flags = a_NONE;
    ibuf = lckfp = NIL;
+   rv = -1;
+   err = su_ERR_NONE;
+   omsgCount = 0;
 
    if(n_poption & n_PO_R_FLAG)
       fm |= FEDIT_RDONLY;
@@ -606,8 +609,10 @@ jlogname:
             fm |= FEDIT_SYSBOX;
       }
 
-      if((name = mx_fexpand(name, fexpm)) == NIL)
-         goto jem1;
+      if((name = mx_fexpand(name, fexpm)) == NIL){
+         ASSERT(rv == -1);
+         goto jleave;
+      }
    }
 
    /* For at least substdate() users TODO -> eventloop tick */
@@ -619,7 +624,7 @@ jlogname:
       if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){
          n_err(_("Sorry, for now eml:// files only work read-only: %s\n"),
             orig_name);
-         goto jem1;
+         goto jeperm;
       }
       /* FALLTHRU */
    case PROTO_FILE:
@@ -627,7 +632,7 @@ jlogname:
          if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){
             n_err(_("Standard input \"-\" only works for -f "
                "command line option, read-only\n"));
-            goto jem1;
+            goto jeperm;
          }
          flags = a_STDIN;
       }else if((n_poption & n_PO_BATCH_FLAG) &&
@@ -677,21 +682,23 @@ jlogname:
 #endif
    default:
       n_err(_("Cannot handle protocol: %s\n"), orig_name);
-      goto jem1;
+      err = su_ERR_PROTONOSUPPORT;
+      goto jeno;
    }
 
    if(flags & a_STDIN){
       ibuf = mx_fs_fd_open(fileno(n_stdin), (mx_FS_O_RDONLY |
             mx_FS_O_NOCLOEXEC | mx_FS_O_NOCLOSEFD));
       if(ibuf == NIL){
-         n_perr(n_hy, 0);
-         goto jem1;
+         err = su_err();
+         n_perr(n_hy, err);
+         goto jeno;
       }
    }else if((ibuf = mx_fs_open_any(savecat("file://", name), mx_FS_O_RDONLY,
             NIL)) == NIL){
-      int e = su_err();
+      err = su_err();
 
-      if ((fm & FEDIT_SYSBOX) && e == su_ERR_NOENT) {
+      if ((fm & FEDIT_SYSBOX) && err == su_ERR_NOENT) {
          if (!(fm & FEDIT_ACCOUNT) && su_cs_cmp(who, ok_vlook(LOGNAME)) &&
                getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
@@ -711,38 +718,38 @@ jlogname:
 
       if (ok_blook(emptystart)) {
          if (!(n_poption & n_PO_QUICKRUN_MASK) && !ok_blook(bsdcompat))
-            n_perr(name, e);
-         /* We must avoid returning -1 and causing program exit */
+            n_perr(name, err);
+         /* We must avoid returning -1 and cause program exit */
          rv = 1;
          goto jleave;
       }
-      n_perr(name, e);
-      goto jem1;
+      n_perr(name, err);
+      goto jeno;
    }
 
    if(!su_pathinfo_fstat(&pi, fileno(ibuf))){
       if(fm & FEDIT_NEWMAIL)
          goto jleave;
-      n_perr(_("fstat"), su_err());
-      goto jem1;
+      err = su_err();
+      n_perr(_("fstat"), err);
+      goto jeno;
    }
 
    if((flags & a_SPECIALS_MASK) || su_pathinfo_is_reg(&pi)){
       /* EMPTY */
    }else{
-      int e;
-
       if(fm & FEDIT_NEWMAIL)
          goto jleave;
 
-      e = su_pathinfo_is_dir(&pi) ? su_ERR_ISDIR : su_ERR_INVAL;
-      su_err_set(e);
-      n_perr(name, e);
-      goto jem1;
+      err = su_pathinfo_is_dir(&pi) ? su_ERR_ISDIR : su_ERR_INVAL;
+      n_perr(name, err);
+      goto jeno;
    }
 
-   if (shudclob && !(fm & FEDIT_NEWMAIL) && !quit(FAL0))
+   if(shudclob && !(fm & FEDIT_NEWMAIL) && !quit(FAL0)){
+      err = su_ERR_NOTOBACCO;
       goto jem2;
+   }
 
    hold_sigs();
 
@@ -766,19 +773,14 @@ jlogname:
       name = mailname;
       mx_fs_close(ibuf);
 
-      if((ibuf = mx_fs_open_any(name, mx_FS_O_RDONLY, NIL)) == NIL){
-         n_perr(name, 0);
-         rele_sigs();
-         goto jem2;
-      }
-      if(!su_pathinfo_fstat(&pi, fileno(ibuf))){
-         n_perr(name, 0);
-         rele_sigs();
-         goto jem2;
-      }
-      if(!su_pathinfo_is_reg(&pi)){
-         su_err_set(su_ERR_INVAL);
-         n_perr(name, su_ERR_INVAL);
+      err = su_ERR_NONE;
+      if((ibuf = mx_fs_open_any(name, mx_FS_O_RDONLY, NIL)) == NIL ||
+            !su_pathinfo_fstat(&pi, fileno(ibuf)))
+         err = su_err();
+      else if(!su_pathinfo_is_reg(&pi))
+         err = su_ERR_INVAL;
+      if(err != su_ERR_NONE){
+         n_perr(name, err);
          rele_sigs();
          goto jem2;
       }
@@ -829,16 +831,21 @@ jlogname:
          mx_FILE_LOCK_MODE_LOG)))
       lckfp = R(FILE*,-1);
 
-   if (lckfp == NULL) {
-      if (!(fm & FEDIT_NEWMAIL)) {
-         char const * const emsg = (n_pstate & n_PS_EDIT)
+   if(lckfp == NIL){
+      if(!(fm & FEDIT_NEWMAIL)){
+         char const *emsg;
+
+         err = su_err();
+         emsg = ((n_pstate & n_PS_EDIT)
                ? N_("Unable to lock mailbox, aborting operation")
-               : N_("Unable to (dot) lock mailbox, aborting operation");
-         n_perr(V_(emsg), 0);
+               : N_("Unable to (dot) lock mailbox, aborting operation"));
+         n_perr(V_(emsg), err);
       }
+
       rele_sigs();
-      if (!(fm & FEDIT_NEWMAIL))
-         goto jem1;
+
+      if(!(fm & FEDIT_NEWMAIL))
+         goto jeno;
       goto jleave;
    }
 
@@ -903,12 +910,16 @@ jleave:
    NYD_OU;
    return rv;
 
+jeperm:
+   err = su_ERR_PERM;
+   goto jeno;
 jem2:
    if(mb.mb_digmsg != NIL)
       mx_dig_msg_on_mailbox_close(&mb);
    mb.mb_type = MB_VOID;
-jem1:
-   su_err_set(su_ERR_NOTOBACCO);
+   /* FALLTHRU */
+jeno:
+   su_err_set(err);
    rv = -1;
    goto jleave;
 }
