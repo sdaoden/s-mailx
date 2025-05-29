@@ -891,15 +891,36 @@ dequeue1(struct mailbox *mp)
          n_err(_("Unique identifiers for \"%s\" are out of date. "
             "Cannot commit IMAP commands.\n"), mp->mb_imap_mailbox);
 jsave:
-         n_err(_("Saving IMAP commands to *DEAD*\n"));
-         savedeadletter(fp, 0);
-         ftruncate(fileno(fp), 0);
-         mx_fs_close(fp);
          if(uvfp != NIL)
             mx_fs_close(uvfp);
+
          rv = STOP;
+
+         uvname = UNCONST(char*,encname(mp, "failed-cmds", FAL0, NIL));
+         if(uvname == NIL)
+            uvname = UNCONST(char*,n_getdeadletter());
+
+         if((uvfp = mx_fs_open(uvname, mx_FS_O_WRONLY | mx_FS_O_CREATE |
+               mx_FS_O_TRUNC)) != NIL && mx_file_lock(fileno(uvfp),
+                  (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY))){
+            int c;
+
+            n_err(_("Saving failed IMAP commands to %s.\n"), uvname);
+            while((c = getc(fp)) != EOF)
+               if(putc(c, uvfp) == EOF)
+                  goto jee;
+         }else
+jee:
+            n_err(_("Cannot save failed IMAP commands to %s.\n"), uvname);
+
+         if(uvfp != NIL)
+            mx_fs_close(uvfp);
+
+         ftruncate(fileno(fp), 0);
+         mx_fs_close(fp);
          goto jleave;
       }
+
       mx_fs_close(uvfp);
       printf("Committing IMAP commands for \"%s\"\n", mp->mb_imap_mailbox);
       imap_dequeue(mp, fp);
