@@ -1412,7 +1412,9 @@ enum su_state_gut_flags{
 	/*! Normal exit, quick (see \r{su_STATE_GUT_ACT_MASK}).
 	 * Does less, and a hint to the handlers to follow suit. */
 	su_STATE_GUT_ACT_QUICK,
-	su_STATE_GUT_ACT_CARE, /*!< Abnormal exit (see \r{su_STATE_GUT_ACT_MASK}). */
+	/*! Abnormal exit (see \r{su_STATE_GUT_ACT_MASK}).
+	  * This may include being called from within a signal handler. */
+	su_STATE_GUT_ACT_CARE,
 #if defined su_HAVE_STATE_GUT_FORK || defined DOXYGEN
 	/*! State is destroyed after a child process has been spawned / forked / cloned, from within the child process.
 	 * \remarks{This is problematic especially in true \r{su_HAVE_MT} aka threaded \r{su_HAVE_SMP} conditions.

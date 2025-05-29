@@ -78,6 +78,7 @@ EXPORT int c_sleep(void *v);
 
 /* */
 EXPORT void n_raise(int signo);
+EXPORT void n_raise_while_blocked(int signo);
 
 /* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
 EXPORT n_sighdl_t safe_signal(int signum, n_sighdl_t handler);

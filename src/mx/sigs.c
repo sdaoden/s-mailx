@@ -183,6 +183,27 @@ n_raise(int signo){
 	NYD2_OU;
 }
 
+void
+n_raise_while_blocked(int signo){
+	sigset_t ssn, sso;
+	n_sighdl_t sho;
+	NYD2_IN;
+
+	sho = safe_signal(signo, SIG_DFL);
+
+	sigemptyset(&ssn);
+	sigaddset(&ssn, signo);
+	sigprocmask(SIG_UNBLOCK, &ssn, &sso);
+
+	n_raise(signo);
+
+	sigprocmask(SIG_SETMASK, &sso, NIL);
+
+	safe_signal(signo, sho);
+
+	NYD2_OU;
+}
+
 n_sighdl_t
 safe_signal(int signum, n_sighdl_t handler){
 	struct sigaction nact, oact;

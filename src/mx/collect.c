@@ -110,12 +110,14 @@ struct a_coll_quote_ctx{
 
 struct a_coll_ctx{
 	u32 cc_flags;
-	s32 ATOMIC cc_sig_int; /* Have seen one SIGINT so far (or presume we did) */
+	u8 ATOMIC cc_sig_int; /* Set by signal handler */
+	u8 cc_sig_int_last; /* (Not by that) */
+	u8 cc__pad1[2];
 	ZIPENUM(u8,mx_scope) cc_scope;
 	u8 cc_eof_cnt;
 	char cc_escape;
-	char cc_exit_cmd; /* Tested by .cc_ocembed after return */
-	u8 cc__pad[4];
+	char cc_exit_cmd; /* Tested by .cc_ocembed after return (and sig_jmp_int) */
+	u8 cc__pad2[4];
 	struct header *cc_hp;
 	s8 *cc_checkaddr_err;
 	FILE *cc_fp; /* File for saving away */
@@ -134,8 +136,8 @@ struct a_coll_ctx{
 	sigset_t cc_sig_nset;
 	n_sighdl_t cc_sig_hdl_int; /* Previous SIGINT value */
 	n_sighdl_t cc_sig_hdl_hup; /* Previous SIGHUP value */
-	sigjmp_buf cc_sig_jmp_int; /* To get back to work */
-	sigjmp_buf cc_sig_jmp_abort; /* To end collection with error */
+	sigjmp_buf cc_sig_jmp_int;
+	sigjmp_buf cc_sig_jmp_hup;
 };
 
 static struct a_coll_ctx *a_coll;
@@ -185,9 +187,9 @@ static s32 a_coll_pipe(char const *cmd);
  * The flag argument is one of the command escapes: [mMfFuU].  Return errno */
 static s32 a_coll_forward(char const *ms, int f);
 
-/* On interrupt, come here to save the partial message in ~/dead.letter.  Then jump out of the collection loop */
+/**/
 static void  a_coll_sigint(int s);
-static void a_coll_sighup(int s);
+static void a_coll_onhup(int s);
 
 /* ~[AaIi], *message-inject-**: put value, expand \[nt] if *posix* */
 static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
@@ -1029,39 +1031,16 @@ jleave:
 static void
 a_coll_sigint(int s){ /* XXX uses non-async-safe things */
 	NYD; /* Signal handler */
+	UNUSED(s);
 
-	/* the control flow is subtle, because we can be called from ~q */
-	if(a_coll->cc_ocembed != NIL)
-		s = SIGINT;
-	else if(!a_coll->cc_sig_int){
-		if(ok_blook(ignore)){
-			fputs("@\n", n_stdout);
-			fflush(n_stdout);
-			clearerr(n_stdin);
-		}else
-			a_coll->cc_sig_int = TRU1;
-
-		siglongjmp(a_coll->cc_sig_jmp_int, 1);
-	}
-
-	if(s != 0){
-		savedeadletter(a_coll->cc_fp, TRU1);
-		n_pstate_ex_no = 1;
-		n_pstate_err_no = su_ERR_INTR;
-	}
-
-	/* Aborting message, no need to fflush() .. */
-	siglongjmp(a_coll->cc_sig_jmp_abort, 1);
+	a_coll->cc_sig_int = TRU1;
+	siglongjmp(a_coll->cc_sig_jmp_int, 1);
 }
 
 static void
-a_coll_sighup(int s){
-	NYD; /* Signal handler */
+a_coll_onhup(int s){
 	UNUSED(s);
-
-	/* That makes the difference to our standard HUP handler */
-	savedeadletter(a_coll->cc_fp, TRU1);
-	exit(su_EX_ERR);
+	siglongjmp(a_coll->cc_sig_jmp_hup, 1);
 }
 
 static boole
@@ -1189,7 +1168,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 			gfield |= GCOMMA;
 
 		if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
-			if(hp->h_subject == NIL && ok_blook(asksub)/* *ask* auto warped! */)
+			if(hp->h_subject == NIL && ok_blook(asksub)/* (undocumented) POSIX *ask* auto warped! */)
 				gfield &= ~(GSUBJECT | GNL), getfields |= GSUBJECT;
 
 			if(hp->h_to == NIL)
@@ -1204,37 +1183,86 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 		}
 	}
 
-	/* Start custom signal catching from here */
+	/* Start custom signal catching from here TODO POSIX says:
+	 * TODO    When mailx is in Send Mode and standard input is not a terminal,
+	 * TODO    it shall take the standard action for all signals.
+	 * TODO    In Receive Mode, or in Send Mode when standard input is a terminal,
+	 * TODO    if a SIGINT signal is received:
+	 * TODO    ...
+	 * TODO    The mailx utility shall take the standard action for all other signals.
+	 * TODO But because certain modules *rely* on signals (maildir, IMAP, POP3, ...)
+	 * TODO our state machine and event loop (go.c) performs expensive signal work,
+	 * TODO and so we here are forced to catch and handle signals in all modes.
+	 * TODO In the future aka v15 we may be able to follow POSIX when not PSO_INTERACTIVE */
 	sigfillset(&cc.cc_sig_nset);
 	sigprocmask(SIG_BLOCK, &cc.cc_sig_nset, &cc.cc_sig_oset);
 
-	if((cc.cc_sig_hdl_int = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+	/* HUP may cause $DEAD writeout */
+	if((cc.cc_sig_hdl_hup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN){
+		safe_signal(SIGHUP, &a_coll_onhup);
+
+		if(sigsetjmp(cc.cc_sig_jmp_hup, 1)){
+			savedeadletter(a_coll->cc_fp, TRU1);
+			safe_signal(SIGHUP, cc.cc_sig_hdl_hup);
+			n_raise_while_blocked(SIGHUP);
+			/* raise should not return */
+			exit(su_EX_OSERR);
+		}
+	}
+
+	if((cc.cc_sig_hdl_int = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN){ /* {{{ */
 		safe_signal(SIGINT, &a_coll_sigint);
-	if((cc.cc_sig_hdl_hup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
-		safe_signal(SIGHUP, &a_coll_sighup);
-	if(sigsetjmp(cc.cc_sig_jmp_abort, 1))
-		goto jerr_nosig;
-	if(sigsetjmp(cc.cc_sig_jmp_int, 1))
-		goto jerr_nosig;
 
-	sigprocmask(SIG_SETMASK, &cc.cc_sig_oset, NIL);
+		if(sigsetjmp(cc.cc_sig_jmp_int, 1)){
+			boole xact;
 
-	/* Unfortunately we are still jumping around.  Install the also standard-implied SIGINT jump now */
-	if(UNLIKELY(sigsetjmp(cc.cc_sig_jmp_int, 1))){
-		/* Come here for printing the after-signal message */
-		ASSERT(cc.cc_coap == NIL);
-		ASSERT(cc.cc_coapm == NIL);
-		ASSERT(cc.cc_ocembed == NIL);
+			/* Control flow is subtle, because we can be called from ~q/~x, and more */
+			if(cc.cc_sig_int_last){
+				n_pstate_ex_no = 1;
+				n_pstate_err_no = su_ERR_INTR;
+				goto jsig_int_dead;
+			}
 
-		if(cc.cc_sig_int){
+			if(cc.cc_exit_cmd != '\0'){
+				if(cc.cc_exit_cmd == 'q')
+jsig_int_dead:
+					savedeadletter(a_coll->cc_fp, TRU1);
+				goto jerr_nosig;
+			}
+
+			xact = FAL0;
+			if(cc.cc_sig_int){
+				cc.cc_sig_int = FAL0;
+				if(cc.cc_ocembed == NIL){
+					cc.cc_sig_int_last = TRU1;
+					xact = TRU1;
+				}
+			}
+
+			sigprocmask(SIG_SETMASK, &cc.cc_sig_oset, NIL);
+
+			/* Come here for printing the after-signal message */
+			ASSERT(cc.cc_coap == NIL);
+			ASSERT(cc.cc_coapm == NIL);
+
 			/* Simply bail if we were interrupted before the preamble (-enter hook etc) was worked */
 			if(!(cc.cc_flags & a_COLL_PREAMBLE_OK))
 				goto jerr;
-			if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-				n_err(_("\n(Interrupt -- one more to kill letter)\n"));
+
+			if(xact){
+				if(ok_blook(ignore)){
+					cc.cc_sig_int_last = FAL0;
+					fputs("@\n", n_stdout);
+					fflush(n_stdout);
+					clearerr(n_stdin);
+				}else if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
+					n_err(_("\n(Interrupt -- one more to kill letter)\n"));
+			}
+			goto jintro_skip;
 		}
-		goto jintro_skip;
-	}
+	} /* }}} */
+
+	sigprocmask(SIG_SETMASK, &cc.cc_sig_oset, NIL);
 
 	/* intro {{{ */
 
@@ -1371,7 +1399,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 		char const *cmd;
 		union {int (*ptf)(void); char const *sh;} u;
 
-		mx_OBSOL_14_10_0(_("please use the much easier *on-compose-embed*, not *on-compose-splice*"));
+		mx_OBSOL_14_10_0(_("please use the easier and safer *on-compose-embed*, not *on-compose-splice*"));
 
 		/* Reset *escape* and more to their defaults. On change update manual! */
 		if(cc.cc_ifs_saved == NIL)
@@ -1444,7 +1472,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 		temporary_compose_mode_hook_call(cp, TRU1);
 		cc.cc_ocembed = NIL;
 		if(cc.cc_exit_cmd != '\0')
-			a_coll_sigint((cc.cc_exit_cmd == 'x') ? 0 : SIGINT);
+			siglongjmp(a_coll->cc_sig_jmp_int, 1);
 	}
 
 	/* Final chance to edit headers, if not already above; and *asksend* */
@@ -1620,7 +1648,7 @@ jerr_nosig:
 			cc.cc_emsg = N_("Compose mode splice hook failure\n");/* v15-compat remove SPLICE */
 		else
 			cc.cc_emsg = N_("Some addressees were classified as \"hard error\"\n");
-	}else if(!cc.cc_sig_int){
+	}else if(!cc.cc_sig_int && cc.cc_exit_cmd == '\0'){
 		*checkaddr_err = TRU1; /* TODO ugly: "sendout_error" now.. */
 		cc.cc_emsg = N_("Failed to prepare composed message\n");
 	}
@@ -1724,7 +1752,8 @@ jtick:
 			break;
 		}
 
-		a_coll->cc_sig_int = FAL0;
+		/* Reset "signal received" state upon any user input */
+		a_coll->cc_sig_int_last = a_coll->cc_sig_int = FAL0;
 
 		cp = a_coll->cc_lndata;
 		if(cnt == 0)
@@ -2186,21 +2215,21 @@ jIi_putesc:
 		/* case 'Q': <> 'F' */
 		case 'q':
 		case 'x':
-			/* Force a quit, act like an interrupt had happened */
+			/* Force a quit, act as if an interrupt had happened */
 			if(cnt != 0)
 				goto jearg;
 jqx:
 			/* If running a splice hook, assume it quits on its own now, otherwise we (no true out-of-band
 			* IPC to signal this state, XXX) have to SIGTERM it in order to stop this wild beast */
 			a_coll->cc_flags |= a_COLL_COAP_NOSIGTERM;
-			a_coll->cc_sig_int = TRU1;
+			ASSERT(a_coll->cc_sig_int == FAL0);
 			a_coll->cc_exit_cmd = S(char,c);
 			/* *on-compose-embed* must "unroll" naturally! */
 			if(a_coll->cc_ocembed != NIL){
 				mx_go_input_force_eof();
 				break;
 			}
-			a_coll_sigint((c == 'x') ? 0 : SIGINT);
+			siglongjmp(a_coll->cc_sig_jmp_int, 1);
 			/*NOTREACHED*/
 			exit(su_EX_ERR);
 			/*NOTREACHED*/

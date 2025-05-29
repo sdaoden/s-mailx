@@ -170,26 +170,26 @@ a_termios_onsig(int sig){
 	n_sighdl_t oact, myact;
 	sigset_t nset;
 	struct a_termios_env *tiosep;
-	boole jobsig, dopop;
+	boole jobsig, deadsig, dopop;
 	NYD; /* Signal handler */
 
 	if(sig == a_TERMIOS_SIGWINCH)
 		goto jsigwinch;
 
 #undef a_X
-#define a_X(N,X,Y) \
-	case SIG ## N: oact = a_termios_g.tiosg_o ## X; jobsig = Y; break;
+#define a_X(N,X,Y,D) \
+	case SIG ## N: oact = a_termios_g.tiosg_o ## X; jobsig = Y; deadsig = D; break;
 
 	switch(sig){
 	default:
-	a_X(TSTP, tstp, TRU1)
-	a_X(TTIN, ttin, TRU1)
-	a_X(TTOU, ttou, TRU1)
-	a_X(CONT, cont, TRUM1)
-	a_X(HUP, hup, FAL0)
-	a_X(INT, int, FAL0)
-	a_X(QUIT, quit, FAL0)
-	a_X(TERM, term, FAL0)
+	a_X(TSTP, tstp, TRU1, FAL0)
+	a_X(TTIN, ttin, TRU1, FAL0)
+	a_X(TTOU, ttou, TRU1, FAL0)
+	a_X(CONT, cont, TRUM1, FAL0)
+	a_X(HUP, hup, FAL0, TRU1)
+	a_X(INT, int, FAL0, TRU1)
+	a_X(QUIT, quit, FAL0, TRU1)
+	a_X(TERM, term, FAL0, TRU1)
 	}
 
 #undef a_X
@@ -248,7 +248,7 @@ a_termios_onsig(int sig){
 	}
 
 	if(jobsig || (tiosep->tiose_cmd != mx_TERMIOS_CMD_HANDS_OFF &&
-			oact != SIG_DFL && oact != SIG_IGN && oact != SIG_ERR)){
+			((oact != SIG_DFL && oact != SIG_IGN /*&& oact != SIG_ERR*/) || (oact == SIG_DFL && deadsig)))){
 jbgskip:
 		myact = safe_signal(sig, oact);
 
@@ -542,6 +542,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
 	mx_sigs_all_holdx();
 
 	if(tiosc & mx_TERMIOS_CMD_PUSH){
+		ASSERT(a_termios_g.tiosg_envp != NIL);
 		if((tiosep->tiose_prev = a_termios_g.tiosg_envp)->tiose_prev == NIL)
 			a_termios_sig_adjust(TRU1);
 		else{

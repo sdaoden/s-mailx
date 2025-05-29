@@ -206,7 +206,7 @@ static union{
 	char uf[VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) + sizeof(a_GO_MAINCTX_NAME)];
 } a_go__mainctx_b;
 
-static sigjmp_buf a_go_srbuf; /* TODO GET RID */
+static sigjmp_buf a_go_intjmp; /* TODO GET RID */
 
 struct mx_go_data_ctx *mx_go_data;
 
@@ -219,9 +219,6 @@ static void a_go_update_pstate(void);
 static boole a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp);
 
 static char const *a_go_evaluate__vput(struct str *line, char **vput, u8 scope_pp,  boole v15_compat);
-
-/* Branch here on hangup signal and simulate "exit" */
-static void a_go_hangup(int s);
 
 /* The following gets called on receipt of an interrupt */
 static void a_go_onintr(int s);
@@ -1152,15 +1149,6 @@ jleave:
 	return ccp;
 }
 
-static void
-a_go_hangup(int s){
-	NYD; /* Signal handler */
-	UNUSED(s);
-
-	su_state_gut(su_STATE_GUT_ACT_CARE);
-	exit(su_EX_ERR);
-}
-
 #ifdef mx_HAVE_IMAP
 EXPORT void mx_go_onintr_for_imap(void);
 void mx_go_onintr_for_imap(void){a_go_onintr(0);}
@@ -1169,7 +1157,7 @@ void mx_go_onintr_for_imap(void){a_go_onintr(0);}
 static void
 a_go_onintr(int s){
 	UNUSED(s);
-	siglongjmp(a_go_srbuf, 1); /* FIXME get rid */
+	siglongjmp(a_go_intjmp, 1); /* FIXME get rid */
 }
 
 static void
@@ -1592,12 +1580,6 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 
 	rv = TRU1;
 
-	if(main_call){
-		if(safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
-			safe_signal(SIGINT, &a_go_onintr);
-		if(safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
-			safe_signal(SIGHUP, &a_go_hangup);
-	}
 	a_go_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
 	safe_signal(SIGPIPE, a_go_oldpipe);
 
@@ -1606,7 +1588,12 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 	mx_sigs_all_holdx();
 	mx_sigs_all_level_get_set(TRU1, &sigholdlvl, &sigholdctx);
 
-	if(sigsetjmp(a_go_srbuf, 1) != 0){ /* FIXME get rid */
+	if(main_call){
+		if(safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
+			safe_signal(SIGINT, &a_go_onintr);
+	}
+
+	if(sigsetjmp(a_go_intjmp, 1) != 0){ /* FIXME get rid */
 		mx_sigs_all_level_get_set(FAL0, &sigholdlvl, &sigholdctx);
 
 		mx_termios_cmdx(mx_TERMIOS_CMD_RESET);
