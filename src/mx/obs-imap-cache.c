@@ -898,7 +898,7 @@ jsave:
 
          uvname = UNCONST(char*,encname(mp, "failed-cmds", FAL0, NIL));
          if(uvname == NIL)
-            uvname = UNCONST(char*,n_getdeadletter());
+            uvname = UNCONST(char*,mx_dead_name());
 
          if((uvfp = mx_fs_open(uvname, mx_FS_O_WRONLY | mx_FS_O_CREATE |
                mx_FS_O_TRUNC)) != NIL && mx_file_lock(fileno(uvfp),

@@ -1540,7 +1540,7 @@ jbail:
       n_err(_("Failed to save message in %s - message not sent\n"),
          n_shexp_quote_cp(ccp, FAL0));
       n_exit_status |= su_EX_ERR;
-      savedeadletter(fp, 1);
+      mx_dead_save(fp, TRU1);
       rv = FAL0;
    }
 
@@ -1873,7 +1873,7 @@ a_sendout_mta_start(struct mx_send_ctx *scp){ /* {{{ */
          n_err(_("Cannot start %s: %s\n"), n_shexp_quote_cp(mta, FAL0), ecp);
       }
 jstop:
-      savedeadletter(scp->sc_input, TRU1);
+      mx_dead_save(scp->sc_input, TRU1);
       n_err(_("... message not sent\n"));
       _sendout_error = TRU1;
    }else if(cc.cc_pid == 0)
@@ -1898,7 +1898,7 @@ jkid:
    if(rv == TRU1){
       if(mx_smtp_mta(scp))
          _exit(su_EX_OK);
-      savedeadletter(scp->sc_input, TRU1);
+      mx_dead_save(scp->sc_input, TRU1);
       if(!dowait)
          n_err(_("... message not sent\n"));
    }else
@@ -2779,7 +2779,7 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
 
    /* TODO truly - i still don't get what follows: (1) we deliver file
     * TODO and pipe addressees, (2) we mightrecord() and (3) we transfer
-    * TODO even if (1) savedeadletter() etc.  To me this doesn't make sense? */
+    * TODO even if (1) mx_dead_save() etc.  To me this doesn't make sense? */
 
    /* C99 */{
       u32 cnt;
@@ -2790,7 +2790,7 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
       to = a_sendout_file_a_pipe(to, mtf, &_sendout_error);
 
       if (_sendout_error)
-         savedeadletter(mtf, FAL0);
+         mx_dead_save(mtf, FAL0);
 
       /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
       to = mx_namelist_elide(to);
@@ -2809,7 +2809,7 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
             rv = OKAY;
          else if(b && _sendout_error == 0){
             _sendout_error = b;
-            savedeadletter(mtf, FAL0);
+            mx_dead_save(mtf, FAL0);
          }
       } else if (!_sendout_error)
          rv = OKAY;
@@ -2841,7 +2841,7 @@ jleave:
 
 jfail_dead:
    _sendout_error = TRU1;
-   savedeadletter(mtf, TRU1);
+   mx_dead_save(mtf, TRU1);
    n_err(_("... message not sent\n"));
    goto jleave;
 } /* }}} */
@@ -3342,7 +3342,7 @@ n_resend_msg(enum mx_scope scope, struct message *mp, struct mx_url *urlp,
 
    if(!a_sendout_infix_resend(hp, ibuf, nfo, mp, to, add_resent)){
 jfail_dead:
-      savedeadletter(nfi, TRU1);
+      mx_dead_save(nfi, TRU1);
       n_err(_("... message not sent\n"));
 jerr_io:
       mx_fs_close(nfi);
@@ -3367,7 +3367,7 @@ jerr_o:
       to = a_sendout_file_a_pipe(to, nfi, &_sendout_error);
 
       if(_sendout_error)
-         savedeadletter(nfi, FAL0);
+         mx_dead_save(nfi, FAL0);
 
       /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
       to = mx_namelist_elide(to);
@@ -3381,7 +3381,7 @@ jerr_o:
                rv = OKAY;
             else if(b && _sendout_error == 0){
                _sendout_error = b;
-               savedeadletter(nfi, FAL0);
+               mx_dead_save(nfi, FAL0);
             }
          }
       }else if(!_sendout_error)
@@ -3416,55 +3416,54 @@ jleave:
 }
 
 FL void
-savedeadletter(FILE *fp, boole fflush_rewind_first){ /* {{{ */
+mx_dead_save(FILE *fp, boole fflush_rewind_fp_first){ /* {{{ */
    struct n_string line;
    int c;
    enum {a_NONE, a_INIT = 1<<0, a_BODY = 1<<1, a_NL = 1<<2} flags;
    ul bytes, lines;
-   FILE *dbuf;
    char const *cp, *cpq;
+   FILE *dbuf;
    NYD_IN;
+
+   dbuf = NIL;
 
    if(!ok_blook(save))
       goto jleave;
 
-   if(fflush_rewind_first){
-      fflush(fp);
-      rewind(fp);
-   }
+   if(fflush_rewind_fp_first)
+      fflush_rewind(fp);
 
-   if(fsize(fp) == 0)
-      goto jleave;
-
-   cp = n_getdeadletter();
+   cp = mx_dead_name();
    cpq = n_shexp_quote_cp(cp, FAL0);
 
+   if(fsize(fp) == 0){
+      if(n_poption & n_PO_D_V)
+         n_err(_("Nothing to *save* in $DEAD %s\n"), cpq);
+      goto jleave;
+   }
+
    if(n_poption & n_PO_D){
-      n_err(_(">>> Would (try to) write $DEAD %s\n"), cpq);
+      n_err(_(">>> Without *debug* would *save* in $DEAD %s\n"), cpq);
       goto jleave;
    }
 
    if((dbuf = mx_fs_open(cp, (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_TRUNC))
             ) == NIL || !mx_file_lock(fileno(dbuf), (mx_FILE_LOCK_MODE_TEXCL |
          mx_FILE_LOCK_MODE_RETRY))){
-      n_perr(_("Cannot save to $DEAD"), 0);
-
-      if(dbuf != NIL)
-         mx_fs_close(dbuf);
+      n_err(_("Cannot *save* in $DEAD %s: %s"), cpq, su_err_doc(-1));
       goto jleave;
    }
 
    fprintf(n_stdout, "%s ", cpq);
    fflush(n_stdout);
 
-   /* TODO savedeadletter() non-conforming: should check whether we have any
-    * TODO headers, if not we need to place "something", anything will do.
-    * TODO MIME is completely missing, we use MBOXO quoting!!  Yuck.
+   /* TODO mx_dead_save() MIME completely missing, we use MBOXO quoting!!  Yuck.
     * TODO I/O error handling missing.  Yuck! */
    n_string_reserve(n_string_creat_auto(&line), 2 * SEND_LINESIZE);
    bytes = (ul)fprintf(dbuf, "From %s %s",
          ok_vlook(LOGNAME), mx_time_current.tc_ctime);
    lines = 1;
+
    for(flags = a_NONE, c = '\0'; c != EOF; bytes += line.s_len, ++lines){
       n_string_trunc(&line, 0);
       while((c = getc(fp)) != EOF && c != '\n')
@@ -3517,12 +3516,14 @@ jnoheaders:
    }
    n_string_gut(&line);
 
-   mx_fs_close(dbuf);
    fprintf(n_stdout, "%lu/%lu\n", lines, bytes);
    fflush(n_stdout);
 
    rewind(fp);
 jleave:
+   if(dbuf != NIL)
+      mx_fs_close(dbuf);
+
    NYD_OU;
 } /* }}} */
 

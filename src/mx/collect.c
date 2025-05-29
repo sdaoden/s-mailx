@@ -174,6 +174,9 @@ static boole a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
  * For the -t template mode do_delayed_due_t also finalizes PREAMBLE_OK */
 static boole a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, boole do_delayed_due_t);
 
+/* *save* in $DEAD */
+static void a_coll_dead_save(void);
+
 /* Edit the message being collected on fp.
  * If c=='|' pipecmd must be set and is passed through to run_editor().
  * On successful return, make edit draft the new draft file; return errno */
@@ -842,6 +845,47 @@ jleave:
 	return rv;
 }
 
+static void
+a_coll_dead_save(void){
+	char c;
+	FILE *dfp;
+	NYD_IN;
+
+	dfp = NIL;
+
+	/* Avoid that massive work unless it (likely) makes sense */
+	if(!ok_blook(save))
+		goto jleave;
+
+	dfp = mx_fs_tmp_open(mx_FS_TMP_TDIR_TMP, "colldead", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL);
+	if(dfp == NIL)
+		goto jerr;
+
+	if(!n_header_put4compose(dfp, a_coll->cc_hp))
+		goto jerr;
+	fflush_rewind(a_coll->cc_fp);
+	while((c = getc(a_coll->cc_fp)) != EOF)
+		if(putc(c, dfp) == EOF)
+			goto jerr;
+	if(ferror(a_coll->cc_fp)){
+		su_err_set(su_ERR_IO);
+		goto jerr;
+	}
+
+	mx_dead_save(dfp, TRU1);
+
+jleave:
+	if(dfp != NIL)
+		 mx_fs_close(dfp);
+
+	NYD_OU;
+	return;
+
+jerr:
+	n_err(_("Cannot prepare $DEAD message: %s"), su_err_doc(-1));
+	goto jleave;
+}
+
 static s32
 a_coll_edit(int c, struct header *hp, char const *pipecmd){ /* TODO errret */
 	struct n_sigman sm;
@@ -1202,7 +1246,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 		safe_signal(SIGHUP, &a_coll_onhup);
 
 		if(sigsetjmp(cc.cc_sig_jmp_hup, 1)){
-			savedeadletter(a_coll->cc_fp, TRU1);
+			a_coll_dead_save();
 			safe_signal(SIGHUP, cc.cc_sig_hdl_hup);
 			n_raise_while_blocked(SIGHUP);
 			/* raise should not return */
@@ -1226,7 +1270,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 			if(cc.cc_exit_cmd != '\0'){
 				if(cc.cc_exit_cmd == 'q')
 jsig_int_dead:
-					savedeadletter(a_coll->cc_fp, TRU1);
+					a_coll_dead_save();
 				goto jerr_nosig;
 			}
 
@@ -1949,7 +1993,7 @@ jearg:
 				"~t <users>    Add recipient to To: list\n"
 				"~u <msglist>  Insert without headers (~U: use *indentprefix*)\n"
 				"~w <file>     Write message onto file\n"
-				"~x, ~q, ~.    Discard, discard and save to $DEAD, send message\n"
+				"~x, ~q, ~.    Discard, discard and *save* in $DEAD, send message\n"
 				"Modifiers: - (ignerr), $ (evaluate), e.g: \"~- $ @ $TMPDIR/file\"\n"
 				), n_stdout);
 			if(cnt != 0)
@@ -2060,7 +2104,8 @@ jearg:
 		case 'd':
 			if(cnt != 0)
 				goto jearg;
-			cp = n_getdeadletter();
+
+			cp = mx_dead_name();
 			if(0){
 				case '<':
 				case 'R':

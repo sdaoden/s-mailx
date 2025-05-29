@@ -292,8 +292,8 @@ FL void        page_or_print(FILE *fp, uz lines);
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL s32      n_c_from_hex_base16(char const hex[2]);
 
-/* Return the name of the dead.letter file */
-FL char const * n_getdeadletter(void);
+/* Return actual name of $DEAD */
+FL char const *mx_dead_name(void);
 
 /* Convert from / to *ttycharset* */
 #ifdef mx_HAVE_IDNA
@@ -947,8 +947,8 @@ FL int mx_sendout_header_date(FILE *fo, char const *field,
 FL enum okay n_resend_msg(enum mx_scope scope, struct message *mp,
       struct mx_url *urlp, struct header *hp, boole add_resent);
 
-/* *save* / $DEAD */
-FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);
+/* Possibly *save* to $DEAD all of fp unless *debug* is set */
+FL void mx_dead_save(FILE *fp, boole fflush_rewind_fp_first);
 
 /* `digmsg' "X-SERIES" call-in HACK */
 #ifdef mx_HAVE_REGEX

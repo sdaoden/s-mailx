@@ -283,7 +283,7 @@ jerr:
 }
 
 FL char const *
-n_getdeadletter(void){
+mx_dead_name(void){
 	char const *cp;
 	boole bla;
 	NYD_IN;

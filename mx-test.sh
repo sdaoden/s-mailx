@@ -12403,9 +12403,9 @@ __EOT
 	[ -f ./txq-1-dead ]; ck_exx xq-1-dead
 	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' q |
 		${MAILX} ${ARGS} -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-2-dead > ./txq-2 2>${E0}
-	cke0 xq-2 0 ./txq-2 '3893194637 22'
+	cke0 xq-2 0 ./txq-2 '822937100 22'
 	[ -f ./txq.mbox ]; ck_exx xq-2-mbox
-	ck xq-2-dead - ./txq-2-dead '3297016598 52'
+	ck xq-2-dead - ./txq-2-dead '452609201 61'
 
 	#{{{ `exit'/`quit' honoured via ~:call
 	<< '__EOT' ${cat} > ./txitquit.in
