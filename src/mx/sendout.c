@@ -1354,6 +1354,9 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
+         sigaddset(&nset, SIGTSTP);
+         sigaddset(&nset, SIGTTIN);
+         sigaddset(&nset, SIGTTOU);
 
          mx_child_ctx_setup(&cc);
          cc.cc_flags = mx_CHILD_SPAWN_CONTROL | (swf & a_SENDOUT_SWF_PCC
