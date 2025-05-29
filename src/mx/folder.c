@@ -336,7 +336,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
             /*if(!(mb.mb_active & MB_BAD_FROM_))*/{
                mb.mb_active |= MB_BAD_FROM_;
                /* TODO mbox-rfc4155 does NOT fix From_ line! */
-               n_err(_("MBOX contains non-conforming From_ line(s)!\n"
+               n_err(_("MBOX with non-conforming From_ line(s), "
+                     "or message(s) without headers!\n"
                   "  Message boundaries may have been misdetected!\n"
                   "  Setting *mbox-rfc4155* and reopening _may_ "
                      "improve the result.\n"
