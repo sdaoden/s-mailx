@@ -3429,6 +3429,7 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){ /* {{{ */
       fflush(fp);
       rewind(fp);
    }
+
    if(fsize(fp) == 0)
       goto jleave;
 
@@ -3483,14 +3484,16 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){ /* {{{ */
                break;
             }else{
                /* We have no headers, this is already a body line! */
-               flags |= a_INIT | a_BODY;
-               break;
+               goto jnoheaders;
             }
          }
          /* Well, i had to check whether the RFC allows this.  Assume we've
           * passed the headers, too, then! */
-         if(i == line.s_len)
+         if(i == line.s_len){
+jnoheaders:
+            fputc('\n', dbuf);
             flags |= a_INIT | a_BODY;
+         }
       }
       if(flags & a_BODY){
          if(line.s_len >= 5 && !su_mem_cmp(line.s_dat, "From ", 5))
