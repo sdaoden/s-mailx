@@ -264,8 +264,7 @@ jeinvent:
 		}else if(*v == '\0')
 			tep->te_flags |= a_TERMCAP_F_DISABLED;
 		else if((f & a_TERMCAP_F_TYPE_MASK) == mx_TERMCAP_CAPTYPE_NUMERIC){
-			if((su_idec_u16_cp(&tep->te_off, v, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-					) != su_IDEC_STATE_CONSUMED)
+			if(su_idec_u16_cp(&tep->te_off, v, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 				goto jeinvent;
 		}else if(!a_termcap__strexp(&a_termcap_g->tg_dat, v))
 			tep->te_flags |= a_TERMCAP_F_DISABLED;

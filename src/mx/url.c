@@ -504,7 +504,7 @@ jurlp_err:
 		}
 
 		if((su_idec_u16_cp(&urlp->url_portno, urlp->url_port, 10, NIL
-					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
+					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) ||
 				urlp->url_portno == 0){
 			n_err(_("URL with invalid port number: %s\n"), urlp->url_input);
 			goto jleave;

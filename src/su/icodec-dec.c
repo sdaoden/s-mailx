@@ -335,8 +335,8 @@ jleave:
 
 	if(endptr_or_nil != NIL)
 		*endptr_or_nil = cbuf;
-	if(*cbuf == '\0' || clen == 0)
-		rv |= su_IDEC_STATE_CONSUMED;
+	if(*cbuf != '\0' && clen != 0)
+		rv |= su_IDEC_STATE_REMAINS;
 
 	rv &= (1u << su__IDEC_PRIVATE_SHIFT1) - 1;
 	NYD_OU;

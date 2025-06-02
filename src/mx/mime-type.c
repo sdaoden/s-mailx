@@ -1184,8 +1184,7 @@ mx_mime_type_classify_part(struct mimepart *mpp, boole is_hdl){ /* {{{ */
 		ct = su_empty;
 
 	if((mce.cp = ok_vlook(mime_counter_evidence)) != NIL && *mce.cp != '\0'){
-		if((su_idec_u32_cp(&mce.f, mce.cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED){
+		if(su_idec_u32_cp(&mce.f, mce.cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 			n_err(_("Invalid *mime-counter-evidence* value content\n"));
 			is_os = FAL0;
 		}else{

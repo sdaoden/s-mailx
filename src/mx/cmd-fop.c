@@ -154,8 +154,7 @@ a_fop_fd(char const *arg, struct a_fop_ofd *std_or_nil, struct a_fop_ofd ***fofp
 	s32 fd;
 	NYD2_IN;
 
-	if((su_idec_s32_cp(&fd, arg, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-			) != su_IDEC_STATE_CONSUMED || fd < 0)
+	if((su_idec_s32_cp(&fd, arg, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || fd < 0)
 		fofdp = NIL;
 	else{
 		for(fofdpp = &a_fop_ofds;; fofdpp = &fofdp->fof_next){

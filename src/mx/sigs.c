@@ -111,15 +111,13 @@ c_sleep(void *vp){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
 
 	argv = vp;
 
-	if((su_idec_uz_cp(&sec, argv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-			) != su_IDEC_STATE_CONSUMED)
+	if(su_idec_uz_cp(&sec, argv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 		goto jesyn;
 
 	if(argv[1] == NIL){
 		msec = 0;
 		ignint = FAL0;
-	}else if((su_idec_uz_cp(&msec, argv[1], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-			) != su_IDEC_STATE_CONSUMED)
+	}else if(su_idec_uz_cp(&msec, argv[1], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 		goto jesyn;
 	else
 		ignint = (argv[2] != NIL);

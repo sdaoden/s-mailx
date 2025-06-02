@@ -112,8 +112,8 @@ a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
 		goto jleave;
 	}
 
-	if((su_idec_u32_cp(&msgno, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-			) != su_IDEC_STATE_CONSUMED || msgno == 0 || UCMP(z, msgno, >, msgCount)){
+	if((su_idec_u32_cp(&msgno, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) ||
+			msgno == 0 || UCMP(z, msgno, >, msgCount)){
 		rv = su_ERR_INVAL;
 		goto jleave;
 	}
@@ -917,8 +917,7 @@ jcmd_remove_at:{ /* {{{ */
 	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
-	if((su_idec_uz_cp(&i, a3p->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-			) != su_IDEC_STATE_CONSUMED || i == 0){
+	if((su_idec_uz_cp(&i, a3p->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || i == 0){
 		dmslp->dmsl_status_or_new_ent = 505;
 		sp = n_string_trunc(sp, 0);
 		sp = n_string_push_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
@@ -1331,8 +1330,7 @@ jatt_att:
 			goto jecmd;
 
 		cp = args->ca_arg.ca_str.s;
-		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || i == 0)
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || i == 0)
 			goto j505invpos;
 
 		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink){
@@ -1437,8 +1435,7 @@ jatt_attset:
 		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
-		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || i == 0)
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || i == 0)
 			goto j505invpos;
 
 		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink){
@@ -1515,8 +1512,7 @@ jdefault:
 			goto j505r;
 
 		cp = args->ca_arg.ca_str.s;
-		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || i == 0)
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || i == 0)
 			goto j505invpos;
 
 		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink){
@@ -1623,8 +1619,7 @@ jdefault:
 			goto j505r;
 
 		cp = args->ca_arg.ca_str.s;
-		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || i == 0)
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || i == 0)
 			goto j505invpos;
 
 		if((mp = dmcp->dmc_mime) == NIL)

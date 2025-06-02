@@ -14,13 +14,13 @@
  *@  We still need s64, u64, S64_MIN, savestr(CP) <> strdup(3) that does not
  *@  return NIL (only with _ERROR_TRACK).  Plus stdint.h, ctype.h, string.h.
  *@  We need su_idec_cp(), su_ienc_s64(), n_var_vlook() and n_var_vset().
- *@  We need su_IDEC_STATE_EMASK (= 1) and su_IDEC_STATE_CONSUMED (= 2), e.g.:
+ *@  We need su_IDEC_STATE_EMASK (= 1) and su_IDEC_STATE_REMAINS (= 2), e.g.:
  *@    errno = 0;
  *@    res = strto_arith_t(cbuf, (char**)endptr_or_nil);
  *@    rv = 0;
  *@    if(errno == 0){
- *@      if(**endptr_or_nil == '\0')
- *@        rv = su_IDEC_STATE_CONSUMED;
+ *@      if(**endptr_or_nil != '\0')
+ *@        rv = su_IDEC_STATE_REMAINS;
  *@    }else{
  *@      rv = su_IDEC_STATE_EMASK;
  *@      res = 0;
@@ -941,7 +941,8 @@ a_shexp__arith_val_eval(struct a_shexp_arith_ctx *self, struct a_shexp_arith_val
 
 	/* cp must be a self-contained expression.
 	 * However, in most cases it solely consists of an integer, shortcut that */
-	if(su_idec_cp(&savp->sav_val, cp, 0, a_SHEXP_ARITH_IDEC_MODE, NIL) & su_IDEC_STATE_CONSUMED){
+	if(!(su_idec_cp(&savp->sav_val, cp, 0, a_SHEXP_ARITH_IDEC_MODE, NIL
+			) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))){
 		a_SHEXP_ARITH_L((" + _arith_val_eval NUM DIRECT <%lld>\n", savp->sav_val));
 	}else{
 		sasp = self->sac_stack;

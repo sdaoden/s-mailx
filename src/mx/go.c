@@ -2682,7 +2682,7 @@ c_exit(void *vp){
 	NYD_IN;
 
 	if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL
-				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
+				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)))
 		n_exit_status |= su_EX_ERR;
 
 	if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
@@ -2702,7 +2702,7 @@ c_quit(void *vp){
 	NYD_IN;
 
 	if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL
-				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
+				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)))
 		n_exit_status |= su_EX_ERR;
 
 	if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
@@ -2847,8 +2847,7 @@ jfound:
 			goto jleave;
 		}
 
-		if((su_idec_s32_cp(&fd, cap->ca_arg.ca_str.s, 0, NIL
-					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
+		if(su_idec_s32_cp(&fd, cap->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 			if((emsg = mx_fexpand(cap->ca_arg.ca_str.s, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 				emsg = N_("readctl: cannot expand filename %s\n");
 				goto jeinval_quote;

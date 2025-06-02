@@ -96,7 +96,7 @@ enum su_idec_state{
 	su_IDEC_STATE_EOVERFLOW = 3u<<8, /*!< Result too large. */
 	su_IDEC_STATE_EMASK = 3u<<8, /*!< All errors, that is. */
 	su_IDEC_STATE_SEEN_MINUS = 1u<<16, /*!< Seen hyphen-minus in the input? */
-	su_IDEC_STATE_CONSUMED = 1u<<17, /*!< All the input has been consumed. */
+	su_IDEC_STATE_REMAINS = 1u<<17, /*!< Not all input was consumed by processing. */
 	su__IDEC_PRIVATE_SHIFT1 = 24u
 };
 #ifdef su_SOURCE_ICODEC_DEC
@@ -304,7 +304,7 @@ public:
 		state_eoverflow = su_IDEC_STATE_EOVERFLOW, /*!< \cd{su_IDEC_STATE_EOVERFLOW} */
 		state_emask = su_IDEC_STATE_EMASK, /*!< \cd{su_IDEC_STATE_EMASK} */
 		state_seen_minus = su_IDEC_STATE_SEEN_MINUS, /*!< \cd{su_IDEC_STATE_SEEN_MINUS} */
-		state_consumed = su_IDEC_STATE_CONSUMED /*!< \cd{su_IDEC_STATE_CONSUMED} */
+		state_remains = su_IDEC_STATE_REMAINS /*!< \cd{su_IDEC_STATE_REMAINS} */
 	};
 
 	/*! \cd{su_idec()} */

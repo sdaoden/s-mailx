@@ -285,9 +285,8 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
    /* C99 */{
       sz l;
 
-      if((su_idec_sz_cp(&l, ok_vlook(toplines), 0, NULL
-               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-            ) != su_IDEC_STATE_CONSUMED)
+      if(su_idec_sz_cp(&l, ok_vlook(toplines), 0, NIL
+            ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
          l = 0;
       if(l <= 0){
          tmax = n_screensize();

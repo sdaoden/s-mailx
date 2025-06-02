@@ -1059,8 +1059,7 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){ /* {{{ */
 	rv = FAL0;
 
 	for(; *vec != NIL; ++vec){
-		if((su_idec_sz_cp(lp, *vec, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) == su_IDEC_STATE_CONSUMED)
+		if(!(su_idec_sz_cp(lp, *vec, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)))
 			++lp;
 		else
 			n_err(_("history: not a number, or no such entry: %s\n"), *vec);
@@ -1378,7 +1377,7 @@ jbind_timeout_redo:
 			/* TODO generic variable `set' should have capability to ensure
 			 * TODO integer limits upon assignment */
 			if(((is = su_idec_uz_cp(&uit, cp, 0, NIL)) & su_IDEC_STATE_EMASK) ||
-					!(is & su_IDEC_STATE_CONSUMED) || uit > uit_max){
+					(is & su_IDEC_STATE_REMAINS) || uit > uit_max){
 				if(n_poption & n_PO_D_V)
 					n_err(_("*bind-inter-%s-timeout* invalid, using %" PRIuZ ": %s\n"),
 						name, uit_max, cp);
@@ -1607,8 +1606,8 @@ a_tty_vinuni(struct a_tty_line *tlp){ /* {{{ */
 	}
 	buf[i] = '\0';
 
-	if((su_idec_uz_cp(&i, buf, 16, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-			) != su_IDEC_STATE_CONSUMED || i > 0x10FFFF/* XXX magic; CText */){
+	if((su_idec_uz_cp(&i, buf, 16, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) ||
+			i > 0x10FFFF/* XXX magic; CText */){
 jerr:
 		n_err(_("\nInvalid input: %s\n"), buf);
 		goto jleave;

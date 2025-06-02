@@ -761,9 +761,8 @@ a_chead_scroll(char const *arg, boole onlynew){
    case '6': case '7': case '8': case '9': case '0':
             isabs = TRU1;
          }
-         if((su_idec_sz_cp(&l, arg, 0, NULL
-                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED)
+         if(su_idec_sz_cp(&l, arg, 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
             goto jerr;
          if(l > maxs - (isabs ? 0 : a_chead_screen))
             goto jerrfwd;
@@ -781,9 +780,8 @@ jerrfwd:
       if(arg[1] == '\0')
          --a_chead_screen;
       else{
-         if((su_idec_sz_cp(&l, ++arg, 0, NULL
-                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED)
+         if(su_idec_sz_cp(&l, ++arg, 0, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
             goto jerr;
          if(l > a_chead_screen)
             goto jerrbwd;

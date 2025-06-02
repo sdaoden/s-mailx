@@ -141,7 +141,7 @@ su_err_by_name(char const *name){
 
 	/* Have not found it.  But wait, it could be that the user did, e.g.,
 	 *   eval echo \$^ERR-$: \$^ERRDOC-$!: \$^ERRNAME-$! */
-	if((su_idec_s32_cp(&rv, name, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) == su_IDEC_STATE_CONSUMED){
+	if(!(su_idec_s32_cp(&rv, name, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))){
 		cemp = a_corerr_map_from_no(rv);
 		rv = cemp->cem_errno;
 		goto jleave;

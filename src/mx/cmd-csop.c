@@ -210,8 +210,8 @@ a_csop_cmd(struct a_csop_ctx *cscp){
 		/* Offset */
 		if(cscp->csc_argv[1] == NIL || cscp->csc_argv[1][0] == '\0')
 			cscp->csc_lhv = 0;
-		else if((su_idec_s64_cp(&cscp->csc_lhv, cscp->csc_argv[1], 0, NIL
-				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
+		else if(su_idec_s64_cp(&cscp->csc_lhv, cscp->csc_argv[1], 0, NIL
+				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 			cscp->csc_flags |= a_CSOP_ERR;
 			cscp->csc_cmderr = a_CSOP_ERR_NUM_RANGE;
 			break;
@@ -239,8 +239,8 @@ jesubstring_off:
 		if(cscp->csc_argv[2] != NIL){
 			if(cscp->csc_argv[2][0] == '\0')
 				cscp->csc_lhv = 0;
-			else if((su_idec_s64_cp(&cscp->csc_lhv, cscp->csc_argv[2], 0, NIL
-					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
+			else if(su_idec_s64_cp(&cscp->csc_lhv, cscp->csc_argv[2], 0, NIL
+					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 				cscp->csc_flags |= a_CSOP_ERR;
 				cscp->csc_cmderr = a_CSOP_ERR_NUM_RANGE;
 				break;

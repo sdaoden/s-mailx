@@ -395,8 +395,8 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 		if(act){
 			s32 lhvi;
 
-			rv = ((su_idec_s32_cp(&lhvi, lhv, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-					) == su_IDEC_STATE_CONSUMED && lhvi >= 0);
+			rv = (!(su_idec_s32_cp(&lhvi, lhv, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) &&
+					lhvi >= 0);
 			if(rv)
 				rv = su_path_is_a_tty(lhvi);
 		}
@@ -422,8 +422,8 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 			lf = su_idec_cp(&lhvi, lhv, 0, lf, NIL);
 			rf = su_idec_cp(&rhvi, rhv, 0, rf, NIL);
 
-			if((lf & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
-					(rf & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
+			if((lf & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) ||
+					(rf & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))){
 				/* TODO if/elif: should support $! and set ERR-OVERFLOW!! */
 				lhv = N_("invalid integer number");
 				goto jesyn;

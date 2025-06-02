@@ -435,8 +435,7 @@ n_boolify(char const *inbuf, uz inlen, boole emptyrv){
 		else{
 			u64 ib;
 
-			if((su_idec(&ib, inbuf, inlen, 0, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-					) != su_IDEC_STATE_CONSUMED)
+			if(su_idec(&ib, inbuf, inlen, 0, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 				rv = TRUM1;
 			else
 				rv = (ib != 0);

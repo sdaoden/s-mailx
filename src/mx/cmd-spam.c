@@ -309,8 +309,8 @@ jecmd:
 		}
 		bp = &var[1];
 
-		if((su_idec(&sfp->f_score_grpno, cp, P2UZ(var - cp), 0, su_IDEC_MODE_LIMIT_32BIT, NIL
-				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
+		if(su_idec(&sfp->f_score_grpno, cp, P2UZ(var - cp), 0, su_IDEC_MODE_LIMIT_32BIT, NIL
+				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 			n_err(_("%s: *spamfilter-rate-scanscore*: bad group: %s\n"), a_spam_cmds[vcp->vc_action], cp);
 			goto jleave;
 		}
@@ -784,7 +784,7 @@ a_spam_rate2score(struct a_spam_vc *vcp, char *buf){
 	}
 
 	s = 0;
-	if(!(ids & su_IDEC_STATE_CONSUMED)){
+	if(ids & su_IDEC_STATE_REMAINS){
 		/* Floating-point rounding for non-mathematicians */
 		char c1, c2, c3;
 
@@ -806,7 +806,7 @@ a_spam_rate2score(struct a_spam_vc *vcp, char *buf){
 		}
 
 		ids = su_idec_u32_cp(&s, buf, 10, NIL);
-		if((ids & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
+		if(ids & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 			goto jleave;
 	}
 

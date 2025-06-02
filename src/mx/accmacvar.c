@@ -1206,7 +1206,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			BITENUM(u32,su_idec_state) is;
 
 			is = su_idec_u64_cp(&uib, *val, 0, NIL);
-			if((is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
+			if((is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) ||
 					uib < mx__OBSOL_MIN || uib > mx__OBSOL_MAX){
 				emsg = N_("*obsoletion*: unsupported *version-hexnum*: %s\n");
 				goto jerr;
@@ -1251,9 +1251,8 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 				u64 uib;
 				BITENUM(u32,su_idec_state) is;
 
-				is = su_idec_u64_cp(&uib, *val, 0, NIL);
-				if((is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
-						(uib & ~0777u)){ /* (is valid _VF_POSNUM) */
+				is = su_idec_u64_cp(&uib, *val, 0, NIL); /* (is valid _VF_POSNUM) */
+				if((is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || (uib & ~0777u)){
 					emsg = N_("Invalid *umask* setting: %s\n");
 					goto jerr;
 				}
@@ -1539,7 +1538,7 @@ a_amv_var_check_num(char const *val, boole posnum){
 
 		ids = su_idec_cp(&uib, val, 0, (su_IDEC_MODE_LIMIT_32BIT |
 				(posnum ? su_IDEC_MODE_SIGNED_TYPE : su_IDEC_MODE_NONE)), NIL);
-		if((ids & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
+		if(ids & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 			rv = FAL0;
 		/* TODO Unless we store integers we need to look and forbid, because
 		 * TODO callee may not be able to swallow, e.g., "-1" */
@@ -2125,8 +2124,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 			}
 		}
 
-		if((su_idec_s32_cp(&j, &rv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) == su_IDEC_STATE_CONSUMED && j >= 0 &&
+		if(!(su_idec_s32_cp(&j, &rv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) && j >= 0 &&
 				S(u32,j) < S(uz,appp->app_idx) + appp->app_count){
 			rv = appp->app_dat[j];
 			goto jleave;
@@ -3449,8 +3447,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
 
 		sp = &cap->ca_arg.ca_str;
 
-		if((su_idec_s64_cp(&c, sp->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED){
+		if(su_idec_s64_cp(&c, sp->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 			n_err(_("shift: invalid or yet seen argument: %s\n"), sp->s);
 			goto jleave;
 		}
@@ -3516,8 +3513,8 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
 		/* First argument return code, second error value */
 		s32 j;
 
-		if((su_idec_s32_cp(&j, cap->ca_arg.ca_str.s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || j < 0){
+		if((su_idec_s32_cp(&j, cap->ca_arg.ca_str.s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)
+				) || j < 0){
 			n_err(_("return: invalid return value or error number: %s\n"), cap->ca_arg.ca_str.s);
 			n_pstate_err_no = su_ERR_INVAL;
 			rv = su_EX_ERR;

@@ -318,8 +318,8 @@ jumpin:
 				su_mem_copy(nobuf, hbp, i);
 				nobuf[i] = '\0';
 
-				if((su_idec_uz_cp(&i, nobuf, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-						) != su_IDEC_STATE_CONSUMED || i >= 999){
+				if((su_idec_uz_cp(&i, nobuf, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)
+						) || i >= 999){
 					emsg = N_("invalid continuation sequence number");
 					goto jerr;
 				}

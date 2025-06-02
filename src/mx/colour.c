@@ -813,8 +813,7 @@ jiter_colour:
 					goto jleave;
 				}
 
-				if((su_idec_u8_cp(&xv, x, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-						) != su_IDEC_STATE_CONSUMED){
+				if(su_idec_u8_cp(&xv, x, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 					*store = UNCONST(char*,_("invalid 256-colour specification"));
 					goto jleave;
 				}

@@ -218,8 +218,7 @@ jlhv_redo:
 					: ((*cp == 's' || *cp == 'S') ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
 						: su_IDEC_MODE_SIGNED_TYPE | su_IDEC_MODE_POW2BASE_UNSIGNED)) |
 				su_IDEC_MODE_BASE0_NUMSIG_RESCAN);
-		if(((idecs = su_idec_cp(&lhv, cp, 0, idecm, NIL)) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED){
+		if((idecs = su_idec_cp(&lhv, cp, 0, idecm, NIL)) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 			if(!(idecs & su_IDEC_STATE_EOVERFLOW) || !(f & a_VEXPR_MOD_SATURATED)){
 				f |= a_VEXPR_ERR;
 				vcp->vc_cmderr = a_VEXPR_ERR_NUM_RANGE;
@@ -278,8 +277,7 @@ jbinop:
 						: ((*cp == 's' || *cp == 'S') ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
 							: su_IDEC_MODE_SIGNED_TYPE | su_IDEC_MODE_POW2BASE_UNSIGNED)) |
 					su_IDEC_MODE_BASE0_NUMSIG_RESCAN);
-			if(((idecs = su_idec_cp(&rhv, cp, 0, idecm, NIL)) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-					) != su_IDEC_STATE_CONSUMED){
+			if((idecs = su_idec_cp(&rhv, cp, 0, idecm, NIL)) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
 				if(!(idecs & su_IDEC_STATE_EOVERFLOW) || !(f & a_VEXPR_MOD_SATURATED)){
 					f |= a_VEXPR_ERR;
 					vcp->vc_cmderr = a_VEXPR_ERR_NUM_RANGE;
@@ -484,8 +482,8 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
 				break;
 			}
 
-			if((su_idec_s64_cp(&ts.ts_sec, vcp->vc_argv[0], 0, NIL
-					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
+			if(su_idec_s64_cp(&ts.ts_sec, vcp->vc_argv[0], 0, NIL
+					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 				goto jedutc_num;
 		}
 
@@ -562,9 +560,8 @@ jedutc_num:
 					i = 0;
 					break;
 				}
-				if((su_idec_u32_cp(&utc[i], vcp->vc_argv[i], 0, NIL
-							) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-						) != su_IDEC_STATE_CONSUMED)
+				if(su_idec_u32_cp(&utc[i], vcp->vc_argv[i], 0, NIL
+							) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
 					goto jeepoch_num;
 			}
 			if(i == 0){
@@ -606,8 +603,8 @@ jeepoch_num:
 		}
 		vcp->vc_arg = vcp->vc_argv[0];
 
-		if((su_idec_s64_cp(&vcp->vc_lhv, vcp->vc_argv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || vcp->vc_lhv < 0 || vcp->vc_lhv > PATH_MAX){
+		if((su_idec_s64_cp(&vcp->vc_lhv, vcp->vc_argv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)
+				) || vcp->vc_lhv < 0 || vcp->vc_lhv > PATH_MAX){
 			vcp->vc_flags |= a_VEXPR_ERR;
 			vcp->vc_cmderr = a_VEXPR_ERR_STR_NUM_RANGE;
 			break;
