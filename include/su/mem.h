@@ -325,9 +325,9 @@ EXPORT void su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL);
 
 #if defined su_MEM_ALLOC_DEBUG || defined DOXYGEN
 	/*! Check \a{VP} and update its debug information. */
-# define su_MEM_TOUCH(A) su__mem_touch(A  su_DVL_LOC_ARGS_INJ)
+# define su_MEM_TOUCH(VP) su__mem_touch(VP  su_DVL_LOC_ARGS_INJ)
 	/*! Check \a{VP} and update its debug information. */
-# define su_MEM_TOUCH_LOCOR(A,ORARGS) su__mem_touch(A,  ORARGS)
+# define su_MEM_TOUCH_LOCOR(VP,ORARGS) su__mem_touch(VP,  ORARGS)
 #else
 # define su_MEM_TOUCH(VP) do{}while(0)
 # define su_MEM_TOUCH_LOCOR(VP,ORARGS) do{}while(0)
@@ -502,26 +502,28 @@ public:
 		conf_filler_set = su_MEM_CONF_FILLER_SET /*!< \cd{su_MEM_CONF_FILLER_SET} */
 	};
 
-/*! The base of \r{su_MEM_NEW()} etc.
- * Be aware it does not even set \r{su_MEM_ALLOC_MUSTFAIL} automatically. */
+/*! The base of \r{su_MEM_NEW()} etc. */
 #define su_MEM_ALLOC_NEW(T,F)  new(su_MEM_ALLOCATE(sizeof(T), 1, F), su_S(su_NSPC(su)mem::johnny const*,su_NIL)) T
-/*! \r{su_MEM_ALLOC_NEW()} */
+/*! See \r{su_MEM_ALLOC_NEW()}. */
 #define su_MEM_ALLOC_NEW_LOC(T,F,FNAME,LNNO) \
 		new(su_MEM_ALLOCATE_LOC(sizeof(T), 1, F, FNAME, LNNO), su_S(su_NSPC(su)mem::johnny const*,su_NIL)) T
 
-/*! \_ */
+/*! Allocate an instance of \a{T}, with \r{su_MEM_ALLOC_MUSTFAIL} set. */
 #define su_MEM_NEW(T) su_MEM_ALLOC_NEW(T, su_MEM_ALLOC_MUSTFAIL)
-/*! \_ */
+/*! See \r{su_MEM_NEW()}. */
 #define su_MEM_NEW_LOC(T,FNAME,LNNO) su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_MUSTFAIL, FNAME, LNNO)
 
-/*! \_ */
+/*! Allocate an instance of \a{T} in zeroed memory, with \r{su_MEM_ALLOC_MUSTFAIL} set. */
 #define su_MEM_CNEW(T) su_MEM_ALLOC_NEW(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL)
-/*! \_ */
+/*! See \r{su_MEM_CNEW()}. */
 #define su_MEM_CNEW_LOC(T,FNAME,LNNO) su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL, FNAME, LNNO)
 
-/*! \remarks{In order to support hardening, this introduces a block, and therefore assigns the result to \a{RES}.
- * That is, flags only come in via \a{F}, even \r{su_MEM_ALLOC_MUSTFAIL} is not set by default.
- * The constructor is called with \a{CTOR_ARGS_IN_PARENS}, one may pass only a space if no arguments are needed.} */
+/*! \r{su_MEM_NEW()} that supports hardening.
+ * In order to support allocations without \r{su_MEM_ALLOC_MUSTFAIL}, allocation and construction must be separated.
+ * So this introduces a block, only ever uses \a{F} as flags, and assigns the allocation to \a{RES}.
+ * If \a{RES} is not \NIL, it will then be constructed, with \a{CTOR_ARGS_IN_PARENS} as an argument;
+ * use a space if no arguments are needed.
+ * \remarks{Introduces a block, and potentially evaluates \a{RES} multiple times.} */
 #define su_MEM_NEWF_BLK(RES,T,F,CTOR_ARGS_IN_PARENS) \
 do{\
 	RES = su_S(T *,su_MEM_ALLOCATE(sizeof(T), 1, F));\
@@ -537,28 +539,32 @@ do{\
 		RES = su_MEM_NEW_HEAP(T, RES) CTOR_ARGS_IN_PARENS;\
 }while(0)
 
-/*! \_ */
+/*! Allocate an instance of \a{T} in the sufficiently spaced memory \a{VP}. */
 #define su_MEM_NEW_HEAP(T,VP) new(VP, su_S(su_NSPC(su)mem::johnny*,su_NIL)) T
 
-/*! \_ */
+/*! Delete object and memory allocated via \r{su_MEM_NEW()} and friends. */
 #define su_MEM_DEL(TP) (su_NSPC(su)mem::del__heap(TP), su_MEM_FREE(TP))
-/*! \_ */
+/*! See \r{su_MEM_DEL()}. */
 #define su_MEM_DEL_LOC(TP,FNAME,LNNO) (su_NSPC(su)mem::del__heap(TP), su_MEM_FREE_LOC(TP, FNAME, LNNO))
 
-/*! \_ */
+/*! Delete object constructed via \r{su_MEM_NEW_HEAP()}. */
 #define su_MEM_DEL_HEAP(TP) su_NSPC(su)mem::del__heap(TP)
-/*! \_ */
+/*! See \r{su_MEM_DEL_HEAP()}. */
 #define su_MEM_DEL_HEAP_LOC(TP,FNAME,LNNO) su_NSPC(su)mem::del__heap(TP)
 
-/*! \_ */
+/*! Access-policy circumvented \r{su_MEM_DEL()}.
+ * If the actual template-based heap deletor may not access the destructor of \a{T} due to access policies,
+ * this may be used, as it manually destructs the destructor of type \a{T} via \a{TP} before freeing memory. */
 #define su_MEM_DEL_PRIVATE(T,TP) (su_ASSERT((TP) != su_NIL), (TP)->~T(), su_MEM_FREE(TP))
-/*! \_ */
+/*! See \r{su_MEM_DEL_PRIVATE()}. */
 #define su_MEM_DEL_PRIVATE_LOC(T,TP,FNAME,LNNO) \
 		(su_ASSERT_LOC((TP) != su_NIL, FNAME, LNNO), (TP)->~T(), su_MEM_FREE_LOC(TP, FNAME, LNNO))
 
-/*! \_ */
+/*! Access-policy circumvented \r{su_MEM_DEL_HEAP()}.
+ * If the actual template-based heap deletor may not access the destructor of \a{T} due to access policies,
+ * this may be used, as it manually destructs the destructor of type \a{T} via \a{TP}. */
 #define su_MEM_DEL_HEAP_PRIVATE(T,TP) (su_ASSERT((TP) != su_NIL), (TP)->~T())
-/*! \_ */
+/*! See \r{su_MEM_DEL_HEAP_PRIVATE()}. */
 #define su_MEM_DEL_HEAP_PRIVATE_LOC(T,TP,FNAME,LNNO) (su_ASSERT((TP) != su_NIL), (TP)->~T())
 
 /* (The painful _LOCOR series) */
