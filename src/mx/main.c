@@ -171,8 +171,15 @@ a_main_startup(char const *argv0){ /* {{{ */
 	setvbuf(mx_stdout, NIL, _IOLBF, 0);
 
 	/* Change to reproducible mode asap before doing extensive setup */
-	if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
+	if(UNLIKELY(ok_vlook(SOURCE_DATE_EPOCH) != NIL)){
 		su_state_set(su_STATE_REPRODUCIBLE);
+		safe_signal(SIGINT, SIG_DFL);
+		/* Not SIGHUP <> nohup(1) */
+		safe_signal(SIGQUIT, SIG_DFL);
+
+		safe_signal(SIGPIPE, SIG_DFL);
+		safe_signal(SIGTERM, SIG_DFL);
+	}
 
 	/* Now that the basic I/O is accessible, initialize our main machinery, input, loop, child, termios, whatever */
 	mx_go_init(FAL0);
