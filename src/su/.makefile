@@ -80,7 +80,7 @@ CSRC = atomic.c \
 			cs-find.c cs-rfind.c cs-tbox.c cs-tools.c cs-sep.c \
 		cs-dict.c \
 	icodec-dec.c icodec-enc.c \
-		imf.c \
+		imf.c imf-addr.c imf-msgid.c imf-struct.c \
 	md.c md-siphash.c \
 		mem-alloc.c mem-tools.c \
 		mem-bag.c \

@@ -34,6 +34,7 @@
 C_DECL_BEGIN
 
 struct su_imf_addr;
+struct su_imf_msgid;
 struct su_imf_shtok;
 
 #ifndef su_HAVE_MEM_BAG
@@ -41,10 +42,17 @@ struct su_imf_shtok;
 #endif
 
 /* su_imf* {{{ */
+/* doc {{{ */
 /*!
  * \defgroup IMF Internet Message Format
  * \ingroup NET
  * \brief Internet Message Format parser (\r{su/imf.h})
+ *
+ * A parser for
+ * RFC 5322 (Internet Message Format) plus
+ * RFC 6854 (Allow Group Syntax in the "From:" and "Sender:"),
+ * available only if \r{su_HAVE_IMF} is defined.
+ * Some remarks:
  *
  * \list{\li{
  * The parser is meant to be used "as a second stage" that is fed in superficially preparsed content.
@@ -75,8 +83,8 @@ struct su_imf_shtok;
  * }\li{
  * Quotations in results strings are normalized.
  * This means that presence of (or, with \r{su_IMF_MODE_DISPLAY_NAME_DOT}, necessity for) quotation marks will
- * result in the result to be embraced as such by a single pair of quotation marks.
- * \remarks{Needless and empty quotations are not "normalized away".}
+ * result in the result to be embraced as such by a single pair of quotation marks (it is requoted).
+ * \remarks{Needless and empty quotations are not "normalized away" unless noted otherwise.}
  * }\li{
  * No further normalization occurs.
  * (In particular, domain names may have any case, or be IDNA labels.)
@@ -87,9 +95,116 @@ struct su_imf_shtok;
  * ASCII \NUL aka bytes with value 0 are never supported in bodies.
  * }}
  *
- * \remarks{Only available if \r{su_HAVE_IMF} is defined.}
+ * \head1{ABNF}
+ *
+ * \head2{RFC 5234 (Augmented BNF for Syntax Specifications: ABNF), B.1. Core Rules}
+ *
+ * \cb{
+ * ALPHA  = %x41-5A / %x61-7A; A-Z / a-z
+ * BIT    = "0" / "1"
+ * CHAR   = %x01-7F; any 7-bit US-ASCII character, excluding NUL
+ * CR     = %x0D ; carriage return
+ * CRLF   = CR LF; Internet standard newline
+ * CTL    = %x00-1F / %x7F; controls
+ * DIGIT  = %x30-39; 0-9
+ * DQUOTE = %x22; " (Double Quote)
+ * HEXDIG = DIGIT / "A" / "B" / "C" / "D" / "E" / "F"
+ * HT     = %x09; horizontal tab
+ * LF     = %x0A; linefeed
+ * [LWSP  = *(WSP / CRLF WSP); Use of this linear-white-space rule
+ *              ; permits lines containing only white space that are no longer legal in mail headers
+ *              ; and have caused interoperability problems in other contexts.
+ *              ; Do not use when defining mail headers and use with caution in other contexts.]
+ * OCTET  = %x00-FF; 8 bits of data
+ * SP     = %x20
+ * VCHAR  = %x21-7E; visible (printing) characters
+ * WSP    = SP / HT; white space
+ * }
+ *
+ * \head2{RFC 5322 (Internet Message Format) plus RFC 6854 (Allow Group Syntax in the "From:" and "Sender:")}
+ *
+ * \cb{
+ * CFWS           = (1*([FWS] comment) [FWS]) / FWS
+ * FWS            = ([*WSP CRLF] 1*WSP) / obs-FWS; Folding white space; NOTE lone LF, CR are FWS, too
+ * addr-spec      = local-part "@" domain
+ * address        = mailbox / group
+ * address-list   = (address *("," address)) / obs-addr-list
+ * angle-addr     = [CFWS] "<" addr-spec ">" [CFWS] / obs-angle-addr
+ * atext          = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "/" / "=" / "?" /
+ *                      "^" / "_" / "`" / "{" / "|" / "}" / "~"; Printable US-ASCII less specials; used for "atom"s
+ * atom           = [CFWS] 1*atext [CFWS]
+ * comment        = "(" *([FWS] ccontent) [FWS] ")"
+ * ccontent       = ctext / quoted-pair / comment
+ * ctext          = %d33-39 / %d42-91 / %d93-126 / obs-ctext; Printable US-ASCII not including "(", ")", or "\"
+ * display-name   = phrase
+ * domain         = dot-atom / domain-literal / obs-domain
+ * domain-literal = [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]; to be used bypassing normal name-resolution
+ * dot-atom       = [CFWS] dot-atom-text [CFWS]
+ * dot-atom-text  = 1*atext *("." 1*atext)
+ * dtext          = %d33-90 / d94-126 / obs-dtext; Printable US-ASCII not including "[", "]", or "\"
+ * group          = display-name ":" [group-list] ";" [CFWS]
+ * group-list     = mailbox-list / CFWS / obs-group-list
+ * local-part     = dot-atom / quoted-string / obs-local-part
+ * mailbox        = name-addr / addr-spec
+ * mailbox-list   = (mailbox *("," mailbox)) / obs-mbox-list
+ * name-addr      = [display-name] angle-addr
+ * phrase         = 1*word / obs-phrase
+ * qcontent       = qtext / quoted-pair
+ * quoted-pair    = ("\" (VCHAR / WSP)) / obs-qp
+ * quoted-string  = [CFWS] DQUOTE *([FWS] qcontent) [FWS] DQUOTE [CFWS]
+ * qtext          = %d33 / d35-91 / d93-126 / obs-qtext; Printable US-ASCII excluding "\" and the quote character
+ * specials       = "(" / ")" / "<" / ">" / "[" / "]" / ":" / ";" / "@" / "\" / "," / "." / DQUOTE
+ *                      ; Special characters that do not appear in "atext"
+ * unstructured   = (*([FWS] VCHAR) *WSP) / obs-unstruct
+ * word           = atom / quoted-string
+ *
+ * obs-FWS         = 1*WSP *(CRLF 1*WSP)
+ * obs-NO-WS-CTL   = %d1-8 / %d11 / %d12 / %d14-31 / %d127; US-ASCII controls except CR, LF, and whitespace
+ * obs-addr-list   = *([CFWS] ",") address *("," [address / CFWS])
+ * obs-angle-addr  = [CFWS] "<" obs-route addr-spec ">" [CFWS]
+ * obs-ctext       = obs-NO-WS-CTL
+ * obs-domain      = atom *("." atom)
+ * obs-domain-list = *(CFWS / ",") "@" domain  *("," [CFWS] ["@" domain])
+ * obs-dtext       = obs-NO-WS-CTL / quoted-pair
+ * obs-group-list  = 1*([CFWS] ",") [CFWS]
+ * obs-qtext       = obs-NO-WS-CTL
+ * obs-local-part  = word *("." word)
+ * obs-mbox-list   = *([CFWS] ",") mailbox *("," [mailbox / CFWS])
+ * obs-phrase      = word *(word / "." / CFWS)
+ * obs-phrase-list = [phrase / CFWS] *("," [phrase / CFWS])
+ * obs-qp          = "\" (%d0 / obs-NO-WS-CTL / LF / CR); NOTE this implementation does not support NUL
+ * obs-route       = obs-domain-list ":"
+ * obs-unstruct    = *((*LF *CR *(obs-utext *LF *CR)) / FWS)
+ * obs-utext       = %d0 / obs-NO-WS-CTL / VCHAR
+ * }
+ *
+ * Additional notes:
+ *
+ * \list{\li{
+ * The parser adheres to RFC 5322 4.4., Obsolete Addressing:
+ * "When interpreting addresses, the route portion SHOULD be ignored".
+ * }\li{
+ * In order to accommodate that "3.2.2. Folding White Space and Comments" allows \c{CFWS} rather freely,
+ * Postel'ize that and allow it practically everywhere.
+ * (To note standards like DMARC etc allow it in all portions of K=V, different to MIME RFC 2025.
+ * }\li{
+ * \c{obs-qp} and \c{obs-utext} are supported only WITHOUT NUL.
+ * }}
+ *
+ * \head2{RFC 5322 Message-Id, RFC 2045 Content-ID}
+ *
+ * \cb{
+ * msg-id = [CFWS] "<" id-left "@" id-right ">" [CFWS]
+ * id-left = dot-atom-text / obs-id-left
+ * id-right = dot-atom-text / no-fold-literal / obs-id-right
+ * no-fold-literal = "[" *dtext "]"
+ *
+ * obs-id-left = local-part
+ * obs-id-right = domain
+ * }
  * @{
  */
+/* }}} */
 
 /* Whether we shall use a table lookup for char classification.
  * If value is S8_MAX we save array space with increased code size, with U8_MAX we simply lookup bytes */
@@ -113,6 +228,11 @@ enum su_imf_mode{
 	 * Sets \r{su_IMF_STATE_DOMAIN_XLABEL} when encountered.
 	 * For \r{su_imf_parse_addr_header()}. */
 	su_IMF_MODE_DOMAIN_XLABEL = 1u<<2,
+
+	/*! Treat it as an error if none or more than one \c{msg-id} exists.
+	 * Overwrites (\ASSERT_EXEC{logs}) \r{su_IMF_MODE_STOP_EARLY}!
+	 * For \r{su_imf_parse_msgid_header()}. */
+	su_IMF_MODE_ID_SINGLE = 1u<<3,
 
 	/*! Parse \c{dot-atom-text} (unquoted period) instead of \c{atext} for \c{phrase}.
 	 * For \r{su_imf_parse_struct_header()}. */
@@ -140,8 +260,14 @@ enum su_imf_mode{
 	 * lonely colon \c{:} becomes a "valid" empty address group,
 	 * a single trailing dot \c{.} is allowed in an otherwise valid \c{domain} (\r{su_IMF_ERR_CONTENT}),
 	 * and more (see \r{su_imf_err}).
-	 * }}
-	 */
+	 * }\li{
+	 * For \r{su_imf_parse_msgid_header()}: (try to) ignore
+	 * missing surrounding angle brackets,
+	 * missing or multiple &#40; at-signs,
+	 * superfluous spaces, and trailing dots; and much more.
+	 * \remarks{Due to bogus \c{msg-id}s seen in the wild, very forgiving;
+	 * even more so with \r{su_IMF_MODE_ID_SINGLE}!}
+	 * }} */
 	su_IMF_MODE_RELAX = 1u<<9,
 	/*! Stop parsing whenever the first address or token has been successfully parsed.
 	 * \remarks{Empty groups (\c{Undisclosed recipients:;}) do not count as addresses, therefore the result list
@@ -152,7 +278,8 @@ enum su_imf_mode{
 			su_IMF_MODE_DOMAIN_XLABEL | su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY,
 	su__IMF_MODE_STRUCT_MASK = su_IMF_MODE_DOT_ATEXT | su_IMF_MODE_TOK_COMMENT |
 			su_IMF_MODE_TOK_SEMICOLON | su_IMF_MODE_TOK_EMPTY |
-			su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY
+			su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY,
+	su__IMF_MODE_MSGID_MASK = su_IMF_MODE_ID_SINGLE | su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY
 };
 
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_err}. */
@@ -163,7 +290,8 @@ enum su_imf_state{
 	su_IMF_STATE_ADDR_SPEC_NO_DOMAIN = 1u<<12,
 	/*! \r{su_IMF_MODE_DOMAIN_XLABEL}, and strict content check failed. */
 	su_IMF_STATE_DOMAIN_XLABEL = 1u<<13,
-	/*! \r{su_imf_addr::imfa_domain} is a (possibly empty) literal; surrounding brackets are not stripped. */
+	/*! (Possibly empty) Domain literal seen; surrounding brackets are not stripped.
+	 * Related to \r{su_imf_addr::imfa_domain} and \r{su_imf_msgid::imfmi_id_right}. */
 	su_IMF_STATE_DOMAIN_LITERAL = 1u<<14,
 	su_IMF_STATE_GROUP = 1u<<15, /*!< Belongs to an address group (that maybe starts and/or ends). */
 	su_IMF_STATE_GROUP_START = 1u<<16, /*!< Group start. */
@@ -241,12 +369,27 @@ struct su_imf_addr{
 	char imfa_dat[VFIELD_SIZE(0)]; /* Storage for any text (single chunk struct) */
 };
 
+/*! Parsed \c{msg-id} structure; all buffers are accessible and \NUL terminated. */
+struct su_imf_msgid{
+	struct su_imf_msgid *imfmi_next; /*!< Next \c{msg-id}, if any. */
+	char *imfmi_id_left; /*!< \c{id-left}. */
+	char *imfmi_id_right; /*!< \c{id-right} (literal with \r{su_IMF_STATE_DOMAIN_LITERAL}). */
+	/*! Any comment content within a \c{msg-id}, joined together.
+	 * Note that surrounding comments are discarded. */
+	char *imfmi_comm;
+	u32 imfmi_id_left_len; /*!< \_ */
+	u32 imfmi_id_right_len; /*!< \_ */
+	u32 imfmi_comm_len; /*!< \_ */
+	u32 imfmi_mse; /*!< Bitmix of \r{su_imf_mode}, \r{su_imf_state} and \r{su_imf_err}. */
+	char imfmi_dat[VFIELD_SIZE(0)]; /* Storage for any text (single chunk struct) */
+};
+
 /*! Parsed structured header field token; the buffer is accessible and \NUL terminated. */
 struct su_imf_shtok{
 	struct su_imf_shtok *imfsht_next; /*!< Next token, if any. */
 	u32 imfsht_mse; /*!< Bitmix of \r{su_imf_mode}, \r{su_imf_state} and \r{su_imf_err}. */
 	u32 imfsht_len; /*!< Length of \c{imfsht_dat}. */
-	char imfsht_dat[VFIELD_SIZE(0)]; /*! \_ */
+	char imfsht_dat[VFIELD_SIZE(0)]; /*!< \_ */
 };
 
 EXPORT_DATA u16 const su__imf_c_tbl[su__IMF_TABLE_SIZE + 1];
@@ -275,10 +418,12 @@ INLINE void su_imf_snap_gut(struct su_mem_bag *membp, void *snap){
 
 /*! Parse an (possibly multiline) \c{address-list} header field body.
  * (Since RFC 6854 updated RFC 5322 this covers all address-related fields of IMF.)
+ *
  * Stores a result list in \a{*app}, or \NIL if nothing can be parsed.
  * A result without any data is not produced.
  * Results may contain \c{IMF_ERR_} entries with \r{su_IMF_MODE_RELAX}, or according to \c{IMF_MODE_*}.
  * If \a{endptr_or_nil} is set it will point to where parsing stopped (points to \NUL but in error cases).
+ *
  * Returns \ERR{NONE} on success, -\ERR{NODATA} on empty (or only whitespace) input, -\ERR{OVERFLOW} if input is too
  * long, or -\ERR{NOMEM} if an allocation failed;
  * A positive return represents a \r{su_imf_state} and \r{su_imf_err} bitmix of the parse error.
@@ -290,12 +435,28 @@ INLINE void su_imf_snap_gut(struct su_mem_bag *membp, void *snap){
 EXPORT s32 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u32,su_imf_mode) mode,
 		struct su_mem_bag *membp, char const **endptr_or_nil);
 
+/*! Parse a (possibly multiline) \c{msg-id} header field body.
+ * This covers \c{Message-ID}, \c{In-Reply-To} and \c{References} from RFC 5322,
+ * as well as \c{Content-ID} from RFC 2045,
+ * the first and last of which via \r{su_IMF_MODE_ID_SINGLE}.
+ *
+ * If \a{mode} has \r{su_IMF_MODE_RELAX} set a very permissive parser is used
+ *FIXME missing <> only with SINGLE??
+FIXME
+
+
+ */
+EXPORT s32 su_imf_parse_msgid_header(struct su_imf_msgid **mipp, char const *header, BITENUM(u32,su_imf_mode) mode,
+		struct su_mem_bag *membp, char const **endptr_or_nil);
+
 /*! Parse a (possibly multiline) structured header field body (a mix of \c{CFWS} and \c{phrase} tokens).
  * If (a non-empty) \c{quoted-string} is parsed within \c{phrase}, the entire result token will be (re-)quoted as such.
+ *
  * With \r{su_IMF_MODE_DOT_ATEXT} RFC 5322 \c{phrase} is assumed to contain \c{dot-atom-text}, not \c{atext}.
  * With \r{su_IMF_MODE_TOK_COMMENT} comments create result tokens instead of being discarded:
  * adjacent comments are joined, and results do not contain the parenthesis, for example \c{(a (b)) (c)}
  * creates the result \c{a b c}.
+ *
  * With \r{su_IMF_MODE_TOK_SEMICOLON} a(n unquoted) semicolon does not result in error but terminates the current
  * token: it is not stored, but announced via \r{su_IMF_STATE_SEMICOLON} in \r{su_imf_shtok::imfsht_mse};
  * then \r{su_IMF_MODE_TOK_EMPTY} can also be used: an input \¢{"";();;} would then create three empty tokens
@@ -304,6 +465,7 @@ EXPORT s32 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header
  * Stores a result list in \a{*shtpp}, or \NIL if nothing can be parsed.
  * \r{su_IMF_MODE_RELAX} may be used, and \r{su_IMF_MODE_STOP_EARLY}, too.
  * If \a{endptr_or_nil} is set it will point to where parsing stopped (points to \NUL but in error cases).
+ *
  * Returns \ERR{NONE} on success, -\ERR{NODATA} on empty (or only whitespace) input, -\ERR{OVERFLOW} if input is too
  * long, or -\ERR{NOMEM} if an allocation failed.
  * A positive return represents a \r{su_imf_state} and \r{su_imf_err} (logical subset) bitmix of the parse error.
@@ -372,6 +534,7 @@ NSPC_BEGIN(su)
 
 class imf;
 //class imf::addr;
+//class imf::msgid;
 //class imf::shtok;
 
 /* imf {{{ */
@@ -384,6 +547,7 @@ class imf{
 	su_CLASS_NO_COPY(imf);
 public:
 	class addr;
+	class msgid;
 	class shtok;
 
 	/* addr {{{ */
@@ -433,6 +597,41 @@ public:
 	};
 	/* }}} */
 
+	/* msgid {{{ */
+	/*! \cd{su_imf_msgid} */
+	class msgid : private su_imf_msgid{
+		friend class imf;
+	protected:
+		msgid(void) {}
+	public:
+		~msgid(void) {}
+
+		/*! \r{su_imf_msgid::imfmi_next} */
+		msgid *next(void) const {return S(msgid*,imfmi_next);}
+
+		/*! \r{su_imf_msgid::imfmi_mse} */
+		u32 mse(void) const {return imfmi_mse;}
+
+		/*! \r{su_imf_msgid::imfmi_id_left_len} */
+		u32 id_left_len(void) const {return imfmi_id_left_len;}
+
+		/*! \r{su_imf_msgid::imfmi_id_left} */
+		char const *id_left(void) const {return imfmi_id_left;}
+
+		/*! \r{su_imf_msgid::imfmi_id_right_len} */
+		u32 id_right_len(void) const {return imfmi_id_right_len;}
+
+		/*! \r{su_imf_msgid::imfmi_id_right} */
+		char const *id_right(void) const {return imfmi_id_right;}
+
+		/*! \r{su_imf_msgid::imfmi_comm_len} */
+		u32 comm_len(void) const {return imfmi_comm_len;}
+
+		/*! \r{su_imf_msgid::imfmi_comm} */
+		char const *comm(void) const {return imfmi_comm;}
+	};
+	/* }}} */
+
 	/* shtok {{{ */
 	/*! \cd{su_imf_shtok} */
 	class shtok : private su_imf_shtok{
@@ -459,6 +658,7 @@ public:
 private:
 #ifndef DOXYGEN
 	su_CXXCAST(addr, struct su_imf_addr);
+	su_CXXCAST(msgid, struct su_imf_msgid);
 	su_CXXCAST(shtok, struct su_imf_shtok);
 #endif
 public:
@@ -470,6 +670,8 @@ public:
 		mode_display_name_dot = su_IMF_MODE_DISPLAY_NAME_DOT, /*!< \cd{su_IMF_MODE_DISPLAY_NAME_DOT} */
 		mode_addr_spec_no_domain = su_IMF_MODE_ADDR_SPEC_NO_DOMAIN, /*!< \cd{su_IMF_MODE_ADDR_SPEC_NO_DOMAIN} */
 		mode_domain_xlabel = su_IMF_MODE_DOMAIN_XLABEL, /*!< \cd{su_IMF_MODE_DOMAIN_XLABEL} */
+
+		mode_id_single = su_IMF_MODE_ID_SINGLE, /*!< \cd{su_IMF_MODE_ID_SINGLE} */
 
 		mode_dot_atext = su_IMF_MODE_DOT_ATEXT, /*!< \cd{su_IMF_MODE_DOT_ATEXT} */
 		mode_tok_comment = su_IMF_MODE_TOK_COMMENT, /*! \cd{su_IMF_MODE_TOK_COMMENT} */
@@ -527,6 +729,13 @@ public:
 	static s32 parse_addr_header(addr *&app, char const *header, BITENUM(u32,mode) mode, mem_bag &membp,
 			char const **endptr_or_nil){
 		return su_imf_parse_addr_header(R(su_imf_addr**,&app), header, mode, S(struct su_mem_bag*,&membp),
+			endptr_or_nil);
+	}
+
+	/*! \r{su_imf_parse_msgid_header()} */
+	static s32 parse_msgid_header(msgid *&mipp, char const *header, BITENUM(u32,mode) mode, mem_bag &membp,
+			char const **endptr_or_nil){
+		return su_imf_parse_msgid_header(R(su_imf_msgid**,&mipp), header, mode, S(struct su_mem_bag*,&membp),
 			endptr_or_nil);
 	}
 
