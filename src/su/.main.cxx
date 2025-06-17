@@ -2551,6 +2551,19 @@ a_imf_addr(void){ // {{{
 		{imf::err_content, imf::mode_none, 0, "a.().b@by", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "<a.().b@by>", "", {0,}},
 
+		// MODE_OK_DOMAIN_XLABEL
+		{imf::err_content, imf::mode_none, 0, "a@aä", "", {0,}},
+		{0, imf::mode_ok_domain_xlabel, 1, "a@bä", "\0\0a\0bä\0\0", {imf::state_domain_xlabel,}},
+		{imf::err_content, imf::mode_none, 0, "<a@cä>", "", {0,}},
+		{0, imf::mode_ok_domain_xlabel, 1, "<a@dä>", "\0\0a\0dä\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_ok_domain_xlabel, 1, "a@ e ä f  #  ", "\0\0a\0eäf#\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_ok_domain_xlabel, 1, "<a@ g ä h # >", "\0\0a\0gäh#\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_ok_domain_xlabel, 2,
+			"a@ i ä j  #,k@ ø @ µ €  ",
+			"\0\0a\0iäj#\0\0"
+			"\0\0k\0ø@µ€\0\0",
+			{imf::state_domain_xlabel, imf::state_domain_xlabel,}},
+
 		// pure errors
 
 		{-err::nodata, imf::mode_none, 0, "", "", {0,}},

@@ -489,7 +489,7 @@ a_imf_addr_create(struct a_imf_actx *acp, struct su_mem_bag *membp, struct su_im
 	*appp = &ap->imfa_next;
 
 	ap->imfa_next = NIL;
-	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_MASK;
+	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_ADDR_MASK;
 
 	ap->imfa_group_display_name = ap->imfa_dat;
 	if((ap->imfa_group_display_name_len = i = acp->ac_.group_display_name) > 0)
@@ -604,7 +604,7 @@ jlist_next:
 	cpalter = acp->ac_locpar;
 
 	STRUCT_ZERO_FROM(struct a_imf_x, &acp->ac_, group_display_name);
-	acp->ac_.mse &= su__IMF_MODE_MASK | ((acp->ac_.mse & su_IMF_STATE_GROUP_END) ? 0 : su_IMF_STATE_GROUP);
+	acp->ac_.mse &= su__IMF_MODE_ADDR_MASK | ((acp->ac_.mse & su_IMF_STATE_GROUP_END) ? 0 : su_IMF_STATE_GROUP);
 
 	for(rv = su_IMF_ERR_CONTENT;;){
 		char c;
@@ -701,7 +701,6 @@ jaddr_create:
 		while(su_imf_c_atext(*acp->ac_.hd))
 			++acp->ac_.hd;
 		if(xcp != acp->ac_.hd){
-			/* MUST be display-name or local-part */
 jpushany:
 			i = S(u32,P2UZ(acp->ac_.hd - xcp));
 			if((f & (a_STAGE_ANGLE | a_STAGE_DOMAIN | a_WS)) == a_WS){
@@ -783,7 +782,11 @@ jdomain_done_no_len_check:
 				}
 				continue;
 			default:
-				goto jleave;
+				if(!(acp->ac_.mse & su_IMF_MODE_OK_DOMAIN_XLABEL))
+					goto jleave;
+				acp->ac_.mse |= su_IMF_STATE_DOMAIN_XLABEL;
+				cp[l++] = c;
+				continue;
 			}
 		}else if(f & a_STAGE_ANGLE){
 			switch(c){
@@ -836,13 +839,12 @@ jroute_end:
 			case '>':
 				if(f & a_ROUTE)
 					goto jleave;
-				if(acp->ac_.mse & su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN){
-					/* STAGE_ANGLE stripped by jdomain_done! */
-					acp->ac_.mse |= su_IMF_STATE_ADDR_SPEC_NO_DOMAIN;
-					ASSERT(cp == acp->ac_domain);
-					goto jlocpar_copy;
-				}
-				FALLTHRU
+				if(!(acp->ac_.mse & su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN))
+					goto jleave;
+				/* STAGE_ANGLE stripped by jdomain_done! */
+				acp->ac_.mse |= su_IMF_STATE_ADDR_SPEC_NO_DOMAIN;
+				ASSERT(cp == acp->ac_domain);
+				goto jlocpar_copy;
 			default:
 				goto jleave;
 			}
@@ -961,7 +963,7 @@ jangleme:
 					a_imf_addr_create(acp, membp, &app);
 					goto jlist_next; /* No STOP_EARLY, there was no address */
 				}
-				acp->ac_.mse &= su__IMF_MODE_MASK;
+				acp->ac_.mse &= su__IMF_MODE_ADDR_MASK;
 				if(*app_base != NIL){
 					struct su_imf_addr *ap;
 
