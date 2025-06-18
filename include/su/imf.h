@@ -74,7 +74,7 @@ struct su_imf_shtok;
  * except for whitespace within \c{quoted-string}s (according to the RFC).
  * }\li{
  * Quotations in results strings are normalized.
- * This means that presence of (or, with \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}, necessity for) quotation marks will
+ * This means that presence of (or, with \r{su_IMF_MODE_DISPLAY_NAME_DOT}, necessity for) quotation marks will
  * result in the result to be embraced as such by a single pair of quotation marks.
  * \remarks{Needless and empty quotations are not "normalized away".}
  * }\li{
@@ -100,60 +100,68 @@ enum su_imf_mode{
 	su_IMF_MODE_NONE, /*!< Nothing (this is 0). */
 
 	/*! Ok \c{.} in \c{display-name}, support \c{Dr. X &lt;y&#40;z&gt;} user input (result correctly quoted).
-	 * For address headers. */
-	su_IMF_MODE_OK_DISPLAY_NAME_DOT = 1u<<0,
+	 * For \r{su_imf_parse_addr_header()}. */
+	su_IMF_MODE_DISPLAY_NAME_DOT = 1u<<0,
 	/*! Ok plain user name in \c{angle-addr}ess, that is \c{&lt;USERNAME&gt;}, without domain name.
 	 * The validity of \c{USERNAME} and its expansion is up to the caller.
 	 * Sets \r{su_IMF_STATE_ADDR_SPEC_NO_DOMAIN} when encountered.
-	 * For address headers. */
-	su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN = 1u<<1,
+	 * For \r{su_imf_parse_addr_header()}. */
+	su_IMF_MODE_ADDR_SPEC_NO_DOMAIN = 1u<<1,
 	/*! Heavily loosen syntax checks when parsing a non-literal \c{domain}.
-	 * In order to support locale language in domain names this;
-	 * The validity of the domain, likely its IDNA conversion, is up to the caller.
+	 * To support locale language in domain names this can be set:
+	 * the validity of the domain, likely its IDNA conversion, is up to the caller.
 	 * Sets \r{su_IMF_STATE_DOMAIN_XLABEL} when encountered.
-	 * For address headers. */
-	su_IMF_MODE_OK_DOMAIN_XLABEL = 1u<<2,
+	 * For \r{su_imf_parse_addr_header()}. */
+	su_IMF_MODE_DOMAIN_XLABEL = 1u<<2,
 
-	/*! Parse \c{dot-atom-text} instead of \c{atext} for \c{phrase}.
-	 * For structured header( token)s, extends the meaning of \c{phrase} to allow unquoted period. */
-	su_IMF_MODE_OK_DOT_ATEXT = 1u<<5,
+	/*! Parse \c{dot-atom-text} (unquoted period) instead of \c{atext} for \c{phrase}.
+	 * For \r{su_imf_parse_struct_header()}. */
+	su_IMF_MODE_DOT_ATEXT = 1u<<5,
 	/*! Generate result tokens for comments.
-	 * For structured header( token)s. */
+	 * For \r{su_imf_parse_struct_header()}. */
 	su_IMF_MODE_TOK_COMMENT = 1u<<6,
 	/*! Treat (unquoted) semicolon as a terminator of the current token, instead of an error.
 	 * Multiple tokens may still be generated (in between semicolons).
-	 * For structured header( token)s. */
+	 * For \r{su_imf_parse_struct_header()}. */
 	su_IMF_MODE_TOK_SEMICOLON = 1u<<7,
 	/*! Allow empty tokens (mostly in conjunction with \r{su_IMF_MODE_TOK_SEMICOLON}).
 	 * As whitespace is skipped over, and empty (or ignored) comments and quoted-strings do not generate output,
 	 * a semantically meaningful semicolon (for example in the \c{Authentication-Results} header) will not generate
 	 * a token until this flag is set.
 	 * If set, an empty quoted-string does generate an (unquoted) output token.
-	 * For structured header( token)s. */
+	 * For \r{su_imf_parse_struct_header()}. */
 	su_IMF_MODE_TOK_EMPTY = 1u<<8,
 
-	/*! Ignore certain unambiguous \r{su_imf_err}ors which would otherwise cause hard failure.
-	 * Be aware that with this flag a colon \c{:} is a "valid" empty address group. */
+	/*! Ignore certain unambiguous \r{su_imf_err}ors which would otherwise cause hard failures.
+	 * Such a condition is then reported via \r{su_IMF_STATE_RELAX} (and an error) via \r{su_imf_addr::imfa_mse}.
+	 * Some notes:
+	 * \list{\li{
+	 * For \r{su_imf_parse_addr_header()}:
+	 * lonely colon \c{:} becomes a "valid" empty address group,
+	 * a single trailing dot \c{.} is allowed in an otherwise valid \c{domain} (\r{su_IMF_ERR_CONTENT}),
+	 * and more (see \r{su_imf_err}).
+	 * }}
+	 */
 	su_IMF_MODE_RELAX = 1u<<9,
 	/*! Stop parsing whenever the first address or token has been successfully parsed.
 	 * \remarks{Empty groups (\c{Undisclosed recipients:;}) do not count as addresses, therefore the result list
 	 * can consist of multiple nodes despite that flag being set.} */
 	su_IMF_MODE_STOP_EARLY = 1u<<10,
 
-	su__IMF_MODE_ADDR_MASK = su_IMF_MODE_OK_DISPLAY_NAME_DOT | su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN |
-			su_IMF_MODE_OK_DOMAIN_XLABEL | su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY,
-	su__IMF_MODE_STRUCT_MASK = su_IMF_MODE_OK_DOT_ATEXT | su_IMF_MODE_TOK_COMMENT |
+	su__IMF_MODE_ADDR_MASK = su_IMF_MODE_DISPLAY_NAME_DOT | su_IMF_MODE_ADDR_SPEC_NO_DOMAIN |
+			su_IMF_MODE_DOMAIN_XLABEL | su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY,
+	su__IMF_MODE_STRUCT_MASK = su_IMF_MODE_DOT_ATEXT | su_IMF_MODE_TOK_COMMENT |
 			su_IMF_MODE_TOK_SEMICOLON | su_IMF_MODE_TOK_EMPTY |
 			su_IMF_MODE_RELAX | su_IMF_MODE_STOP_EARLY
 };
 
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_err}. */
 enum su_imf_state{
-	/*!< \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}, and an unquoted \c{.} was seen (result is correctly quoted). */
+	/*!< \r{su_IMF_MODE_DISPLAY_NAME_DOT}, and an unquoted \c{.} was seen (result is correctly quoted). */
 	su_IMF_STATE_DISPLAY_NAME_DOT = 1u<<11,
-	/*! \r{su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN}, \c{&lt;USERNAME&gt;} was seen. */
+	/*! \r{su_IMF_MODE_ADDR_SPEC_NO_DOMAIN}, \c{&lt;USERNAME&gt;} was seen. */
 	su_IMF_STATE_ADDR_SPEC_NO_DOMAIN = 1u<<12,
-	/*! \r{su_IMF_MODE_OK_DOMAIN_XLABEL}, and strict content check failed. */
+	/*! \r{su_IMF_MODE_DOMAIN_XLABEL}, and strict content check failed. */
 	su_IMF_STATE_DOMAIN_XLABEL = 1u<<13,
 	/*! \r{su_imf_addr::imfa_domain} is a (possibly empty) literal; surrounding brackets are not stripped. */
 	su_IMF_STATE_DOMAIN_LITERAL = 1u<<14,
@@ -180,7 +188,7 @@ enum su_imf_state{
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_state}. */
 enum su_imf_err{
 	su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY = 1u<<24, /*!< Address group display-name must not be empty, but is. */
-	su_IMF_ERR_DISPLAY_NAME_DOT = 1u<<25, /*!< \c{.} in display-name, no \r{su_IMF_MODE_OK_DISPLAY_NAME_DOT}. */
+	su_IMF_ERR_DISPLAY_NAME_DOT = 1u<<25, /*!< \c{.} in display-name, no \r{su_IMF_MODE_DISPLAY_NAME_DOT}. */
 	su_IMF_ERR_DQUOTE = 1u<<26, /*!< Quoted-string \c{".."} content invalid, or quote not closed. */
 	su_IMF_ERR_GROUP_OPEN = 1u<<27, /*!< A group was not closed. */
 
@@ -269,7 +277,7 @@ INLINE void su_imf_snap_gut(struct su_mem_bag *membp, void *snap){
  * (Since RFC 6854 updated RFC 5322 this covers all address-related fields of IMF.)
  * Stores a result list in \a{*app}, or \NIL if nothing can be parsed.
  * A result without any data is not produced.
- * Results may contain \c{IMF_ERR_} entries with \r{su_IMF_MODE_RELAX}, or according to \c{IMF_MODE_OK_*}.
+ * Results may contain \c{IMF_ERR_} entries with \r{su_IMF_MODE_RELAX}, or according to \c{IMF_MODE_*}.
  * If \a{endptr_or_nil} is set it will point to where parsing stopped (points to \NUL but in error cases).
  * Returns \ERR{NONE} on success, -\ERR{NODATA} on empty (or only whitespace) input, -\ERR{OVERFLOW} if input is too
  * long, or -\ERR{NOMEM} if an allocation failed;
@@ -284,7 +292,7 @@ EXPORT s32 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header
 
 /*! Parse a (possibly multiline) structured header field body (a mix of \c{CFWS} and \c{phrase} tokens).
  * If (a non-empty) \c{quoted-string} is parsed within \c{phrase}, the entire result token will be (re-)quoted as such.
- * With \r{su_IMF_MODE_OK_DOT_ATEXT} RFC 5322 \c{phrase} is assumed to contain \c{dot-atom-text}, not \c{atext}.
+ * With \r{su_IMF_MODE_DOT_ATEXT} RFC 5322 \c{phrase} is assumed to contain \c{dot-atom-text}, not \c{atext}.
  * With \r{su_IMF_MODE_TOK_COMMENT} comments create result tokens instead of being discarded:
  * adjacent comments are joined, and results do not contain the parenthesis, for example \c{(a (b)) (c)}
  * creates the result \c{a b c}.
@@ -459,14 +467,11 @@ public:
 	enum mode{
 		mode_none = su_IMF_MODE_NONE, /*!< \cd{su_IMF_MODE_NONE} */
 
-		/*! \cd{su_IMF_MODE_OK_DISPLAY_NAME_DOT} */
-		mode_ok_display_name_dot = su_IMF_MODE_OK_DISPLAY_NAME_DOT,
-		/*! \cd{su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN} */
-		mode_ok_addr_spec_no_domain = su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN,
-		/*! \cd{su_IMF_MODE_OK_DOMAIN_XLABEL} */
-		mode_ok_domain_xlabel = su_IMF_MODE_OK_DOMAIN_XLABEL,
+		mode_display_name_dot = su_IMF_MODE_DISPLAY_NAME_DOT, /*!< \cd{su_IMF_MODE_DISPLAY_NAME_DOT} */
+		mode_addr_spec_no_domain = su_IMF_MODE_ADDR_SPEC_NO_DOMAIN, /*!< \cd{su_IMF_MODE_ADDR_SPEC_NO_DOMAIN} */
+		mode_domain_xlabel = su_IMF_MODE_DOMAIN_XLABEL, /*!< \cd{su_IMF_MODE_DOMAIN_XLABEL} */
 
-		mode_ok_dot_atext = su_IMF_MODE_OK_DOT_ATEXT, /*!< \cd{su_IMF_MODE_OK_DOT_ATEXT} */
+		mode_dot_atext = su_IMF_MODE_DOT_ATEXT, /*!< \cd{su_IMF_MODE_DOT_ATEXT} */
 		mode_tok_comment = su_IMF_MODE_TOK_COMMENT, /*! \cd{su_IMF_MODE_TOK_COMMENT} */
 		mode_tok_semicolon = su_IMF_MODE_TOK_SEMICOLON, /*!< \cd{su_IMF_MODE_TOK_SEMICOLON} */
 		mode_tok_empty = su_IMF_MODE_TOK_EMPTY, /*! \cd{su_IMF_MODE_TOK_EMPTY} */

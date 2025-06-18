@@ -2315,7 +2315,7 @@ a_imf_addr(void){ // {{{
 			"Joe Q. Public <john.q.public@ex.com>",
 			"",
 			{0,}},
-		{0, imf::mode_ok_display_name_dot, 1,
+		{0, imf::mode_display_name_dot, 1,
 			"Joe Q. Public <john.q.public@ex.com>",
 			"\0\"Joe Q. Public\"\0john.q.public\0ex.com\0\0",
 			{imf::state_display_name_dot,}},
@@ -2323,15 +2323,15 @@ a_imf_addr(void){ // {{{
 			"\"\" Dr.. . Z \"\" <x@y>",
 			"",
 			{0,}},
-		{0, imf::mode_ok_display_name_dot, 1,
+		{0, imf::mode_display_name_dot, 1,
 			"\"\" Dr.. . Z \"\" <x@y>", // TODO could strip trail WS
 			"\0\"Dr.. . Z \"\0x\0y\0\0",
 			{imf::state_display_name_dot,}},
-		{0, imf::mode_ok_display_name_dot, 1,
+		{0, imf::mode_display_name_dot, 1,
 			"\"\" Dr.. . Z  <x@y>",
 			"\0\"Dr.. . Z\"\0x\0y\0\0",
 			{imf::state_display_name_dot,}},
-		{0, imf::mode_ok_display_name_dot, 1,
+		{0, imf::mode_display_name_dot, 1,
 			"\"\\ \\ \\ \" Dr.. . Z  <x@y>",
 			"\0\"\\ \\ \\  Dr.. . Z\"\0x\0y\0\0",
 			{imf::state_display_name_dot,}},
@@ -2339,7 +2339,7 @@ a_imf_addr(void){ // {{{
 			"Dr \t \"\" \t Dr \t \"\" \t Dr. \t \"\" \t Z3 <x@y>",
 			"",
 			{0,}},
-		{0, imf::mode_ok_display_name_dot, 1,
+		{0, imf::mode_display_name_dot, 1,
 			"Dr \t \"\" \t Dr \t \"\" \t Dr. \t \"\" \t Z3 <x@y>",
 			"\0\"Dr  Dr  Dr.  Z3\"\0x\0y\0\0"
 			, {imf::state_display_name_dot,}},
@@ -2508,12 +2508,12 @@ a_imf_addr(void){ // {{{
 				imf::state_group_end | imf::state_group,}},
 
 		{imf::err_content, imf::mode_none, 0, "<u1>", "", {0,}},
-		{0, imf::mode_ok_addr_spec_no_domain, 1, "<u2>", "\0\0u2\0\0", {imf::state_addr_spec_no_domain,}},
+		{0, imf::mode_addr_spec_no_domain, 1, "<u2>", "\0\0u2\0\0", {imf::state_addr_spec_no_domain,}},
 		{imf::err_content, imf::mode_none, 0, "<u3@>", "", {0,}},
-		{imf::err_content, imf::mode_ok_addr_spec_no_domain, 0, "<u4@>", "", {0,}},
-		{imf::err_content, imf::mode_ok_addr_spec_no_domain, 0, "u5", "", {0,}},
-		{imf::err_content, imf::mode_ok_addr_spec_no_domain, 0, "u6@", "", {0,}},
-		{0, imf::mode_ok_addr_spec_no_domain, 1, "<u7@U7>", "\0\0u7\0U7\0", {0,}},
+		{imf::err_content, imf::mode_addr_spec_no_domain, 0, "<u4@>", "", {0,}},
+		{imf::err_content, imf::mode_addr_spec_no_domain, 0, "u5", "", {0,}},
+		{imf::err_content, imf::mode_addr_spec_no_domain, 0, "u6@", "", {0,}},
+		{0, imf::mode_addr_spec_no_domain, 1, "<u7@U7>", "\0\0u7\0U7\0", {0,}},
 
 		// stop_early with some things from above
 		{0, imf::mode_stop_early, 2,
@@ -2553,12 +2553,12 @@ a_imf_addr(void){ // {{{
 
 		// MODE_OK_DOMAIN_XLABEL
 		{imf::err_content, imf::mode_none, 0, "a@aä", "", {0,}},
-		{0, imf::mode_ok_domain_xlabel, 1, "a@bä", "\0\0a\0bä\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 1, "a@bä", "\0\0a\0bä\0\0", {imf::state_domain_xlabel,}},
 		{imf::err_content, imf::mode_none, 0, "<a@cä>", "", {0,}},
-		{0, imf::mode_ok_domain_xlabel, 1, "<a@dä>", "\0\0a\0dä\0\0", {imf::state_domain_xlabel,}},
-		{0, imf::mode_ok_domain_xlabel, 1, "a@ e ä f  #  ", "\0\0a\0eäf#\0\0", {imf::state_domain_xlabel,}},
-		{0, imf::mode_ok_domain_xlabel, 1, "<a@ g ä h # >", "\0\0a\0gäh#\0\0", {imf::state_domain_xlabel,}},
-		{0, imf::mode_ok_domain_xlabel, 2,
+		{0, imf::mode_domain_xlabel, 1, "<a@dä>", "\0\0a\0dä\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 1, "a@ e ä f  #  ", "\0\0a\0eäf#\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 1, "<a@ g ä h # >", "\0\0a\0gäh#\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 2,
 			"a@ i ä j  #,k@ ø @ µ €  ",
 			"\0\0a\0iäj#\0\0"
 			"\0\0k\0ø@µ€\0\0",
@@ -2586,10 +2586,15 @@ a_imf_addr(void){ // {{{
 		{imf::err_content, imf::mode_none, 0, "<a.b@.b.y>", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "a.b@\t \t . \t b\t.\ty", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "<a.b@\t \t . \t b\t.\ty>", "", {0,}},
-		{imf::err_content, imf::mode_none, 0, "a.b@b.y.", "", {0,}},
-		{imf::err_content, imf::mode_none, 0, "<a.b@b.y.>", "", {0,}},
-		{imf::err_content, imf::mode_none, 0, "a.b@\tb\t.\ty\t.\t ", "", {0,}},
-		{imf::err_content, imf::mode_none, 0, "<a.b@\tb\t.\ty\t.\t >", "", {0,}},
+
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "a.b@b.y.", "", {0,}},
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "<a.b@b.y.>", "", {0,}},
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "a.b@\tb\t.\ty\t.\t ", "", {0,}},
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "<a.b@\tb\t.\ty\t.\t >", "", {0,}},
+
+		{0, imf::mode_relax, 1, "<a1@\tb\t.\ty\t.\t >", "\0\0a1\0b.y.\0", {imf::state_relax | imf::err_content,}},
+		{imf::err_content, imf::mode_relax, 0, "<a2@.\tb\t.\ty\t >", "", {0,}},
+		{imf::err_content, imf::mode_relax, 0, "<a3@. >", "", {0,}},
 
 		//
 		{imf::err_content, imf::mode_none, 1,
@@ -2950,7 +2955,7 @@ a_imf_tok(void){ // {{{
 		{imf::err_content, imf::mode_tok_semicolon, 1, {0,},
 			" \"quo.\"te.",
 			"\"quo.te\"\0"},
-		{0, imf::mode_ok_dot_atext | imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+		{0, imf::mode_dot_atext | imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
 			" \"quo.\"te.\", baby\"-d'ya\"\\ \"know?;BUM  ;  MER",
 			"\"quo.te., baby-d'ya\\ know?\"\0"  "BUM\0"  "MER\0"},
 

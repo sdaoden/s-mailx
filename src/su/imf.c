@@ -768,8 +768,15 @@ jpushany:
 					goto jleave;
 jdomain_done:
 				ASSERT(cp == acp->ac_domain);
-				if(l == 0 || cp[l - 1] == '.')
+				if(l == 0)
 					goto jleave;
+				if(cp[l - 1] == '.'){
+					if(!(acp->ac_.mse & su_IMF_MODE_RELAX)){
+						rv = su_IMF_ERR_RELAX | su_IMF_ERR_CONTENT;
+						goto jleave;
+					}
+					acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_ERR_CONTENT;
+				}
 jdomain_done_no_len_check:
 				ASSERT(cp == acp->ac_domain);
 				acp->ac_.domain = l;
@@ -782,7 +789,7 @@ jdomain_done_no_len_check:
 				}
 				continue;
 			default:
-				if(!(acp->ac_.mse & su_IMF_MODE_OK_DOMAIN_XLABEL))
+				if(!(acp->ac_.mse & su_IMF_MODE_DOMAIN_XLABEL))
 					goto jleave;
 				acp->ac_.mse |= su_IMF_STATE_DOMAIN_XLABEL;
 				cp[l++] = c;
@@ -839,7 +846,7 @@ jroute_end:
 			case '>':
 				if(f & a_ROUTE)
 					goto jleave;
-				if(!(acp->ac_.mse & su_IMF_MODE_OK_ADDR_SPEC_NO_DOMAIN))
+				if(!(acp->ac_.mse & su_IMF_MODE_ADDR_SPEC_NO_DOMAIN))
 					goto jleave;
 				/* STAGE_ANGLE stripped by jdomain_done! */
 				acp->ac_.mse |= su_IMF_STATE_ADDR_SPEC_NO_DOMAIN;
@@ -889,7 +896,7 @@ jlocpar_copy:
 			case '<':
 				/* Otherwise maybe a 'Dr. Z <y@x>' was falsely seen as a local-part?
 				 * .. Then this should be an angle-addr *now* for us to deal with it */
-				if(acp->ac_.mse & su_IMF_MODE_OK_DISPLAY_NAME_DOT){
+				if(acp->ac_.mse & su_IMF_MODE_DISPLAY_NAME_DOT){
 					acp->ac_.mse |= su_IMF_STATE_DISPLAY_NAME_DOT;
 					f |= a_QUOTE;
 					goto jangleme;
@@ -918,7 +925,7 @@ jangleme:
 				f |= a_STAGE_ANGLE;
 				continue;
 			case '.':
-				/* Either parse a local-part without knowing; else IMF_MODE_OK_DISPLAY_NAME_DOT */
+				/* Either parse a local-part without knowing; else IMF_MODE_DISPLAY_NAME_DOT */
 				f |= a_STAGE_DOT;
 				goto jpushany;
 			case '@':
@@ -1121,7 +1128,7 @@ jtoken_next:
 				++acp->ac_.hd;
 			}
 
-			if(mode & su_IMF_MODE_OK_DOT_ATEXT){
+			if(mode & su_IMF_MODE_DOT_ATEXT){
 				while(*acp->ac_.hd == '.'){
 					++acp->ac_.hd;
 					acp->ac_comm[i++] = '.';
