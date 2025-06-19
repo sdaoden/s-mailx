@@ -916,6 +916,10 @@ a_amv_mac_def(char const *name, BITENUM(u32,a_amv_mac_flags) amf){
 		if(*cp == '}')
 			break;
 
+		/* Omit comment( command)s */
+		if(*cp == '#')
+			continue;
+
 		if(LIKELY(++line_cnt < U32_MAX)){
 			struct a_amv_mac_line *amlp;
 
