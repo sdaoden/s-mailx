@@ -401,7 +401,7 @@ INLINE boole su_mem_trace(boole dumpmem){ /* XXX ochannel, thrptr */
 	return FAL0;
 #endif
 }
-#ifdef su_MEM_ALLOC_DEBUG
+#if !defined DOXYGEN && defined su_MEM_ALLOC_DEBUG
 # define su_mem_trace(A) su__mem_trace(A  su_DVL_LOC_ARGS_INJ)
 #endif
 /*! @} *//* }}} */
