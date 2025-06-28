@@ -225,16 +225,13 @@ big_balls() {
 		${rm} "${PROGRAM}-${REL}.tar"
 
 		> "${PROGRAM}-${REL}.cksum"
-		${openssl} blake2s256 -help </dev/null >/dev/null 2>&1 && blakes=y || blakes=
-		${openssl} blake2b512 -help </dev/null >/dev/null 2>&1 && blakeb=y || blakeb=
+		${openssl} sha3-256 -help </dev/null >/dev/null 2>&1 && sha3=y || sha3=
 		${openssl} sha256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
 		${openssl} sha512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "${blakes}" ] && ${openssl} blake2s256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "${blakeb}" ] && ${openssl} blake2b512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+		[ -n "$sha3" ] && ${openssl} sha3-256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
 		${openssl} sha256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
 		${openssl} sha512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "${blakes}" ] && ${openssl} blake2s256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "${blakeb}" ] && ${openssl} blake2b512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
+		[ -n "$sha3" ] && ${openssl} sha3-256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
 
 		echo >> "${PROGRAM}-${REL}.cksum"
 		${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.xz"
