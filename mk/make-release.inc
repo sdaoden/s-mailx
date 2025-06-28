@@ -22,11 +22,11 @@
 : ${gzip:=gzip}
 : ${openssl:=openssl}
 : ${gpg:=gpg}
-: ${plzip:=plzip}
 : ${rm:=rm}
 : ${roff:=s-roff} # optional (command(1) tested)
 : ${sftp:=sftp}
 : ${tar:=tar}
+: ${xz:=xz}
 
 ##  --  >8	--  8<  --	##
 
@@ -220,25 +220,25 @@ big_balls() {
 		# And use a portable format by default; ustar from 1988 is ok for us,
 		# but pax/posix from 2001 is even more forgiving and future aware
 		${tar} -c ${tarfmt} -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
-		< "${PROGRAM}-${REL}.tar" ${plzip} -9 > "${PROGRAM}-${REL}.tar.lz"
+		< "${PROGRAM}-${REL}.tar" ${xz} -T0 -9 > "${PROGRAM}-${REL}.tar.xz"
 		< "${PROGRAM}-${REL}.tar" ${gzip} -9 > "${PROGRAM}-${REL}.tar.gz"
 		${rm} "${PROGRAM}-${REL}.tar"
 
 		> "${PROGRAM}-${REL}.cksum"
 		${openssl} blake2s256 -help </dev/null >/dev/null 2>&1 && blakes=y || blakes=
 		${openssl} blake2b512 -help </dev/null >/dev/null 2>&1 && blakeb=y || blakeb=
-		${openssl} sha256 "${PROGRAM}-${REL}.tar.lz" >> "${PROGRAM}-${REL}.cksum"
-		${openssl} sha512 "${PROGRAM}-${REL}.tar.lz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "${blakes}" ] && ${openssl} blake2s256 "${PROGRAM}-${REL}.tar.lz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "${blakeb}" ] && ${openssl} blake2b512 "${PROGRAM}-${REL}.tar.lz" >> "${PROGRAM}-${REL}.cksum"
+		${openssl} sha256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+		${openssl} sha512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+		[ -n "${blakes}" ] && ${openssl} blake2s256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
+		[ -n "${blakeb}" ] && ${openssl} blake2b512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
 		${openssl} sha256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
 		${openssl} sha512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
 		[ -n "${blakes}" ] && ${openssl} blake2s256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
 		[ -n "${blakeb}" ] && ${openssl} blake2b512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
 
 		echo >> "${PROGRAM}-${REL}.cksum"
-		${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.lz"
-		${cat} "${PROGRAM}-${REL}.tar.lz.asc" >> "${PROGRAM}-${REL}.cksum"
+		${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.xz"
+		${cat} "${PROGRAM}-${REL}.tar.xz.asc" >> "${PROGRAM}-${REL}.cksum"
 		${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.gz"
 		${cat} "${PROGRAM}-${REL}.tar.gz.asc" >> "${PROGRAM}-${REL}.cksum"
 		)
@@ -419,13 +419,13 @@ upload() (
 	cd "${TMPDIR}"
 
 	{
-		echo "-put ${PROGRAM}-${REL}.tar.lz"
-		echo "-rm ${PROGRAM}-latest.tar.lz"
-		echo "-ln -s ${PROGRAM}-${REL}.tar.lz ${PROGRAM}-latest.tar.lz"
+		echo "-put ${PROGRAM}-${REL}.tar.xz"
+		echo "-rm ${PROGRAM}-latest.tar.xz"
+		echo "-ln -s ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
 
-		echo "-put ${PROGRAM}-${REL}.tar.lz.asc"
-		echo "-rm ${PROGRAM}-latest.tar.lz.asc"
-		echo "-ln -s ${PROGRAM}-${REL}.tar.lz.asc ${PROGRAM}-latest.tar.lz.asc"
+		echo "-put ${PROGRAM}-${REL}.tar.xz.asc"
+		echo "-rm ${PROGRAM}-latest.tar.xz.asc"
+		echo "-ln -s ${PROGRAM}-${REL}.tar.xz.asc ${PROGRAM}-latest.tar.xz.asc"
 
 		echo "-put ${PROGRAM}-${REL}.tar.gz"
 		echo "-rm ${PROGRAM}-latest.tar.gz"
