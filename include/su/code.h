@@ -154,10 +154,10 @@
   * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
   * }} */
 # define su_HAVE_MD
- /* TODO \r{MD_BLAKE2B} support available?
-  * RFC 7693: BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
+ /* TODO \r{su_MD_SHA_3} support available?
+  * SHA-3 (Secure Hash Algorithm 3); \c{SPDX-License-Identifier: MIT}.
   * Subfeature of \r{su_HAVE_MD}. */
-/*#  define su_HAVE_MD_BLAKE2B*/
+/*#  define su_HAVE_MD_SHA_3*/
 # define su_HAVE_MEM_BAG_AUTO /*!< \r{MEM_BAG}. */
 # define su_HAVE_MEM_BAG_LOFI /*!< \r{MEM_BAG}. */
  /*! Normally the development library performs memory write boundary excess detection via canaries (see

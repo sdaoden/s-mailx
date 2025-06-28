@@ -56,7 +56,7 @@
 # define su_HAVE_MEM_BAG_LOFI
 /*# define su_HAVE_MEM_CANARIES_DISABLE*/
 # define su_HAVE_MD
-/*TODO #  define su_HAVE_MD_BLAKE2B*/
+/*TODO #  define su_HAVE_MD_SHA_3*/
 # define su_HAVE_RE /* Unconditionally for now xxx */
 # undef su_HAVE_SMP /* for now xxx */
 #  undef su_HAVE_MT
@@ -83,7 +83,7 @@
 #  define su_HAVE_MEM_CANARIES_DISABLE
 # endif
 # define su_HAVE_MD
-#  undef su_HAVE_MD_BLAKE2B
+#  undef su_HAVE_MD_SHA_3
 # ifdef mx_HAVE_REGEX
 #  define su_HAVE_RE
 # endif
