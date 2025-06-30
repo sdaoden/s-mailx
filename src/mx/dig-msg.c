@@ -609,7 +609,7 @@ jins_505:
 	a_X("In-Reply-To", h_in_reply_to, ntype = GREF su_COMMA eacm = mx_EACM_NONAME);
 #undef a_X
 
-	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
+	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX, FAL0)) != NIL)
 		goto j505r;
 
 	/* Free-form header fields */
@@ -877,7 +877,7 @@ jrem:
 	a_X(In-Reply-To, in_reply_to);
 #undef a_X
 
-	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
+	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX, TRU1)) != NIL)
 		goto j505r;
 
 	/* Free-form header fields (note j501cp may print non-normalized name) */
@@ -985,7 +985,7 @@ jremat:
 	a_X(In-Reply-To, in_reply_to);
 #undef a_X
 
-	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
+	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX, TRU1)) != NIL)
 		goto j505r;
 
 	/* Free-form header fields */

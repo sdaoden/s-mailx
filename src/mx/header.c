@@ -2204,7 +2204,7 @@ jleave:
 }
 
 FL char const *
-n_header_is_known(char const *name, uz len){
+n_header_is_known(char const *name, uz len, boole find_virtual_only){
    static char const * const names[] = {
       /* RFC 5322 header names common here */
       "Bcc", "Cc", "From",
@@ -2215,11 +2215,6 @@ n_header_is_known(char const *name, uz len){
       "Author", /* RFC 9057 */
       /* More known, here and there */
       "Fcc",
-      /* Mailx internal temporaries */
-      "Mailx-Command",
-      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
-         "Mailx-Orig-Sender", "Mailx-Orig-To",
-      "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
       /* Rest of RFC 5322 standard headers, almost never seen here.
        * As documented for *customhdr*, allow Comments:, Keywords: */
       /*"Comments",*/ "Date",
@@ -2229,6 +2224,13 @@ n_header_is_known(char const *name, uz len){
          "Resent-Sender", "Resent-To",
       "Return-Path",
       NIL
+   }, * const virtual_names[] = {
+      /* Mailx internal temporaries */
+      "Mailx-Command",
+      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
+         "Mailx-Orig-Sender", "Mailx-Orig-To",
+      "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
+      NIL
    };
    char const * const *rv;
    NYD_IN;
@@ -2236,10 +2238,16 @@ n_header_is_known(char const *name, uz len){
    if(len == UZ_MAX)
       len = su_cs_len(name);
 
-   for(rv = names; *rv != NIL; ++rv)
-      if(!su_cs_cmp_case_n(*rv, name, len) && (*rv)[len] == '\0')
-         break;
+   if(!find_virtual_only)
+      for(rv = names; *rv != NIL; ++rv)
+         if(!su_cs_cmp_case_n(*rv, name, len) && (*rv)[len] == '\0')
+            goto jleave;
 
+   for(rv = virtual_names; *rv != NIL; ++rv)
+      if(!su_cs_cmp_case_n(*rv, name, len) && (*rv)[len] == '\0')
+         goto jleave;
+
+jleave:
    NYD_OU;
    return *rv;
 }
@@ -2262,7 +2270,7 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
    }
 
    /* Verify the custom header does not use standard/managed field name */
-   if(n_header_is_known(hname.s, hname.l) != NIL){
+   if(n_header_is_known(hname.s, hname.l, FAL0) != NIL){
       cp = N_("Custom headers cannot use standard header names: %s\n");
       goto jerr;
    }

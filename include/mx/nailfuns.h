@@ -760,8 +760,10 @@ FL boole n_header_match(struct message *mp, struct mx_srch_ctx const *scp);
 
 /* Verify whether len (UZ_MAX=su_cs_len) bytes of name form a standard or
  * otherwise known header name (that must not be used as a custom header).
- * Return the (standard) header name, or NULL */
-FL char const *n_header_is_known(char const *name, uz len);
+ * With find_virtual_only only virtual, read-only temporary headers match.
+ * Return name or NIL */
+FL char const *n_header_is_known(char const *name, uz len,
+      boole find_virtual_only);
 
 /* Add a custom header to the given list, in auto-reclaimed or heap memory;
  * if heap is TRUM1 then only check state; hflp can be NIL, then! */
