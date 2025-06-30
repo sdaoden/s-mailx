@@ -323,7 +323,8 @@ static char const *
 a_header_extract_ignore_field_XXX(char const *linebuf){
    static char const a_ifa[][sizeof("Content-Transfer-Encoding")] = {
       "MIME-Version", "Content-Type", "Content-Transfer-Encoding",
-         "Content-Disposition", "Content-ID"
+         "Content-Disposition", "Content-ID",
+         "Date"
    };
 
    char const *ccp;
