@@ -1,0 +1,6 @@
+reproducible_build: Ignoring header field: MIME-Version
+reproducible_build: Ignoring header field: Content-Type
+reproducible_build: Ignoring header field: Content-Transfer-Encoding
+reproducible_build: Ignoring header field: Content-Disposition
+reproducible_build: Ignoring header field: Content-ID
+reproducible_build: Ignoring header field: Date
