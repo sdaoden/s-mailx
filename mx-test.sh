@@ -11261,15 +11261,15 @@ t_q_t_etc_opts() { #{{{
 	cke0 3 0 ./t3 '62109864 6646'
 
 	# Check comments in the header
-	<<-'_EOT' ${MAILX} ${ARGS} -Snodot -t ./t4 > ${E0} 2>&1
-		# Ein Kommentar
-		From: du@da
-		# Noch ein Kommentar
-		Subject	  :		 hey you
-		# Nachgestelltes Kommentar
-		
-		BOOOM
-		_EOT
+	<<'_EOT' ${MAILX} ${ARGS} -Snodot -t ./t4 > ${E0} 2>&1
+# Ein Kommentar
+From: du@da
+# Noch ein Kommentar
+Subject	  :		 hey you
+# Nachgestelltes Kommentar
+
+BOOOM
+_EOT
 	cke0 4 0 ./t4 '1256637859 138'
 
 	# ?MODifier suffix
@@ -11287,6 +11287,41 @@ t_q_t_etc_opts() { #{{{
 	ck 8 - './t.bcc1 .t.bcc1-2' '2948857341 94'
 	ck 9 - './t.to2 .t.to2-2' '2948857341 94'
 	ck0 10 - ./t10
+
+	# Check *dot*
+	printf 'From: a@b\n\na\n.\n~.\nec b\n' > ./t.in
+
+	<./t.in ${MAILX} ${ARGS} -Snodot -t ./t11 > ${E0} 2>&1
+	cke0 11 0 ./t11 '2878952184 115'
+
+	<./t.in ${MAILX} ${ARGS} -Snodot -~ -t ./t12 > ${E0} 2>&1
+	cke0 12 0 ./t12 '2878952184 115'
+
+	<./t.in ${MAILX} ${ARGS} -Sdot -t ./t13 > ${E0} 2>&1
+	cke0 13 0 ./t13 '2718917386 113'
+
+	<./t.in ${MAILX} ${ARGS} -Sdot -~ -t ./t14 > ${E0} 2>&1
+	cke0 14 0 ./t14 '2718917386 113'
+
+	## (POSIX: with *ignoreeof* act as if *dot* is set)
+	<./t.in ${MAILX} ${ARGS} -Snodot -Sposix -Signoreeof -t ./t15 > ${E0} 2>&1
+	cke0 15 0 ./t15 '2718917386 113'
+
+	# Check a_header_extract_ignore_field_XXX()
+	<<'_EOT' ${MAILX} ${ARGS} -Snodot -t ./t16 > ${EX} 2>&1
+From: a@b
+MIME-Version: 2.0
+Content-Type: t/p
+Content-Transfer-Encoding: yz
+Content-Disposition: nada
+Content-ID: nope
+Subject: c
+Date: pop
+X: y
+
+future
+_EOT
+	ck 16 0 ./t16 '2708847225 134' '2649381322 346'
 
 	t_epilog "${@}"
 } #}}}

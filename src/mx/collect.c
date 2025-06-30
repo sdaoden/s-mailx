@@ -1802,14 +1802,13 @@ jtick:
 		cp = a_coll->cc_lndata;
 		if(cnt == 0)
 			goto jputnl;
-		else if(a_coll->cc_coap == NIL){
+		if(a_coll->cc_coap == NIL){
 			if(!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_TILDE_FLAG))
 				goto jputline;
-			else if(cp[0] == '.'){
-				if(cnt == 1 && (ok_blook(dot) || (ok_blook(posix) && ok_blook(ignoreeof))))
-					break;
-			}
+			if(cnt == 1 && cp[0] == '.' && (ok_blook(dot) || (ok_blook(posix) && ok_blook(ignoreeof))))
+				goto jdot_stop;
 		}
+
 		if(cp[0] != a_coll->cc_escape){
 jputline:
 			if(fwrite(cp, sizeof *cp, cnt, a_coll->cc_fp) != S(uz,cnt))
@@ -1942,8 +1941,7 @@ jearg:
 			/* Simulate end of file on input */
 			if(cnt != 0 || a_coll->cc_coap != NIL)
 				goto jearg;
-			rv = TRU2;
-			goto jleave;
+			goto jdot_stop;
 		case ':':
 		case '_':
 			/* Escape to command mode, but be nice! *//* TODO command expansion
@@ -2373,6 +2371,17 @@ jhistcont:
 jleave:
 	NYD_OU;
 	return rv;
+
+jdot_stop:
+	if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){
+		fflush_rewind(a_coll->cc_fp);
+		n_psonce |= n_PSO_t_FLAG_DONE;
+		a_coll->cc_flags &= ~a_COLL_CAN_DELAY_INJECT;
+		if(!a_coll_makeheader(a_coll->cc_fp, hp, a_coll->cc_checkaddr_err, TRU1))
+			goto jleave;
+	}
+	rv = TRU2;
+	goto jleave;
 }
 /* }}} */
 
