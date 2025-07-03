@@ -69,6 +69,7 @@ struct a_dmsg_sl{
 };
 
 static char const a_dmsg_hf_cmd[7][8] = {"forward", "mail", "Lreply", "Reply", "reply", "resend", ""};
+static char const a_dmsg_date[] = "Date";
 static char const a_dmsg_subj[] = "Subject";
 
 struct mx_dig_msg_ctx *mx_dig_msg_read_overlay; /* XXX HACK */
@@ -502,14 +503,25 @@ jcmd_insert:{ /* {{{ */
 		else
 			hp->h_subject = savestr(a3p->ca_arg.ca_str.s);
 
-		dmslp->dmsl_status_or_new_ent = 210;
 		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
 		dmslp->dmsl_dat = a_dmsg_subj;
+jins1:
+		dmslp->dmsl_status_or_new_ent = 210;
 
 		dmslp->dmsl_next = x = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
 		x->dmsl_len = 1;
 		x->dmsl_dat = n_1;
 		goto jleave;
+	}else if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_date)){
+		if(a3p->ca_arg.ca_str.l == 0)
+			goto j501cp;
+		if(mx_header_rfctime(cp = a3p->ca_arg.ca_str.s) == 0)
+			goto jins_505;
+
+		hp->h_date = savestr(cp);
+		dmslp->dmsl_len = sizeof(a_dmsg_date) -1;
+		dmslp->dmsl_dat = a_dmsg_date;
+		goto jins1;
 	}
 
 	mult_ok = TRU1;
@@ -671,6 +683,8 @@ jcmd_headerpick:{ /* TODO v15-compat: oooooh: an iterator! {{{ */
 		su_CONCAT(hp->h_, F) = NIL;
 
 	a_X(subject, Subject);
+	a_X(date, Date);
+
 	a_X(author, Author);
 	a_X(from, From);
 	a_X(sender, Sender);
@@ -708,6 +722,8 @@ jcmd_list: jdefault:{ /* {{{ */
 				su_STRING(S), sizeof(su_STRING(S)) -1);\
 
 		a_X(subject, Subject);
+		a_X(date, Date);
+
 		a_X(author, Author);
 		a_X(from, From);
 		a_X(sender, Sender);
@@ -763,7 +779,11 @@ jcmd_list: jdefault:{ /* {{{ */
 		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = a_dmsg_subj)){
 			np = (hp->h_subject != NIL) ? R(struct mx_name*,-1) : NIL;
 			goto jlist;
+		}else if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = a_dmsg_date)){
+			np = (hp->h_date != NIL) ? R(struct mx_name*,-1) : NIL;
+			goto jlist;
 		}
+
 		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "From")){
 			np = hp->h_from;
 jlist:
@@ -842,6 +862,14 @@ jcmd_remove:{ /* {{{ */
 		dmslp->dmsl_status_or_new_ent = 210;
 		dmslp->dmsl_dat = a_dmsg_subj;
 		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
+		goto jleave;
+	}else if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_date)){
+		if(hp->h_date == NIL)
+			goto j501cp;
+		hp->h_date = NIL;
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_dat = a_dmsg_date;
+		dmslp->dmsl_len = sizeof(a_dmsg_date) -1;
 		goto jleave;
 	}
 
@@ -931,14 +959,22 @@ jcmd_remove_at:{ /* {{{ */
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_subj)){
 		if(hp->h_subject != NIL && i == 1){
 			hp->h_subject = NIL;
-			dmslp->dmsl_status_or_new_ent = 210;
 			dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
 			dmslp->dmsl_dat = a_dmsg_subj;
-
+jremat1:
+			dmslp->dmsl_status_or_new_ent = 210;
 			dmslp->dmsl_next = x = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
 			x->dmsl_len = 1;
 			x->dmsl_dat = n_1;
 			goto jleave;
+		}else
+			goto j501cp;
+	}else if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_date)){
+		if(hp->h_date != NIL && i == 1){
+			hp->h_date = NIL;
+			dmslp->dmsl_len = sizeof(a_dmsg_date) -1;
+			dmslp->dmsl_dat = a_dmsg_date;
+			goto jremat1;
 		}else
 			goto j501cp;
 	}
@@ -1030,7 +1066,11 @@ jcmd_show:{ /* {{{ */
 		goto jecmd;
 
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = a_dmsg_subj)){
-		if((sin.s = hp->h_subject) == NIL)
+		sin.s = hp->h_subject;
+		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
+		dmslp->dmsl_dat = a_dmsg_subj;
+jshow1:
+		if(sin.s == NIL)
 			goto j501cp;
 		sin.l = su_cs_len(sin.s);
 
@@ -1038,8 +1078,6 @@ jcmd_show:{ /* {{{ */
 			goto j501cp;
 
 		dmslp->dmsl_status_or_new_ent = 212;
-		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
-		dmslp->dmsl_dat = a_dmsg_subj;
 
 		dmslp->dmsl_next = x = su_LOFI_ALLOC(sizeof(struct a_dmsg_sl) + sou.l +1);
 		x->dmsl_next = NIL;
@@ -1050,6 +1088,11 @@ jcmd_show:{ /* {{{ */
 
 		su_FREE(sou.s);
 		goto jleave;
+	}else if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = a_dmsg_date)){
+		sin.s = hp->h_date;
+		dmslp->dmsl_len = sizeof(a_dmsg_date) -1;
+		dmslp->dmsl_dat = a_dmsg_date;
+		goto jshow1;
 	}
 
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "From")){
@@ -1205,6 +1248,7 @@ jcmd_x_decode:{ /* TODO v15-compat: not at all needed! {{{ */
 		}else
 			hp->h_subject = NIL; /* XXX error */
 	}
+	/* xxx no decoding for date: */
 
 	npp_a[0] = &hp->h_author;
 	npp_a[1] = &hp->h_from;

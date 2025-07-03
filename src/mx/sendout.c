@@ -2903,8 +2903,14 @@ do{\
    if(nosend_msg)
       saf |= a_SENDOUT_AL_INC_INVADDR;
 
-   if(w & GDATE)
-      mx_sendout_header_date(fo, "Date", FAL0), ++gotcha;
+   if(w & GDATE){
+      if(hp->h_date != NIL){
+         if(fprintf(fo, "Date: %s\n", hp->h_date) < 0)
+            goto jleave;
+      }else if(mx_sendout_header_date(fo, "Date", FAL0) == -1)
+         goto jleave;
+      ++gotcha;
+   }
 
    if (w & GIDENT) {
       if (hp->h_from == NULL || hp->h_sender == NULL)

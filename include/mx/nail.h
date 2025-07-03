@@ -1204,13 +1204,13 @@ struct header{
    struct mx_name *h_fcc; /* Fcc: file carbon copies to */
    struct mx_name *h_ref; /* References (possibly overridden) */
    struct mx_attachment *h_attach; /* MIME attachments */
+   char *h_date; /* overridden "Date:" field */
    struct mx_name *h_reply_to; /* overridden "Reply-To:" field */
    struct mx_name *h_message_id; /* overridden "Message-ID:" field */
    struct mx_name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct mx_name *h_mft; /* Mail-Followup-To */
    char const *h_list_post; /* Address from List-Post:, for `Lreply' */
    struct n_header_field *h_user_headers;
-   struct n_header_field *h_custom_headers; /* (Cached result) */
    /* Raw/original versions of the header(s). If any */
    struct mx_name *h_mailx_raw_to;
    struct mx_name *h_mailx_raw_cc;

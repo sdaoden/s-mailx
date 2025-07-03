@@ -945,6 +945,11 @@ jeseek:
                      mx_EACM_NONAME), checkaddr_err_or_null));
          }else
             goto jebadhead;
+      }else if((val = n_header_get_field(linebuf, "date", NULL)) != NIL){
+         if(mx_header_rfctime(val) == 0)
+            goto jebadhead;
+         hq->h_date = savestr(val);
+         ++seenfields;
       }else if((hef & n_HEADER_EXTRACT_COMPOSE_MODE) &&
             (val = a_header_extract_ignore_field_XXX(linebuf)) != NIL)
          n_err(_("Ignoring header field: %s\n"), val);
@@ -1000,6 +1005,7 @@ jebadhead:
       if(hq->h_subject != NULL ||
             (hef & n_HEADER_EXTRACT__MODE_MASK) != n_HEADER_EXTRACT_FULL)
          hp->h_subject = hq->h_subject;
+      hp->h_date = hq->h_date;
       hp->h_user_headers = hq->h_user_headers;
 
       if(hef & n_HEADER_EXTRACT__MODE_MASK){

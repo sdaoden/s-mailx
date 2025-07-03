@@ -11316,12 +11316,12 @@ Content-Transfer-Encoding: yz
 Content-Disposition: nada
 Content-ID: nope
 Subject: c
-Date: pop
+Date: Tue, 06 May 2025 09:01:00 -0600
 X: y
 
 future
 _EOT
-	ck 16 0 ./t16 '2708847225 134' '2649381322 346'
+	ck 16 0 ./t16 '3499493610 134' '237496042 298'
 
 	t_epilog "${@}"
 } #}}}
@@ -12756,7 +12756,7 @@ __EOT
 
 	# [1091b026c9c8bcd26ce95aa90e7327757f9c0f32] check
 	# While here ensure IDNA decoding does not happen
-	# t6-7 used for t9, too
+	# t6-7 used for t9,t12, too
 	#{{{
 	${cat} >> ./t6-7.eml <<'_EOT'
 Date: Tue, 20 Apr 2021 00:23:10 +0200
@@ -12795,10 +12795,13 @@ ec "back !<$!> ?<$?> xy<$xy>"
 dig c 1 ^
 dig 1 h show to
 ec "#=$^# 0<$^0> 1<$^1> 2<$^2> 3<$^3> *<$^*> !=$! ?=$?"
+#
+dig 1 h show date
+ec "#=$^# 0<$^0> 1<$^1> 2<$^2> 3<$^3> *<$^*> !=$! ?=$?"
 dig r 1
 __EOT
 	#}}}
-	cke0 6 0 ./t6 '3098918646 337'
+	cke0 6 0 ./t6 '1742318017 443'
 
 	#
 	<< '__EOT' ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t7 2>${E0}
@@ -12841,10 +12844,9 @@ unheaderpick t ignore *;x 33
 headerpick t retain date subject to;x 34
 dig 1 h headerp t; dig 1 h; dig r 1;x 35
 xit
-
 		' -f t6-7.eml >./t9 2>${E0}
 	#}}}
-	cke0 9 0 ./t9 '1340411131 884'
+	cke0 9 0 ./t9 '3066466566 884'
 
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t10 -Sescape=! >./t11 2>${E0}
 ec in
@@ -12864,6 +12866,30 @@ ec ou
 __EOT
 	cke0 10 0 ./t10 '118680374 145'
 	ck 11 - ./t11 '2967121016 122'
+
+	#{{{
+	</dev/null ${MAILX} ${ARGS} -Y '#
+commandalias x \ec \"--- \$^#/\$^0/<\$^1><\$^2><\$^*> \$?/\$^ERRNAME,\"
+dig c 1 ^;x 1
+dig 1 h sho date;x 2
+dig 1 h ins date no;x 3
+dig 1 h ins date "Sat, 05 Jul 2025 00:01:53 +0200";x 4
+dig 1 h sho date;x 5
+se i="Sun, 06 Jul 2025 01:18:40 +0200"
+dig 1 h ins date $i;x 6
+dig 1 h sho date;x 7
+dig 1 h rem date;x 8
+dig 1 h rem date;x 9
+dig 1 h sho date;x 10
+dig 1 h ins date $i;x 11
+dig 1 h sho date;x 12
+dig 1 h remove-at date 1;x 13
+dig 1 h remove-at date 1;x 14
+dig 1 h sho date;x 15
+xit
+		' -f t6-7.eml >./t12 2>${E0}
+	#}}}
+	cke0 12 0 ./t12 '3845508032 788'
 
 	t_epilog "${@}"
 } #}}}
@@ -13338,7 +13364,7 @@ define t_hea {
 	call ir messAge-id 0
 	call ir rEfErEncEs 1
 	call ir in-Reply-to 1
-	call ir subject 1 212 # Not a "ref", but works (with tweaks)
+	call ir subject 1 212 # Not a "ref", but works (with tweaks); XXX Date: only in t_digmsg!
 	call ia freeForm1 212
 	call ia freeform2 212
 
