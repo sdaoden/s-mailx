@@ -3,3 +3,4 @@ read<59> es=<0> en<NONE> name<bose@xn--kndelbrste-fcb0f> fullname<'Hey <bose@xn-
 read<0> es=<0> en<NONE> name<> fullname<>
 back !<0> ?<2> xy<XY>
 #=3 0<211> 1<To> 2<bose@xn--kndelbrste-fcb0f> 3<Hey <bose@xn--kndelbrste-fcb0f>> *<To bose@xn--kndelbrste-fcb0f Hey <bose@xn--kndelbrste-fcb0f>> !=0 ?=0
+#=2 0<212> 1<Date> 2<Tue, 20 Apr 2021 00:23:10 +0200> 3<> *<Date Tue, 20 Apr 2021 00:23:10 +0200> !=0 ?=0
