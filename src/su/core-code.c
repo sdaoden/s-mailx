@@ -518,7 +518,7 @@ su_log_vwrite(u32 lvl_a_flags, char const *fmt, void *vp){
 void
 su_assert(char const *expr, char const *file, u32 line, char const *fun, boole crash){
 	su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
-		"SU assert failed: %.60s\n  File %.60s, line %" PRIu32 "\n  Function %.142s",
+		"SU assert failed: %.140s\n  File %.60s, line %" PRIu32 "\n  Function %.142s",
 		expr, file, line, fun);
 	su_err_set(su_ERR_FAULT);
 }
