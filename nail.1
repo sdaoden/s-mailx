@@ -15619,17 +15619,17 @@ Put (at least parts of) the following in your
 .
 .Bd -literal -offset indent
 [sendemail]
-#smtpserveroption = -Smta=test
 smtpserver = /usr/bin/\*(xX
+smtpserveroption = -~:/
+#smtpserveroption = -~A THE-ACCOUNT-YOU-NEED
+smtpserveroption = -Smta=test:///tmp/xxx
 smtpserveroption = -t
-#smtpserveroption = -Sexpandaddr
-smtpserveroption = -Athe-account-you-need
+smtpserveroption = -Sexpandaddr
+suppresscc = all
+suppressfrom = false
 # need!  (-t not yet MIME message aware)
 assume8bitEncoding = UTF-8
 transferEncoding = 8bit
-#
-suppresscc = all
-suppressfrom = false
 xmailer = false
 #to = /tmp/OUT
 confirm = always
