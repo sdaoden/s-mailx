@@ -892,38 +892,55 @@ jput_as_is:
 			c = s[i];
 			if(c == '>' || c == '/' || su_cs_is_white(c))
 				break;
-		}
+		}else if(UNLIKELY(PCMP(++hftp, >=, &a_flthtml_tags[NELEM(a_flthtml_tags)]))){
+			/* xxx A <blockquote> is very special as it is used for quoting.
+			 * xxx Also, <hr> should separate */
+			boole isclosetag;
 
-		if(UNLIKELY(PCMP(++hftp, >=, &a_flthtml_tags[NELEM(a_flthtml_tags)]))){
-			/* xxx A <blockquote> is very special as it is used for quoting */
-			boole isct;
-
-			if((isct = (i > 1 && *s == '/'))){
+			if((isclosetag = (i > 1 && *s == '/'))){
 				++s;
 				--i;
 			}
 
-			if(i != sizeof("blockquote") -1 || su_cs_cmp_case_n(s, "blockquote", i) ||
-					((c = s[sizeof("blockquote") -1]) != '>' && !su_cs_is_white(c))){
-				s -= isct;
-				i += isct;
-				goto junknown;
+			switch(i){
+			default: break;
+			case sizeof("blockquote") -1:
+				if(!su_cs_cmp_case_n(s, "blockquote", i) &&
+						((c = s[sizeof("blockquote") -1]) == '>' || su_cs_is_white(c))){
+					if(!isclosetag && !(self->fh_flags & a_FLTHTML_NL_2))
+						self = a_flthtml_nl(self);
+					if(!(self->fh_flags & a_FLTHTML_NL_1))
+						self = a_flthtml_nl(self);
+					f = self->fh_flags;
+					f &= a_FLTHTML_BQUOTE_MASK;
+					if(!isclosetag){
+						if(f != a_FLTHTML_BQUOTE_MASK)
+							++f;
+					}else if(f > 0)
+						--f;
+					f |= (self->fh_flags & ~a_FLTHTML_BQUOTE_MASK);
+					self->fh_flags = f;
+					goto jleave;
+				}
+				break;
+			case sizeof("hr") -1:
+				if(!isclosetag){
+					/* <hr>: create a separator line */
+					if(!su_cs_cmp_case_n(s, "hr", i) && self->fh_lmax > 4){
+						i = self->fh_lmax / 2;
+						i = MIN(i, sizeof(nobuf) -3);
+						nobuf[i] = '\0';
+						nobuf[--i] = '\n';
+						while(--i > 0)
+							nobuf[i] = '-';
+						nobuf[0] = '\n';
+						self = a_flthtml_puts(self, nobuf);
+						goto jleave;
+					}
+				}
+				break;
 			}
-
-			if(!isct && !(self->fh_flags & a_FLTHTML_NL_2))
-				self = a_flthtml_nl(self);
-			if(!(self->fh_flags & a_FLTHTML_NL_1))
-				self = a_flthtml_nl(self);
-			f = self->fh_flags;
-			f &= a_FLTHTML_BQUOTE_MASK;
-			if(!isct){
-				if(f != a_FLTHTML_BQUOTE_MASK)
-					++f;
-			}else if(f > 0)
-				--f;
-			f |= (self->fh_flags & ~a_FLTHTML_BQUOTE_MASK);
-			self->fh_flags = f;
-			goto jleave;
+			goto junknown;
 		}
 	}
 
