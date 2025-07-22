@@ -1034,7 +1034,7 @@ junknown:
 	}
 
 	/* Also skip over : in order to suppress v:roundrect, w:anchorlock.. */
-	while((c = *s++) != '\0' && c != '>' && !su_cs_is_white(c) && c != ':')
+	while((c = *s++) != '\0' && c != '>' && !su_cs_is_white(c) && c != ':' && c != '/')
 		if(!su_cs_is_ascii(c) || su_cs_is_punct(c)){
 			self = a_flthtml_puts(self, self->fh_bdat);
 			break;
