@@ -77,7 +77,7 @@ CSRC = atomic.c \
 		avopt.c \
 	core-code.c core-create.c core-errors.c core-on-gut.c \
 		cs-alloc.c cs-ctype.c cs-hash.c cs-hash-strong.c \
-			cs-find.c cs-rfind.c cs-tbox.c cs-tools.c \
+			cs-find.c cs-rfind.c cs-tbox.c cs-tools.c cs-sep.c \
 		cs-dict.c \
 	icodec-dec.c icodec-enc.c \
 		imf.c \
