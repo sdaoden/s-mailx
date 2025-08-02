@@ -283,7 +283,7 @@ See also
 .
 .Mx
 .It Fl C Ar """name: content""" , Fl Fl custom-header Ns =..
-Create a custom header
+Create a custom header field
 .Ar name
 that lasts for the entire session.
 Content follows after a colon
@@ -292,7 +292,7 @@ for example
 .Ql -C """Blah: Neminem laede; imo omnes, quantum potes, juva""" .
 May be used multiple times;
 .Ar name
-may not be a standard header.
+may not be a standard header field.
 Adjustable custom headers can be created via
 .Va customhdr ;
 in
@@ -561,7 +561,7 @@ Newline (NL) and carriage-return (CR) are normalized to space (SP).
 .It Fl T Ar """field: addr""" , Fl Fl target Ns =..
 \*(SM Add
 .Ar addr ,
-parsed like a message header address line (see
+parsed like a message header address field (see
 .Fl t ) ,
 and supporting the same modifiers,
 to the list of recipients targeted by
@@ -585,14 +585,14 @@ This option may be used multiple times.
 .Mx
 .It Fl t , Fl Fl template
 \*(SM Standard input is expected to contain one or multiple plain text
-message headers, an empty line, and the message body.
+message header fields, an empty line, and the message body.
 \*(ID Readily prepared MIME mail messages cannot be passed.
-Header lines are parsed as follows.
+Header fields are parsed as follows.
 A line starting with number sign
 .Ql #
 in the first column is ignored.
-A header can span multiple consecutive lines if follow lines start with
-(ignored) whitespace.
+A header field can span multiple consecutive lines if follow lines start
+with (ignored) whitespace.
 .
 .Pp
 Recipients will be
@@ -614,7 +614,7 @@ is used in favour of the command line option
 .Fl s .
 .
 .Pp
-More optional headers are
+More optional header fields are
 .Ql Reply-To:
 (possibly overriding
 .Va reply-to ) ,
@@ -839,7 +839,7 @@ is empty interactive mode is entered due to
 in
 .Sx "Compose mode"
 .Va editheaders
-enables header editing and
+enables header field editing and
 .Va fullnames
 avoids address skinning, when
 .Ic reply Ns
@@ -939,17 +939,21 @@ is not set or non-empty; if empty conversion is responsibility of the
 .\" When changing any of the following adjust any RECIPIENTADDRSPEC;
 .\" grep the latter for the complete picture
 .Va expandaddr
-offers control over allowed recipients and more.
+offers control over allowed recipients (and more),
+which are classified as follows:
 .
 .Pp
-Recipients are classified as follows:
-any name that starts with a vertical bar
+.Bl -bullet -compact
+.It
+Any name that starts with a vertical bar
 .Ql |
 specifies a pipe: the
 .Ev SHELL
-command following the
-.Ql |
-is executed with the message available on its standard input.
+evaluates the (best quoted)
+.Dq address ;
+pipes honour
+.Va sendwait .
+.It
 Other than that hyphen-minus
 .Ql -
 or any name that starts with solidus
@@ -957,9 +961,11 @@ or any name that starts with solidus
 or dot solidus
 .Ql ./
 is treated as a file.
-Any other name which contains a commercial at
+.It
+Any other name containing commercial at
 .Ql @
 is an (email) address.
+.It
 Any other name which starts with a plus sign
 .Ql + ,
 or which contains a solidus
@@ -973,11 +979,18 @@ before that
 is a mailbox
 .Ic folder
 name.
+.It
 What remains is treated as an (email) address.
 Classification can be avoided by using a
 .Ql Fcc:
-header, see
+header field, see
 .Sx "Compose mode" .
+.El
+.
+.Pp
+File and pipe recipients honour
+.Va mbox-fcc-and-pcc .
+Examples:
 .
 .Bd -literal -offset indent
 $ echo bla | \*(xX -S expandaddr -s test ./mbox.mbox
@@ -1124,13 +1137,13 @@ will start
 and
 .Ic ~e
 .Ev EDITOR
-to revise the message, including headers with
+to revise the message, including header fields with
 .Va editheaders
 (setting
 .Va fullnames
 avoids address skinning), the potent
 .Ic ~^
-can manage attachments and headers more scriptable than
+can manage attachments and header fields more scriptable than
 .Ic ~@ .
 \*(OPally
 .Ic ~?
@@ -1140,7 +1153,7 @@ shows a summary of available command escapes.
 Via
 .Ic ~^
 .Ql Fcc:
-headers can be created: its values are not mangled like other recipients,
+header fields can be created that are not mangled like other recipients,
 so names with vertical bars, or commercial ats, or other special
 characters can be used; they are still subject to
 .Va expandaddr
@@ -1325,7 +1338,7 @@ set verbose=2; help reply; unset verbose
 .Ic type
 (alias
 .Ic print )
-displays headers and text content of specified messages or the dot.
+displays header fields and text content of specified messages or the dot.
 Technical message information is displayed if
 .Va quiet
 is not set.
@@ -1356,7 +1369,7 @@ type @'time drift' # that substring in Subject:
 .Ed
 .
 .Pp
-By default all message headers are
+By default all message header fields are
 .Ic type Ns
 d, but they may be
 .Ic retain Ns
@@ -1377,7 +1390,7 @@ and
 will instead show raw message content.
 Historically the global
 .Pa \*(UR
-not only adjusts the list of displayed headers, but also sets
+not only adjusts the list of displayed header fields, but also sets
 .Va crt .
 .
 .Pp
@@ -1457,7 +1470,7 @@ or
 .Ic Resend
 messages, the former only will add a series of
 .Ql Resent-
-headers; different to newly created messages
+header fields; different to newly created messages
 editing is not possible and no copy will be saved in
 .Va record
 unless
@@ -1578,14 +1591,14 @@ and gain special treatment when sending mails:
 .Va followup-to-honour
 ensures
 .Ql Mail-\:Followup-\:To:
-headers are honoured when replying
+header fields are honoured when replying
 .Pf ( Ic reply ,
 .Ic followup ,
 .Ic Lreply ,
 .Ic Lfollowup ) ,
 and
 .Va followup-to
-creates this header when
+creates this header field when
 .Ic mail Ns
 ing messages with a proper user setup
 .Pf ( Va from , sender ) ;
@@ -1637,7 +1650,7 @@ There are exceptions, for example if multiple lists are addressed and
 not all have the subscription attribute.
 When replying to a message its list address
 .Pf ( Ql List-Post:
-header) is temporarily treated like a known
+header field) is temporarily treated like a known
 .Ic mlist ;
 dependent on
 .Va reply-to-honour
@@ -2154,7 +2167,7 @@ The special header fields
 .Ql header
 or
 .Ql <
-can be used to search in (all of) the header(s), and
+can be used to search in (all of) the header field(s), and
 .Ql body
 or
 .Ql >
@@ -2172,7 +2185,7 @@ Even with regular expression support it is almost impossible to safely
 match only a specific address domain.
 To match only email addresses (skinned from name and comment parts, see
 .Ic addrcodec )
-of address headers (the mentioned
+of address header fields (the mentioned
 .Ql a ,
 .Ql f ,
 .Ql t ,
@@ -4988,9 +5001,9 @@ lines, which are MBOX file format specific header lines (also see
 .Va mbox-rfc4155 ) .
 .It Ar view-header
 For header lines.
-A comma-separated list of headers to which the mapping shall apply may be
-given as a precondition; if the \*(oPal regular expression support is
-available then it is evaluated as one if it contains
+A comma-separated list of header fields to which the mapping shall apply
+may be given as a precondition; if the \*(oPal regular expression support
+is available then it is evaluated as one if it contains
 .Mx -sx
 .Sx "magic regular expression characters" .
 .It Ar view-msginfo
@@ -6025,7 +6038,7 @@ and
 .Va forward-inject-tail .
 .Va content-description-forwarded-message
 is inspected.
-The list of included headers can be filtered with the
+The list of included header fields can be filtered with the
 .Ql forward
 slot of
 .Ic headerpick .
@@ -6124,7 +6137,7 @@ in case of errors both clear the target context.
 .
 .Mx
 .It Ic headers
-(h) Show the current group of headers, the size of which depends on
+(h) Show the current group of header fields, the size of which depends on
 .Va screen
 in interactive mode, and the format of which can be defined with
 .Va headline .
@@ -6588,7 +6601,7 @@ or subscribed
 .Pf ( Ic mlsubscribe )
 mailing lists, or pretend to do so (RFC 2369
 .Ql List-Post:
-header, see
+header field, see
 .Sx "Mailing lists" ) :
 on top of the
 .Ic followup
@@ -6597,7 +6610,7 @@ and
 functionality actively resort and even remove message recipients.
 Implicitly generate a
 .Ql Mail-Followup-To:
-header if that seems useful, regardless of
+header field if that seems useful, regardless of
 .Va followup-to .
 For more documentation refer to
 .Sx "Sending mail, and non-interactive mode" .
@@ -6766,7 +6779,7 @@ successfully.
 .It Ic More
 Like
 .Ic more ,
-but display all headers and MIME parts.
+but display all header fields and MIME parts.
 Identical to
 .Ic Page .
 .
@@ -6869,7 +6882,7 @@ over the wire (for keep-alive purposes).
 .It Ic Page
 Like
 .Ic page ,
-but display all headers and MIME parts.
+but display all header fields and MIME parts.
 Identical to
 .Ic More .
 .
@@ -6886,7 +6899,7 @@ Identical to
 .It Ic Pipe
 Like
 .Ic pipe ,
-but pipe all headers and MIME parts.
+but pipe all header fields and MIME parts.
 .
 .Mx
 .It Ic pipe
@@ -7177,7 +7190,7 @@ Any error stops processing of further messages.
 .It Ic Resend
 Like
 .Ic resend ,
-but does not add any header lines.
+but does not add any header field.
 This is not a way to hide the sender's identity,
 but useful for sending a bounced message again to the same recipients.
 .
@@ -7735,7 +7748,7 @@ is controlled by
 .Pf ( Ic more
 always uses
 .Ev PAGER . )
-Message headers are filtered as chosen by the
+Message header fields are filtered as chosen by the
 .Ql type
 selection of
 .Ic headerpick .
@@ -7747,7 +7760,7 @@ that produces
 .Cd copiousoutput ,
 and all
 .Ql message
-parts are shown, others are hidden except for their headers.
+parts are shown, others are hidden except for their header fields.
 Messages are decrypted and converted to
 .Va ttycharset
 as necessary.
@@ -8338,7 +8351,7 @@ or when requested via
 .Fl ~
 or batch mode
 .Pf ( Fl # )
-command escapes offer attachment management, header editing,
+command escapes offer attachment management, header field editing,
 .Sx COMMANDS
 access and more.
 Whenever supported, an unquoted reverse solidus
@@ -8615,8 +8628,8 @@ or an attempt was made to modify virtual, auto-generated, read-only data.
 .
 .It Ql 506
 Error: an otherwise valid argument is contextually invalid.
-For example, a second address is added to a header which may consist of
-a single address only.
+For example, a second address is added to a header field which may
+consist of a single address only.
 .El
 .
 .
@@ -8761,7 +8774,7 @@ if no such attachment exists.
 .
 .
 .It Cm header
-Manage message headers.
+Manage message header fields.
 Header name case is not normalized, so that case-insensitive comparison
 should be used when matching names.
 The second argument specifies the subcommand to apply, one of:
@@ -8819,7 +8832,7 @@ for an invalid
 .Ar context .
 .
 .It Cm list
-Without third argument a list of all headers is generated via
+Without third argument a list of all header fields is generated via
 .Ql 210 ,
 otherwise only the given one is listed, a non-existing one gives
 .Ql 501 .
@@ -8846,7 +8859,7 @@ if the position is not a number, or is inaccessible, and
 if no such header instance exists.
 .
 .It Cm show
-Show content of the header given third.
+Show content of the header field given third.
 The content will be converted to
 .Va ttycharset
 (\*(ID and then be made printable according to
@@ -8862,7 +8875,7 @@ any failure results in
 .
 .Pp
 .Sx "Compose mode"
-offers read-only access to optional, virtual, read-only headers:
+offers read-only access to optional, virtual, read-only header fields:
 .
 .
 .Pp
@@ -8969,7 +8982,7 @@ Paste the contents of
 .It Ic ~e
 Invoke
 .Ev EDITOR
-on the message draft, including headers if
+on the message draft, including header fields if
 .Va editheaders
 is set, then return to compose mode.
 .Ic ~v
@@ -8983,7 +8996,7 @@ Read in
 .Ar messages
 or the
 .Dq dot ,
-including all message headers and MIME parts;
+including all message header fields and MIME parts;
 .Va forward-add-cc
 as well as
 .Va forward-inject-head
@@ -8997,7 +9010,7 @@ Read in
 .Ar messages
 or the
 .Dq dot .
-Strips down the headers according to the
+Strips down the header fields according to the
 .Ql forward
 .Pf ( Ql type
 with
@@ -9014,7 +9027,7 @@ are honoured.
 .
 .Mx
 .It Ic ~H
-In interactive mode, edit headers
+In interactive mode, edit header fields
 .Ql From: ,
 .Ql Reply-To:
 and
@@ -9028,7 +9041,7 @@ In non-interactive mode this sets
 .
 .Mx
 .It Ic ~h
-In interactive mode, edit headers
+In interactive mode, edit header fields
 .Ql To: ,
 .Ql Cc: ,
 .Ql Bcc:
@@ -9082,7 +9095,7 @@ or the
 .Dq dot ,
 indented by
 .Va indentprefix .
-Strips down the headers according to the
+Strips down the header fields according to the
 .Ql type
 selection of
 .Ic headerpick ;
@@ -9096,8 +9109,8 @@ are honoured.
 .
 .Mx
 .It Ic ~p
-Display the message draft, prefaced by the message headers, and followed
-by the attachment list, if any.
+Display the message draft, prefaced by the message header fields,
+and followed by the attachment list, if any.
 .
 .Mx
 .It Ic ~Q Op Ar messages
@@ -9166,7 +9179,7 @@ Read in
 .Ar messages
 or the
 .Dq dot ,
-excluding all headers, indented by
+excluding all header fields, indented by
 .Va indentprefix .
 Honours
 .Va forward-add-cc
@@ -9181,7 +9194,7 @@ Read in
 .Ar messages
 or the
 .Dq dot ,
-excluding all headers.
+excluding all header fields.
 Honours
 .Va forward-add-cc
 as well as
@@ -9193,7 +9206,7 @@ and
 .It Ic ~v
 Invoke
 .Ev VISUAL
-on the message draft, including headers if
+on the message draft, including header fields if
 .Va editheaders
 is set, then return to compose mode.
 .Ic ~e
@@ -9866,7 +9879,7 @@ towards traditional BSD style.
 .Ql Subject:
 field to appear immediately after the
 .Ql To:
-field in message headers and with the
+field in message header fields and with the
 .Ic ~h
 .Sx "COMMAND ESCAPES" .
 .
@@ -9981,7 +9994,7 @@ therefore often unrelated to display lines.
 .
 .Mx
 .It Va customhdr
-Comma-separated list of custom headers to be injected into newly
+Comma-separated list of custom header fields to be injected into newly
 composed messages, each consisting of a name, a colon
 .Ql \&:
 and body content; commas in the latter need to be reverse solidus
@@ -10044,7 +10057,7 @@ Also see
 .It Va disposition-notification-send
 \*(BO\*(OP Emit a
 .Ql Disposition-Notification-To:
-header (RFC 3798) with the message.
+header field (RFC 3798) with the message.
 This requires the
 .Va from
 variable to be set.
@@ -10100,7 +10113,7 @@ The latter is used only with the value
 .
 .Mx
 .It Va editheaders
-\*(BO Include message headers when editing in
+\*(BO Include message header fields when editing in
 .Sx "Compose mode" .
 .
 .Mx
@@ -10421,7 +10434,7 @@ With either set unique
 .Ql Message-ID:
 and MIME part
 .Ql Content-ID:
-headers are created (unless disallowed by
+header fields are created (unless disallowed by
 .Va message-id-disable
 or
 .Va stealthmua ,
@@ -10499,7 +10512,7 @@ indicator to be expanded via
 .It Ql %d
 Formatted
 .Ql Date:
-header according to
+header field according to
 .Va datefield
 if set (default), otherwise the unformatted message receive date.
 .It Ql %e
@@ -10524,7 +10537,7 @@ As last resort
 .Ql P
 announces presence of a RFC 2369
 .Ql List-Post:
-header, making a message a valuable target of
+header field, making a message a valuable target of
 .Ic Lreply .
 .It Ql %l
 Number of message lines, if available.
@@ -10660,7 +10673,7 @@ If set (even empty) unique
 .Ql Message-ID:
 and MIME part
 .Ql Content-ID:
-headers are created (unless disallowed by
+header fields are created (unless disallowed by
 .Va message-id-disable
 or
 .Va stealthmua ) ;
@@ -10942,7 +10955,7 @@ receive a one-message MBOX file
 .Pf ( Ic folder ,
 .Va mbox-rfc4155 ) ,
 already existing (MBOX) files are appended to, RFC 4155 compliantly.
-If unset a plain RFC 5322 message is instead received,
+If unset a plain RFC 5322 (EML) message is instead received,
 and existing files are overwritten.
 .
 .Mx
@@ -11027,10 +11040,10 @@ Four-digit year.
 .Ql Message-ID:
 and
 .Ql Content-ID:
-MIME (part) headers, leaving this up to the
+MIME (part) header fields, leaving this up to the
 .Va mta
 (according to RFC 5321 a SMTP server is not required to do so).
-Manually created such headers are never stripped.
+Manually created such header fields are never stripped.
 .
 .Mx
 .Mx
@@ -12226,7 +12239,7 @@ taking into account
 .Va quote-chars
 and
 .Va quote-fold .
-No headers will be quoted when set without value or for
+No header fields will be quoted when set without value or for
 .Ql noheading ,
 for
 .Ql headers
@@ -12237,7 +12250,7 @@ selection will be included in the quote,
 .Ql allbodies
 embeds the (body) contents of all MIME parts, and
 .Ql allheaders
-also includes all headers.
+also includes all header fields.
 The quoted message will be enclosed by the expansions of
 .Va quote-inject-head
 and
@@ -12323,7 +12336,7 @@ The address(es) of the sender(s).
 .It Ql %d
 The date found in the
 .Ql Date:
-header of the message when
+header field of the message when
 .Va datefield
 is set (the default), otherwise the date when the message was received.
 Formatting can be controlled by assigning a
@@ -12442,7 +12455,7 @@ I.e., the separating colon has to be specified explicitly.
 .It Va reply-to
 A list of addresses to put into
 .Ql Reply-To:
-headers;
+header field;
 .Ic alias Ns
 es are expanded instantly with senders kept
 .Pf ( Va metoo ) ;
@@ -12453,7 +12466,7 @@ all list members are
 .It Va reply-to-honour
 Controls whether a
 .Ql Reply-To:
-header is honoured when replying to a message via
+header field is honoured when replying to a message via
 .Ic reply
 or
 .Ic Lreply .
@@ -12605,30 +12618,31 @@ Also see
 .
 .Mx
 .It Va sendwait
-Sending messages to the chosen
+The
 .Va mta
-or to command-pipe recipients (see
+and command-pipe recipients (see
 .Sx "Sending mail, and non-interactive mode" )
-will be performed asynchronously.
-This means that only startup errors of the respective program will be
-recognizable, but no delivery errors.
-Also, no guarantees can be made as to when the respective program will
-actually run, as well as to when they will have produced output.
+are executed asynchronously:
+only startup errors are detected, not delivery errors;
+there is no guarantee on when actual execution happens and ends,
+at which time temporary data(files) cease to exist.
+Setting this synchronizes execution,
+with the child process exit status indicating error or success.
 .Pp
-If this variable is set then child program exit is waited for, and its
-exit status code is used to decide about success.
-Remarks: in conflict with the \*(PO standard this variable is built-in
-to be initially set.
-Another difference is that it can have a value, which is interpreted as
-a comma-separated list of case-insensitive strings naming specific
-subsystems for which synchronousness shall be ensured (only).
-Possible values are
+Remarks: conflicting \*(PO this is built-in
+.Ic set ,
+and has an optional value, a comma-separated list of case-insensitive
+subsystems to synchronize:
 .Ql mta
 for
 .Va mta
 delivery, and
 .Ql pcc
-for command-pipe recipients.
+for command-pipe recipients
+.Pf ( Ev SHELL
+output is not redirected to
+.Pa /dev/null
+in synchronous mode).
 .
 .Mx
 .It Va showlast
@@ -12646,7 +12660,7 @@ address in the header field summary and in message specifications.
 .Mx
 .It Va showto
 \*(BO Causes the recipient of the message to be shown in the header
-summary if the message was sent by the user.
+field summary if the message was sent by the user.
 .
 .Mx
 .It Va Sign

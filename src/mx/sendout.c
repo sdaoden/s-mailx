@@ -1363,7 +1363,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
                      ? mx_CHILD_RUN_WAIT_LIFE : mx_CHILD_RUN_FORGET);
          cc.cc_mask = &nset;
          cc.cc_fds[mx_CHILD_FD_IN] = fileno(fppa[xcnt]);
-         cc.cc_fds[mx_CHILD_FD_OUT] = mx_CHILD_FD_NULL;
+         cc.cc_fds[mx_CHILD_FD_OUT] = ((swf & a_SENDOUT_SWF_PCC)
+               ? mx_CHILD_FD_PASS : mx_CHILD_FD_NULL);
          mx_child_ctx_set_args_for_sh(&cc, NIL, &np->n_name[1]);
 
          if(!mx_child_run(&cc)){
