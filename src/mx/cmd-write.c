@@ -220,7 +220,7 @@ jsend:
          /* TODO v15compat: solely Mailbox()->append() related, and today
           * TODO can mess with the content of a message (in that if a msg
           * TODO ends with two \n, that is ok'd as MBOX separator! */
-         if(convert == SEND_MBOX)
+         if(convert != SEND_TOFILE)
             n_folder_mbox_prepare_append(obuf, TRU1, NIL);
       }
       su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);

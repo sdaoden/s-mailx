@@ -335,11 +335,10 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
    /* TODO using part "1" for decrypted content is a hack */
    if(ip->m_partstring == NIL)
       ip->m_partstring = UNCONST(char*,n_1);
-   a_mps__new(ip, &np, offs, NIL);
 
+   a_mps__new(ip, &np, offs, NIL);
    lines = 0;
    part = 0;
-
    for(;;){
       if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, FAL0) == NIL){
          if(ferror(ibuf))
@@ -352,39 +351,46 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
             !su_cs_cmp_n(line, boundary, boundlen))){
          ++lines;
          continue;
+      }else{
+         uz i;
+
+         /* RFC 2046: receivers MUST be able to handle padding.. */
+         ASSERT(line[linelen] == '\0');
+         for(i = linelen; i > 0 && su_cs_is_space(line[i - 1]);)
+            line[--i] = '\0';
       }
 
       /* Subpart boundary? */
-      if(line[boundlen] == '\n'){
+      /* C99 */{
+         boole isfin;
+
+         if(line[boundlen] == '\0')
+            isfin = FAL0;
+         /* Final boundary?  Be aware of cases where there is no separating
+          * newline in between boundaries, as has been seen in a message with
+          * "Content-Type: multipart/appledouble;" */
+         else if(line[boundlen] == '-' && line[boundlen + 1] == '-' &&
+               line[boundlen + 2] == '\0')
+            isfin = TRU1;
+         else
+            continue;
+
          offs = ftell(ibuf);
          if(part > 0){
-            a_mps__end(&np, offs - boundlen - 2, lines);
-            a_mps__new(ip, &np, offs - boundlen - 2, NIL);
+            off_t o;
+
+            o = offs - linelen -1;
+            a_mps__end(&np, o, lines);
+            a_mps__new(ip, &np, o, NIL);
          }
          a_mps__end(&np, offs, 2);
+         if(isfin)
+            break;
          a_mps__new(ip, &np, offs, &part);
          lines = 0;
-         continue;
       }
-
-      /* Final boundary?  Be aware of cases where there is no separating
-       * newline in between boundaries, as has been seen in a message with
-       * "Content-Type: multipart/appledouble;" */
-      if(linelen < boundlen + 2)
-         continue;
-      linelen -= boundlen + 2;
-      if(line[boundlen] != '-' || line[boundlen + 1] != '-' ||
-            (linelen > 0 && line[boundlen + 2] != '\n'))
-         continue;
-      offs = ftell(ibuf);
-      if(part != 0){
-         a_mps__end(&np, offs - boundlen - 4, lines);
-         a_mps__new(ip, &np, offs - boundlen - 4, NIL);
-      }
-      a_mps__end(&np, offs + cnt, 2);
-      break;
    }
-   if(np){
+   if(np != NIL){
       offs = ftell(ibuf);
       a_mps__end(&np, offs, lines);
    }

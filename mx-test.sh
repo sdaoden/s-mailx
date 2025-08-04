@@ -9437,8 +9437,8 @@ t_eml_and_stdin_pipe() { #{{{
 t_write() { # c'mon {{{
 	t_prolog "${@}"
 
-	gm from c@y sub s2 > ./t.mbox
-	gmx from c@z sub s2 >> ./t.mbox
+	gpm from c@y sub s2 > ./t.mbox
+	gpmx from c@z sub s2 >> ./t.mbox
 	ck 1 0 ./t.mbox '1534223436 653'
 
 	## TODO `write' behavior is a total mess (especially non-interactively)
@@ -9453,7 +9453,7 @@ x' -Rf ./t.mbox >./t2 2>${E0}
 	ck 3 - ./t3 '2203469094 5'
 	ck 4 - ./t4 '4294967295 0'
 	ck 5 - ./t4#1.1.1#text.plain '2203469094 5'
-	ck 6 - ./t4#1.1.2#text.html '753148583 34'
+	ck 6 - ./t4#1.1.2#text.html '3346083714 35'
 
 	# xxx more tests for now in t_iconv_mbyte_base64() and t_binary_mainbody()
 
@@ -9803,7 +9803,7 @@ t_iconv_mainbody() { #{{{
 	# types (character-wise, byte-wise, and the character(s) used differ)
 	i="${MAILX_ICONV_MODE}"
 	if [ -n "${i}" ]; then
-		gmX from 'my@self' sub '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
+		gpmX from 'my@self' sub '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
 		ck 5 0 ./t5 '3471036537 677'
 
 		LC_ALL=C ${MAILX} ${ARGS} -Y 'p;xit' -Rf ./t5 >./t5-xxx 2>./${E0}
@@ -10265,11 +10265,11 @@ t_states_and_primary_secondary() { #{{{
 	t_prolog "${@}"
 
 	{
-		gm from 'ex1@am.ple' sub s1 body b1
-		gmX from 'ex2@am.ple' sub s2 body 'b2, l1
+		gpm from 'ex1@am.ple' sub s1 body b1
+		gpmX from 'ex2@am.ple' sub s2 body 'b2, l1
 
 			b2, l3'
-		gm from 'ex3@am.ple' sub s3 body b3
+		gpm from 'ex3@am.ple' sub s3 body b3
 	} > ./t.tpl
 	> nix
 
@@ -10441,16 +10441,16 @@ t_specifying_sorting() { #{{{
 	t_prolog "${@}"
 
 	{
-		gm fr a1 to 2 su s1 bo b1
-		gmx fr e1@a to x@y cc mid@3 su s2 bo b2 Status R
-		gmx fr e2@a to x@y,e1@a cc 'us@ex.amp us@ex.ample' su s3 bo b3 mid mid@1 hey1 yeh1
-		gmx fr e3@a to x@y,e2@a su 'Re: s3' bo b4 mid mid@2 irt mid@1 ref mid@1 Status O
-		gmx fr e4@a to x@y,e3@a su 'Re: s3' bo b5 mid mid@3 irt mid@2 ref 'mid@1 mid@2'
-		gmx fr e5@a to x@y,e4@a su 'Re: s3' bo b6 mid mid@4 irt mid@3 ref 'mid@1 mid@2 mid@3'
-		gmx fr e6@a to x@y su s7 bo b7 mid mid@5 hey2 yeh2
-		gmx fr e7@a to x@y su 'Re: s7' bo b8 mid mid@6 irt mid@5 ref mid@5 Status RO
-		gmx fr e8e@a to x@y su 'Re: s3' bo b9 mid mid@7 irt mid@1 ref mid@1
-		gm date 'Fri, 03 Dec 1999 11:36:47 +0000' fr a10 to 3 bcc us@ex.ample su s10 bo b10
+		gpm fr a1 to 2 su s1 bo b1
+		gpmx fr e1@a to x@y cc mid@3 su s2 bo b2 Status R
+		gpmx fr e2@a to x@y,e1@a cc 'us@ex.amp us@ex.ample' su s3 bo b3 mid mid@1 hey1 yeh1
+		gpmx fr e3@a to x@y,e2@a su 'Re: s3' bo b4 mid mid@2 irt mid@1 ref mid@1 Status O
+		gpmx fr e4@a to x@y,e3@a su 'Re: s3' bo b5 mid mid@3 irt mid@2 ref 'mid@1 mid@2'
+		gpmx fr e5@a to x@y,e4@a su 'Re: s3' bo b6 mid mid@4 irt mid@3 ref 'mid@1 mid@2 mid@3'
+		gpmx fr e6@a to x@y su s7 bo b7 mid mid@5 hey2 yeh2
+		gpmx fr e7@a to x@y su 'Re: s7' bo b8 mid mid@6 irt mid@5 ref mid@5 Status RO
+		gpmx fr e8e@a to x@y su 'Re: s3' bo b9 mid mid@7 irt mid@1 ref mid@1
+		gpm date 'Fri, 03 Dec 1999 11:36:47 +0000' fr a10 to 3 bcc us@ex.ample su s10 bo b10
 	} > ./t.tpl
 	ck tpl - ./t.tpl '2948526833 4886'
 
@@ -11413,7 +11413,7 @@ __EOT
 	cke0 2 0 ./.tall '2061651232 2575'
 
 	# Moreover, quoting of several parts with all*
-	gmX from 'ex1@am.ple' subject for-repl > ./.tmbox
+	gpmX from 'ex1@am.ple' subject for-repl > ./.tmbox
 	ck 3 0 ./.tmbox '1958233015 670'
 
 	</dev/null ${MAILX} ${ARGS} -Rf -S pipe-text/html=@ \
@@ -12132,9 +12132,9 @@ t_cmd_escapes() { #{{{
 
 	echo 'included file' > ./t.txt
 	{ t__x1_msg && t__x2_msg && t__x3_msg &&
-		gm from 'ex4@am.ple' sub sub4 &&
-		gm from 'eximan <ex5@am.ple>' sub sub5 &&
-		gmX from 'ex6@am.ple' sub sub6; } > ./t.mbox
+		gpm from 'ex4@am.ple' sub sub4 &&
+		gpm from 'eximan <ex5@am.ple>' sub sub5 &&
+		gpmX from 'ex6@am.ple' sub sub6; } > ./t.mbox
 	ck 1 - ./t.mbox '911181609 2184'
 
 	# ~@ is tested with other attachment stuff, ~^ in compose_edits,digmsg,compose_hooks
@@ -15007,7 +15007,7 @@ application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2
 	${cmp} ./t14_1 ./t14_2 >/dev/null 2>&1; ck_ex0 14-estat ${?}
 
 	#
-	gmX from 'ex@am.ple' subject sub > ./t.mbox
+	gpmX from 'ex@am.ple' subject sub > ./t.mbox
 	printf 'text;echo "t<%%t> cset<%%{charset}> bnd<%%{boundary}>"\n' > ./t.mailcap
 	</dev/null MAILCAPS=./t.mailcap ${MAILX} ${ARGS} -Snomailcap-disable -Y mimeview -Rf ./t.mbox > ./t15 2>${EX}
 	ck 15 0 ./t15 '3038893485 783' '3916321356 85'
@@ -15924,13 +15924,17 @@ Content-Transfer-Encoding: 8bit'
 
 # Test support {{{
 # Message generation and other header/message content {{{
-gm() { t__gm '' "$@"; }
-gmX() { t__gm 1 "$@"; }
-gmx() { t__gm 2 "$@"; }
+gm() { t__gm y '' "$@"; }
+gmX() { t__gm y 1 "$@"; }
+gmx() { t__gm y 2 "$@"; }
+gpm() { t__gm '' '' "$@"; }
+gpmX() { t__gm '' 1 "$@"; }
+gpmx() { t__gm '' 2 "$@"; }
 
 t__gm() {
-	ismime=$1
-	shift
+	xbound=$1
+	ismime=$2
+	shift 2
 
 	th() {
 		printf '%s: ' $1
@@ -15999,27 +16003,29 @@ t__gm() {
 	if [ -z "$ismime" ]; then
 		printf '\n%s\n\n' "$body"
 	else
+		xbound1= xbound2= xbound3= xbound4=
+		[ -n "$xbound" ] && xbound1='	 	' xbound2=' 	 ' xbound3=' ' xbound4='	'
 		printf 'MIME-Version: 1.0
 Message-ID: <%s>
 Content-Type: multipart/mixed; boundary="=BOUNDOUT="
 
---=BOUNDOUT=
+--=BOUNDOUT=%s
 Content-Type: multipart/alternative; boundary==BOUNDIN=
 
---=BOUNDIN=
+--=BOUNDIN=%s
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8-bit
 
 %s
 
---=BOUNDIN=
+--=BOUNDIN=%s
 Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: 8-bit
 
 <HTML><BODY>%s<BR></BODY></HTML>
 
---=BOUNDIN=--
-' "$mid" "$body" "$body"
+--=BOUNDIN=--%s
+' "$mid" "$xbound1" "$xbound2" "$body" "$xbound4" "$body" "$xbound3"
 
 		if [ "$ismime" != 2 ]; then
 			printf '
@@ -16028,14 +16034,14 @@ Content-Type: text/troff
 
 Golden Brown
 
---=BOUNDOUT=
+--=BOUNDOUT=%s
 Content-Type: text/x-uuencode
 
 Aprendimos a quererte
-'
+' "$xbound3"
 
 		fi
-		printf '%s=BOUNDOUT=--\n\n' '--'
+		printf '%s=BOUNDOUT=--%s\n\n' '--' "$xbound4"
 	fi
 }
 
