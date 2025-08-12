@@ -353,33 +353,31 @@ a_cmd_c_help(void *vp){
 			fp);
 		fputs(_(
 "\n"
-"type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
-"Type <msglist>         like `type' but always show all headers\n"
-"next                   goto and type next message\n"
-"headers                header summary ... for messages surrounding \"dot\"\n"
-"search <msglist>       ... for the given expression list (alias for `from')\n"
-"delete <msglist>       delete messages (can be `undelete'd)\n"),
+"type <msglist>          type (`print') messages (honour `headerpick' etc.)\n"
+"Type <msglist>          like `type', but always show all headers\n"
+"next                    goto and `type' next message\n"
+"headers                 header summary ... for messages surrounding \"dot\"\n"
+"search <msglist>        ... for the given expression list (alias for `from')\n"
+"delete <msglist>        delete messages (can be `undelete'd)\n"),
 			fp);
 
 		fputs(_(
 "\n"
-"save <msglist> folder  append messages to folder and mark as saved\n"
-"copy <msglist> folder  like `save', but do not mark them (`move' moves)\n"
-"write <msglist> file   write message contents to file (prompts for parts)\n"
-"Reply <msglist>        reply to message sender(s) only\n"
-"reply <msglist>        like `Reply', but address all recipients\n"
-"Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
+"save <msglist> <folder> append messages to <folder>, mark them as saved\n"
+"copy <msglist> <folder> like `save', but do not mark (`move' moves)\n"
+"write <msglist> [file]  write message contents [to file] (prompts for parts)\n"
+"Reply <msglist>         reply to only message sender(s)\n"
+"reply <msglist>         like `Reply', but address all recipients\n"
+"Lreply <msglist>        forced mailing list `reply' (see `mlist')\n"),
 			fp);
 
 		fputs(_(
 "\n"
-"mail <recipients>      compose a mail for the given recipients\n"
-"file folder            change to another mailbox\n"
-"File folder            like `file', but open readonly\n"
-"quit                   quit and apply changes to the current mailbox\n"
-"xit or exit            like `quit', but discard changes\n"
-"!shell command         shell escape\n"
-"list                   show all commands (*verbose*)\n"),
+"mail [<recipients>]     compose a mail [addressing list of <recipients>]\n"
+"file [folder]           open folder, or show current one (`File': readonly)\n"
+"quit [status]           apply (`xit', `exit': discard) changes, exit program\n"
+"! <shell command>       invoke $SHELL to evaluate <shell command>\n"
+"list                    show all commands (*verbose*ly)\n"),
 			fp);
 
 		rv = (ferror(fp) != 0);
