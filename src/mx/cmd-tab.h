@@ -1034,7 +1034,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(w) Write (append) [[<msglist>] to <file>]")},
 
 {"xit", &c_exit, (M | X | TWYSH), 0, 1, NIL,
-	 N_("(x) Immediately return [<status>] to the shell without saving")},
+	 N_("x) Immediately return [<status>] to the shell (no \"at-exit\" actions)")},
 	{"xcall", &c_xcall, (NOHIST | L | LNMAC | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call),
 	 N_("Replace currently executing macro with macro <name> [:<arg>:]")},
 
