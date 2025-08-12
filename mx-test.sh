@@ -9031,100 +9031,197 @@ __EOT
 } #}}}
 
 t_mbox() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
+
+	# From_ quoting <> *mime-encoding* {{{
+	$cat <<'_EOT' | $MAILX $ARGS -Sescape=! -Smta=test://tenc-1 -R >$E0 2>&1
+se mime-encoding=qp
+mail e@x.y
+!s S1.1
+From steffen Mon Nov 24 22:10:35 2025
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S1.2
+From steffen Mon Nov 24 22:21:23 2025
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S1.3
+From steffen Mon Nov 24 22:21:49 2025
+!.
+se mime-encoding=qp
+mail e@x.y
+!s S2.1
+From a
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S2.2
+From a
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S2.3
+From a
+!.
+se mime-encoding=qp
+mail e@x.y
+!s S3.1
+From 
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S3.2
+From 
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S3.3
+From 
+!.
+se mime-encoding=qp
+mail e@x.y
+!s S4.1
+From
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S4.2
+From
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S4.3
+From
+!.
+se mime-encoding=qp
+mail e@x.y
+!s S5.1
+Fro
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S5.2
+Fro
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S5.3
+Fro
+!.
+se mime-encoding=qp
+mail e@x.y
+!s S6.1
+
+From b
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S6.2
+
+From b
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S6.3
+
+From c
+!.
+_EOT
+	#}}}
+	cke0 enc-1 0 ./tenc-1 '2077195143 3097'
 
 	(
 		i=1
-		while [ ${i} -lt 113 ]; do
-			printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
-				"${MBOX}" "${i}" "${i}"
-			i=$(add ${i} 1)
+		while [ $i -lt 113 ]; do
+			printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' "$MBOX" "$i" "$i"
+			i=$(add $i 1)
 		done
-	) | ${MAILX} ${ARGS} > ${E0} 2>&1
-	cke0 1 0 "${MBOX}" '1785801373 13336'
+	) | $MAILX $ARGS > $E0 2>&1
+	cke0 1 0 "$MBOX" '1785801373 13336'
 
 	printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
-		${MAILX} ${ARGS} -Sshowlast > .tall 2>${E0}
+		$MAILX $ARGS -Sshowlast > .tall 2>$E0
 	cke0 2 0 .tall '3467540956 8991'
 
-	printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' "${MBOX}" .tmbox2 .tmbox2 |
-		${MAILX} ${ARGS} -Sshowlast > .tall 2>${E0}
+	printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' "$MBOX" .tmbox2 .tmbox2 |
+		$MAILX $ARGS -Sshowlast > .tall 2>$E0
 	cke0 3 0 .tall '2410946529 8998'
 
 	# copy only the odd (but the first), move the even
 	(
 		printf 'File "file://%s"\ncopy ' .tmbox2
 		i=1
-		while [ ${i} -lt 113 ]; do
-			printf '%s ' "${i}"
-			i=$(add ${i} 2)
+		while [ $i -lt 113 ]; do
+			printf '%s ' "$i"
+			i=$(add $i 2)
 		done
 		printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
-	) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>${E0}
+	) | $MAILX $ARGS -Sshowlast > .tall 2>$E0
 	cke0 4 0 .tmbox3 '2554734733 6666'
 	ck 5 - .tall '2062382804 4517'
 	# ...
 	(
 		printf 'file "file://%s"\nmove ' .tmbox2
 		i=2
-		while [ ${i} -lt 113 ]; do
-			printf '%s ' "${i}"
-			i=$(add ${i} 2)
+		while [ $i -lt 113 ]; do
+			printf '%s ' "$i"
+			i=$(add $i 2)
 		done
-		printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
-			.tmbox3 .tmbox3 .tmbox2
-	) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>${E0}
+		printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3 .tmbox2
+	) | $MAILX $ARGS -Sshowlast > .tall 2>$E0
 	cke0 6 0 .tmbox3 '1429216753 13336'
-	${sed} 2d < .tall > .tallx
+	$sed 2d < .tall > .tallx
 	ck 7 - .tallx '169518319 13477'
 
 	# Invalid MBOXes (after [f4db93b3])
 	echo > .tinvmbox
-	printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>${E0}
+	echo 'copy 1 ./.tinvmbox' | $MAILX $ARGS -Rf "$MBOX" > .tall 2>$E0
 	cke0 8 0 .tinvmbox '2848412822 118'
 	ck 9 - ./.tall '1565535673 31'
 
 	echo ' ' > .tinvmbox
-	printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>${E0}
+	echo 'copy 1 ./.tinvmbox' | $MAILX $ARGS -Rf "$MBOX" > .tall 2>$E0
 	cke0 10 0 .tinvmbox '624770486 120'
 	ck 11 - ./.tall '1565535673 31'
 
 	{ echo; echo; } > .tinvmbox # (not invalid)
-	printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>${E0}
+	echo 'copy 1 ./.tinvmbox' | $MAILX $ARGS -Rf "$MBOX" > .tall 2>$E0
 	cke0 12 0 .tinvmbox '1485640875 119'
 	ck 13 - ./.tall '1565535673 31'
 
 	# *mbox-rfc4155*, plus
-	${cat} <<-_EOT > ./.tinv1
-		 
-		
-		From MAILER-DAEMON-1 Wed Oct  2 01:50:07 1996
-		Date: Wed, 02 Oct 1996 01:50:07 +0000
-		To:
-		Subject: Bad bad message 1
-		
-		From me to you, blinde Kuh!
-		
-		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
-		Date: Wed, 02 Oct 1996 01:50:07 +0000
-		To:
-		Subject: Bad bad message 2
-		
-		From me to you, blindes Kalb!
-		_EOT
-	${cp} ./.tinv1 ./.tinv2
+	$cat <<'_EOT' > ./.tinv1
+ 
 
-	<< '__EOT' ${MAILX} ${ARGS} > .tall 2>${E0}
+From MAILER-DAEMON-1 Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+Subject: Bad bad message 1
+
+From me to you, blinde Kuh!
+
+From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+Subject: Bad bad message 2
+
+From me to you, blindes Kalb!
+_EOT
+	$cp ./.tinv1 ./.tinv2
+
+	<< '__EOT' $MAILX $ARGS > .tall 2>$E0
 define mboxfix {
-	\local set mbox-rfc4155; \File "${1}"; \eval copy * "${2}"
+	\local set mbox-rfc4155; \File "$1"; \eval copy * "$2"
 }
 call mboxfix ./.tinv1 ./.tok
 __EOT
 	ck_ex0 14-estat
-	${cat} ./.tinv1 ./.tok >> .tall
+	$cat ./.tinv1 ./.tok >> .tall
 	cke0 14 - ./.tall '685885983 588'
 
-	<< '__EOT' ${MAILX} ${ARGS} >./t15 2>${EX}
+	<< '__EOT' $MAILX $ARGS >./t15 2>$EX
 file ./.tinv1 # ^From not repaired, but missing trailing NL is
 File ./.tok # Just move away to nowhere
 set mbox-rfc4155
@@ -9133,28 +9230,28 @@ File ./.tok
 __EOT
 	ck_ex0 15-estat
 	# Almost EQ since [Auto-fix when MBOX had From_ errors on read (Dr. Werner Fink).]
-	ck 15 - ./t15 '1370453225 32' '2814008761 394'
+	ck 15 - ./t15 '1370453225 32' '3026968080 490'
 	ck 15-1 - ./.tinv1 '4026377396 312'
 	ck 15-2 - ./.tinv2 '4151504442 314'
 
 	# *mbox-fcc-and-pcc*
-	${cat} > ./.ttmpl <<-'_EOT'
-	Fcc: ./.tfcc1
-	Bcc: | cat >> ./.tpcc1
-	Fcc:	 	 	./.tfcc2	 	 	 
-	Subject: fcc and pcc, and *mbox-fcc-and-pcc*
-	
-	one line body
-	_EOT
+	$cat > ./.ttmpl <<'_EOT'
+Fcc: ./.tfcc1
+Bcc: | cat >> ./.tpcc1
+Fcc:	 	 	./.tfcc2	 	 	 
+Subject: fcc and pcc, and *mbox-fcc-and-pcc*
 
-	< ./.ttmpl ${MAILX} ${ARGS} -t > "${MBOX}" 2>${E0}
+one line body
+_EOT
+
+	< ./.ttmpl $MAILX $ARGS -t > "$MBOX" 2>$E0
 	ck0e0 16 0 "${MBOX}"
 	ck 17 - ./.tfcc1 '2301294938 148'
 	ck 18 - ./.tfcc2 '2301294938 148'
 	ck 19 - ./.tpcc1 '2301294938 148'
 
-	< ./.ttmpl ${MAILX} ${ARGS} -t -Snombox-fcc-and-pcc > "${MBOX}" 2>${E0}
-	ck0e0 20 0 "${MBOX}"
+	< ./.ttmpl $MAILX $ARGS -t -Snombox-fcc-and-pcc > "$MBOX" 2>$E0
+	ck0e0 20 0 "$MBOX"
 	ck 21 - ./.tfcc1 '3629108107 98'
 	ck 22 - ./.tfcc2 '3629108107 98'
 	ck 23 - ./.tpcc1 '2373220256 246'
@@ -9164,41 +9261,42 @@ __EOT
 	# ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
 	# could still have created invalid MBOX files!
 	#{{{
-	${cat} <<-_EOT > ./.tinv1
-		 
-		
-		From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
-		Date: Sun, 04 Oct 1998 01:50:07 +0000
-		Subject: h4
-		
-		B4
-		
-		From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
-		Date: Nix, 01 Oct BAD 01:50:07 +0000
-		Subject: hinvalid
-		
-		BINV
-		
-		From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
-		Date: Fri, 03 Oct 1997 01:50:07 +0000
-		Subject: h3
-		
-		B3
-		
-		From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
-		Date: Sun, 01 Oct 1995 01:50:07 +0000
-		Subject:h1
-		
-		B1
-		
-		
-		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
-		Date: Wed, 02 Oct 1996 01:50:07 +0000
-		Subject: h2
-		
-		b2
-		_EOT
-	<< '__EOT' ${MAILX} ${ARGS} >./t24 2>${EX}
+	$cat <<'_EOT' > ./.tinv1
+ 
+
+From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
+Date: Sun, 04 Oct 1998 01:50:07 +0000
+Subject: h4
+
+B4
+
+From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
+Date: Nix, 01 Oct BAD 01:50:07 +0000
+Subject: hinvalid
+
+BINV
+
+From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
+Date: Fri, 03 Oct 1997 01:50:07 +0000
+Subject: h3
+
+B3
+
+From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
+Date: Sun, 01 Oct 1995 01:50:07 +0000
+Subject:h1
+
+B1
+
+
+From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: h2
+
+b2
+_EOT
+
+	<< '__EOT' $MAILX $ARGS >./t24 2>$EX
 File ./.tinv1
 sort date
 remove ./.tinv2
@@ -9206,72 +9304,72 @@ copy * ./.tinv2
 file ./.tinv1
 __EOT
 	#}}}
-	ck 24 0 ./t24 '3398158582 44' '2378897697 788'
+	ck 24 0 ./t24 '3398158582 44' '2914397295 980'
 	ck 25-1 - ./.tinv2 '853754737 510'
 	ck 25-2 - ./.tinv1 '104184185 560'
 
 	#{{{ More corner cases
-	${cat} <<-'_EOT' > ./t26.mbox
-	Leading text, what to do with it?
+	$cat <<'_EOT' > ./t26.mbox
+Leading text, what to do with it?
 
-	From MAILER-DAEMON-nono-0 Wed Oct  2 01:50:07 1996
+From MAILER-DAEMON-nono-0 Wed Oct  2 01:50:07 1996
 
-	This is a body, but not a valid message
+This is a body, but not a valid message
 
-	From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
-	ToMakeItHappen: header
+From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+ToMakeItHappen: header
 
-	From MAILER-DAEMON-nono-1 Wed Oct  2 01:50:07 1996
+From MAILER-DAEMON-nono-1 Wed Oct  2 01:50:07 1996
 
-	This is a body, but not a valid message, 2
+This is a body, but not a valid message, 2
 
-	From MAILER-DAEMON-4 Wed Oct  2 01:50:07 1996
-	One: header
+From MAILER-DAEMON-4 Wed Oct  2 01:50:07 1996
+One: header
 
-	From MAILER-DAEMON-nono-2 Wed Oct  2 01:50:07 1996
+From MAILER-DAEMON-nono-2 Wed Oct  2 01:50:07 1996
 
-	From MAILER-DAEMON-nono-3 Wed Oct  2 01:50:07 1996
+From MAILER-DAEMON-nono-3 Wed Oct  2 01:50:07 1996
 
-	From MAILER-DAEMON-nono-4 Wed Oct  2 01:50:07 1996
+From MAILER-DAEMON-nono-4 Wed Oct  2 01:50:07 1996
 
-	And do foolish things
+And do foolish things
 
-	From MAILER-DAEMON-6 Wed Oct  2 01:50:07 1996
-	One: two
-	three
-	_EOT
+From MAILER-DAEMON-6 Wed Oct  2 01:50:07 1996
+One: two
+three
+_EOT
 	#}}}
 	$MAILX $ARGS -Rf \
 		-Y 'headers;echo 1;show 1;echo 2;show 2;echo 3;show 3;echo 4' \
 		-Y 'copy * ./t27' \
 		-Y 'copy 1 ./t28' \
-		./t26.mbox > ./t26 2>${EX}
-	ck 26 0 ./t26 '2704463768 1203' '3987077716 2079'
+		./t26.mbox > ./t26 2>$EX
+	ck 26 0 ./t26 '2704463768 1203' '3620168105 2175'
 	ck 27 - ./t27 '3764405655 487'
 	ck 28 - ./t28 '2228574283 184'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_maildir() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	if have_feat maildir; then :; else
 		t_echoskip '[!MAILDIR]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
 	(
 		i=0
-		while [ ${i} -lt 112 ]; do
-			printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' "${MBOX}" "${i}" "${i}"
-			i=$(add ${i} 1)
+		while [ $i -lt 112 ]; do
+			printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' "$MBOX" "$i" "$i"
+			i=$(add $i 1)
 		done
-	) | ${MAILX} ${ARGS} > ${E0} 2>&1
-	cke0 1 0 "${MBOX}" '2366902811 13332'
+	) | $MAILX $ARGS > $E0 2>&1
+	cke0 1 0 "$MBOX" '2366902811 13332'
 
-	<< '__EOT' ${MAILX} ${ARGS} -Sarg="${MBOX}" -Snewfolders=maildir -Sshowlast > .tlst 2>${E0}
+	<< '__EOT' $MAILX $ARGS -Sarg="$MBOX" -Snewfolders=maildir -Sshowlast > .tlst 2>$E0
 eval File "$arg"
 copy * .tmdir1
 File .tmdir1
@@ -9279,9 +9377,9 @@ from*
 __EOT
 	cke0 2 0 .tlst '3442251309 8991'
 	[ -d .tmdir1 ] && [ -d .tmdir1/tmp ] && [ -d .tmdir1/new ] && [ -d .tmdir1/cur ]
-	ck_ex0 2-isdircpl ${?}
+	ck_ex0 2-isdircpl $?
 
-	<< '__EOT' ${MAILX} ${ARGS} -Sarg="${MBOX}" -Sshowlast > .tlst 2>${E0}
+	<< '__EOT' $MAILX $ARGS -Sarg="$MBOX" -Sshowlast > .tlst 2>$E0
 File "$arg"
 copy * maildir://.tmdir2
 File maildir://.tmdir2
@@ -9289,7 +9387,7 @@ from*
 __EOT
 	cke0 3 0 .tlst '3524806062 9001'
 
-	<< '__EOT' ${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
+	<< '__EOT' $MAILX $ARGS -Sshowlast > .tlst 2>$E0
 File maildir://.tmdir2
 copy * file://.tmbox1
 File file://.tmbox1
@@ -9302,28 +9400,28 @@ __EOT
 	(
 		printf 'File "maildir://%s"\ncopy ' .tmdir2
 		i=0
-		while [ ${i} -lt 112 ]; do
-			j=$(modulo ${i} 2)
-			[ ${j} -eq 1 ] && printf '%s ' "${i}"
-			i=$(add ${i} 1)
+		while [ $i -lt 112 ]; do
+			j=$(modulo $i 2)
+			[ $j -eq 1 ] && printf '%s ' "$i"
+			i=$(add $i 1)
 		done
 		printf ' file://%s\nFile file://%s\nfrom*' .tmbox2 .tmbox2
-	) | ${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
+	) | $MAILX $ARGS -Sshowlast > .tlst 2>$E0
 	cke0 6 0 .tmbox2 '4228337024 6386'
 	ck 7 - .tlst '2078821439 4517'
 	# ...
 	(
 		printf 'file maildir://%s\nmove ' .tmdir2
 		i=0
-		while [ ${i} -lt 112 ]; do
-			j=$(modulo ${i} 2)
-			[ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
-			i=$(add ${i} 1)
+		while [ $i -lt 112 ]; do
+			j=$(modulo $i 2)
+			[ $j -eq 0 ] && [ $i -ne 0 ] && printf '%s ' "$i"
+			i=$(add $i 1)
 		done
 		printf 'file://%s\nFile file://%s\nfrom*\nFile maildir://%s\nfrom*' .tmbox2 .tmbox2 .tmdir2
-	) | ${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
+	) | $MAILX $ARGS -Sshowlast > .tlst 2>$E0
 	cke0 8 0 .tmbox2 '978751761 12656'
-	${sed} 2d < .tlst > .tlstx
+	$sed 2d < .tlst > .tlstx
 	ck 9 - .tlstx '2172297531 13477'
 
 	# More invalid: since in "copy * X" messages will be copied in `sort' order,
@@ -9331,42 +9429,42 @@ __EOT
 	# ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
 	# could still have created invalid MBOX files!
 	#{{{
-	${cat} <<-_EOT > ./.tinv1
+	$cat <<'_EOT' > ./.tinv1
 		 
-		
-		From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
-		Date: Sun, 04 Oct 1998 01:50:07 +0000
-		Subject: h4
-		
-		B4
-		
-		From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
-		Date: Nix, 01 Oct BAD 01:50:07 +0000
-		Subject: hinvalid
-		
-		BINV
-		
-		From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
-		Date: Fri, 03 Oct 1997 01:50:07 +0000
-		Subject: h3
-		
-		B3
-		
-		From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
-		Date: Sun, 01 Oct 1995 01:50:07 +0000
-		Subject:h1
-		
-		B1
-		
-		
-		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
-		Date: Wed, 02 Oct 1996 01:50:07 +0000
-		Subject: h2
-		
-		b2
-		_EOT
 
-	<< '__EOT' ${MAILX} ${ARGS} -Scat="${cat}" >./.t10 2>${EX}
+From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
+Date: Sun, 04 Oct 1998 01:50:07 +0000
+Subject: h4
+
+B4
+
+From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
+Date: Nix, 01 Oct BAD 01:50:07 +0000
+Subject: hinvalid
+
+BINV
+
+From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
+Date: Fri, 03 Oct 1997 01:50:07 +0000
+Subject: h3
+
+B3
+
+From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
+Date: Sun, 01 Oct 1995 01:50:07 +0000
+Subject:h1
+
+B1
+
+
+From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: h2
+
+b2
+_EOT
+
+	<< '__EOT' $MAILX $ARGS -Scat="$cat" >./.t10 2>$EX
 File ./.tinv1
 sort date
 copy * maildir://./.tmdir10
@@ -9377,27 +9475,27 @@ copy * ./.t10warp
 __EOT
 	#}}}
 	# Note that substdate() fixes all but one From_ line to $SOURCE_DATE_EPOCH!
-	ck 10 - ./.t10 '3358647049 70' '2814008761 394'
+	ck 10 - ./.t10 '3358647049 70' '3026968080 490'
 	ck 10-warp 0 ./.t10warp '3551111321 502'
 	ck 11 - ./.t11 '642719592 302'
 
 	#
-	${mkdir} .z .z/cur .z/new .z/tmp
+	$mkdir .z .z/cur .z/new .z/tmp
 	printf '' > .z/new/844221007.M13P13108.reproducible_build:2,s
 	printf '\n' > .z/new/844221007.M12P13108.reproducible_build:2,s
 	printf 'a\n' > .z/new/844221007.M11P13108.reproducible_build:2,s
 	printf 'From MAILER-DAEMON-0 Sat Apr 24 21:54:00 2021\n\nb\n' > .z/new/844221007.M10P13108.reproducible_build:2,s
-	</dev/null ${MAILX} ${ARGS} -Rf \
+	</dev/null $MAILX $ARGS -Rf \
 		-Y 'h;echo 1;p 1;echo 2;p2;echo 3;p3;echo 4;p4' \
 		-Y 'copy * maildir://./.z2' \
 		-Y 'File ./.z2' \
 		-Y 'h;echo 1;p 1;echo 2;p2;echo 3;p3;echo 4;p4' \
-		./.z > t12 2>${EX}
+		./.z > t12 2>$EX
 	ck_ex0 12-estat
-	${sed} -e '/^reproducible_build: Not a header line/d' < ${EX} > ${E0}
+	$sed -e '/^reproducible_build: Not a header line/d' < $EX > $E0
 	cke0 12 0 ./t12 '3236247792 1567'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_eml_and_stdin_pipe() { #{{{
@@ -9437,7 +9535,7 @@ t_eml_and_stdin_pipe() { #{{{
 
 	# EX_NOPERM
 	<./t.mbox ${MAILX} ${ARGS} -f - >${E0} 2>${EX}
-	ck0 11 77 ${E0} '2465941229 88'
+	ck0 11 77 ${E0} '508762883 63'
 
 	<./t.eml ${MAILX} ${ARGS} -f eml://- >${E0} 2>${EX}
 	ck0 12 77 ${E0} '3267665338 77'

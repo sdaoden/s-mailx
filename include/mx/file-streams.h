@@ -179,7 +179,7 @@ EXPORT void mx_fs_linepool_cleanup(boole completely);
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0 characters.
  * line - line buffer.  *line may be NIL.
  * linesize - allocated size of line buffer.  *always* room for NETNL + \0!
- * count - maximum characters to read.  May be NIL.
+ * count - maximum characters to read.  May be NIL.  TODO is uz, must be s64!
  * llen_or_nil - length_of_line(*line); set to 0 on entry if set.
  * fp - input FILE.
  * appendnl - always terminate line with \n, append if necessary.

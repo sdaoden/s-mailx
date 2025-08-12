@@ -2373,19 +2373,7 @@ int main(void){
 }
 !
 then
-	if run_check realpath_malloc 'realpath(3) takes NULL' '#define mx_HAVE_REALPATH_NULL' << \!
-#include <stdlib.h>
-int main(void){
-	char *x = realpath(".", (void*)0);
-
-	if(x != (void*)0)
-		free(x);
-	return (x != (void*)0) ? 0 : 1;
-}
-!
-	then
-		:
-	fi
+	:
 fi
 
 link_check tm_gmtoff 'struct tm::tm_gmtoff' '#define mx_HAVE_TM_GMTOFF' << \!

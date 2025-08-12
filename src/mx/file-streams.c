@@ -485,7 +485,11 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 			err = su_ERR_OPNOTSUPP;
 			goto jleave;
 		}
-		/* FALLTHRU */
+		FALLTHRU
+	case n_PROTO_SMBOX:
+		FALLTHRU
+	case n_PROTO_XMBOX:
+		FALLTHRU
 	case n_PROTO_FILE:{
 		struct mx_filetype ft;
 

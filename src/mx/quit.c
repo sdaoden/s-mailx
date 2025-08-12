@@ -281,11 +281,15 @@ jemailname:
 
       for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
          lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
-      if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
+      if(lastnl != TRU2 && ((fs & n_PROTO_MASK) == n_PROTO_FILE ||
+            (fs & n_PROTO_MASK) == n_PROTO_SMBOX ||
+            (fs & n_PROTO_MASK) == n_PROTO_XMBOX))
          putc('\n', obuf);
    }
    /* May nonetheless be a broken MBOX TODO really: VFS, object KNOWS!! */
-   else if(!gotcha && (fs & n_PROTO_MASK) == n_PROTO_FILE)
+   else if(!gotcha && ((fs & n_PROTO_MASK) == n_PROTO_FILE ||
+         (fs & n_PROTO_MASK) == n_PROTO_SMBOX ||
+         (fs & n_PROTO_MASK) == n_PROTO_XMBOX))
       n_folder_mbox_prepare_append(obuf, TRU1, NIL);
    fflush(obuf);
    if (ferror(obuf)) {
@@ -568,7 +572,9 @@ mx_quit_automove_mbox(boole need_stat_verify){
       goto jleave;
    }
 
-   if((fs & n_PROTO_MASK) == n_PROTO_FILE)
+   if((fs & n_PROTO_MASK) == n_PROTO_FILE ||
+         (fs & n_PROTO_MASK) == n_PROTO_SMBOX ||
+         (fs & n_PROTO_MASK) == n_PROTO_XMBOX)
       n_folder_mbox_prepare_append(obuf, FAL0, NIL);
 
    su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);

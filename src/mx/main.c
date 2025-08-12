@@ -350,7 +350,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){ /* {{{ */
 		char const *cp;
 
 		cp = n_folder_query();
-		if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
+		if(which_protocol(cp, FAL0, FAL0, NIL) == n_PROTO_IMAP)
 			su_cs_pcopy_n(mailname, cp, sizeof mailname);
 	}
 #endif

@@ -213,7 +213,7 @@ c_remove(void *vp){
 				goto jerr;
 			}
 			break;
-		case PROTO_FILE:
+		case n_PROTO_FILE:
 			if(!su_path_rm(name)){
 				s32 err;
 
@@ -226,10 +226,10 @@ c_remove(void *vp){
 				goto jerr;
 			}
 			break;
-		case PROTO_POP3:
+		case n_PROTO_POP3:
 			emsg = N_("cannot remove POP3 mailboxes");
 			goto jerr;
-		case PROTO_MAILDIR:
+		case n_PROTO_MAILDIR:
 			if(TRU1
 #ifdef mx_HAVE_MAILDIR
 					&& maildir_remove(name) != OKAY
@@ -245,7 +245,7 @@ c_remove(void *vp){
 				goto jerr;
 			}
 			break;
-		case PROTO_IMAP:
+		case n_PROTO_IMAP:
 			if(TRU1
 #ifdef mx_HAVE_IMAP
 					&& imap_remove(name) != OKAY
@@ -261,7 +261,7 @@ c_remove(void *vp){
 				goto jerr;
 			}
 			break;
-		case PROTO_UNKNOWN:
+		case n_PROTO_UNKNOWN:
 		default:
 			emsg = N_("unknown protocol, not removing");
 jerr:
@@ -308,7 +308,7 @@ c_rename(void *vp){
 	switch(oldp){
 	case n_PROTO_EML:
 		/* FALLTHRU */
-	case PROTO_FILE:
+	case n_PROTO_FILE:
 		if(!su_path_link(newn, oldn)){
 			emsg = savecatsep(_("link(2) failed:"), ' ', _(su_err_doc(-1)));
 			goto jerrnotr;
@@ -317,7 +317,7 @@ c_rename(void *vp){
 			goto jerrnotr;
 		}
 		break;
-	case PROTO_MAILDIR:
+	case n_PROTO_MAILDIR:
 		if(TRU1
 #ifdef mx_HAVE_MAILDIR
 				&& rename(oldn, newn) == -1
@@ -333,10 +333,10 @@ c_rename(void *vp){
 			goto jerrnotr;
 		}
 		break;
-	case PROTO_POP3:
+	case n_PROTO_POP3:
 		emsg = N_("cannot rename POP3 mailboxes");
 		goto jerr;
-	case PROTO_IMAP:
+	case n_PROTO_IMAP:
 		if(TRU1
 #ifdef mx_HAVE_IMAP
 				&& imap_rename(oldn, newn) != OKAY
@@ -352,7 +352,7 @@ c_rename(void *vp){
 			goto jerr;
 		}
 		break;
-	case PROTO_UNKNOWN:
+	case n_PROTO_UNKNOWN:
 	default:
 		emsg = N_("unknown protocol, not renaming");
 		goto jerr;
@@ -390,7 +390,7 @@ c_folders(void *v){
 	}
 
 #ifdef mx_HAVE_IMAP
-	if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
+	if(which_protocol(cp, FAL0, FAL0, NIL) == n_PROTO_IMAP)
 		rv = imap_folders(cp, *argv == NIL);
 	else
 #endif

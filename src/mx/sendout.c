@@ -1299,7 +1299,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
          continue;
 
       /* See if we have copied the complete message out yet.  If not, do so */
-      if(fp == NIL){
+      if(UNLIKELY(fp == NIL)){
          int c;
          struct mx_fs_tmp_ctx *fstcp;
 
@@ -1408,14 +1408,23 @@ jefile:
                goto jerror;
             }
 
-            if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
-                  (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
-               if(!mx_file_lock(fileno(fout), (mx_FILE_LOCK_MODE_TEXCL |
-                     mx_FILE_LOCK_MODE_RETRY)))
-                  goto jefileeno;
-               if(mfap && (xerr = n_folder_mbox_prepare_append(fout, FAL0, NIL)
-                     ) != su_ERR_NONE)
-                  goto jefile;
+            switch(fs & n_PROTO_MASK){
+            default:
+               break;
+            case n_PROTO_FILE:
+            case n_PROTO_SMBOX:
+            case n_PROTO_XMBOX:
+               if(fs & mx_FS_OPEN_STATE_EXISTS){
+                  if(!mx_file_lock(fileno(fout), (mx_FILE_LOCK_MODE_TEXCL |
+                        mx_FILE_LOCK_MODE_RETRY)))
+                     goto jefileeno;
+                  if(mfap &&
+                        (xerr = n_folder_mbox_prepare_append(fout, FAL0, NIL)
+                           ) != su_ERR_NONE)
+                     goto jefile;
+
+               }
+               break;
             }
          }
 
@@ -1492,46 +1501,54 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
    }
 
    switch(*(ccp = cp)){
+   case '/': /* xxx DIRSEP? */
+      break;
    case '.':
-      if(cp[1] != '/'){ /* DIRSEP */
+      if(cp[1] == '/') /* DIRSEP */
+         break;
+      FALLTHRU
    default:
-         if(ok_blook(outfolder)){
-            struct str s;
-            char const *nccp, *folder;
+      if(!ok_blook(outfolder))
+         break;
+      else{
+         struct str s;
+         char const *nccp, *folder;
 
-            switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
-            case PROTO_FILE:
-               ccp = "file://";
-               if(0){
-               /* FALLTHRU */
-            case PROTO_MAILDIR:
+         switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
+         case n_PROTO_IMAP:
+            break;
+         case n_PROTO_SMBOX: /* TODO *record*=SMBOX is a NO-NO */
+            FALLTHRU
+         case n_PROTO_XMBOX: /* TODO *record*=XMBOX is a NO-NO */
+            FALLTHRU
+         case n_PROTO_FILE:
+            ccp = "file://";
+            if(0){
+               FALLTHRU
+         case n_PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
-                  ccp = "maildir://";
+               ccp = "maildir://";
 #else
-                  n_err(_("*record*: *outfolder*: no Maildir directory "
-                     "support compiled in\n"));
-                  goto jbail;
+               n_err(_("*record*: *outfolder*: no Maildir directory "
+                  "support compiled in\n"));
+               goto jbail;
 #endif
-               }
-               folder = n_folder_query();
+            }
+
+            folder = n_folder_query();
 #ifdef mx_HAVE_IMAP
-               if(which_protocol(folder, FAL0, FAL0, NIL) == PROTO_IMAP){
-                  n_err(_("*record*: *outfolder* set, *folder* is IMAP "
-                     "based: only one protocol per file is possible\n"));
-                  goto jbail;
-               }
-#endif
-               ccp = str_concat_csvl(&s, ccp, folder, nccp, NIL)->s;
-               /* FALLTHRU */
-            case n_PROTO_IMAP:
-               break;
-            default:
+            if(which_protocol(folder, FAL0, FAL0, NIL) == n_PROTO_IMAP){
+               n_err(_("*record*: *outfolder* set, *folder* is IMAP "
+                  "based: only one protocol per file is possible\n"));
                goto jbail;
             }
+#endif
+            ccp = str_concat_csvl(&s, ccp, folder, nccp, NIL)->s;
+            break;
+         default:
+            goto jbail;
          }
       }
-      /* FALLTHRU */
-   case '/':
       break;
    }
 
@@ -1572,7 +1589,11 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){ /* {{{ */
    }
 
    if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
-         (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
+         (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS) ||
+         (fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
+            (n_PROTO_SMBOX | mx_FS_OPEN_STATE_EXISTS) ||
+         (fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
+            (n_PROTO_XMBOX | mx_FS_OPEN_STATE_EXISTS)){
       int xerr;
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!

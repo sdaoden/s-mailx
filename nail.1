@@ -371,20 +371,21 @@ instead of the
 .Mx -sx
 .Sx "primary system mailbox"
 (note
-.Va hold , keepsave ) .
+.Va hold , keepsave ) ;
 .Ar file
 is not an option argument, but taken from the command line after
 command line option processing.
-It is inspected for protocol specifications and undergoes
-.Sx "Filename transformations" ,
-as if given to
-.Ic folder .
-As a special case that requires read-only mode
-.Pf ( Fl R )
-hyphen-minus
+It equals using the
+.Ic folder
+command, so
+.Ar file
+is inspected for protocol specifications and undergoes
+.Sx "Filename transformations" ;
+Hyphen-minus
 .Ql -
-denotes standard input (in MBOX or EML format) that can also be
-a pipe instead of a regular file.
+denotes standard input (in MBOX or EML format), can be a pipe instead of
+a regular file, but requires read-only mode
+.Pf ( Fl R ) .
 .
 .Mx
 .It Fl H , Fl Fl header-summary
@@ -1311,10 +1312,9 @@ results can be created.
 At the
 .Va prompt
 .Ic list
-shows all built-in commands in a lookup order that does not always
-correlate to the alphabetical one: names can be abbreviated,
-and \*(PO standardized some abbreviations.
-(But)
+shows all built-in
+.Sx COMMANDS
+in lookup order,
 .Ic commandalias Ns
 es can be defined and listed.
 A overall summary
@@ -3312,7 +3312,7 @@ and
 .Sh COMMANDS
 .
 .\" intro {{{
-In normal input mode (not
+In normal input mode (compare:
 .Sx "Compose mode" )
 input is read in lines.
 An unquoted reverse solidus
@@ -3332,7 +3332,10 @@ are removed from both ends.
 .Pp
 The line is then scanned for a command name, possibly prepended by
 .Sx "Command modifiers" .
-Names may be abbreviated: the first matching the given prefix is used.
+Names may be abbreviated in
+.Dq first substring match wins
+mode; \*(PO standardized certain abbreviations, shown in parenthesis in
+the list below, and resulting in diverse rule deviations.
 A name may also be a
 .Ic commandalias ,
 it is then recursively expanded first;
@@ -3382,8 +3385,7 @@ instructs the state machine to ignore errors;
 offer a similar mechanism.
 .
 .Pp
-A list of all commands in lookup order that not always fits the
-alphabetical one due to \*(PO standardized abbreviations is dumped by
+A list of all commands in lookup order is dumped by
 .Ic list .
 .Ic help
 (alias:
@@ -5001,8 +5003,9 @@ d.
 .It Ar view-from_
 Used for so-called
 .Ql From_
-lines, which are MBOX file format specific header lines (also see
-.Va mbox-rfc4155 ) .
+lines, which are MBOX file format (see
+.Ic folder )
+specific header lines
 .It Ar view-header
 For header lines.
 A comma-separated list of header fields to which the mapping shall apply
@@ -6019,13 +6022,12 @@ otherwise success indicating status.
 .
 .Mx
 .It Ic File
-(Fi) Like
-.Ic folder ,
-but open the mailbox read-only.
+(Fi) Identical to
+.Ic folder .
 .
 .Mx
 .It Ic file
-(fi) See
+(fi) Identical to
 .Ic folder .
 .
 .Mx
@@ -6033,8 +6035,8 @@ but open the mailbox read-only.
 .It Ic filetype , unfiletype
 \*(NQ Define, list, and remove, file handler hooks.
 These provide (shell) commands that enable loading and saving MBOX
-files from and to files with registered file extensions, as shown
-and described for
+files from and to files with registered file extensions,
+as shown and described for
 .Ic folder .
 The extensions are used case-insensitively (US-ASCII),
 yet the auto-completion feature of for example
@@ -6063,10 +6065,11 @@ prefix to load and save commands may mean to bypass this shell instance:
 placing a leading space will avoid any possible misinterpretations.
 .Bd -literal -offset indent
 filetype bz2 'bzip2 -dc' 'bzip2 -zc' \e
-    gz 'gzip -dc' 'gzip -c'  xz 'xz -dc' 'xz -zc' \e
+    gz 'gzip -dc' 'gzip -c' \e
+    xz 'xz -dc' 'xz -zc' \e
     zst 'zstd -dc' 'zstd -19 -zc' \e
-    zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
-set record=+sent.zst.pgp
+    gz.pgp 'gpg -d | gz -dc' 'gz -zc | gpg -e'
+set record=+sent.gz.pgp
 .Ed
 .
 .Mx
@@ -6087,13 +6090,14 @@ but open the mailbox read-only.
 .\"{{{folder
 .Mx
 .It Ic folder
-(fold) Without arguments shows informations about the current mailbox.
-With one argument the current mailbox is synchronized and closed first,
+(fold) Shows information about the current mailbox without arguments.
+Otherwise an open mailbox is closed,
 .Sx "Filename transformations"
-are performed; URL
-.Pf ( Sx "URL syntax and credential lookup" )
+on the argument are performed, with URL
 .Ql mailbox-type://
-prefixes are understood, as in
+.Dq protocols
+.Pf ( Sx "URL syntax and credential lookup" )
+being understood, as in
 .Ql mbox:///tmp/somefolder ,
 or, in general:
 .
@@ -6105,10 +6109,10 @@ When no protocol was specified opening non-existing
 .Ic folders
 asserts
 .Va newfolders .
-Once opened
-.Va mailbox-resolved
-and
-.Va mailbox-display
+Once opened the variables
+.Va mailbox-basename , mailbox-display , mailbox-resolved
+as well as
+.Va mailbox-read-only
 are updated, a set
 .Va on-mailbox-event
 is evaluated, and optionally a summary of
@@ -6118,20 +6122,26 @@ is displayed if
 is set.
 .
 .Pp
-For the protocols
+For the
+.Dq protocols
 .Ar mbox
-and
-.Ar file
-(MBOX database), as well as
+(equal:
+.Ar file ) ,
+.Ar smbox
+or
+.Ar xmbox
+(MBOX variants), as well as
 .Ar eml
-(electronic mail message) the list of all registered
+((a single) electronic mail message; \*(ID only read-only support)
+the list of all registered
 .Ic filetype Ns
 s is traversed to check whether hooks shall be used to load (and save)
-data from (and to) the mailbox (except for the
+data from (and to) the mailbox, except for the
 .Dq -
-special case as documented for
+standard input case (as documented for
 .Fl f ) .
-Changing hooks will not affect already opened mailboxes.
+.Sy Remarks:
+changing hooks will not affect already opened mailboxes.
 .
 .Pp
 \*(OB For historical reasons
@@ -6140,7 +6150,7 @@ s provide limited (case-sensitive) auto-completion capabilities.
 For example
 .Ql mbox.gz
 will be found for
-.Ql \&? file mbox ,
+.Ql file mbox ,
 provided that corresponding handlers are installed.
 It will neither find
 .Ql mbox.GZ
@@ -6150,19 +6160,17 @@ however, but an explicit
 .Ql \&? file mbox.GZ
 will find and use the handler for
 .Ql gz .
-This will vanish in v15!
+\*(ID Auto-completion will vanish in v15!
 .
 .Pp
-EML files contain only one mail message,
-\*(ID and must be opened read-only.
-When reading MBOX files tolerant \*(PO parse rules are used by default;
+When reading MBOX files \*(PO parse rules are used by default;
 The often invalid message boundaries of elder MBOX files cause warnings:
 the method described for
 .Va mbox-rfc4155
 may be used to create a new and valid MBOX.
 .
 .Pp
-During file operations MBOX databases and EML files are protected by
+During file operations MBOX and EML files are protected by
 file-region locks
 .Pf ( Xr fcntl 2 ) .
 .Mx -ix "dotlock files"
@@ -7159,7 +7167,8 @@ Mark the given message list as a subject to
 to the
 .Mx -sx
 .Sx "secondary mailbox"
-.Ev MBOX ,
+.Ev MBOX
+.Ic folder ,
 overriding a set
 .Va hold ;
 overrides a former
@@ -7759,6 +7768,7 @@ If no pathname is given, the
 .Mx -sx
 .Sx "secondary mailbox"
 .Ev MBOX
+.Ic folder
 is used.
 The quoted pathname and the generated byte count is shown on success.
 If editing a
@@ -7832,14 +7842,9 @@ equals
 .Bd -literal -offset indent
 set atab=$'\et' aspace=' ' zero=0 noprompt
 
-define mboxfix {
-  local set mbox-rfc4155 mf=$mailbox-resolved
-  File "${1}"; copy * "$2"; file "$mf"
-}
-
 commandalias e 'echon "x=$x y=$y z=$z, "; env look x'
 define l1 {
-  e; our set x=x2 y=y2 z=z2; e; xcall l2
+  e; our se x=x2 y=y2 z=z2; e; xcall l2
 }
 define l2 {
   e
@@ -8195,7 +8200,8 @@ Touch the given message list, and mark messages therein as a subject to
 to the
 .Mx -sx
 .Sx "secondary mailbox"
-.Ev MBOX ,
+.Ev MBOX
+.Ic folder
 unless overriden by a set
 .Va hold ;
 overrides a former
@@ -8989,7 +8995,9 @@ For all modes, if a given filename solely consists of the number sign
 followed by either a valid message number of the currently active
 mailbox, or by a period
 .Ql \&. ,
-referring to the current message of the active mailbox, the so-called
+referring to the current message of the active mailbox
+.Ic folder ,
+the so-called
 .Dq dot ,
 the given message is attached as a
 .Ql message/rfc822
@@ -11089,9 +11097,8 @@ See
 \*(BO File and pipe recipients
 .Pf ( Va expandaddr )
 receive a one-message MBOX file
-.Pf ( Ic folder ,
-.Va mbox-rfc4155 ) ,
-already existing (MBOX) files are appended to, RFC 4155 compliantly.
+.Pf ( Ic folder ) ,
+already existing (MBOX) files are appended to.
 If unset a plain RFC 5322 (EML) message is instead received,
 and existing files are overwritten.
 .
@@ -11322,11 +11329,13 @@ unchanged, but may cause problems when transferring mail messages over
 channels that are not ESMTP (RFC 1869) compliant.
 Also, several input data constructs are not allowed by the
 specifications and may cause a different transfer-encoding to be used.
-By established rules and popular demand occurrences of
+By established rules (MBOX file protection, see
+.Ic folder ) ,
+and popular demand occurrences of
 .Ql ^From_
-(see
-.Va mbox-rfc4155 )
-will be MBOXO quoted (prefixed with greater-than sign
+will be
+.Dq MBOXO
+quoted (prefixed with greater-than sign
 .Ql > )
 instead of causing a non-destructive encoding like
 .Ql quoted-printable
@@ -11662,7 +11671,9 @@ in encrypted form:
 .It Va newfolders
 \*(OP If this variable has the value
 .Ql maildir ,
-newly created local mailboxes will be in
+newly created local mailbox
+.Ic folder Ns
+s will be in
 .Mx -sx
 .Sx Maildir
 instead of MBOX format.
@@ -11673,7 +11684,9 @@ Checks for new mail in the current mailbox each time the prompt is shown.
 \*(OP A
 .Mx -sx
 .Sx Maildir
-mailbox must be re-scanned to determine if new mail has arrived.
+mailbox
+.Ic folder
+must be re-scanned to determine if new mail has arrived.
 If this variable is set to the special value
 .Ql nopoll
 then a Maildir mailbox will not be rescanned completely, but only
@@ -12637,12 +12650,12 @@ here swapping occurs if the sender is a mailing-list as defined by
 .
 .Mx
 .It Va rfc822-body-from_
-\*(BO This variable can be used to force displaying a so-called
+\*(BO Display a so-called
 .Ql From_
 line for messages that are embedded into an envelope mail via the
 .Ql message/rfc822
-MIME mechanism, for more visual convenience, also see
-.Va mbox-rfc4155 .
+MIME mechanism, as is usual for MBOX files (see
+.Ic folder ) .
 .
 .Mx
 .It Va save
@@ -14233,7 +14246,6 @@ it is only honoured for writable mailboxes in MBOX format, though.
 Note that the editor will be pointed to the raw message content in that
 case, i.e., neither MIME decoding nor decryption will have been
 performed, and proper
-.Va mbox-rfc4155
 .Ql From_
 quoting of newly added or edited content is also left as an exercise
 to the user.
@@ -14309,7 +14321,7 @@ Also see
 .
 .Mx
 .It Ev DEAD
-The name of the (mailbox)
+The name of the mailbox
 .Ic folder
 to use for saving aborted messages if
 .Va save
@@ -15814,7 +15826,7 @@ $ git format-patch -M --stdout HEAD^ |
 .Ss "Howto handle stale dotlock files"
 .
 .Ic folder
-sometimes fails to open MBOX mail databases because creation of
+sometimes fails to open MBOX mail files because creation of
 .Mx -sx
 .Sx "dotlock files"
 is impossible due to existing but unowned lock files.

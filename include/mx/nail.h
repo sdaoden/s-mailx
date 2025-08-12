@@ -201,19 +201,17 @@ enum prompt_exp{
 enum protocol{
    n_PROTO_NONE,
    n_PROTO_EML, /* Local electronic mail file (single message, rdonly) */
-   n_PROTO_FILE, /* refers to a local file */
-PROTO_FILE = n_PROTO_FILE,
+   n_PROTO_FILE, /* local file, aka MBOX (file://, mbox://; *mbox-rfc4155*) */
+   n_PROTO_SMBOX, /* smbox://; _FILE, but simple despite *mbox-rfc4155* */
+   n_PROTO_XMBOX, /* xmbox://; _FILE, but 4155 despite *mbox-rfc4155* */
    n_PROTO_POP3, /* is a pop3 server string */
-PROTO_POP3 = n_PROTO_POP3,
-n_PROTO_IMAP,
-PROTO_IMAP = n_PROTO_IMAP,
+   n_PROTO_IMAP,
    n_PROTO_MAILDIR, /* refers to a maildir folder */
-PROTO_MAILDIR = n_PROTO_MAILDIR,
    n_PROTO_UNKNOWN, /* unknown protocol */
-PROTO_UNKNOWN = n_PROTO_UNKNOWN,
 
    n_PROTO_MASK = (1u << 5) - 1
 };
+MCTA(n_PROTO_MASK >= n_PROTO_UNKNOWN, "PROTO_MASK bit coverage")
 
 /* In "strictening" privacy (we do eg xy>_GLOBAL)! */
 enum mx_scope{

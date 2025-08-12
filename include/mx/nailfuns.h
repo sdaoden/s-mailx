@@ -547,12 +547,6 @@ FL boole mx_collect_input_loop(void);
  * folder.c
  */
 
-/* Set up editing on the given filename.
- * If the first character of name is %, we are considered to be editing the
- * file, otherwise we are reading our mail which has significance for mbox and
- * so forth */
-FL int         setfile(char const *name, enum fedit_mode fm);
-
 FL int         newmailinfo(int omsgCount);
 
 /* Set the size of the message vector used to construct argument lists to
@@ -572,8 +566,13 @@ FL void n_initbox(char const *name, boole rdonly);
 
 /* Determine and expand the current *folder* name, return it (with trailing
  * solidus) or the empty string also in case of errors: since POSIX mandates
- * a default of CWD if not set etc., that seems to be a valid fallback, then */
+ * a default of CWD if not set etc., that seems to be a valid fallback, then.
+ * Returned data may be temporary (AUTO memory, variable lookup etc)! */
 FL char const *n_folder_query(void);
+
+/* Set up the input pointers while copying the mail file into /tmp */
+FL void n_folder_mbox_setptr(FILE *ibuf, off_t offset, enum protocol proto,
+      boole maybepipe);
 
 /* Prepare the seekable O_APPEND MBOX fout for appending of another message.
  * If pip_or_nil is not NIL it is assumed to point to an up-to-date status of
@@ -924,6 +923,16 @@ FL void mx_dead_save(FILE *fp, boole fflush_rewind_fp_first);
 FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
       struct header *envelope_or_nil, boole is_main_mp);
 #endif
+
+/*
+ * setfile.c
+ */
+
+/* Set up editing on the given filename.
+ * If the first character of name is %, we are considered to be editing the
+ * file, otherwise we are reading our mail which has significance for mbox and
+ * so forth */
+FL int         setfile(char const *name, enum fedit_mode fm);
 
 /*
  * shexp-*.c

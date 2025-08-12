@@ -75,7 +75,7 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 	enum protocol rv, fixrv;
 	NYD2_IN;
 
-	rv = fixrv = PROTO_UNKNOWN;
+	rv = fixrv = n_PROTO_UNKNOWN;
 
 	if(name[0] == '%' && name[1] == ':')
 		name += 2;
@@ -92,44 +92,76 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 		yeshooks = FAL0;
 		i = P2UZ(cp - name);
 
-		if((i == sizeof("file") -1 && !su_cs_cmp_case_n(name, "file", sizeof("file") -1)) ||
-				(i == sizeof("mbox") -1 && !su_cs_cmp_case_n(name, "mbox", sizeof("mbox") -1))){
-			yeshooks = TRU1;
-			rv = PROTO_FILE;
-		}else if(i == sizeof("eml") -1 && !su_cs_cmp_case_n(name, "eml", sizeof("eml") -1)){
-			yeshooks = TRU1;
-			rv = n_PROTO_EML;
-		}else if(i == sizeof("maildir") -1 && !su_cs_cmp_case_n(name, "maildir", sizeof("maildir") -1)){
-#ifdef mx_HAVE_MAILDIR
-			rv = PROTO_MAILDIR;
-#else
-			n_err(_("No Maildir directory support compiled in\n"));
-#endif
-		}else if(i == sizeof("pop3") -1 && !su_cs_cmp_case_n(name, "pop3", sizeof("pop3") -1)){
-#ifdef mx_HAVE_POP3
-			rv = PROTO_POP3;
-#else
-			n_err(_("No POP3 support compiled in\n"));
-#endif
-		}else if(i == sizeof("pop3s") -1 && !su_cs_cmp_case_n(name, "pop3s", sizeof("pop3s") -1)){
-#if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
-			rv = PROTO_POP3;
-#else
-			n_err(_("No POP3S support compiled in\n"));
-#endif
-		}else if(i == sizeof("imap") -1 && !su_cs_cmp_case_n(name, "imap", sizeof("imap") -1)){
+#undef a_X
+#undef a_Y
+#define a_Y(X) sizeof(X) -1
+#define a_X(X) !su_cs_cmp_case_n(name, X, a_Y(X))
+		switch(i){
+		default:
+			break;
+		case a_Y("eml"):
+			if(a_X("eml")){
+				rv = n_PROTO_EML;
+				yeshooks = TRU1;
+			}
+			break;
+		case a_Y("file"):
+		/* case a_Y("mbox"):
+		 * case a_Y("imap"):
+		 * case a_Y("pop3"):*/
+			if(a_X("file") || a_X("mbox")){
+				rv = n_PROTO_FILE;
+				yeshooks = TRU1;
+			}else if(a_X("imap")){
 #ifdef mx_HAVE_IMAP
-			rv = PROTO_IMAP;
+				rv = n_PROTO_IMAP;
 #else
-			n_err(_("No IMAP support compiled in\n"));
+				n_err(_("No IMAP support compiled in\n"));
 #endif
-		}else if(i == sizeof("imaps") -1 && !su_cs_cmp_case_n(name, "imaps", sizeof("imaps") -1)){
+			}else if(a_X("pop3")){
+#ifdef mx_HAVE_POP3
+				rv = n_PROTO_POP3;
+#else
+				n_err(_("No POP3 support compiled in\n"));
+#endif
+			}
+			break;
+		case a_Y("smbox"):
+		/* case a_Y("xmbox"):
+		 * case a_Y("imaps"):
+		 * case a_Y("pop3s"):*/
+			if(a_X("smbox")){
+				rv = n_PROTO_SMBOX;
+				yeshooks = TRU1;
+			}else if(a_X("xmbox")){
+				rv = n_PROTO_XMBOX;
+				yeshooks = TRU1;
+			}else if(a_X("imaps")){
 #if defined mx_HAVE_IMAP && defined mx_HAVE_TLS
-			rv = PROTO_IMAP;
+				rv = n_PROTO_IMAP;
 #else
-			n_err(_("No IMAPS support compiled in\n"));
+				n_err(_("No IMAPS support compiled in\n"));
 #endif
+			}else if(a_X("pop3s")){
+#if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
+				rv = n_PROTO_POP3;
+#else
+				n_err(_("No POP3S support compiled in\n"));
+#endif
+			}
+			break;
+		case a_Y("maildir"):
+			if(a_X("maildir")){
+#ifdef mx_HAVE_MAILDIR
+				rv = n_PROTO_MAILDIR;
+#else
+				n_err(_("No Maildir directory support compiled in\n"));
+#endif
+			}
+			break;
 		}
+#undef a_X
+#undef a_Y
 
 		orig_name = name = &cp[3];
 
@@ -139,7 +171,7 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 		}
 	}else{
 jfile:
-		rv = PROTO_FILE;
+		rv = n_PROTO_FILE;
 jcheck:
 		if(check_stat || try_hooks){
 			struct su_pathinfo pi;
@@ -163,22 +195,23 @@ jcheck:
 				){
 					rv =
 #ifdef mx_HAVE_MAILDIR
-							PROTO_MAILDIR
+							n_PROTO_MAILDIR
 #else
-							PROTO_UNKNOWN
+							n_PROTO_UNKNOWN
 #endif
 					;
 				}
 			}else if(try_hooks && mx_filetype_trial(&ft, name)){
 				orig_name = savecatsep(name, '.', ft.ft_ext_dat);
-				if(fixrv != PROTO_UNKNOWN)
+				if(fixrv != n_PROTO_UNKNOWN)
 					rv = fixrv;
-			}else if(fixrv == PROTO_UNKNOWN && (cp = ok_vlook(newfolders)) != NIL && !su_cs_cmp_case(cp, "maildir")){
+			}else if(fixrv == n_PROTO_UNKNOWN &&
+					(cp = ok_vlook(newfolders)) != NIL && !su_cs_cmp_case(cp, "maildir")){
 				rv =
 #ifdef mx_HAVE_MAILDIR
-						PROTO_MAILDIR
+						n_PROTO_MAILDIR
 #else
-						PROTO_UNKNOWN
+						n_PROTO_UNKNOWN
 #endif
 				;
 #ifndef mx_HAVE_MAILDIR
@@ -188,8 +221,8 @@ jcheck:
 
 			su_LOFI_FREE(np);
 
-			if(fixrv != PROTO_UNKNOWN && fixrv != rv)
-				rv = PROTO_UNKNOWN;
+			if(fixrv != n_PROTO_UNKNOWN && fixrv != rv)
+				rv = n_PROTO_UNKNOWN;
 		}
 	}
 

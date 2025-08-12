@@ -152,6 +152,8 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    }
    ASSERT((fs & n_PROTO_MASK) == n_PROTO_IMAP ||
       (fs & n_PROTO_MASK) == n_PROTO_FILE ||
+      (fs & n_PROTO_MASK) == n_PROTO_SMBOX ||
+      (fs & n_PROTO_MASK) == n_PROTO_XMBOX ||
       (fs & n_PROTO_MASK) == n_PROTO_MAILDIR);
 
 #if defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
