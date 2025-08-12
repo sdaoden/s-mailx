@@ -531,26 +531,41 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    char **linedat, uz *linesize, u64 * volatile stats, int volatile level,
    boole *anyoutput, char const *store_prefix_or_nil)
 {
-   int volatile rv = 0;
-   struct mx_mime_type_handler mth_stack, * volatile mthp;
+   enum{
+      a_F_NONE = 0,
+      a_F_STAT = 1u<<0,
+      a_F_XSTAT = 1u<<1,
+      a_F_RICH = 1u<<2,
+
+      a_F_HANY = 1u<<4,
+      a_F_HIGN = 1u<<5,
+
+      a_F_822 = 1u<<7
+   };
+
+   struct mx_mime_type_handler mth_stack, *volatile mthp;
    struct str outrest, inrest;
-   boole hany, hign;
    enum sendaction volatile oaction;
    char *cp;
-   char const * volatile tmpname = NULL;
-   uz linelen, cnt;
-   int volatile dostat, term_infd;
    int c;
-   struct mimepart * volatile np;
-   FILE * volatile ibuf = NULL, * volatile pbuf = obuf,
-      * volatile qbuf = obuf, *origobuf = obuf;
+   struct mimepart *volatile np;
    enum conversion volatile convert;
-   n_sighdl_t volatile oldpipe = SIG_DFL;
+   u8 flags;
+   uz cnt, linelen;
+   int volatile term_infd;
+   FILE *volatile pbuf, *volatile qbuf, *origobuf, *volatile ibuf;
+   char const *volatile tmpname;
+   n_sighdl_t volatile oldpipe;
+   int volatile rv;
    NYD_IN;
 
+   rv = 0;
+   oldpipe = SIG_DFL;
+   tmpname = NIL;
+   origobuf = qbuf = pbuf = obuf;
    UNINIT(term_infd, 0);
    UNINIT(cnt, 0);
-   hany = hign = FAL0;
+   flags = a_F_NONE;
 
    quoteflt_reset(qf, obuf);
 
@@ -560,21 +575,20 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    }
 
    cnt = ip->m_size;
-   dostat = 0;
 
    if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
          action == SEND_TODISP_PARTS ||
          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
          action == SEND_TOSRCH){
-      dostat |= 4;
+      flags |= a_F_RICH;
 
       if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level != 0){
          a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
-         hany = TRU1;
+         flags |= a_F_HANY;
       }
       if(ip->m_parent != NIL && ip->m_parent->m_mime_type == mx_MIME_TYPE_822){
          ASSERT(ip->m_flag & MNOFROM);
-         hign = TRU1;
+         flags |= a_F_HIGN;
       }
    }
 
@@ -594,18 +608,18 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             break;
       }
 
-   if(!hign && level == 0 && action != SEND_TODISP_PARTS){
+   if(!(flags & a_F_HIGN) && level == 0 && action != SEND_TODISP_PARTS){
       if(doitp != NIL){
          if(!mx_ignore_is_ign(doitp, "status"))
-            dostat |= 1;
+            flags |= a_F_STAT;
          if(!mx_ignore_is_ign(doitp, "x-status"))
-            dostat |= 2;
+            flags |= a_F_XSTAT;
       }else
-         dostat |= 3;
+         flags |= a_F_STAT | a_F_XSTAT;
    }
 
 jhdr_redo:
-   convert = (dostat & 4) ? CONV_FROMHDR : CONV_NONE;
+   convert = (flags & a_F_RICH) ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
    /* C99 */{
@@ -659,7 +673,7 @@ jhdr_redo:
                n_err(_("Malformed message: headers and body not separated "
                   "(with empty line)\n"));
             if(level != 0)
-               dostat &= ~(1 | 2);
+               flags &= ~(a_F_STAT | a_F_XSTAT);
             fseek(ibuf, -(off_t)(lcnt - cnt), SEEK_CUR);
             cnt = lcnt;
             break;
@@ -667,7 +681,7 @@ jhdr_redo:
 
          cp = *linedat;
 jhdrpush:
-         if(!(dostat & 4)){
+         if(!(flags & a_F_RICH)){
             hlp = n_string_push_buf(hlp, cp, (u32)linelen);
             hlp = n_string_push_c(hlp, '\n');
          }else{
@@ -688,10 +702,13 @@ jhdrpush:
       }
 
 jhdrput:
-      /* If it is an ignored header, skip it */
+      /* Temporily split header field and body */
       *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
+
+      /* If it is an ignored header, skip it */
       /* C99 */{
-         if(hign || (doitp != NULL && mx_ignore_is_ign(doitp, hlp->s_dat)) ||
+         if((flags & a_F_HIGN) ||
+               (doitp != NULL && mx_ignore_is_ign(doitp, hlp->s_dat)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
                !su_cs_cmp_case(hlp->s_dat, "content-length") ||
@@ -700,21 +717,23 @@ jhdrput:
       }
 
       /* Dump it */
-      if(!hany && (dostat & 4) && level > 0)
+      if(!(flags & a_F_HANY) && (flags & a_F_RICH) && level > 0)
          a_send_out_nl(obuf, NIL, stats);
 #ifdef mx_HAVE_COLOUR
       if(mx_COLOUR_IS_ACTIVE())
          mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
 #endif
+
+      /* (Unite field and body first for dumping content) */
       *cp = ':';
       _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NIL,NIL);
 #ifdef mx_HAVE_COLOUR
       if(mx_COLOUR_IS_ACTIVE())
          mx_colour_reset();
 #endif
-      if(dostat & 4)
+      if(flags & a_F_RICH)
          a_send_out_nl(obuf, qf, stats);
-      hany = TRU1;
+      flags |= a_F_HANY;
 
 jhdrtrunc:
       hlp = n_string_trunc(hlp, 0);
@@ -723,23 +742,24 @@ jhdrtrunc:
    if(hlp->s_len > 0)
       goto jhdrput;
 
-   if(hign /*|| (!hany && (dostat & (1 | 2)))*/){
+   if((flags & a_F_HIGN)
+         /*|| (!(flags & a_F_HANY) && (flags & (a_F_STAT | a_F_XSTAT)))*/){
       a_send_out_nl(obuf, qf, stats);
-      if(hign)
+      if(flags & a_F_HIGN)
          goto jheaders_skip;
    }
 
    /* We have reached end of headers, so eventually force out status: field
     * and note that we are no longer in header fields */
-   if(dostat & 1){
+   if(flags & a_F_STAT){
       statusput(zmp, obuf, qf, stats);
-      hany = TRU1;
+      flags |= a_F_HANY;
    }
-   if(dostat & 2){
+   if(flags & a_F_XSTAT){
       xstatusput(zmp, obuf, qf, stats);
-      hany = TRU1;
+      flags |= a_F_HANY;
    }
-   if((hany /*&& doitp != IGNORE_ALL*/) ||
+   if(((flags & a_F_HANY) /*&& doitp != IGNORE_ALL*/) ||
          (action == SEND_DECRYPT && ip->m_parent != NIL &&
           ip != ip->m_multipart) ||
          ((action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
@@ -753,16 +773,16 @@ jhdrtrunc:
             ip->m_mime_type != mx_MIME_TYPE_MULTI &&
             ip->m_mime_type != mx_MIME_TYPE_SIGNED &&
             ip->m_mime_type != mx_MIME_TYPE_ENCRYPTED))){
-      if(ip->m_mime_type != mx_MIME_TYPE_822 || (dostat & 16)){
+      if(ip->m_mime_type != mx_MIME_TYPE_822 || (flags & a_F_822)){
          /*XXX (void)*/a_send_out_nl(obuf, NIL, stats);
-         hany = TRU1;
+         flags |= a_F_HANY;
       }
    }
    } /* C99 */
 
    if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level == 0){
       a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
-      hany = TRU1;
+      flags |= a_F_HANY;
    }
 
    quoteflt_flush(qf);
@@ -772,9 +792,9 @@ jhdrtrunc:
       goto jleave;
    }
 
-   *anyoutput = hany;
+   *anyoutput = ((flags & a_F_HANY) != 0);
 jheaders_skip:
-   su_mem_set(mthp = &mth_stack, 0, sizeof mth_stack);
+   STRUCT_ZERO(struct mx_mime_type_handler, mthp = &mth_stack);
 
    if(action == SEND_MBOX){
       convert = CONV_NONE;
@@ -790,8 +810,8 @@ jheaders_skip:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         if(!(dostat & 16)){ /* XXX */
-            dostat |= 16;
+         if(!(flags & a_F_822)){ /* XXX */
+            flags |= a_F_822;
             a_send_out_nl(obuf, qf, stats);
             if(ok_blook(rfc822_body_from_)){
                if(!qf->qf_bypass){
@@ -803,7 +823,7 @@ jheaders_skip:
                      *stats += i;
                }
                put_from_(obuf, ip->m_multipart, stats);
-               hany = TRU1;
+               flags |= a_F_HANY;
             }
             goto jhdr_redo;
          }
@@ -1368,7 +1388,7 @@ jsend:
    }
 
    quoteflt_reset(qf, pbuf);
-   if(dostat & 4){
+   if(flags & a_F_RICH){
       if(pbuf == origobuf) /* TODO */
          n_pstate |= n_PS_BASE64_STRIP_CR;
    }
