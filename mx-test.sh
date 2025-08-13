@@ -7759,10 +7759,31 @@ x11
 \headerpick
 x12
 \type
-\ec "--- $?/$^ERRNAME, 13 ---"
+x13
+\headerp type re subject
+x14
+\type
+x15
+\headerp type re *
+x16
+\type
+x17
+\unheaderp type re *
+x18
+\headerp type ig subject
+x19
+\type
+x20
+\headerp type ig *
+x21
+\type
+x22
+\unheaderp type ig *
+x23
+\type
 #	' ./tmbox > ./t1 2>${EX}
 	#}}}
-	ck 1 0 ./t1 '3638879055 2121' '2678545530 152'
+	ck 1 0 ./t1 '2070719397 3919' '2678545530 152'
 
 	if have_feat regex; then
 		#{{{

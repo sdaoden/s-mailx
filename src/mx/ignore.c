@@ -1018,8 +1018,8 @@ mx_ignore_insert(struct mx_ignore *self, boole retain, char const *dat){
 		if(itp->it_all)
 			rv = TRUM1;
 		else{
-			itp->it_all = TRU1;
 			a_ignore_del_allof(self, retain);
+			itp->it_all = TRU1;
 			rv = TRU1;
 		}
 		goto jleave;
@@ -1077,7 +1077,6 @@ mx_ignore_lookup(struct mx_ignore const *self, char const *dat){
 		uz l;
 
 		l = su_cs_len(dat);
-
 		rv = a_ignore_lookup(self, TRUM1, dat, l, TRUM1);
 	}
 

@@ -6118,19 +6118,21 @@ will establish a (fast) shorthand setting which covers all fields.
 .
 .Pp
 .Ic \&\&headerpick
-supports creation and usage of user specified contexts.
-This mode is selected with (a case-insensitive prefix of) the
+supports creation and usage of user specified contexts,
+applicable to certain other commands (for example
+.Ic digmsg ) ,
+by giving (a case-insensitive prefix of) the
 .Dq context names
 .Cm create , remove , assign , join ;
-the real name is given next, it is case-insensitive (US-ASCII), must not
-shadow a built-in name, and has to adhere to
+the real, case-insensitive (US-ASCII) name is next,
+it must not shadow a built-in name, and has to adhere to
 .Mx -sx
 .Sx "variable name rules" .
 Trying to create a context a second time is an error.
 The name of another, constant template context is given third to
 .Cm assign
 and
-.Cm join ,
+.Cm join :
 whereas the former clears the target context first, the latter does not;
 in case of errors both clear the target context.
 .
