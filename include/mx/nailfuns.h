@@ -641,9 +641,15 @@ FL boole      is_head(char const *linebuf, uz linelen,
                   boole check_rfc4155);
 
 /* Return pointer to first non-header, non-space character, or NIL if invalid.
- * If lead_ws is true leading whitespace is allowed and skipped.
+ * If SKIP_LEAD_WS is true leading whitespace is allowed and skipped.
+ * If NEEDS_COLON is set then after the name and optional WS a : colon must be
+ * seen, followed by optional WS; otherwise a NUL.
  * If cramp_or_nil is not NIL it will be set to the valid header name itself */
-FL char const *mx_header_is_valid_name(char const *name, boole lead_ws,
+enum{
+   mx_HEADER_IS_VALID_NEEDS_COLON = 1u<<0,
+   mx_HEADER_IS_VALID_SKIP_LEAD_WS = 1u<<1
+};
+FL char const *mx_header_is_valid_name(char const *name, u8 flags,
       struct str *cramp_or_nil);
 
 /* Check all relevant headers of hp via mime_probe_head_cp() (returns its'

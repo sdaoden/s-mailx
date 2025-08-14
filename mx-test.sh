@@ -15038,6 +15038,123 @@ application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2
 #}}}
 
 # Unclassified rest {{{
+t_headerorder() { #{{{
+	t_prolog "$@"
+
+	#{{{
+	<< '__EOT' $MAILX $ARGS > ./t1 2>$EX
+commandali ca commandali
+ca ho headerorder
+ca uho unheaderorder
+ca x ec '"$!/$?/$^ERRNAME"'
+ca y ec '"$!/$?/$^ERRNAME <$rv>"'
+ec --0
+ho;x
+> rv ho;y
+ho a;x
+>rv ho;y
+ho;x
+ho b c d;x
+>rv ho;y
+ho;x
+ec --1
+uho a;x
+>rv ho;y
+ho;x
+uho d;x
+>rv ho;y
+ho;x
+uho b c;x
+>rv ho;y
+ho;x
+ec --2
+uho a;x
+uho *;x
+ec --3
+ho a:b;x
+ho;x
+__EOT
+	#}}}
+	ck 1 0 ./t1 '117502109 395' '4266714504 108'
+
+	#{{{
+	t__x1_msg > ./t2.in
+
+	<< '__EOT' $MAILX $ARGS -Smta=test://t2 -Sescape=! > $EX 2>&1
+commanda x ec '"$!/$?/$^ERRNAME"'
+Fi ./t2.in
+headerp type retain from to cc subject message-id date
+se quote=headers
+r
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+headero date
+r
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+headero subject cc to
+r
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+unheaderp type retain *
+r
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+unheadero *
+headerp forward retain from to cc subject date
+forward a@b
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+headero date cc to from
+forward a@b
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+unheaderp forward retain *
+forward a@b
+!Q 1
+!:x
+!m 1
+!:x
+!f 1
+!:x
+!.
+__EOT
+	#}}}
+	ck 2 0 ./t2 '3353868925 12488' '2486761787 546'
+
+	t_epilog "$@"
+} #}}}
+
 t_top() { #{{{
 	t_prolog "${@}"
 
@@ -16819,6 +16936,7 @@ t_all() { #{{{
 	jsync
 
 	# Unclassified rest
+	jspawn headerorder
 	jspawn top
 	jspawn z
 	jsync

@@ -173,6 +173,11 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(forward, 1, a_cmd_cad_forward){
 			mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY, n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+mx_CMD_ARG_DESC_SUBCLASS_DEF(headerorder, 1, a_cmd_cad_headerorder){
+	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+		n_SHEXP_PARSE_TRIM_IFSSPACE}
+}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 mx_CMD_ARG_DESC_SUBCLASS_DEF(if, 1, a_cmd_cad_if){
 	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IGN_EMPTY |
@@ -361,6 +366,11 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(unfiletype, 1, a_cmd_cad_unfiletype){
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+mx_CMD_ARG_DESC_SUBCLASS_DEF(unheaderorder, 1, a_cmd_cad_unheaderorder){
+	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+		n_SHEXP_PARSE_TRIM_IFSSPACE}
+}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 mx_CMD_ARG_DESC_SUBCLASS_DEF(unset, 1, a_cmd_cad_unset){
 	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IGN_SUBST_XPLODE | n_SHEXP_PARSE_IGN_SUBST_FS_SPLIT}
@@ -463,7 +473,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Create <account {>, select <account>, or list all accounts")},
 	{"addrcodec", &c_addrcodec, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_addrcodec),
 	 N_("Mail address <[+[+[+]]]e[ncode]|d[ecode]|s[kin[l[ist]]]> <rest-of-line>")},
-	{"alternates", &c_alternates, (M | V | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_alternates),
+	{"alternates", &c_alternates, (M | V | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_alternates),
 	 N_("(alt) Show or define an alternate <address-list> (for *from* etc)")},
 	{"answered", &c_answered, (A | M | SC | TMSGLST), 0, 0, NIL,
 	 N_("Mark the given <msglist> as answered")},
@@ -648,7 +658,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
  N_("Please use `commandalias'")},
 
 {"headers", &c_headers, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
-	 N_("(h) Type a page of headers (with the first of <msglist> if given)")},
+	 N_("(h) Type a page of header fields (with the first of <msglist> if given)")},
+	{"headerorder", &c_headerorder, (M | V | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_headerorder),
+	 N_("Show or add header :<FIELD>: to the order list")},
 	{"headerpick", &c_headerpick, (M | TWYSH), 0, MAC, NIL,
 	 N_("[<ctx> [<type> [<headers>]]] | <create|remove> <ctx> | assign <ctx> <ctx>")},
 	{"help", &a_cmd_c_help, (HG | M | X | TWYSH), 0, 1, NIL,
@@ -965,6 +977,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(Un)Flag <msglist> (for special attention)")},
 	{"ungroup", &c_unalias, (M | TWYSH), 1, MAC, NIL,
 	 N_("Un`alias' <name-list> (* for all)")},
+	{"unheaderorder", &c_unheaderorder, (M | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unheaderorder),
+	 N_("Remove header :<FIELD>: from the order list (* for all)")},
 	{"unheaderpick", &c_unheaderpick, (M | TWYSH), 3, MAC, NIL,
 	 N_("Header deselection: <ctx> <type> <headers>")},
 	{"unignore", &c_unignore, (M | TWYRA), 0, MAC, NIL,

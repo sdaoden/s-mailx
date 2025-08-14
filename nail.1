@@ -1385,9 +1385,12 @@ In order to display all header fields of a message regardless of
 currently active ignore or retain lists use
 .Ic Type
 and
-.Ic Top ;
-.Ic Show
-will instead show raw message content.
+.Ic Top .
+The displayed
+.Ic headerorder
+is configurable.
+To show raw and unconverted message content, use
+.Ic Show .
 Historically the global
 .Pa \*(UR
 not only adjusts the list of displayed header fields, but also sets
@@ -4601,6 +4604,9 @@ The former shows the current list without arguments, then it supports
 Otherwise the arguments are appended to the alternate list; in
 .Va posix
 mode they instead replace that list.
+The latter removes the given addresses, asterisk
+.Ql *
+removes all.
 .
 .Mx
 .Mx
@@ -6041,7 +6047,9 @@ is inspected.
 The list of included header fields can be filtered with the
 .Ql forward
 slot of
-.Ic headerpick .
+.Ic headerpick ,
+.Ic headerorder
+is honoured.
 Only the first part of a MIME multipart message is included but for
 .Va forward-as-attachment .
 .Pp
@@ -6074,6 +6082,22 @@ An alias of this command is
 Also see
 .Sx "Specifying messages" .
 .
+.Mx
+.Mx
+.It Ic headerorder , unheaderorder
+\*(NQ The former shows the order list without arguments, then it supports
+.Cm > .
+Otherwise the arguments are appended to the header field order list that
+is honoured when displaying
+.Pf ( Ic type )
+or quoting
+.Pf ( Ic forward , reply , Va quote )
+messages; unordered header fields are shown last in natural order.
+The latter removes the given header fields from the list, asterisk
+.Ql *
+removes all.
+Matching is case-insensitive.
+.
 .
 .Mx
 .Mx
@@ -6088,10 +6112,10 @@ Otherwise the first argument is the context, one of (case-insensitive)
 for display purposes (for example
 .Ic type ) ,
 .Ql save
-for selecting which headers shall be stored persistently
+for selecting which header fields shall be stored persistently
 .Pf ( Ic save , copy , move , decrypt ;
 .Em note:
-ignoring MIME related etc. headers destroys message usability),
+ignoring MIME related etc. header fields destroys message usability),
 .Ql forward
 for
 .Ic forward Ns
@@ -10691,7 +10715,6 @@ and/or
 .Va from ,
 .Va sender ,
 .Va smtp-from .
-
 .
 .Mx
 .It Va iconv-disable
@@ -12248,7 +12271,8 @@ for
 the
 .Ql type
 .Ic headerpick
-selection will be included in the quote,
+selection will be included in the quote, in
+.Ic headerorder ;
 .Ql allbodies
 embeds the (body) contents of all MIME parts, and
 .Ql allheaders

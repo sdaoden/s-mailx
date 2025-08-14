@@ -83,6 +83,11 @@ struct a_ignore_bltin_map{
 	char const ibm_name[8];
 };
 
+struct a_ignore_ho{
+	struct n_strlist *iho_names;
+	uz iho_count;
+};
+
 static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
 	{mx_IGNORE_TYPE, "type"},
 	{mx_IGNORE_SAVE, "save"},
@@ -103,6 +108,7 @@ CTA(S(u32,mx__IGNORE_MAX) <= S(u32,a_IGNORE_BLTIN_MASK), "Bit range excessed");
 
 static struct mx_ignore *a_ignore_bltin[mx__IGNORE_MAX + 1];
 static struct mx_ignore *a_ignore_list;
+static struct a_ignore_ho *a_ignore_ho;
 #if DVLOR(1, 0)
 static boole a_ignore_on_gut_installed;
 #endif
@@ -140,6 +146,9 @@ static boole a_ignore_lookup(struct mx_ignore const *self, boole retain, char co
 /* dat[len] is NUL */
 static boole a_ignore_insert(struct a_ignore_type *itp, char const *dat, uz len, boole isre);
 
+/**/
+static void a_ignore_ho_del(void);
+
 #if DVLOR(1, 0)
 static void
 a_ignore__on_gut(BITENUM(u32,su_state_gut_flags) flags){
@@ -155,10 +164,13 @@ a_ignore__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 		for(i = 0; i <= mx__IGNORE_MAX; ++i)
 			if((ip = a_ignore_bltin[i]) != NIL)
 				mx_ignore_del(ip);
+
+		a_ignore_ho_del();
 	}
 
 	su_mem_set(a_ignore_bltin, 0, sizeof(a_ignore_bltin));
 	a_ignore_list = NIL;
+	a_ignore_ho = NIL;
 	a_ignore_on_gut_installed = FAL0;
 
 	NYD2_OU;
@@ -210,7 +222,9 @@ a_ignore_resolve_self(struct mx_ignore *xself, boole docreate){
 	self = xself;
 	suip = -R(up,self) - mx__IGNORE_ADJUST;
 
-	if(suip <= mx__IGNORE_MAX && (self = a_ignore_bltin[suip]) == NIL && docreate)
+	if(suip == UP_M1)
+		self = NIL;
+	else if(suip <= mx__IGNORE_MAX && (self = a_ignore_bltin[suip]) == NIL && docreate)
 		self = a_ignore_new(a_ignore_bltin_map[suip].ibm_name, (S(u8,suip) | a_IGNORE_BLTIN));
 
 	NYD2_OU;
@@ -445,8 +459,9 @@ a_ignore_delcmd_mux(struct mx_ignore *ip, char const **list, boole retain){
 		while((cp = *list++) != NIL)
 			if(cp[0] == '*' && cp[1] == '\0')
 				a_ignore_del_allof(ip, retain);
-			else if(!a_ignore__delone(ip, retain, cp)){
-				n_err(_("Field not %s: %s\n"), (retain ? _("retained") : _("ignored")), cp);
+			else if(cp[0] == '\0' || !a_ignore__delone(ip, retain, cp)){
+				n_err(_("Field not %s: %s\n"), (retain ? _("retained") : _("ignored")),
+					n_shexp_quote_cp(cp, FAL0));
 				rv = FAL0;
 			}
 	}
@@ -631,6 +646,26 @@ a_ignore_insert(struct a_ignore_type *itp, char const *dat, uz len, boole isre){
 jleave:
 	NYD_OU;
 	return rv;
+}
+
+static void
+a_ignore_ho_del(void){
+	NYD_IN;
+
+	if(a_ignore_ho != NIL){
+		struct n_strlist *slp, *tmp;
+
+		for(slp = a_ignore_ho->iho_names; slp != NIL;){
+			tmp = slp;
+			slp = slp->sl_next;
+			su_FREE(tmp);
+		}
+
+		su_FREE(a_ignore_ho);
+		a_ignore_ho = NIL;
+	}
+
+	NYD_OU;
 }
 
 int
@@ -1080,6 +1115,189 @@ mx_ignore_lookup(struct mx_ignore const *self, char const *dat){
 		rv = a_ignore_lookup(self, TRUM1, dat, l, TRUM1);
 	}
 
+	NYD_OU;
+	return rv;
+}
+
+int
+c_headerorder(void *vp){
+	int rv;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
+	NYD_IN;
+
+	n_pstate_err_no = su_ERR_NONE;
+	cacp = vp;
+	cap = cacp->cac_arg;
+
+	if(cacp->cac_no == 0){
+		struct n_strlist *slp;
+		struct n_string s_b, *s;
+
+		s = n_string_creat_auto(&s_b);
+		s = n_string_book(s, 500); /* xxx */
+
+		for(slp = (a_ignore_ho != NIL ? a_ignore_ho->iho_names : NIL); slp != NIL; slp = slp->sl_next){
+			if(s->s_len > 0)
+				s = n_string_push_c(s, ' ');
+			s = n_string_push_buf(s, slp->sl_dat, slp->sl_len);
+		}
+		n_string_cp(s);
+
+		if(cacp->cac_vput != NIL){
+			if(n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput))
+				rv = su_EX_OK;
+			else{
+				n_pstate_err_no = su_ERR_NOTSUP;
+				rv = su_EX_ERR;
+			}
+		}else if(*s->s_dat != '\0') /* xxx s->s_len>0 */
+			rv = (fprintf(n_stdout, "headerorder %s\n", s->s_dat) >= 0) ? su_EX_OK : su_EX_ERR;
+		else
+			rv = (fprintf(n_stdout, _("# no headerorder registered\n")) >= 0
+					) ? su_EX_OK : su_EX_ERR;
+	}else if(cacp->cac_vput != NIL){ /* XXX cmd_arg parser, subcommand.. */
+		n_err(_("headerorder: `vput' only supported in \"show\" mode\n"));
+		n_pstate_err_no = su_ERR_NOTSUP;
+		rv = su_EX_ERR;
+	}else{
+		if(a_ignore_ho == NIL)
+			a_ignore_ho = su_TCALLOC(struct a_ignore_ho, 1);
+
+		for(rv = su_EX_OK; cap != NIL; cap = cap->ca_next){
+			struct str s;
+			struct n_strlist **slpp, *slp;
+
+			if(cap->ca_arg.ca_str.l == 0){
+jerr:
+				n_err(_("`headerorder': invalid argument: %s\n"),
+					n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
+				n_pstate_err_no = su_ERR_INVAL;
+				rv = su_EX_ERR;
+				continue;
+			}
+
+			if(mx_header_is_valid_name(cap->ca_arg.ca_str.s, 0, &s) == NIL)
+				goto jerr;
+
+			for(slpp = &a_ignore_ho->iho_names; (slp = *slpp) != NIL; slpp = &slp->sl_next)
+				if(!su_cs_cmp_case_n(slp->sl_dat, s.s, s.l)){
+					n_err(_("`headerorder': already sorted, skip: %s\n"), cap->ca_arg.ca_str.s);
+					goto jouter;
+				}
+
+			*slpp = slp = n_STRLIST_ALLOC(s.l);
+			++a_ignore_ho->iho_count;
+			slp->sl_next = NIL;
+			slp->sl_len = s.l;
+			su_mem_copy(slp->sl_dat, s.s, s.l);
+			slp->sl_dat[s.l] = '\0';
+jouter:;
+		}
+
+		if(a_ignore_ho->iho_count == 0)
+			a_ignore_ho_del();
+	}
+
+	NYD_OU;
+	return rv;
+}
+
+int
+c_unheaderorder(void *vp){
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
+	int rv;
+	NYD_IN;
+
+	n_pstate_err_no = su_ERR_NONE;
+	rv = su_EX_OK;
+	cacp = vp;
+
+	for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
+		char const *hf;
+
+		hf = cap->ca_arg.ca_str.s;
+		if(hf[1] == '\0' && hf[0] == '*' && a_ignore_ho != NIL)
+			a_ignore_ho_del();
+		else if(hf[0] == '\0' || a_ignore_ho == NIL){
+jerr:
+			n_err(_("`unheaderorder': not sorted: %s\n"), n_shexp_quote_cp(hf, FAL0));
+			n_pstate_err_no = su_ERR_INVAL;
+			rv = su_EX_ERR;
+		}else{
+			struct n_strlist **slpp, *slp;
+
+			for(slpp = &a_ignore_ho->iho_names;; slpp = &slp->sl_next){
+				if((slp = *slpp) == NIL)
+					goto jerr;
+				if(!su_cs_cmp_case(slp->sl_dat, hf)){
+					if(--a_ignore_ho->iho_count == 0)
+						a_ignore_ho_del();
+					else{
+						*slpp = slp->sl_next;
+						su_FREE(slp);
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	NYD_OU;
+	return rv;
+}
+
+struct mx_hdrorder *
+mx_headerorder_new_auto_if(struct mx_ignore const *self){
+	uz i;
+	struct a_ignore_ho *hop;
+	char const **narr;
+	struct mx_hdrorder *rv;
+	NYD_IN;
+
+	rv = NIL;
+
+	if((hop = a_ignore_ho) == NIL)
+		goto j_leave;
+	ASSERT(hop->iho_count != 0);
+
+	narr = su_LOFI_TALLOC(char const *,hop->iho_count);
+	/* C99 */{
+		struct n_strlist *slp;
+		boole isany;
+
+		isany = mx_ignore_is_any(self);
+
+		for(i = 0, slp = hop->iho_names; slp != NIL; slp = slp->sl_next)
+			if(!isany || mx_ignore_lookup(self, slp->sl_dat) > FAL0)
+				narr[i++] = slp->sl_dat;
+		if(i == 0)
+			goto jleave;
+	}
+
+	rv = su_AUTO_ALLOC(ALIGN_Z(VSTRUCT_SIZEOF(struct mx_hdrorder,ho__buf)) + (i * 2 * sizeof(char*)));
+	rv->ho_cnt = i;
+	rv->ho_unsorted = NIL;
+	rv->ho_unsorted_tail = &rv->ho_unsorted;
+	/* C99 */{
+		union{void *v; char *p; char const **cpp; struct n_strlist **slpp;} u;
+
+		i *= sizeof(char*);
+		u.v = rv;
+		u.p += ALIGN_Z(VSTRUCT_SIZEOF(struct mx_hdrorder,ho__buf));
+		rv->ho_fields = u.cpp;
+		u.p += i;
+		rv->ho_sorted = u.slpp;
+		su_mem_set(u.p, 0, i);
+
+		for(i = 0; i < rv->ho_cnt; ++i)
+			rv->ho_fields[i] = narr[i];
+	}
+
+jleave:
+	su_LOFI_FREE(narr);
+j_leave:
 	NYD_OU;
 	return rv;
 }

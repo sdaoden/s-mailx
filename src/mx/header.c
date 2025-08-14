@@ -371,8 +371,8 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          continue;
       }
 
-      for (cp = *linebuf; fieldnamechar(*cp); ++cp)
-         ;
+      for(cp = *linebuf; fieldnamechar(*cp); ++cp){
+      }
       if (cp > *linebuf)
          while (su_cs_is_blank(*cp))
             ++cp;
@@ -555,14 +555,13 @@ is_head(char const *linebuf, uz linelen, boole check_rfc4155)
 }
 
 FL char const *
-mx_header_is_valid_name(char const *name, boole lead_ws,
-      struct str *cramp_or_nil){
+mx_header_is_valid_name(char const *name, u8 flags, struct str *cramp_or_nil){
    char const *cp;
    NYD_IN;
 
    cp = name;
 
-   if(lead_ws){
+   if(flags & mx_HEADER_IS_VALID_SKIP_LEAD_WS){
       while(su_cs_is_blank(*cp))
          ++cp;
       name = cp;
@@ -581,17 +580,23 @@ mx_header_is_valid_name(char const *name, boole lead_ws,
    if(cramp_or_nil != NIL)
       cramp_or_nil->l = P2UZ(cp - name);
 
-   while(su_cs_is_blank(*cp))
-      ++cp;
-   if(*cp != ':'){
+   if(flags & mx_HEADER_IS_VALID_NEEDS_COLON){
+      while(su_cs_is_blank(*cp))
+         ++cp;
+
+      if(*cp != ':'){
+         name = NIL;
+         goto jleave;
+      }
+
+      while(su_cs_is_blank(*++cp)){
+      }
+   }else if(*cp != '\0'){
       name = NIL;
       goto jleave;
    }
 
-   while(su_cs_is_blank(*++cp))
-      ;
    name = cp;
-
 jleave:
    NYD_OU;
    return name;
@@ -959,7 +964,8 @@ jeseek:
          struct n_header_field *hfp;
          uz bl;
 
-         if((cp = mx_header_is_valid_name(linebuf, FAL0, &hfield)) == NIL){
+         if((cp = mx_header_is_valid_name(linebuf,
+               mx_HEADER_IS_VALID_NEEDS_COLON, &hfield)) == NIL){
 jebadhead:
             n_err(_("Ignoring header field: %s\n"), linebuf);
             continue;
@@ -2271,7 +2277,8 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
    hfp = NIL;
 
    /* For (-C) convenience, allow leading WS */
-   if((cp = mx_header_is_valid_name(dat, TRU1, &hname)) == NIL){
+   if((cp = mx_header_is_valid_name(dat, (mx_HEADER_IS_VALID_NEEDS_COLON |
+            mx_HEADER_IS_VALID_SKIP_LEAD_WS), &hname)) == NIL){
       cp = N_("Invalid custom header (not valid \"field: body\"): %s\n");
       goto jerr;
    }

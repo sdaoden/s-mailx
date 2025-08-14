@@ -537,8 +537,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       a_F_XSTAT = 1u<<1,
       a_F_RICH = 1u<<2,
 
-      a_F_HANY = 1u<<4,
-      a_F_HIGN = 1u<<5,
+      a_F_HANY = 1u<<3,
+      a_F_HIGN = 1u<<4,
+
+      a_F_HORDER = 1u<<5,
+      a_F_HORDER_WORK = 1u<<6,
 
       a_F_822 = 1u<<7
    };
@@ -550,9 +553,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    int c;
    struct mimepart *volatile np;
    enum conversion volatile convert;
-   u8 flags;
    uz cnt, linelen;
    int volatile term_infd;
+   struct mx_hdrorder *hdrorder;
+   u8 flags;
    FILE *volatile pbuf, *volatile qbuf, *origobuf, *volatile ibuf;
    char const *volatile tmpname;
    n_sighdl_t volatile oldpipe;
@@ -563,9 +567,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    oldpipe = SIG_DFL;
    tmpname = NIL;
    origobuf = qbuf = pbuf = obuf;
+   flags = a_F_NONE;
+   UNINIT(hdrorder, NIL);
    UNINIT(term_infd, 0);
    UNINIT(cnt, 0);
-   flags = a_F_NONE;
 
    quoteflt_reset(qf, obuf);
 
@@ -616,6 +621,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             flags |= a_F_XSTAT;
       }else
          flags |= a_F_STAT | a_F_XSTAT;
+   }
+
+   if((flags & (a_F_HIGN | a_F_RICH)) == a_F_RICH && action != SEND_TOSRCH){
+      if((hdrorder = mx_headerorder_new_auto_if(doitp)) != NIL)
+         flags |= a_F_HORDER;
    }
 
 jhdr_redo:
@@ -702,37 +712,70 @@ jhdrpush:
       }
 
 jhdrput:
+      if(flags & a_F_HIGN)
+         goto jhdrtrunc;
+
+      /* XXX v15 we yet always require "lines" for anything */
+      if(hlp->s_len > 0 && hlp->s_dat[hlp->s_len - 1] != '\n')
+         hlp = n_string_push_c(hlp, '\n');
+
       /* Temporily split header field and body */
       *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
 
       /* If it is an ignored header, skip it */
-      /* C99 */{
-         if((flags & a_F_HIGN) ||
-               (doitp != NULL && mx_ignore_is_ign(doitp, hlp->s_dat)) ||
-               !su_cs_cmp_case(hlp->s_dat, "status") ||
-               !su_cs_cmp_case(hlp->s_dat, "x-status") ||
-               !su_cs_cmp_case(hlp->s_dat, "content-length") ||
-               !su_cs_cmp_case(hlp->s_dat, "lines"))
-            goto jhdrtrunc;
-      }
+      if((doitp != NULL && mx_ignore_is_ign(doitp, hlp->s_dat)) ||
+            !su_cs_cmp_case(hlp->s_dat, "status") ||
+            !su_cs_cmp_case(hlp->s_dat, "x-status") ||
+            !su_cs_cmp_case(hlp->s_dat, "content-length") ||
+            !su_cs_cmp_case(hlp->s_dat, "lines"))
+         goto jhdrtrunc;
 
-      /* Dump it */
-      if(!(flags & a_F_HANY) && (flags & a_F_RICH) && level > 0)
-         a_send_out_nl(obuf, NIL, stats);
+      /* `headerorder' needs a condome {{{ */
+      /* xxx v15 after MIME rewrite we have a DOM tree of objects, and may
+       * xxx v15 as well simply create flat list/vector of header object,
+       * xxx v15 and `headerorder' may sort that at will .. internally */
+      if(flags & a_F_HORDER){
+         uz i;
+         struct n_strlist *slp;
+
+         slp = n_STRLIST_AUTO_ALLOC(hlp->s_len);
+         slp->sl_next = NIL;
+         slp->sl_len = hlp->s_len;
+         *cp = ':';
+         su_mem_copy(slp->sl_dat, hlp->s_dat, hlp->s_len);
+         slp->sl_dat[hlp->s_len] = '\0';
+         *cp = '\0';
+
+         for(i = 0;;){
+            if(!su_cs_cmp_case(hlp->s_dat, hdrorder->ho_fields[i])){
+               struct n_strlist **slpp;
+
+               slpp = &hdrorder->ho_sorted[i];
+               while(*slpp != NIL)
+                  slpp = &(*slpp)->sl_next;
+               *slpp = slp;
+               break;
+            }else if(++i >= hdrorder->ho_cnt){
+               *hdrorder->ho_unsorted_tail = slp;
+               hdrorder->ho_unsorted_tail = &slp->sl_next;
+               break;
+            }
+         }
+         goto jhdrtrunc;
+      }
+      /* }}} */
+
+      /* Dump it (unite field and body first) */
 #ifdef mx_HAVE_COLOUR
       if(mx_COLOUR_IS_ACTIVE())
          mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
 #endif
-
-      /* (Unite field and body first for dumping content) */
       *cp = ':';
       _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NIL,NIL);
 #ifdef mx_HAVE_COLOUR
       if(mx_COLOUR_IS_ACTIVE())
          mx_colour_reset();
 #endif
-      if(flags & a_F_RICH)
-         a_send_out_nl(obuf, qf, stats);
       flags |= a_F_HANY;
 
 jhdrtrunc:
@@ -742,10 +785,53 @@ jhdrtrunc:
    if(hlp->s_len > 0)
       goto jhdrput;
 
+   /* Unroll `headerorder' list(s) as necessary {{{ */
+   if(flags & a_F_HORDER){
+      uz i;
+      struct n_strlist *head, **insp, *slp;
+
+      head = NIL;
+      insp = &head;
+
+      for(i = 0; i < hdrorder->ho_cnt; ++i){
+         if((slp = hdrorder->ho_sorted[i]) != NIL){
+            *insp = slp;
+            while(slp->sl_next != NIL)
+               slp = slp->sl_next;
+            insp = &slp->sl_next;
+            ASSERT(slp->sl_next == NIL);
+         }
+      }
+
+      *insp = hdrorder->ho_unsorted;
+
+      if((hdrorder->ho_unsorted = head) != NIL){
+         flags ^= a_F_HORDER | a_F_HORDER_WORK;
+         inrest.s = hlp->s_dat;
+         inrest.l = hlp->s_len;
+         outrest.l = hlp->s_size;
+         n_string_take_ownership(n_string_drop_ownership(hlp),
+            head->sl_dat, head->sl_len +1, head->sl_len);
+         goto jhdrput;
+      }
+   }else if(flags & a_F_HORDER_WORK){
+      n_string_drop_ownership(hlp);
+      if((hdrorder->ho_unsorted = hdrorder->ho_unsorted->sl_next) != NIL){
+         n_string_take_ownership(hlp, hdrorder->ho_unsorted->sl_dat,
+            hdrorder->ho_unsorted->sl_len +1, hdrorder->ho_unsorted->sl_len);
+         goto jhdrput;
+      }else{
+         n_string_take_ownership(hlp, inrest.s, S(u32,outrest.l),
+            S(u32,inrest.l));
+         flags ^= a_F_HORDER_WORK;
+      }
+   }
+   /* }}} */
+
    if((flags & a_F_HIGN)
          /*|| (!(flags & a_F_HANY) && (flags & (a_F_STAT | a_F_XSTAT)))*/){
       a_send_out_nl(obuf, qf, stats);
-      if(flags & a_F_HIGN)
+      /*if(flags & a_F_HIGN)*/
          goto jheaders_skip;
    }
 
@@ -975,15 +1061,15 @@ jheaders_skip:
             a_DORICH = 1u<<0, /* We are looking for rich parts */
             a_HADPART = 1u<<1, /* Did print a part already */
             a_NEEDNL = 1u<<3 /* Need a visual separator */
-         } flags;
+         } f;
          struct n_sigman smalter;
 
          (curr = &outermost)->outer = NULL;
          curr->mp = ip;
-         flags = ok_blook(mime_alternative_favour_rich) ? a_DORICH : a_NONE;
+         f = ok_blook(mime_alternative_favour_rich) ? a_DORICH : a_NONE;
          if(!_send_al7ive_have_better(ip->m_multipart, action,
-               ((flags & a_DORICH) != 0)))
-            flags ^= a_DORICH;
+               ((f & a_DORICH) != 0)))
+            f ^= a_DORICH;
 
          n_SIGMAN_ENTER_SWITCH(&smalter, n_SIGMAN_ALL) {
          case 0:
@@ -998,7 +1084,7 @@ jalter_redo:
             for(; np != NIL; np = np->m_nextpart){
                ASSERT(level >= 0);
                ++level;
-               flags |= a_NEEDNL;
+               f |= a_NEEDNL;
 
                switch(np->m_mime_type){
                case mx_MIME_TYPE_ALTERNATIVE:
@@ -1014,7 +1100,7 @@ jalter_redo:
                   curr->mp = np;
                   curr = mpsp;
                   np = mpsp->mp;
-                  flags &= ~a_NEEDNL;
+                  f &= ~a_NEEDNL;
                   goto jalter_redo;
                default:
                   if(!(np->m_flag & MDISPLAY)){
@@ -1026,8 +1112,8 @@ jalter_redo:
 
                   /* This thing we are going to do */
                   quoteflt_flush(qf);
-                  flags |= a_HADPART;
-                  flags &= ~a_NEEDNL;
+                  f |= a_HADPART;
+                  f &= ~a_NEEDNL;
                   rv = sendpart(zmp, np, obuf, doitp, qf, action,
                         linedat, linesize, stats, level + 1, anyoutput,
                         store_prefix_or_nil);

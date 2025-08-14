@@ -1164,7 +1164,7 @@ mx_cmd_eval(u32 cnt, enum mx_scope scope, struct str *io, char const *prefix_or_
 	rv = FAL0;
 
 	while(cnt > 0){
-		su_STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
+		STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
 		cac.cac_desc = a_cmd_eval.cd_cadp;
 		cac.cac_indat = io->s;
 		cac.cac_inlen = io->l;

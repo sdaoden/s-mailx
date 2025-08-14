@@ -1019,8 +1019,9 @@ a_coll_forward(char const *ms, int f){
 		rv = 1;
 	}
 
-	msgvec = su_AUTO_TCALLOC(int, rv +1);
+	msgvec = su_AUTO_TALLOC(int, rv +1);
 	su_mem_copy(msgvec, n_msgvec, sizeof(*msgvec) * S(uz,rv));
+	msgvec[rv] = 0;
 
 	STRUCT_ZERO(struct a_coll_quote_ctx, &cqc);
 	cqc.cqc_membag_persist = su_mem_bag_top(su_MEM_BAG_SELF);
@@ -1038,7 +1039,8 @@ a_coll_forward(char const *ms, int f){
 	if(f == 'U' || f == 'u')
 		cqc.cqc_quoteitp = mx_IGNORE_ALL;
 	else if(su_cs_is_upper(f)){
-	}else if((f == 'f' || f == 'F') && !ok_blook(posix))
+		/*cqc.cqc_quoteitp = NIL;*/
+	}else if(f == 'f' && !ok_blook(posix))
 		cqc.cqc_quoteitp = mx_IGNORE_FWD;
 	else
 		cqc.cqc_quoteitp = mx_IGNORE_TYPE;
@@ -1977,11 +1979,11 @@ jearg:
 				"~e, ~v        Edit message via $EDITOR / $VISUAL\n"
 			), n_stdout);
 			fputs(_(
-				"~F <msglist>  Insert with (~f: `headerpick'ed) headers\n"
+				"~F <msglist>  Insert with (~f: `headerpick' \"forward\") headers\n"
 				"~H            Edit From:, Reply-To: and Sender:\n"
 				"~h            Prompt for Subject:, To:, Cc: and Bcc:\n"
 				"~i <variable> Insert value, (~I: do not) append a newline\n"
-				"~M <msglist>  Insert with (~m: `headerpick'ed) headers, use *indentprefix*\n"
+				"~M <msglist>  Insert with (~m: `headerpick' \"type\") headers, use *indentprefix*\n"
 				"~p            Print message content\n"
 				"~Q <msglist>  Insert with *quote* algorithm\n"
 			), n_stdout);
