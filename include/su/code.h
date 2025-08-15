@@ -1229,6 +1229,7 @@ MCTA(sizeof(su_uz) == sizeof(void*), "SU cannot handle sizeof(su_uz) != sizeof(v
 #endif
 
 /* Regardless of P2UZ provide this one; only use it rarely */
+#define su_UP_M1 su_UZ_MAX /*!< \_ */
 #if defined UINTPTR_MAX || defined DOXYGEN
 typedef uintptr_t su_up; /*!< \_ */
 typedef intptr_t su_sp; /*!< \_ */

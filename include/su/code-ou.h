@@ -263,6 +263,8 @@
 #undef SZ_MAX
 #undef UZ_BITS
 
+#undef UP_M1
+
 /* state_gut */
 #undef su__STATE_ON_GUT_FUN
 
