@@ -137,7 +137,7 @@ c_uncharsetalias(void *vp){
 	int rv;
 	NYD_IN;
 
-	rv = 0;
+	rv = su_EX_OK;
 	cp = (argv = vp)[0];
 
 	do{
@@ -147,7 +147,7 @@ c_uncharsetalias(void *vp){
 		}else if((key = n_iconv_norm_name(cp, FAL0)) == NIL || a_csal_dp == NIL ||
 				!su_cs_dict_remove(a_csal_dp, key)){
 			n_err(_("No such `charsetalias': %s\n"), n_shexp_quote_cp(cp, FAL0));
-			rv = 1;
+			rv = su_EX_ERR;
 		}
 	}while((cp = *++argv) != NIL);
 

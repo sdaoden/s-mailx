@@ -12162,10 +12162,10 @@ __EOT
 
 # Around state machine, after basics {{{
 t_alternates() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
+	<< '__EOT' $MAILX $ARGS -Smta=test://t1 > ./t2 2>$EX
 commandalias x ec '"$?/$^ERRNAME"'
 commandalias y ec '"$?/$^ERRNAME <$rv>"'
 ec --0
@@ -12276,10 +12276,10 @@ alt a3@b3 a4@b4;x
 __EOT
 	#}}}
 	ck 1 0 ./t1 '2006595054 504'
-	cke0 2 - ./t2 '4293159449 505'
+	ck 2 - ./t2 '4293159449 505' '916462554 132'
 
 	#{{{ Automatic ones, also from cmdline (freezing+)
-	${cat} << '__EOT' > ./t3_5-in
+	$cat << '__EOT' > ./t3_5-in
 From trouble-report@desy  Wed Jun  6 20:19:28 2018
 Date: Wed, 06 Jun 2018 19:58:02 +0200
 From: a@b.org, b@b.org, c@c.org
@@ -12293,9 +12293,9 @@ sultry
 
 __EOT
 
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t3 -Sescape=! \
+	<< '__EOT' $MAILX $ARGS -Smta=test://t3 -Sescape=! \
 		-S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
-		-Rf ./t3_5-in > ./t4 2>${E0}
+		-Rf ./t3_5-in > ./t4 2>$E0
 reply
 !^h rem to
 !^h r cc
@@ -12310,7 +12310,7 @@ __EOT
 	cke0 4 - ./t4 '3604001424 44'
 
 	# same, per command
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t5 -Sescape=! -Rf ./t3_5-in > ./t6 2>${E0}
+	<< '__EOT' $MAILX $ARGS -Smta=test://t5 -Sescape=! -Rf ./t3_5-in > ./t6 2>$E0
 se from=a@b.org,b@b.org,c@c.org sender=a@b.org
 reply
 !^h rem to
@@ -12331,33 +12331,33 @@ __EOT
 	# TODO -r arg as appropriate.
 	# TODO For now we are a bit messy
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://t7 -s '-Sfrom + -r ++ test' \
+	</dev/null $MAILX $ARGS -Smta=test://t7 -s '-Sfrom + -r ++ test' \
 		-c a@b.example -c b@b.example -c c@c.example \
 		-S from=a@b.example,b@b.example,c@c.example \
 		-S sender=a@b.example \
-		-r a@b.example b@b.example ./t8 >./t9 2>${E0}
+		-r a@b.example b@b.example ./t8 >./t9 2>$E0
 	ck 7 0 ./t7 '683070437 201'
 	ck 8 - ./t8 '683070437 201'
 	ck0e0 9 - ./t9
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://t10 -s '-Sfrom + -r ++ test' \
+	</dev/null $MAILX $ARGS -Smta=test://t10 -s '-Sfrom + -r ++ test' \
 		-c a@b.example -c b@b.example -c c@c.example \
 		-S from=a@b.example,b@b.example,c@c.example \
 		-S sender=a2@b.example \
-		-r a@b.example b@b.example ./t11 >./t12 2>${E0}
+		-r a@b.example b@b.example ./t11 >./t12 2>$E0
 	ck 10 0 ./t10 '1590152680 222'
 	ck 11 - ./t11 '1590152680 222'
 	ck0e0 12 - ./t12
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://t13 -s '-Sfrom + -r ++ test' \
+	</dev/null $MAILX $ARGS -Smta=test://t13 -s '-Sfrom + -r ++ test' \
 		-c a@b.example -c b@b.example -c c@c.example \
 		-S from=a@b.example,b@b.example,c@c.example \
 		-S sender=a@b.example \
-		b@b.example >./t14 2>${E0}
+		b@b.example >./t14 2>$E0
 	ck 13 0 ./t13 '2530102496 273'
 	ck0e0 14 - ./t14
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_cmd_escapes() { #{{{
@@ -15466,7 +15466,7 @@ ho a:b;x
 ho;x
 __EOT
 	#}}}
-	ck 1 0 ./t1 '117502109 395' '4266714504 108'
+	ck 1 0 ./t1 '3851941477 397' '658024245 159'
 
 	t__x1_msg > ./tx.in
 

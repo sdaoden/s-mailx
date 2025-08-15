@@ -72,7 +72,9 @@ c_shortcut(void *vp){
 		slp = NIL;
 		rv = !(mx_xy_dump_dict("shortcut", a_scut_dp, &slp, NIL, &mx_xy_dump_dict_gen_ptf) &&
 				mx_page_or_print_strlist("shortcut", slp, FAL0));
-	}else if(argv[1] == NIL){
+	}else if(*key == '\0')
+		goto jeno;
+	else if(argv[1] == NIL){
 		if(a_scut_dp != NIL && su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_scut_dp), key)){
 			struct n_strlist *slp;
 
@@ -80,8 +82,9 @@ c_shortcut(void *vp){
 			rv = (fputs(slp->sl_dat, n_stdout) == EOF);
 			rv |= (putc('\n', n_stdout) == EOF);
 		}else{
+jeno:
 			n_err(_("No such shortcut: %s\n"), n_shexp_quote_cp(key, FAL0));
-			rv = 1;
+			rv = su_EX_ERR;
 		}
 	}else{
 		if(a_scut_dp == NIL){
@@ -90,16 +93,16 @@ c_shortcut(void *vp){
 			DVL( su_state_on_gut_install(&a_scut__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 		}
 
-		for(rv = 0; key != NIL; argv += 2, key = *argv){
+		for(rv = su_EX_OK; key != NIL; argv += 2, key = *argv){
 			if((dat = argv[1]) == NIL){
 				mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("shortcut"), NIL);
-				rv = 1;
+				rv = su_EX_ERR;
 				break;
 			}
 
 			if(su_cs_dict_replace(a_scut_dp, key, C(char*,dat)) > 0){
 				n_err(_("Failed to create `shortcut' storage: %s\n"), n_shexp_quote_cp(key, FAL0));
-				rv = 1;
+				rv = su_EX_ERR;
 			}
 		}
 	}

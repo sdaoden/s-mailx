@@ -158,10 +158,17 @@ n_iconv_norm_name(char const *cset, boole mime_norm_name){
 	boole any;
 	NYD2_IN;
 
+	any = FAL0;
+	cp = UNCONST(char*,cset);
+
+	if(*cp == '\0')
+		goto jerr;
+
 	/* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
 	 * and we perform some slight content testing, too */
-	for(any = FAL0, cp = UNCONST(char*,cset); (c = *cp) != '\0'; ++cp){
+	for(; (c = *cp) != '\0'; ++cp){
 		if(!su_cs_is_alnum(c) && !su_cs_is_punct(c)){
+jerr:
 			n_err(_("Invalid character set name %s\n"), n_shexp_quote_cp(cset, FAL0));
 			cset = NIL;
 			goto jleave;
@@ -283,6 +290,7 @@ n_iconv_reset(iconv_t cd){
  * in a single place.  GNU libiconv even allows for configuration time const/non-const.  In the end it's an ugly guess,
  * but we can't do better since make(1) doesn't support compiler invocations which bail on error, so no -Werror */
 /* Citrus project? */
+# undef a_X
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special TODO newer DragonFly too, but different */
 #  if su_OS_DRAGONFLY

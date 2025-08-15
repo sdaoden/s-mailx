@@ -199,6 +199,9 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
 		goto jleave;
 	}
 
+	if(*key == '\0')
+		goto jeno;
+
 	if(argv[1] == NIL){
 		if(a_ft_dp != NIL && su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_ft_dp), key)){
 			struct n_strlist *slp;
@@ -207,8 +210,9 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
 			rv = (fputs(slp->sl_dat, n_stdout) == EOF);
 			rv |= (putc('\n', n_stdout) == EOF);
 		}else{
+jeno:
 			n_err(_("No such filetype: %s\n"), n_shexp_quote_cp(key, FAL0));
-			rv = 1;
+			rv = su_EX_ERR;
 		}
 	}else{
 		if(a_ft_dp == NIL){
@@ -223,7 +227,7 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
 
 			if(argv[1] == NIL || argv[2] == NIL){
 				mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("filetype"), NIL);
-				rv = 1;
+				rv = su_EX_ERR;
 				break;
 			}
 
@@ -236,7 +240,7 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
 			if(su_cs_dict_replace(a_ft_dp, key, &ftd) > 0){
 jerr:
 				n_err(_("Failed to create `filetype' storage: %s\n"), n_shexp_quote_cp(key, FAL0));
-				rv = 1;
+				rv = su_EX_ERR;
 			}
 		}while((key = *(argv += 3)) != NIL);
 	}

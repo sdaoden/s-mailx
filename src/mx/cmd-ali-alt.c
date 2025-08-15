@@ -397,18 +397,19 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? {{{ */
 	key = (argv = vp)[0];
 	do{
 		if(key[1] == '\0' && key[0] == '*'){
-			if(a_calal_alias_dp != NIL){
-				su_CS_DICT_VIEW_FOREACH(&dv){
-					slp = S(struct n_strlist*,su_cs_dict_view_data(&dv));
-					do{
-						vp = slp;
-						slp = slp->sl_next;
-						su_FREE(vp);
-					}while(slp != NIL);
-				}
-				su_cs_dict_clear(a_calal_alias_dp);
+			if(a_calal_alias_dp == NIL || su_cs_dict_count(a_calal_alias_dp) == 0)
+				goto jerr;
+			su_CS_DICT_VIEW_FOREACH(&dv){
+				slp = S(struct n_strlist*,su_cs_dict_view_data(&dv));
+				do{
+					vp = slp;
+					slp = slp->sl_next;
+					su_FREE(vp);
+				}while(slp != NIL);
 			}
-		}else if(a_calal_alias_dp == NIL || !su_cs_dict_view_find(&dv, key)){
+			su_cs_dict_clear(a_calal_alias_dp);
+		}else if(key[0] == '\0' || a_calal_alias_dp == NIL || !su_cs_dict_view_find(&dv, key)){
+jerr:
 			n_err(_("No such `alias': %s\n"), n_shexp_quote_cp(key, FAL0));
 			rv = su_EX_ERR;
 		}else{
@@ -433,7 +434,7 @@ mx_alias_is_valid_name(char const *name){
 	boole rv;
 	NYD2_IN;
 
-	for(rv = TRU1, cp = name; (c = *cp) != '\0'; ++cp){
+	for(rv = FAL0, cp = name; (c = *cp) != '\0'; rv = TRU1, ++cp){
 		/* User names, plus things explicitly mentioned in Postfix aliases(5).
 		 * Plus extensions.	On change adjust *mta-aliases* and impl., too */
 		/* TODO alias_is_valid_name(): locale dependent validity check,
@@ -578,7 +579,8 @@ c_alternates(void *vp){ /* {{{ */
 		for(rv = su_EX_OK; cap != NIL; cap = cap->ca_next){
 			struct mx_name *np;
 
-			if((np = mx_name_parse_as_one(cap->ca_arg.ca_str.s, 0)) == NIL ||
+			if(cap->ca_arg.ca_str.l == 0 ||
+					(np = mx_name_parse_as_one(cap->ca_arg.ca_str.s, 0)) == NIL ||
 					(np = mx_namelist_check(np, mx_EACM_STRICT, NIL)) == NIL){
 				n_err(_("Invalid `alternates' argument: %s\n"),
 					n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
