@@ -941,7 +941,7 @@ mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
 		if(key[1] == '\0' && key[0] == '*'){
 			if(dp != NIL)
 				su_cs_dict_clear(dp);
-		}else if(dp == NIL || !su_cs_dict_remove(dp, key)){
+		}else if(key[0] == '\0' || dp == NIL || !su_cs_dict_remove(dp, key)){
 			n_err(_("No such `%s': %s\n"), cmdname, n_shexp_quote_cp(key, FAL0));
 			rv = FAL0;
 		}
