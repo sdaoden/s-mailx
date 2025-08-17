@@ -1,0 +1,32 @@
+--0
+# no headerorder registered
+0/0/NONE
+0/0/NONE <>
+0/0/NONE
+0/0/NONE <a>
+headerorder a
+0/0/NONE
+0/0/NONE
+0/0/NONE <a b c d>
+headerorder a b c d
+0/0/NONE
+--1
+0/0/NONE
+0/0/NONE <b c d>
+headerorder b c d
+0/0/NONE
+0/0/NONE
+0/0/NONE <b c>
+headerorder b c
+0/0/NONE
+0/0/NONE
+0/0/NONE <>
+# no headerorder registered
+0/0/NONE
+--2
+22/1/INVAL
+0/0/NONE
+--3
+22/1/INVAL
+# no headerorder registered
+0/0/NONE
