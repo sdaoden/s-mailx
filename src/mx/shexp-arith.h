@@ -1096,23 +1096,35 @@ a_shexp__arith_op_apply(struct a_shexp_arith_ctx *self){
 		case a_SHEXP_ARITH_OP_GT: val = (val > rval); break;
 
 		case a_SHEXP_ARITH_OP_SHIFT_LEFT: FALLTHRU
-		case a_SHEXP_ARITH_OP_ASSIGN_SHIFT_LEFT: val <<= rval; break;
+		case a_SHEXP_ARITH_OP_ASSIGN_SHIFT_LEFT:
+			rval &= 63;
+			val = S(s64,S(u64,val) << rval);
+			break;
 
 		case a_SHEXP_ARITH_OP_SHIFT_RIGHT: FALLTHRU
-		case a_SHEXP_ARITH_OP_ASSIGN_SHIFT_RIGHT: val >>= rval; break;
+		case a_SHEXP_ARITH_OP_ASSIGN_SHIFT_RIGHT:{
+			/* Inspired by <ef041d50-cb3b-44be-aa81-402912b42997@gigawatt.nl> on dash@vger.kernel.org
+			 * aka https://github.com/hvdijk/gwsh/commit/c4d6f1b1613c228db1e157a2136c53f55b4530c8 */
+			s64 isneg;
+
+			isneg = -(val < 0);
+			rval &= 63;
+			val = S(s64,((S(u64,val) ^ isneg) >> rval) ^ isneg);
+			}break;
 
 		case a_SHEXP_ARITH_OP_SHIFT_RIGHTU: FALLTHRU
 		case a_SHEXP_ARITH_OP_ASSIGN_SHIFT_RIGHTU:
+			rval &= 63;
 			val = S(s64,S(u64,val) >> rval);
 			break;
 
 		case a_SHEXP_ARITH_OP_ADD: FALLTHRU
-		case a_SHEXP_ARITH_OP_ASSIGN_ADD: val += rval; break;
+		case a_SHEXP_ARITH_OP_ASSIGN_ADD: val = S(s64,S(u64,val) + rval); break;
 		case a_SHEXP_ARITH_OP_SUB: FALLTHRU
-		case a_SHEXP_ARITH_OP_ASSIGN_SUB: val -= rval; break;
+		case a_SHEXP_ARITH_OP_ASSIGN_SUB: val = S(s64,S(u64,val) - rval); break;
 
 		case a_SHEXP_ARITH_OP_MUL: FALLTHRU
-		case a_SHEXP_ARITH_OP_ASSIGN_MUL: val *= rval; break;
+		case a_SHEXP_ARITH_OP_ASSIGN_MUL: val = S(s64,S(u64,val) * rval); break;
 		/* For /,%, avoid lvh=S64_MIN, rhv=-1:
 		 * CHANGES, bash 4.3 [ac50fbac377e32b98d2de396f016ea81e8ee9961]:
 		 *   Fixed a bug that caused floating-point exceptions and
@@ -1143,7 +1155,7 @@ a_shexp__arith_op_apply(struct a_shexp_arith_ctx *self){
 				self->sac_error = a_SHEXP_ARITH_ERR_EXP_INVALID;
 				goto jleave;
 			}else{
-				s64 i;
+				u64 i;
 
 				/* Optimize via "exponentiation by squaring" ("binary exponentiation" in German,
 				 * algorithm from ~200 before Christ in India, as "written in the opus Chandah-sûtra".
@@ -1151,9 +1163,9 @@ a_shexp__arith_op_apply(struct a_shexp_arith_ctx *self){
 				for(i = 1; rval > 0; rval >>= 1){
 					if(rval & 1)
 						i *= val;
-					val *= val;
+					val = S(s64,S(u64,val) * val);
 				}
-				val = i;
+				val = S(s64,i);
 			}
 			break;
 		}

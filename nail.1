@@ -4052,6 +4052,7 @@ Multiplication, division, remainder (modulo).
 Addition and subtraction.
 .It Ar << , >> , >>>
 Bitwise shifts, the last performs an unsigned right shift.
+(Only the 6 least significant bits of the shift operand are used.)
 .It Ar <= , >= , < , >
 Comparison.
 .It Ar == , !=
@@ -7991,6 +7992,8 @@ overflow detection and error constants it still makes a difference.
 To enforce signed interpretation (instead) prefix
 .Ql s
 (case-insensitive).
+.
+.Pp
 One integer is expected by assignment (equals sign
 .Ql = ) ,
 which does nothing but validity and overflow detection, unary not (tilde
@@ -8020,17 +8023,7 @@ as well as for the unsigned right shift
 .Ql >>> .
 .
 .Pp
-Another numeric operation is
-.Cm pbase ,
-which takes a number base in between 2 and 64, inclusive, and will act
-on the second number given just the same as what equals sign
-.Ql =
-does, but the number result will be formatted in the base given, as
-a signed 64-bit number unless unsigned interpretation of the input
-number had been forced.
-.
-.Pp
-Numeric operations support a saturated mode via the question mark
+Numeric operations support a saturated mode via the operator question mark
 .Ql \&?
 modifier suffix; the keyword
 .Ql saturated
@@ -8055,6 +8048,16 @@ to
 echo "$?/$!/$^ERRNAME:$res"
 \*(OU0/75/OVERFLOW:-9223372036854775808
 .Ed
+.
+.Pp
+Another numeric operation is
+.Cm pbase ,
+which takes a number base in between 2 and 64, inclusive, and will act
+on the second number given just the same as what equals sign
+.Ql =
+does, but the number result will be formatted in the base given, as
+a signed 64-bit number unless unsigned interpretation of the input
+number had been forced.
 .
 .Pp
 Character set agnostic string functions have no notion of locale

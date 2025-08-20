@@ -340,7 +340,7 @@ jenum_plusminus:
 					lhv = -lhv;
 					rhv = -rhv;
 				}
-				if(rhv != 0 && lhv != 0 && S64_MAX / rhv > lhv){
+				if(lhv != 0 && rhv != 0 && S64_MAX / rhv > lhv){
 					if(!(f & a_VEXPR_MOD_SATURATED)){
 						f |= a_VEXPR_ERR;
 						vcp->vc_cmderr = a_VEXPR_ERR_NUM_OVERFLOW;
@@ -349,10 +349,10 @@ jenum_plusminus:
 					f |= a_VEXPR_SOFTOVERFLOW;
 					lhv = S64_MAX;
 				}else
-					lhv *= rhv;
+					lhv = S(s64,S(u64,lhv) * rhv);
 			}else{
 				if(rhv > 0){
-					if(lhv != 0 && S64_MIN / lhv < rhv){
+					if(lhv != 0 && lhv != -1 && S64_MIN / lhv < rhv){
 						if(!(f & a_VEXPR_MOD_SATURATED)){
 							f |= a_VEXPR_ERR;
 							vcp->vc_cmderr = a_VEXPR_ERR_NUM_OVERFLOW;
@@ -361,9 +361,9 @@ jenum_plusminus:
 						f |= a_VEXPR_SOFTOVERFLOW;
 						lhv = S64_MIN;
 					}else
-						lhv *= rhv;
+						lhv = S(s64,S(u64,lhv) * rhv);
 				}else{
-					if(rhv != 0 && lhv != 0 && S64_MIN / rhv < lhv){
+					if(rhv < -1 && lhv != 0 && S64_MIN / rhv < lhv){
 						if(!(f & a_VEXPR_MOD_SATURATED)){
 							f |= a_VEXPR_ERR;
 							vcp->vc_cmderr = a_VEXPR_ERR_NUM_OVERFLOW;
@@ -371,7 +371,7 @@ jenum_plusminus:
 						f |= a_VEXPR_SOFTOVERFLOW;
 						lhv = S64_MIN;
 					}else
-						lhv *= rhv;
+						lhv = S(s64,S(u64,lhv) * rhv);
 				}
 			}
 			break;
@@ -419,7 +419,7 @@ jenum_plusminus:
 		case a_VEXPR_CMD_NUM_URSHIFT:{
 			u8 sv;
 
-			if(S(u64,rhv) <= 63) /* xxx 63? */
+			if(S(u64,rhv) <= 63)
 				sv = S(u8,rhv);
 			else if(!(f & a_VEXPR_MOD_SATURATED)){
 				f |= a_VEXPR_ERR;
@@ -429,10 +429,15 @@ jenum_plusminus:
 				sv = 63;
 
 			if(cmd == a_VEXPR_CMD_NUM_LSHIFT)
-				lhv <<= sv;
-			else if(cmd == a_VEXPR_CMD_NUM_RSHIFT)
-				lhv >>= sv;
-			else
+				lhv = S(s64,S(u64,lhv) << sv);
+			else if(cmd == a_VEXPR_CMD_NUM_RSHIFT){
+				/* Inspired by <ef041d50-cb3b-44be-aa81-402912b42997@gigawatt.nl> on dash@vger.kernel.org
+				 * aka https://github.com/hvdijk/gwsh/commit/c4d6f1b1613c228db1e157a2136c53f55b4530c8 */
+				s64 isneg;
+
+				isneg = -(lhv < 0);
+				lhv = S(s64,((S(u64,lhv) ^ isneg) >> sv) ^ isneg);
+			}else
 				lhv = S(u64,lhv) >> sv;
 			}break;
 		}
