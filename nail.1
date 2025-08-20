@@ -299,9 +299,7 @@ in
 .Sx "Compose mode"
 .Ic ~^
 .Pf ( Sx "COMMAND ESCAPES" )
-and
-.Ic digmsg
-are the most powerful options.
+is the most powerful options.
 .
 .Mx
 .It Fl c Ar addr , Fl Fl cc Ns =..
@@ -4621,6 +4619,7 @@ See
 .Sx "Message states" .
 .
 .
+.\"{{{bind
 .Mx
 .Mx
 .It Ic bind , unbind
@@ -4823,6 +4822,7 @@ finally
 The same for the left cursor key,
 .Cd kcub1 :
 .Cd KLFT , KLFT3 , KLFT4 , KLFT5 , KLFT6 , KLFT7 , KLFT8 .
+.\"}}}
 .
 .
 .Mx
@@ -4843,7 +4843,6 @@ and
 .Cm our
 .Mx -sx
 .Sx scope .
-.
 .
 .Mx
 .It Ic call_if
@@ -4906,6 +4905,7 @@ Only applicable to threaded
 mode.
 .
 .
+.\"{{{colour
 .Mx
 .Mx
 .It Ic colour , uncolour
@@ -5085,6 +5085,7 @@ The special name
 will remove all mappings (no precondition allowed), thus
 .Ql uncolour * *
 will remove all established mappings.
+.\"}}}
 .
 .
 .Mx
@@ -5132,6 +5133,7 @@ otherwise identical to
 .Ic save .
 .
 .
+.\"{{{csop
 .Mx
 .It Ic csop
 \*(OP\*(NQ 8-bit US-ASCII byte string operation multiplexer (no notion of
@@ -5200,6 +5202,7 @@ Trim away whitespace from the begin of the argument.
 .It Cm trim-end
 Trim away whitespace from the end of the argument.
 .El
+.\"}}}
 .
 .
 .Mx
@@ -5220,6 +5223,7 @@ The return status is tracked via
 Encrypted messages are first decrypted, if possible, and then copied.
 .
 .
+.\"{{{define
 .Mx
 .Mx
 .It Ic define , undefine
@@ -5303,23 +5307,27 @@ or the last message restored, respectively, is automatically
 .Ic type Ns
 d; also see
 .Ic dp , dt .
+.\"}}}
 .
+.
+.\"{{{digmsg
 .Mx
 .It Ic digmsg
-\*(NQ\*(NF(first two arguments) An inspection object can be
+\*(NQ\*(NF(first two arguments) An interface object for message
+inspection and modification.
+An object can be
 .Cm create Ns
-d for the given message number; in
+d for a given message number; in
 .Sx "Compose mode"
 hyphen-minus
 .Ql -
 addresses the message draft.
-By default output of each subcommand has to be consumed via
-.Ic readall ,
-.Ic read
-or
-.Ic readsh
-(until end of file, EOF); the optional third argument selects
-an output mode: circumflex
+Objects can be
+.Cm remove Ns
+d to release resources; leaving their
+.Ic folder
+does so automatically.
+The optional third argument selects an output mode: circumflex
 .Ql ^
 stores results in the
 .Va ^
@@ -5327,40 +5335,457 @@ multiplexer sub-variables
 .Va ^# , ^0 , ^1
 etc,
 .Ql -
-selects standard output.
-Objects can be
-.Cm remove Ns
-d to release resources; leaving their
-.Ic folder
-does so automatically.
-The compose mode object is special, it can be used directly, without
+selects standard output (an interactive user mode).
+Because errors are handled by the I/O protocol,
+.Va \&!
+and exit status
+.Va \&?
+are not managed; hard errors like I/O failures cannot be handled.
+The compose mode object (also see
+.Ic ~^ )
+may be used directly, without
 .Cm create
 (or after
-.Cm remove )
+.Cm remove ) :
 it places results in the
 .Va ^
-multiplexer; it is removed when compose mode is left.
-In all other use cases the first argument is the object identifier,
-and remaining arguments are interpreted as for
-.Ic ~^
-.Pf ( Sx "COMMAND ESCAPES" ) :
+multiplexer.
+In all other use cases the first argument is the object identifier.
+.
+.Pp
+The protocol consists of a command line followed by (a) response
+line(s), or according
+.Va ^
+multiplexer assignments.
+The first field of the first response line represents a status code
+which denotes success, whether result data is to be expected, and if,
+the format of the result data.
+Response data is quoted as necessary for consumption by
+.Ic readsh ,
+or
+.Ic vpospar
+and
+.Cm eval ,
+to name a few.
+.Sy Remarks:
+In I/O mode responses must be fully consumed before further commands can
+be issued in order to avoid deadlocks!
+In multiplexer assignment mode
+.Va ^0
+stores the status code, the remains are those sequential fields that
+otherwise make up lines,
+.Dq missing
+optional fields are stored as empty results, also meaning that
+.Va ^1
+may hold what would make up optional status code line remains;
+values are not quoted,
+.Va ^@
+is to be expanded within double quotes to achieve this result.
+The status codes are:
+.
+.
+.Pp
+.Bl -tag -compact -width ".It Ql 210"
+.It Ql 210
+Status ok; the remains of the line are the result.
+.
+.It Ql 211
+Status ok; more status may optionally be appended.
+None to multiple address lines follow, terminated by an empty line.
+Address lines consist of two shell tokens, the plain address, for example
+.Ql bob@exam.ple ,
+followed by the unstripped address (see
+.Va fullnames ) :
+.Ql '(Lovely) Bob <bob@exam.ple>' .
+Non-addresses are indicated via the first token: hyphen-minus
+.Ql -
+for files, vertical bar
+.Ql |
+for pipes, and number sign
+.Ql #
+for names which will undergo
+.Ic alias
+processing; the second token will be the value.
+.
+.It Ql 212
+Status ok; more status may optionally be appended.
+What follows are lines of one furtherly unspecified string token each,
+terminated by an empty line.
+.
+.It Ql 500
+Syntax error; invalid command.
+.
+.It Ql 501
+Syntax error or otherwise invalid parameters or arguments.
+.
+.It Ql 505
+Error: an argument fails verification.
+For example an invalid address has been specified (also see
+.Va expandaddr ) ,
+or a modifying subcommand has been used on a read-only message,
+or an attempt was made to modify virtual, auto-generated, read-only data.
+.
+.It Ql 506
+Error: an otherwise valid argument is contextually invalid.
+For example, a second address is added to a header field which may
+consist of a single address only.
+.El
+.
+.
+.Pp
+All
+.Ql 50x
+status codes may show additional data on the rest of the line.
+The message remains unmodified upon error.
+Most commands can fail with
+.Ql 500
+if required arguments are missing, or on otherwise false command usage.
+The following (case-insensitive) commands and sub-commands are
+supported, abbreviating is possible:
+.
+.
+.Bl -hang -width ".It Cm version"
+.It Cm attachment
+Manage message attachments.
+The second argument specifies the subcommand, one of:
+.
+.Bl -hang -width ".It Cm remove"
+.It Cm attribute
+Uses the same search mechanism as described for
+.Cm remove ,
+and prints all attributes of the first found attachment via
+.Ql 212
+upon success, or
+.Ql 501
+if no such attachment can be found.
+The none to multiple success result lines consist of a keyword and
+a value token, terminated by an empty line.
+.
+.It Cm attribute-at
+Uses the same search mechanism as described for
+.Cm remove-at
+and is otherwise identical to
+.Cm attribute .
+.
+.It Cm attribute-set
+Uses the same search mechanism as described for
+.Cm remove ,
+and sets the attribute given as the fourth to the value given as
+the fifth token argument.
+An empty value causes the given attribute to be removed,
+or reset to a default if existence of the attribute is crucial.
+Upon success
+.Ql 210
+with the index of the found attachment following is returned,
+.Ql 505
+for message attachments or if the given keyword is invalid, and
+.Ql 501
+if no such attachment can be found.
+The following keywords may be used (case-insensitively):
+.Pp
+.Bl -hang -compact -width ".It Ql filename"
+.It Ql creation-name
+\*(RO Value used when creating the attachment.
+.It Ql open-path
+\*(RO Path that will be used when reading the file to be attached.
+.It Ql filename
+Sets the filename of the MIME part, that is, the name that is used for
+display and when (suggesting a name for) saving (purposes).
+.It Ql content-description
+Associate some descriptive information to the attachment's content, used
+in favour of the plain filename by some MUAs.
+.It Ql content-id
+May be used for uniquely identifying MIME entities in several contexts;
+this expects a special reference address format as defined in RFC 2045
+and generates a
+.Ql 505
+upon address content verification failure.
+.It Ql content-type
+Defines the media type/subtype of the part, which is managed
+automatically, but can be overwritten.
+.It Ql content-disposition
+Automatically set to the string
+.Ql attachment .
+.El
+.
+.It Cm attribute-set-at
+Uses the same search mechanism as described for
+.Cm remove-at
+and is otherwise identical to
+.Cm attribute-set .
+.
+.It Cm insert
+Add the attachment given as the third argument, specified exactly as
+documented for the command line option
+.Fl a ,
+and supporting the message number extension as documented for
+.Ic ~@
+.Pf ( Sx "COMMAND ESCAPES" ) .
+Reports
+.Ql 210
+upon success, with the index of the new attachment following,
+.Ql 505
+if the given file cannot be opened,
+.Ql 506
+if an on-the-fly performed character set conversion fails, otherwise
+.Ql 501
+is reported; this is also reported if character set conversion is
+requested but not available.
+.
+.It Cm list
+List all attachments via
+.Ql 212 ,
+or report
+.Ql 501
+if no attachments exist.
+This command is the default command of
+.Cm attachment
+without second argument.
+.
+.It Cm remove
+Remove the attachment given as the third argument, and report
+.Ql 210
+upon success or
+.Ql 501
+if no such attachment can be found.
+If the given argument contains path components, an exact match of the
+path used to create the attachment is taken immediately, but the plain
+path basename will also be found by traversing all attachments if only
+one match results; if multiple basenames match, a
+.Ql 506
+error occurs.
+Message attachments are treated as absolute pathnames.
+If no path component exists then all attachments will be searched for
+.Ql filename=
+parameter matches as well as for matches of the basename of the path
+which has been used for attachment creation; multiple matches result in a
+.Ql 506 .
+.
+.It Cm remove-at
+Interprets the third argument as a number and removes the attachment at
+that list position (counting from one!), reporting
+.Ql 210
+upon success or
+.Ql 505
+if the argument is not a number or
+.Ql 501
+if no such attachment exists.
+.El
+.
+.
+.It Cm header
+Manage message header fields.
+Header name case is not normalized, so that case-insensitive comparison
+should be used when matching names.
+The second argument specifies the subcommand to apply, one of:
+.
+.
+.Bl -hang -width ".It Cm remove"
+.It Cm insert
+Create a new or another instance of the header given in the third token,
+with the content value as given in the fourth token.
+(Tabulators, line feeds and carriage-returns, aka
+.Ql \et ,
+.Ql \en ,
+.Ql \er
+are normalized to space; other control characters cause error.)
+Returns
+.Ql 501
+if the header name is invalid, or if content extraction fails to succeed,
+.Ql 505
+if any extracted address does not pass syntax and/or security checks, or
+an attempt was made to modify virtual, read-only data, and
+.Ql 506
+to indicate prevention of excessing a single-instance header \(em note that
+.Ql Subject:
+can be appended to (a space separator will be added automatically first).
+.Ql To: ,
+.Ql Cc:
+and
+.Ql Bcc:
+support the
+.Ql ?single
+modifier to enforce treatment as a single recipient, for example
+.Ql header insert To?single: 'exa, <m@ple>' ;
+the word
+.Ql single
+is optional.
+.Pp
+.Ql 210
+is returned upon success, followed by the name of the header and the list
+position of the newly inserted instance.
+The list position is always 1 for single-instance header fields.
+All free-form header fields are managed in a single list; also see
+.Va customhdr .
+.
+.It Cm headerpick
+Takes the name of a
+.Ic headerpick
+.Ar context
+and filters accordingly, giving
+.Ql 210
+on success, and
+.Ql 505
+for read-only messages, and
+.Ql 501
+for an invalid
+.Ar context .
+.
+.It Cm list
+Without third argument a list of all header fields is generated via
+.Ql 210 ,
+otherwise only the given one is listed, a non-existing one gives
+.Ql 501 .
+This is the default subcommand of
+.Cm header .
+.
+.It Cm remove
+Remove all instances of the header given as the third token, reporting
+.Ql 210
+upon success,
+.Ql 501
+if no such header can be found, and
+.Ql 505
+when trying to remove a virtual, auto-generated, or read-only header.
+.
+.It Cm remove-at
+Remove from the header given as the third argument the instance at the
+list position (counting from one!) given in the fourth token, reporting
+.Ql 210
+upon success or
+.Ql 505
+if the position is not a number, or is inaccessible, and
+.Ql 501
+if no such header instance exists.
+.
+.It Cm show
+Show content of the header field given third.
+The content will be converted to
+.Va ttycharset
+(\*(ID and then be made printable according to
+.Ev LC_ALL ) .
+Dependent on the header type this may respond with
+.Ql 211
+or
+.Ql 212 ;
+any failure results in
+.Ql 501 .
+.El
+.
+.
+.Pp
+.Sx "Compose mode"
+offers read-only access to optional, virtual, read-only header fields:
+.
+.
+.Pp
+.Bl -tag -compact -width ".It Va BaNg"
+.It Ql Mailx-Command:
+The name of the command that generates the message, one of
+.Ql forward ,
+.Ql Lreply ,
+.Ql mail ,
+.Ql Reply ,
+.Ql reply ,
+.Ql resend .
+This pseudo header always exists.
+.
+.It Ql Mailx-Edited-Sender:
+.It Ql Mailx-Edited-Origin:
+Different to the RFC 5322 originator fields of the otherwise identical
+.Ql -Orig-
+series below these might take into account
+.Va reply-to-honour
+and
+.Va reply-to-swap-in .
+This sender field will however be identical to
+.Ql Mailx-Orig-Sender:
+unless the edited (replaced) originator field is unambiguous.
+.
+.It Ql Mailx-Orig-Sender:
+.It Ql Mailx-Orig-From:
+.It Ql Mailx-Orig-To:
+.It Ql Mailx-Orig-Cc:
+.It Ql Mailx-Orig-Bcc:
+The values of said headers of the original message which has been
+addressed by any of
+.Ic reply , forward , resend .
+The sender field is filled in according to what is described for
+.Va from .
+.
+.It Ql Mailx-Raw-To:
+.It Ql Mailx-Raw-Cc:
+.It Ql Mailx-Raw-Bcc:
+Represent the frozen initial state of these headers before any
+transformation
+.Pf ( Ic alias ,
+.Ic alternates ,
+.Va recipients-in-cc
+etc.) took place.
+.El
+.
+.
+.It Cm epoch
+The message date as seconds since the UNIX epoch (1970-01-01T00:00:00) via
+.Ql 210 .
+Error for an invalid date is
+.Ql 501 ,
+for using this command in
+.Sx "Compose mode"
+.Ql 505 .
+.Ic vexpr
+can be used to convert times, for example:
+.Bd -literal -offset indent
+dig cre 1 ^
+dig 1 epo
+if $^0 -eq 210
+  vex date-utc "$^1"
+en
+dig rem 1
+\*(OUdutc_year=2023 [..]
+.Ed
+.
+.It Cm help , \&?
+Show a command abstract via
+.Ql 212 .
+.
+.It Cm version
+Print the protocol version via
+.Ql 210 .
+.El
+.
+.
+.Pp
+A few examples:
+.
 .Bd -literal -offset indent
 >msgno =
-digmsg create $msgno
-digmsg $msgno header list;   readall x;   echon $x
-\*(OU210 Subject From To Message-ID References In-Reply-To
-digmsg $msgno header show Subject;readall x;echon $x
-\*(OU212 Subject
-\*(OU\(aqHello, world'
-\*(OU
-digmsg remove $msgno
 
->mn =
-digmsg crea $mn ^
-digmsg $mn he sh Subject; ec $^0: $^#: $^1: $^2
-\*(OU212: 2: Subject: Hello, world
-digmsg rem $mn
+digmsg create $msgno
+digm $msgno header list;  readall x;  echo $x
+\*(OU210 'Subject From To Message-ID References'
+digm $msgno header show Subject;readall x;ec $x
+\*(OU212 Subject 'Hello, world'
+digm remove $msgno
+
+digm cr $msgno -
+digm $msgno hea l
+\*(OU210 'Subject From To Message-ID References'
+digm $msgno hea sho Subject
+\*(OU212 Subject
+\*(OU'Hello, world'
+\*(OU
+digm rem $msgno
+
+digm c $msgno ^
+digm $msgno h l; ec $^#,$^0,$^1,$^2,$^*
+\*(OU1,210,Subject...,,Subject...
+digm $msgno h s subject; ec $^#,$^0,$^1,$^2,$^*
+\*(OU2,212,Subject,Hello, world,Subject Hello, world,
+digm r $msgno
 .Ed
+.\"}}}
+.
 .
 .Mx
 .It Ic discard
@@ -5480,6 +5905,7 @@ An else block is evaluated only if none of the condition blocks matched.
 conditional execution block.
 .
 .
+.\"{{{environ
 .Mx
 .It Ic environ
 \*(NQ\*(NF The process
@@ -5557,6 +5983,7 @@ endif
 set PERL5LIB=$PERL5LIB:/home/shared/perl5
 >storvar environ lookup PERL5LIB; echo "$storvar"
 .Ed
+.\"}}}
 .
 .
 .Mx
@@ -5660,6 +6087,7 @@ See
 but open the mailbox read-only.
 .
 .
+.\"{{{folder
 .Mx
 .It Ic folder
 (fold) Without arguments shows informations about the current mailbox.
@@ -5802,6 +6230,7 @@ All network traffic may be proxied over a SOCKS5 server via
 .Va socks-proxy .
 Network communication socket timeouts are configurable via
 .Va socket-connect-timeout .
+.\"}}}
 .
 .
 .Mx
@@ -5832,6 +6261,7 @@ and
 .Ic Save .
 .
 .
+.\"{{{fop
 .Mx
 .It Ic fop
 \*(OP\*(NQ A multiplexer command for file operations.
@@ -6021,6 +6451,7 @@ Update file times, creating the file first as necessary.
 .Cm ltouch
 differs by not following symbolic links when creating the file.
 .El
+.\"}}}
 .
 .
 .Mx
@@ -6100,6 +6531,7 @@ removes all.
 Matching is case-insensitive.
 .
 .
+.\"{{{headerpick
 .Mx
 .Mx
 .It Ic headerpick , unheaderpick
@@ -6160,6 +6592,7 @@ and
 .Cm join :
 whereas the former clears the target context first, the latter does not;
 in case of errors both clear the target context.
+.\"}}}
 .
 .
 .Mx
@@ -6231,6 +6664,7 @@ and
 commands will remove the preserve mark.
 .
 .
+.\"{{{if
 .Mx
 .It Ic if
 \*(NQ\*(NF(i) Part of the
@@ -6523,6 +6957,7 @@ i true && [ -n $t1 || -n $t2 ]
   ec Left associativity as known from the shell
 en
 .Ed
+.\"}}}
 .
 .
 .Mx
@@ -6530,6 +6965,8 @@ en
 (ig) Superseded by the multiplexer
 .Ic headerpick .
 .
+.
+.\"{{{list
 .Mx
 .It Ic list
 Shows all built-in commands in a lookup order that does not always
@@ -6540,6 +6977,7 @@ and \*(PO standardized some abbreviations.
 mode argument types and documentation abstracts, flags and supported
 .Sx "Command modifiers"
 are shown:
+.
 .Pp
 .Bl -tag -compact -width ".It Ql NEEDS_BOX"
 .It Ql global
@@ -6605,6 +7043,8 @@ does not generate
 .Ic history
 entries.
 .El
+.\"}}}
+.
 .
 .It Ic localopts
 \*(OB Please just use a
@@ -6973,6 +7413,8 @@ If new mail has arrived during the session, the message
 .Dq You have new mail
 will be shown.
 .
+.
+.\"{{{read
 .Mx
 .It Ic read
 \*(NQ Read a line from standard input, or the
@@ -7034,6 +7476,8 @@ read ^
 ec "$^# <$^0> <$^5> <$^*>"
 \*(OU5 <11> <o> <H e l l o>
 .Ed
+.\"}}}
+.
 .
 .Mx
 .It Ic readall
@@ -7057,6 +7501,7 @@ upon End-Of-File (with no more bytes to read).
 \*(ID The input data length is restricted to 31-bits.
 .
 .
+.\"{{{readctl
 .Mx
 .It Ic readctl
 \*(NQ Manage input channels for
@@ -7116,6 +7561,7 @@ else
   echoerr $'Cannot read file \e$fn: \e$ed'
 endif
 .Ed
+.\"}}}
 .
 .
 .Mx
@@ -7949,6 +8395,7 @@ Supports
 .Pf ( Sx "Command modifiers" ) .
 .
 .
+.\"{{{vexpr
 .Mx
 .It Ic vexpr
 \*(OP\*(NQ Multiplexer which offers checked signed 64-bit numeric
@@ -8149,8 +8596,10 @@ echo "$?/$!/$^ERRNAME:$res:"
 \*(OU0/0/NONE:bauauframa:
 .Ed
 .El
+.\"}}}
 .
 .
+.\"{{{vpospar
 .Mx
 .It Ic vpospar
 \*(NQ Manage the scope's positional parameters (see
@@ -8245,6 +8694,7 @@ vpospar evalset "$x"
 ec "$#: <$1><$2><$3><$4><$5><$6>"
 \*(OU6: <a><b><#c><d><$e><f>
 .Ed
+.\"}}}
 .
 .
 .Mx
@@ -8565,44 +9015,30 @@ Also see
 .Ic ~e , ~v .
 .
 .
+.Mx Ic
 .Mx
-.It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Inspect and modify the message.
-Note the arguments are (command line is) evaluated according to
-.Sx "Shell-style argument quoting" :
-the command
-.Ic digmsg
-shares the inspection and modification machinery.
+.It Ic ~^ Ar cmd Oo Ar subcmd Oo Ar arg3 Oo Ar arg4 Oc Oc Oc , Ic ~^^ Ar ..
+An easy accessor of
+.Ic digmsg ,
+for inspection and modification of the message draft.
+Aguments are evaluated according to
+.Sx "Shell-style argument quoting" .
 Error number
 .Va \&!
 and exit status
 .Va \&?
-are not managed: errors are handled via the protocol,
+are not managed: errors are handled by the I/O protocol,
 and hard errors like I/O failures cannot be handled.
 .
 .Pp
-The protocol consists of a command line followed by (a) response line(s).
-The first field of the first response line represents a status code
-which denotes success, whether result data is to be expected, and if,
-the format of the result data.
-Response data is quoted as necessary for consumption by
-.Ic readsh ,
-or
-.Ic vpospar
-and
-.Cm eval ,
-to name a few.
-Responses must be fully consumed before further commands can be issued!
-.
-.Pp
-.Ql ~^^
-does not use the input/output protocol, but instead stores results in the
+.Ic \&\&~^^
+does not use the I/O protocol, but stores results in the
 .Va ^
 multiplexer sub-variables
 .Va ^# , ^0 , ^1
 etc:
 .Va ^0
-stores the status code, the remains are those sequential fields that
+holds the status code, the remains are those sequential fields that
 otherwise make up lines,
 .Dq missing
 optional fields are stored as empty results, also meaning that
@@ -8611,377 +9047,27 @@ may hold what would make up optional status code line remains.
 Variable values are not quoted,
 .Va ^@
 is to be expanded to achieve this result.
-The status codes are:
 .
-.
-.Pp
-.Bl -tag -compact -width ".It Ql 210"
-.It Ql 210
-Status ok; the remains of the line are the result.
-.
-.It Ql 211
-Status ok; more status may optionally be appended.
-None to multiple address lines follow, terminated by an empty line.
-Address lines consist of two shell tokens, the plain address, for example
-.Ql bob@exam.ple ,
-followed by the unstripped address (see
-.Va fullnames ) :
-.Ql '(Lovely) Bob <bob@exam.ple>' .
-Non-addresses are indicated via the first token: hyphen-minus
-.Ql -
-for files, vertical bar
-.Ql |
-for pipes, and number sign
-.Ql #
-for names which will undergo
-.Ic alias
-processing; the second token will be the value.
-.
-.It Ql 212
-Status ok; more status may optionally be appended.
-What follows are lines of one furtherly unspecified string token each,
-terminated by an empty line.
-.
-.It Ql 500
-Syntax error; invalid command.
-.
-.It Ql 501
-Syntax error or otherwise invalid parameters or arguments.
-.
-.It Ql 505
-Error: an argument fails verification.
-For example an invalid address has been specified (also see
-.Va expandaddr ) ,
-or a modifying subcommand has been used on a read-only message,
-or an attempt was made to modify virtual, auto-generated, read-only data.
-.
-.It Ql 506
-Error: an otherwise valid argument is contextually invalid.
-For example, a second address is added to a header field which may
-consist of a single address only.
-.El
-.
-.
-.Pp
-All
-.Ql 50x
-status codes may show additional data on the rest of the line.
-The message remains unmodified upon error.
-Most commands can fail with
-.Ql 500
-if required arguments are missing, or on otherwise false command usage.
-The following (case-insensitive) commands and sub-commands are
-supported, abbreviating is possible:
-.
-.
-.Bl -hang -width ".It Cm version"
-.It Cm attachment
-Manage message attachments.
-The second argument specifies the subcommand, one of:
-.
-.Bl -hang -width ".It Cm remove"
-.It Cm attribute
-Uses the same search mechanism as described for
-.Cm remove ,
-and prints all attributes of the first found attachment via
-.Ql 212
-upon success, or
-.Ql 501
-if no such attachment can be found.
-The none to multiple success result lines consist of a keyword and
-a value token, terminated by an empty line.
-.
-.It Cm attribute-at
-Uses the same search mechanism as described for
-.Cm remove-at
-and is otherwise identical to
-.Cm attribute .
-.
-.It Cm attribute-set
-Uses the same search mechanism as described for
-.Cm remove ,
-and sets the attribute given as the fourth to the value given as
-the fifth token argument.
-An empty value causes the given attribute to be removed,
-or reset to a default if existence of the attribute is crucial.
-Upon success
-.Ql 210
-with the index of the found attachment following is returned,
-.Ql 505
-for message attachments or if the given keyword is invalid, and
-.Ql 501
-if no such attachment can be found.
-The following keywords may be used (case-insensitively):
-.Pp
-.Bl -hang -compact -width ".It Ql filename"
-.It Ql creation-name
-\*(RO Value used when creating the attachment.
-.It Ql open-path
-\*(RO Path that will be used when reading the file to be attached.
-.It Ql filename
-Sets the filename of the MIME part, that is, the name that is used for
-display and when (suggesting a name for) saving (purposes).
-.It Ql content-description
-Associate some descriptive information to the attachment's content, used
-in favour of the plain filename by some MUAs.
-.It Ql content-id
-May be used for uniquely identifying MIME entities in several contexts;
-this expects a special reference address format as defined in RFC 2045
-and generates a
-.Ql 505
-upon address content verification failure.
-.It Ql content-type
-Defines the media type/subtype of the part, which is managed
-automatically, but can be overwritten.
-.It Ql content-disposition
-Automatically set to the string
-.Ql attachment .
-.El
-.
-.It Cm attribute-set-at
-Uses the same search mechanism as described for
-.Cm remove-at
-and is otherwise identical to
-.Cm attribute-set .
-.
-.It Cm insert
-Add the attachment given as the third argument, specified exactly as
-documented for the command line option
-.Fl a ,
-and supporting the message number extension as documented for
-.Ic ~@ .
-Reports
-.Ql 210
-upon success, with the index of the new attachment following,
-.Ql 505
-if the given file cannot be opened,
-.Ql 506
-if an on-the-fly performed character set conversion fails, otherwise
-.Ql 501
-is reported; this is also reported if character set conversion is
-requested but not available.
-.
-.It Cm list
-List all attachments via
-.Ql 212 ,
-or report
-.Ql 501
-if no attachments exist.
-This command is the default command of
-.Cm attachment
-without second argument.
-.
-.It Cm remove
-Remove the attachment given as the third argument, and report
-.Ql 210
-upon success or
-.Ql 501
-if no such attachment can be found.
-If the given argument contains path components, an exact match of the
-path used to create the attachment is taken immediately, but the plain
-path basename will also be found by traversing all attachments if only
-one match results; if multiple basenames match, a
-.Ql 506
-error occurs.
-Message attachments are treated as absolute pathnames.
-If no path component exists then all attachments will be searched for
-.Ql filename=
-parameter matches as well as for matches of the basename of the path
-which has been used for attachment creation; multiple matches result in a
-.Ql 506 .
-.
-.It Cm remove-at
-Interprets the third argument as a number and removes the attachment at
-that list position (counting from one!), reporting
-.Ql 210
-upon success or
-.Ql 505
-if the argument is not a number or
-.Ql 501
-if no such attachment exists.
-.El
-.
-.
-.It Cm header
-Manage message header fields.
-Header name case is not normalized, so that case-insensitive comparison
-should be used when matching names.
-The second argument specifies the subcommand to apply, one of:
-.
-.
-.Bl -hang -width ".It Cm remove"
-.It Cm insert
-Create a new or another instance of the header given in the third token,
-with the content value as given in the fourth token.
-(Tabulators, line feeds and carriage-returns, aka
-.Ql \et ,
-.Ql \en ,
-.Ql \er
-are normalized to space; other control characters cause error.)
-Returns
-.Ql 501
-if the header name is invalid, or if content extraction fails to succeed,
-.Ql 505
-if any extracted address does not pass syntax and/or security checks, or
-an attempt was made to modify virtual, read-only data, and
-.Ql 506
-to indicate prevention of excessing a single-instance header \(em note that
-.Ql Subject:
-can be appended to (a space separator will be added automatically first).
-.Ql To: ,
-.Ql Cc:
-and
-.Ql Bcc:
-support the
-.Ql ?single
-modifier to enforce treatment as a single recipient, for example
-.Ql header insert To?single: 'exa, <m@ple>' ;
-the word
-.Ql single
-is optional.
-.Pp
-.Ql 210
-is returned upon success, followed by the name of the header and the list
-position of the newly inserted instance.
-The list position is always 1 for single-instance header fields.
-All free-form header fields are managed in a single list; also see
-.Va customhdr .
-.
-.It Cm headerpick
-Takes the name of a
-.Ic headerpick
-.Ar context
-and filters accordingly, giving
-.Ql 210
-on success, and
-.Ql 505
-for read-only messages, and
-.Ql 501
-for an invalid
-.Ar context .
-.
-.It Cm list
-Without third argument a list of all header fields is generated via
-.Ql 210 ,
-otherwise only the given one is listed, a non-existing one gives
-.Ql 501 .
-This is the default subcommand of
-.Cm header .
-.
-.It Cm remove
-Remove all instances of the header given as the third token, reporting
-.Ql 210
-upon success,
-.Ql 501
-if no such header can be found, and
-.Ql 505
-when trying to remove a virtual, auto-generated, or read-only header.
-.
-.It Cm remove-at
-Remove from the header given as the third argument the instance at the
-list position (counting from one!) given in the fourth token, reporting
-.Ql 210
-upon success or
-.Ql 505
-if the position is not a number, or is inaccessible, and
-.Ql 501
-if no such header instance exists.
-.
-.It Cm show
-Show content of the header field given third.
-The content will be converted to
-.Va ttycharset
-(\*(ID and then be made printable according to
-.Ev LC_ALL ) .
-Dependent on the header type this may respond with
-.Ql 211
-or
-.Ql 212 ;
-any failure results in
-.Ql 501 .
-.El
-.
-.
-.Pp
-.Sx "Compose mode"
-offers read-only access to optional, virtual, read-only header fields:
-.
-.
-.Pp
-.Bl -tag -compact -width ".It Va BaNg"
-.It Ql Mailx-Command:
-The name of the command that generates the message, one of
-.Ql forward ,
-.Ql Lreply ,
-.Ql mail ,
-.Ql Reply ,
-.Ql reply ,
-.Ql resend .
-This pseudo header always exists.
-.
-.It Ql Mailx-Edited-Sender:
-.It Ql Mailx-Edited-Origin:
-Different to the RFC 5322 originator fields of the otherwise identical
-.Ql -Orig-
-series below these might take into account
-.Va reply-to-honour
-and
-.Va reply-to-swap-in .
-This sender field will however be identical to
-.Ql Mailx-Orig-Sender:
-unless the edited (replaced) originator field is unambiguous.
-.
-.It Ql Mailx-Orig-Sender:
-.It Ql Mailx-Orig-From:
-.It Ql Mailx-Orig-To:
-.It Ql Mailx-Orig-Cc:
-.It Ql Mailx-Orig-Bcc:
-The values of said headers of the original message which has been
-addressed by any of
-.Ic reply , forward , resend .
-The sender field is filled in according to what is described for
-.Va from .
-.
-.It Ql Mailx-Raw-To:
-.It Ql Mailx-Raw-Cc:
-.It Ql Mailx-Raw-Bcc:
-Represent the frozen initial state of these headers before any
-transformation
-.Pf ( Ic alias ,
-.Ic alternates ,
-.Va recipients-in-cc
-etc.) took place.
-.El
-.
-.
-.It Cm epoch
-The message date as seconds since the UNIX epoch (1970-01-01T00:00:00) via
-.Ql 210 .
-Error for an invalid date is
-.Ql 501 ,
-for using this command in
-.Sx "Compose mode"
-.Ql 505 .
-.Ic vexpr
-can be used to convert times, for example:
 .Bd -literal -offset indent
-dig cre 1 ^
-dig 1 epo
-if $^0 -eq 210
-  vex date-utc "$^1"
-en
-dig rem 1
-\*(OUdutc_year=2023 [..]
+~^header insert to The Bob <by@example.net>
+\*(OU210 To 1
+~^h show to
+\*(OU211 To
+\*(OUby@example.net 'The Bob <by@example.net>'
+
+~^^ h rem subject
+~:ec $^0,$^1,$^*
+\*(OU210,Subject,Subject
+~^^ h show subject
+~: ec $^0,$^1,$^*
+\*(OU501,Subject,Subject
+~^^ h i subject bla
+~: ec $^0,$^1,$^*
+\*(OU210,Subject,Subject 1
+~^ ^ h show subject
+~: ec $^0,$^1,$^*
+\*(OU212,Subject,Subject bla
 .Ed
-.
-.It Cm help , \&?
-Show a command abstract via
-.Ql 212 .
-.
-.It Cm version
-Print the protocol version via
-.Ql 210 .
-.El
 .
 .
 .Mx
@@ -10037,7 +10123,9 @@ cannot be overwritten.
 In
 .Sx "Compose mode"
 .Ic ~^
-offers a more flexible header management; also see
+and
+.Ic digmsg
+offer a more flexible header management; also see
 .Fl C .
 .Pp
 .Dl ? set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
@@ -12825,6 +12913,7 @@ and
 .Va smime-sign-digest .
 .
 .
+.\"{{{s-mime-sign-cert
 .Mx Va smime-sign-cert
 .It Va smime-sign-cert-USER@HOST , smime-sign-cert
 \*(OP Points to a file in PEM format.
@@ -12882,6 +12971,8 @@ To include intermediate certificates, use
 .Va smime-sign-include-certs .
 The possible password sources are documented in
 .Sx "URL syntax and credential lookup" .
+.\"}}}
+.
 .
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
@@ -12924,7 +13015,6 @@ More digests may \*(oPally be available through dynamic loading via
 this variable is ignored for very old (released before 2010)
 cryptographic libraries which do not offer the necessary interface:
 it will be logged if that happened.
-
 .
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
@@ -12940,7 +13030,6 @@ a local root certificate, over the intermediate certificates, down to the
 .Va smime-sign-cert .
 Even though top level certificates may also be included in the chain,
 they will not be used for the verification on the recipient's side.
-.
 .Pp
 For the purpose of the mechanisms involved here,
 .Ql USER@HOST
@@ -12955,13 +13044,13 @@ shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
 .Sx "URL syntax and credential lookup" .
 .
-.
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
 \*(OP\*(OB Use the authentication slots of
 .Va smtp-config .
 .
 .
+.\"{{{smtp-config
 .Mx Va smtp-config
 .It Va smtp-config-USER@HOST , smtp-config-HOST , smtp-config
 \*(OP When a SMTP based
@@ -13105,6 +13194,7 @@ and
 A popular slightly different variant of the later standardized
 .Cd oauthbearer .
 .El
+.\"}}}
 .
 .
 .Mx Va smtp-from
