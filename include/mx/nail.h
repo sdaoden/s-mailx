@@ -584,7 +584,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
    ok_v_charset_locale, /* {vip=1,nolopts=1,rdonly=1,nodel=1} */
    ok_v_charset_unknown_8bit, /* {vip=1,notempty=1} */
-   ok_v_cmd,
+   ok_v_cmd, /* {notempty=1} */
    ok_b_colour_disable,
    ok_b_colour_pager, /* {obsolete=1} */
    ok_v_contact_mail, /* {virt=VAL_CONTACT_MAIL} */
