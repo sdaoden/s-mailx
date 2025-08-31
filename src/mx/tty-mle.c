@@ -1561,6 +1561,10 @@ a_tty_vinuni(struct a_tty_line *tlp){ /* {{{ */
 
 	wc = '\0';
 
+#ifdef mx_HAVE_KEY_BINDINGS
+	if(a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD)
+		mx_termcap_cmdx(mx_TERMCAP_CMD_BD);
+#endif
 	if(!mx_termcap_cmdx(mx_TERMCAP_CMD_cr) || !mx_termcap_cmd(mx_TERMCAP_CMD_ce, 0, -1))
 		goto jleave;
 
@@ -1615,6 +1619,10 @@ jerr:
 
 	wc = S(wchar_t,i); /* XXX Ctext (ISO C wchar_t not necessarily Unicode */
 jleave:
+#ifdef mx_HAVE_KEY_BINDINGS
+	if(a_tty.tg_flags & a_TTY_FLAGS_BIND_BE_BD)
+		mx_termcap_cmdx(mx_TERMCAP_CMD_BE);
+#endif
 	tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY | (wc == '\0' ? a_TTY_VF_BELL : 0);
 
 	NYD2_OU;
