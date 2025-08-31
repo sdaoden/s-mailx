@@ -1561,6 +1561,7 @@ set noprompt # unset prompt for this early example
 if $features =% ,+filter-html-tagsoup,
   unmimetype text/html
   mimetype ?h text/html html htm
+  set cols=72
 else
   #set pipe-text/html='?* elinks -force-html -dump 1'
   set pipe-text/html='?* lynx -stdin -dump -force_html'
@@ -10059,6 +10060,12 @@ The default command for
 .Ic pipe .
 .
 .Mx
+.It Va cols
+A positive number used instead of
+.Ev COLUMNS
+at times if set (and representable).
+.
+.Mx
 .It Va colour-disable
 \*(BO\*(OP Disable usage of colours.
 Also see
@@ -14282,6 +14289,8 @@ be) determined once.
 (Normally the
 .Ev SHELL
 manages these variables, and unsets them for pipe specifications etc.)
+Also see
+.Va cols .
 .
 .Mx
 .It Ev DEAD

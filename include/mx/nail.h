@@ -578,6 +578,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_build_rest, /* {virt=VAL_BUILD_REST_ARRAY} */
 
    ok_v_COLUMNS, /* {notempty=1,posnum=1,env=1} */
+   ok_v_cols, /* {notempty=1,posnum=1} */
    /* Charset lowercase conversion handled via vip= */
    ok_v_charset_7bit, /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
    /* Unused without mx_HAVE_ICONV, we use n_var_oklook(CHARSET_8BIT_OKEY)! */
