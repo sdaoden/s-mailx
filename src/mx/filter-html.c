@@ -13,6 +13,8 @@
  *@ TODO   once the closing element is seen).  Then, after writing a newline,
  *@ TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
  *@ TODO Interlocking and non-well-formed data will break us down
+ *@ . Does not care for charset=""; we have the content-transfer-encoding,
+ *@   and otherwise assume HTML/XHTML/XML to be UTF-8.
  *
  * Copyright (c) 2015 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -59,25 +61,22 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-enum a_flthtml_limits{
-	a_FLTHTML_MINLEN = 10, /* Minimum line length (cannot really be smaller) */
-	a_FLTHTML_BRKSUB = 8 /* Start considering line break MAX - BRKSUB */
-};
-
 enum a_flthtml_flags{
-	a_FLTHTML_BQUOTE_MASK = 0xFFFFu,
-	a_FLTHTML_UTF8 = 1u<<16, /* Data is in UTF-8 */
-	a_FLTHTML_ERROR = 1u<<17, /* Hard error, bail as soon as possible */
-	a_FLTHTML_NOPUT = 1u<<18, /* (In a tag,) Don't generate output */
-	a_FLTHTML_IGN = 1u<<19, /* Ignore mode on */
-	a_FLTHTML_ANY = 1u<<20, /* Yet seen just any output */
-	a_FLTHTML_PRE = 1u<<21, /* In <pre>formatted mode */
-	a_FLTHTML_ENT = 1u<<22, /* Currently parsing an entity */
-	a_FLTHTML_BLANK = 1u<<23, /* Whitespace last */
-	a_FLTHTML_HREF = 1u<<24, /* External <a href=> was the last href seen */
+	a_FLTHTML_BQUOTE_MASK = 0xFFFFu, /* Quote recursion counter */
+	a_FLTHTML_DEFUNCT = 1u<<16, /* PSO_ENC_MBSTATE unsupported TODO */
+	a_FLTHTML_MBSEQ = 1u<<17, /* n_mb_cur_max>1 */
+	a_FLTHTML_UTF8 = 1u<<18, /* Data is in UTF-8 */
+	a_FLTHTML_ERROR = 1u<<19, /* Hard error, bail as soon as possible */
+	a_FLTHTML_NOPUT = 1u<<20, /* (In a tag,) Do not generate output */
+	a_FLTHTML_IGN = 1u<<21, /* Ignore mode on */
+	a_FLTHTML_ANY = 1u<<22, /* Yet seen just any output */
+	a_FLTHTML_PRE = 1u<<23, /* In <pre>formatted mode */
+	a_FLTHTML_ENT = 1u<<24, /* Currently parsing an entity */
+	a_FLTHTML_BLANK = 1u<<25, /* Whitespace last */
+	a_FLTHTML_HREF = 1u<<26, /* External <a href=> was the last href seen */
 
-	a_FLTHTML_NL_1 = 1u<<25, /* One \n seen */
-	a_FLTHTML_NL_2 = 2u<<25, /* We have produced an all empty line */
+	a_FLTHTML_NL_1 = 1u<<27, /* One \n seen */
+	a_FLTHTML_NL_2 = 2u<<27, /* We have produced an all empty line */
 	a_FLTHTML_NL_MASK = a_FLTHTML_NL_1 | a_FLTHTML_NL_2
 };
 
@@ -97,8 +96,7 @@ enum a_flthtml_special_actions{
 enum a_flthtml_entity_flags{
 	a_FLTHTML_EF_HAVE_UNI = 1u<<6, /* Have a Unicode replacement character */
 	a_FLTHTML_EF_HAVE_CSTR = 1u<<7, /* Have a string replacement */
-	/* We store the length of the entity name in the flags, too */
-	a_FLTHTML_EF_LENGTH_MASK = (1u<<6) - 1
+	a_FLTHTML_EF_LENGTH_MASK = (1u<<6) - 1 /* We store the length of the entity name in the flags, too */
 };
 
 struct mx_flthtml_href{
@@ -134,9 +132,12 @@ static struct mx_flthtml_tag const a_flthtml_tags[] = {
 # define a_X(S,A) {A, '\0', sizeof(S) -1, S}
 # define a_XC(S,C,A) {A, C, sizeof(S) -1, S}
 
-# if 0 /* This is treated very special (to avoid wasting space in .fht_tag) */
+# if 0
+	/* This is treated very special (to avoid wasting space in .fht_tag) */
 	a_X("BLOCKQUOTE", a_FLTHTML_SA_BQUOTE),
 			a_X("/BLOCKQUOTE", a_FLTHTML_SA_BQUOTE_END),
+	/* Ditto (we create a line block ) */
+	a_X("HR", a_FLTHTML_SA_NEEDSEP),
 # endif
 
 	a_X("P", a_FLTHTML_SA_NEEDSEP), a_X("/P", a_FLTHTML_SA_NEEDNL),
@@ -172,7 +173,8 @@ static struct mx_flthtml_tag const a_flthtml_tags[] = {
 # undef a_XC
 };
 
-/* Entity list, more or less HTML 4.0; TODO not binary searched */
+/* Entity list, more or less HTML 4.0; TODO not binary searched
+ * TODO: auto-extract (the rest) from https://www.w3.org/TR/xml-entity-names_bycodes.html? */
 static struct a_flthtml_ent const a_flthtml_ents[] = {
 # undef a_X
 # undef a_XU
@@ -332,9 +334,6 @@ static struct a_flthtml_ent const a_flthtml_ents[] = {
 static struct mx_flthtml *a_flthtml_dump_hrefs(struct mx_flthtml *self);
 static struct mx_flthtml *a_flthtml_dump(struct mx_flthtml *self);
 static struct mx_flthtml *a_flthtml_store(struct mx_flthtml *self, char c);
-# ifdef mx_HAVE_NATCH_CHAR
-static struct mx_flthtml *a_flthtml__sync_mbstuff(struct mx_flthtml *self);
-# endif
 
 /* Virtual output */
 static struct mx_flthtml *a_flthtml_nl(struct mx_flthtml *self);
@@ -401,13 +400,16 @@ jleave:
 
 static struct mx_flthtml *
 a_flthtml_dump(struct mx_flthtml *self){
-	u32 f, l;
-	char c, *cp;
+	char *cp, c;
+	u32 l, f;
 	NYD2_IN;
 
-	f = (self->fh_flags & ~a_FLTHTML_BLANK);
 	l = self->fh_len;
+	f = (self->fh_flags & ~a_FLTHTML_BLANK);
 	cp = self->fh_line;
+
+	ASSERT(!(f & a_FLTHTML_MBSEQ) || l == self->fh_mboff);
+
 	self->fh_mbwidth = self->fh_mboff = self->fh_last_ws = self->fh_len = 0;
 
 	for(c = '\0'; l > 0; --l){
@@ -439,24 +441,32 @@ jleave:
 
 static struct mx_flthtml *
 a_flthtml_store(struct mx_flthtml *self, char c){
-	u32 l, i;
+	u32 maxl, l, i;
+	boole isws, wasnws;
 	NYD2_IN;
-
 	ASSERT(c != '\n');
 
+	isws = wasnws = FAL0;
+	maxl = self->fh_lmax - 1; /* see reset(): fh_lmax/2>=4! */
 	l = self->fh_len;
-	if(UNLIKELY(l == 0) && (i = (self->fh_flags & a_FLTHTML_BQUOTE_MASK)) != 0 && self->fh_lmax > a_FLTHTML_MINLEN){
-		char xc;
+
+	/* Quote compress */
+	if(UNLIKELY(l == 0) && (i = (self->fh_flags & a_FLTHTML_BQUOTE_MASK)) != 0){
 		u32 len, j;
 		char const *ip;
+		char qc, xc, ipbuf[3];
 
+		qc = *ok_vlook(quote_chars);
 		ip = ok_vlook(indentprefix);
 		len = su_cs_len(ip);
-		if(len == 0 || len >= a_FLTHTML_MINLEN){
-			ip = " |"; /* XXX something from *quote-chars* */
-			len = sizeof(" |") -1;
+		if(len == 0 || len > maxl >> 1){
+			ipbuf[0] = ' ';
+			ipbuf[1] = qc;
+			ipbuf[2] = '\0';
+			ip = ipbuf;
+			len = 2;
 		}
-		self->fh_len = len;
+		self->fh_len = self->fh_mboff = len;
 
 		xc = '\0';
 		for(j = len; j-- != 0;){
@@ -469,10 +479,11 @@ a_flthtml_store(struct mx_flthtml *self, char c){
 			self->fh_line[j] = x;
 		}
 		if(xc == '\0')
-			xc = '|';
+			xc = qc;
 
-		while(--i > 0 && self->fh_len < self->fh_lmax - a_FLTHTML_BRKSUB)
-			self = a_flthtml_store(self, xc);
+		if(len + i <= maxl >> 1)
+			while(--i > 0)
+				self = a_flthtml_store(self, xc);
 
 		l = self->fh_len;
 	}
@@ -480,137 +491,183 @@ a_flthtml_store(struct mx_flthtml *self, char c){
 	self->fh_line[l] = (c == '\t' ? ' ' : c);
 	self->fh_len = ++l;
 
-	if(su_cs_is_space(c)){
-		if(c == '\t'){
-			i = 8 - ((l - 1) & 7); /* xxx magic tab width of 8 */
-			if(i > 0){
-				do
-					self = a_flthtml_store(self, ' ');
-				while(--i > 0);
-				goto jleave;
-			}
-		}
-		self->fh_last_ws = l;
-	}else if(/*c == '.' ||*/ c == ',' || c == ';' || c == '-')
-		self->fh_last_ws = l;
-
-	i = l;
-# ifdef mx_HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
-	if(n_mb_cur_max > 1){ /* XXX should mbrtowc() and THEN store, at least */
+#ifdef mx_HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
+	if(self->fh_flags & a_FLTHTML_MBSEQ){ /* XXX should mbrtowc() and THEN store, at least */
 		wchar_t wc;
 		int w, x;
 
-		if((x = mbtowc(&wc, self->fh_line + self->fh_mboff, l - self->fh_mboff)) > 0){
-			if((w = wcwidth(wc)) == -1 ||
-					/* Actively filter out L-TO-R and R-TO-R marks TODO ctext */
-					(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E)) ||
-					/* And some zero-width messes */
-					wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D) ||
-					/* Oh about the ISO C wide character interfaces, baby! */
-					(wc == 0xFEFF)){
-				self->fh_len -= x;
-				goto jleave;
-			}else if(iswspace(wc))
-				self->fh_last_ws = l;
-			self->fh_mboff += x;
-			i = (self->fh_mbwidth += w);
-		}else{
-			if(x < 0){
-				(void)mbtowc(&wc, NIL, n_mb_cur_max);
-				if(UCMP(32, l - self->fh_mboff, >=, n_mb_cur_max)){ /* XXX */
-					++self->fh_mboff;
-					++self->fh_mbwidth;
-				}
+		UNINIT(wasnws, (self->fh_last_ws != self->fh_mboff));
+
+		if((c == ' ' || c == '\t') && self->fh_mboff == l - 1){
+			isws = TRU1;
+			self->fh_mboff = l;
+			i = ++self->fh_mbwidth;
+			if(c == '\t'){
+				l = i;
+				goto jtab;
 			}
-			i = self->fh_mbwidth;
+			self->fh_last_ws = l;
+		}else{
+			if((x = mbtowc(&wc, &self->fh_line[self->fh_mboff], l - self->fh_mboff)) > 0){
+				if((w = wcwidth(wc)) == -1 ||
+						/* Actively filter out L-TO-R and R-TO-R marks TODO ctext */
+						(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E)) ||
+						/* And some zero-width messes */
+						wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D) ||
+						/* Oh about the ISO C wide character interfaces, baby! */
+						(wc == 0xFEFF)){
+					self->fh_len -= x;
+					self->fh_mboff = self->fh_len;
+					goto jleave;
+				}
+				self->fh_mboff += x;
+				ASSERT(self->fh_len == self->fh_mboff);
+
+				/* TODO To avoid buffer overflows we treat zero-width characters as of width=1.
+				 * TODO This could result in combiners etc to be split from their base character;
+				 * TODO with ctext unicode support we could *test* validity etc etc, or make the
+				 * TODO buffer dynamic instead */
+				if(w <= 0)
+					w = 1;
+				self->fh_mbwidth += w;
+
+				if(wc == '\t'){ /* xxx how this? */
+					isws = TRU1;
+					self->fh_last_ws = l;
+					wc = ' ';
+				}else if(iswspace(wc) || iswpunct(wc)){
+					isws = TRU1;
+					self->fh_last_ws = l;
+				}
+			}else if(x < 0){
+				(void)mbtowc(&wc, NIL, n_mb_cur_max);
+				if(UCMP(32, l - self->fh_mboff, >=, n_mb_cur_max)){
+					self->fh_line[self->fh_mboff] = '?';
+					self->fh_len = l = ++self->fh_mboff;
+					++self->fh_mbwidth;
+				}else
+					goto jleave;
+			}
 		}
+
+		i = self->fh_mbwidth;
+	}else
+#endif /* mx_HAVE_NATCH_CHAR */
+	{
+		wasnws = (self->fh_last_ws != l - 1);
+
+		if(UNLIKELY(c == '\t')){
+#ifdef mx_HAVE_NATCH_CHAR
+jtab:
+#endif
+			/* Good place to break a line!  (Even with trailing space) */
+			if(l >= maxl - (maxl >> 2)){
+#ifdef mx_HAVE_NATCH_CHAR
+				l = self->fh_len;
+#endif
+				isws = TRU1;
+				self->fh_last_ws = l;
+				goto jput;
+			}
+
+			i = su_ROUND_UP2(l + 1, 8) - l; /* xxx magic tab width of 8 */
+#ifdef mx_HAVE_NATCH_CHAR
+			l = self->fh_len;
+#endif
+			/* We already had written a SPC */
+			if(i > 1){
+				for(; i != 0; --i){
+					self = a_flthtml_store(self, ' ');
+					/* If line was broken, stop */
+					if(self->fh_len < l)
+						break;
+				}
+				goto jleave;
+			}
+		}
+
+#ifdef mx_HAVE_NATCH_CHAR
+		l = self->fh_len;
+#endif
+		if(su_cs_is_space(c) || su_cs_is_punct(c)){
+			isws = TRU1;
+			self->fh_last_ws = l;
+		}
+		i = l;
 	}
-# endif
 
 	/* Do we need to break the line? */
-	if(i >= self->fh_lmax - a_FLTHTML_BRKSUB){
-		u32 f, lim;
+	if(LIKELY(i <= maxl))
+		goto jleave;
+	ASSERT(l == self->fh_len);
+	ASSERT(self->fh_last_ws <= l);
 
-		/* Let's hope we saw a sane place to break this line! */
-		if(self->fh_last_ws >= (lim = self->fh_lmax >> 1)){
-jput:
-			i = self->fh_len = self->fh_last_ws;
-			self = a_flthtml_dump(self);
-			if((self->fh_len = (l -= i)) > 0){
+	/* Let's hope we saw a sane place to break this line! */
+	if(self->fh_last_ws != 0){
+		wasnws = FAL0;
+jput:		/* C99 */{
+			char *cp;
+
+			i = self->fh_last_ws;
+			ASSERT(l >= i);
+			ASSERT(i > 0);
+			l -= i;
+
+			if(l > 0 && (l > 1 || !isws)){
+				cp = su_LOFI_ALLOC(l);
+				su_mem_copy(cp, &self->fh_line[i], l);
 				self->fh_flags &= ~a_FLTHTML_NL_MASK;
-				su_mem_move(self->fh_line, self->fh_line + i, l);
-# ifdef mx_HAVE_NATCH_CHAR
-				a_flthtml__sync_mbstuff(self);
-# endif
-			}
-			goto jleave;
-		}
 
-		/* Any 7-bit characters? */
-		f = self->fh_flags;
-		for(i = l; i-- >= lim;)
-			if(su_cs_is_ascii((c = self->fh_line[i]))){
-				self->fh_last_ws = ++i;
-				goto jput;
-			}else if((f & a_FLTHTML_UTF8) && (S(u8,c) & 0xC0) != 0x80){
+				/* If we break within a word, mark the continuation */
+				if(wasnws)
+					self->fh_line[i++] = '\\';
+			}else
+				cp = NIL;
+
+			/* Do not dump ugly trailing SPCes -- ok despite actual *ttycharset* */
+			while(i > 0 && self->fh_line[i - 1] == ' ')
+				--i;
+
+			self->fh_len = self->fh_mboff = i;
+			self = a_flthtml_dump(self);
+			self->fh_len = self->fh_mboff = self->fh_mbwidth = 0;
+
+			if(cp != NIL){
+				for(i = 0; i < l; ++i)
+					self = a_flthtml_store(self, cp[i]);
+				su_LOFI_FREE(cp);
+			}
+		}
+		goto jleave;
+	}
+
+	/* We absolutely break the line! */
+	i = l;
+	if(self->fh_flags & a_FLTHTML_UTF8){
+		while(i-- > 1){
+			c = self->fh_line[i];
+			if((S(u8,c) & 0xC0) != 0x80){
+				wasnws = TRU1;
 				self->fh_last_ws = i;
 				goto jput;
 			}
+		}
 
-		/* Hard break necessary!  xxx really badly done */
-		if(l >= self->fh_lmax - 1)
-			self = a_flthtml_dump(self);
 	}
+#ifdef mx_HAVE_NATCH_CHAR
+	if(self->fh_mboff != self->fh_len){
+		ASSERT(self->fh_flags & a_FLTHTML_MBSEQ);
+		wasnws = TRU1;
+		self->fh_last_ws = self->fh_mboff;
+		goto jput;
+	}
+#endif
+	self = a_flthtml_dump(self);
 
 jleave:
 	NYD2_OU;
 	return self;
 }
-
-# ifdef mx_HAVE_NATCH_CHAR
-static struct mx_flthtml *
-a_flthtml__sync_mbstuff(struct mx_flthtml *self){
-	wchar_t wc;
-	int x;
-	char const *b;
-	u32 o, w, l;
-	NYD2_IN;
-
-	b = self->fh_line;
-	o = w = 0;
-	l = self->fh_len;
-
-	goto jumpin;
-	while(l > 0){
-		if((x = mbtowc(&wc, b, l)) == 0)
-			break;
-
-		if(x > 0){
-			b += x;
-			l -= x;
-			o += x;
-			if((x = wcwidth(wc)) == -1)
-				x = 1;
-			w += x;
-			continue;
-		}
-
-		/* Bad, skip over a single character.. XXX very bad indeed */
-		++b;
-		++o;
-		++w;
-		--l;
-jumpin:
-		(void)mbtowc(&wc, NIL, n_mb_cur_max);
-	}
-
-	self->fh_mboff = o;
-	self->fh_mbwidth = w;
-
-	NYD2_OU;
-	return self;
-}
-# endif /* mx_HAVE_NATCH_CHAR */
 
 static struct mx_flthtml *
 a_flthtml_nl(struct mx_flthtml *self){
@@ -674,7 +731,6 @@ a_flthtml_putc_premode(struct mx_flthtml *self, char c){
 	NYD2_IN;
 
 	if((f = self->fh_flags) & a_FLTHTML_ERROR){
-		;
 	}else if(c == '\n')
 		self = a_flthtml_nl_force(self);
 	else{
@@ -925,8 +981,8 @@ jput_as_is:
 				break;
 			case sizeof("hr") -1:
 				if(!isclosetag){
-					/* <hr>: create a separator line */
-					if(!su_cs_cmp_case_n(s, "hr", i) && self->fh_lmax > 4){
+					/* <hr>: create a separator line; see reset(): fh_lmax/2>=4! */
+					if(!su_cs_cmp_case_n(s, "hr", i)){
 						i = self->fh_lmax / 2;
 						i = MIN(i, sizeof(nobuf) -3);
 						nobuf[i] = '\0';
@@ -949,17 +1005,18 @@ jput_as_is:
 	case a_FLTHTML_SA_PRE_END:
 		f &= ~a_FLTHTML_PRE;
 		if(0){
-			/* FALLTHRU */
+			FALLTHRU
 	case a_FLTHTML_SA_PRE:
 			f |= a_FLTHTML_PRE;
 		}
 		self->fh_flags = f;
-		/* FALLTHRU */
 
+		FALLTHRU
 	case a_FLTHTML_SA_NEEDSEP:
 		if(!(self->fh_flags & a_FLTHTML_NL_2))
 			self = a_flthtml_nl(self);
-		/* FALLTHRU */
+
+		FALLTHRU
 	case a_FLTHTML_SA_NEEDNL:
 		if(!(f & a_FLTHTML_NL_1))
 			self = a_flthtml_nl(self);
@@ -1085,7 +1142,7 @@ a_flthtml_check_ent(struct mx_flthtml *self, char const *s, uz l){
 			nobuf[l] = '\0';
 			su_idec_uz_cp(&i, nobuf, i, NIL);
 			if(i <= 0x7F)
-				self = a_flthtml_putc(self, (char)i);
+				self = a_flthtml_putc(self, S(char,i));
 			else if(self->fh_flags & a_FLTHTML_UTF8){
 jputuni:
 				l = su_utf32_to_8(S(u32,i), nobuf);
@@ -1099,7 +1156,7 @@ jputuni:
 
 		f = self->fh_flags;
 
-		for(hfep = a_flthtml_ents; PCMP(hfep, <, a_flthtml_ents + NELEM(a_flthtml_ents)); ++hfep)
+		for(hfep = a_flthtml_ents; PCMP(hfep, <, &a_flthtml_ents[NELEM(a_flthtml_ents)]); ++hfep)
 			if(l == ((hf = hfep->fhe_flags) & a_FLTHTML_EF_LENGTH_MASK) && !su_cs_cmp_n(s, hfep->fhe_ent, l)){
 				if((hf & a_FLTHTML_EF_HAVE_UNI) && (f & a_FLTHTML_UTF8)){
 					i = hfep->fhe_uni;
@@ -1123,11 +1180,19 @@ static sz
 a_flthtml_add_data(struct mx_flthtml *self, char const *dat, uz len){
 	char c, *cp, *cp_max;
 	boole hot;
-	sz rv = 0;
+	sz rv;
 	NYD_IN;
 
+	rv = 0;
+
 	/* Final put request? */
-	if(dat == NIL){
+	if(UNLIKELY(dat == NIL)){
+		if(UNLIKELY(self->fh_flags & a_FLTHTML_DEFUNCT)){
+			cp = su_cs_pcopy(self->fh_line,
+				_("filter-html-tagsoup: disfunctional with stateful encodings, sorry (TODO)\n\n"));
+			self->fh_mboff = self->fh_len = P2UZ(cp - self->fh_line);
+		}
+
 		if(self->fh_len > 0 || self->fh_hrefs != NIL){
 			self = a_flthtml_dump(self);
 			if(self->fh_hrefs != NIL)
@@ -1142,7 +1207,7 @@ a_flthtml_add_data(struct mx_flthtml *self, char const *dat, uz len){
 		cp_max = self->fh_bmax;
 	else{
 		cp = self->fh_curr = self->fh_bdat = su_ALLOC(mx_LINESIZE);
-		cp_max = self->fh_bmax = cp + mx_LINESIZE -1; /* (Room for NUL!) */
+		cp_max = self->fh_bmax = &cp[mx_LINESIZE -1]; /* (Room for NUL!) */
 	}
 	hot = (cp != self->fh_bdat);
 
@@ -1150,8 +1215,9 @@ a_flthtml_add_data(struct mx_flthtml *self, char const *dat, uz len){
 		u32 f;
 
 		f = self->fh_flags;
-		if(f & a_FLTHTML_ERROR)
+		if(UNLIKELY(f & (a_FLTHTML_DEFUNCT | a_FLTHTML_ERROR)))
 			break;
+
 		c = *dat++;
 
 		/* Soup is really weird and scripts may contain almost anything (and newer CSS standards also cryptic):
@@ -1236,12 +1302,12 @@ jcp_reset:
 		case '\t':
 			if(!(f & a_FLTHTML_PRE))
 				c = ' ';
-			/* FALLTHRU */
+			FALLTHRU
 		default:
 jdo_c:
 			/* If not currently parsing a tag and bypassing normal output.. */
 			if(!(f & a_FLTHTML_NOPUT)){
-				if(su_cs_is_cntrl(c))
+				if(su_cs_is_cntrl(c) && c != '\t')
 					break;
 				if(c == '&'){
 					cp = self->fh_bdat;
@@ -1375,14 +1441,31 @@ mx_flthtml_reset(struct mx_flthtml *self, FILE *f){
 	su_mem_set(self, 0, sizeof *self);
 
 	if(f != NIL){
-		u32 sw;
+		char const *cp;
+		uz cols;
 
-		sw = MAX(a_FLTHTML_MINLEN, mx_termios_dimen.tiosd_width);
-		self->fh_line = su_ALLOC(S(uz,sw) * n_mb_cur_max +1);
-		self->fh_lmax = sw;
+		cols = mx_termios_dimen.tiosd_width;
+		if((cp = ok_vlook(cols)) != NIL){
+			su_idec_uz_cp(&cols, cp, 0, NIL);
+			if(cols > mx_termios_dimen.tiosd_width){
+				cols = mx_termios_dimen.tiosd_width;
+				cp = NIL;
+			}
+		}
+		/* For proper line quoting (see _store()), we *REQUIRE* LEN/2 >= 4!! */
+		cols = CLIP(cols, 3u+1u/* quote-prefix */ + 4u /* some data */, U16_MAX);
 
+		self->fh_lmax = S(u32,cols);
+		self->fh_line = su_ALLOC(cols * (n_mb_cur_max +1));
+
+		if(n_psonce & n_PSO_ENC_MBSTATE)
+			self->fh_flags |= a_FLTHTML_DEFUNCT;
+#ifdef mx_HAVE_NATCH_CHAR
+		if(n_mb_cur_max > 1)
+			self->fh_flags |= a_FLTHTML_MBSEQ;
+#endif
 		if(n_psonce & n_PSO_UNICODE) /* TODO not truly generic */
-			self->fh_flags = a_FLTHTML_UTF8;
+			self->fh_flags |= a_FLTHTML_UTF8;
 		self->fh_os = f;
 	}
 

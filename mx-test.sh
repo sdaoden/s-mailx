@@ -11377,14 +11377,14 @@ t_message_injections() { #{{{
 } #}}}
 
 t_quotes() { #{{{ Quoting (if not cmd_escapes related)
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	# (moved from t_reply(), keep cksums)
 	JOB_MSG_ID=3
 	t__x2_msg > ./.tmbox
 
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! -Sindentprefix=' >' ./.tmbox >./.tall 2>${E0}
+	<< '__EOT' $MAILX $ARGS -Smta=test://"$MBOX" -Rf -Sescape=! -Sindentprefix=' >' ./.tmbox >./.tall 2>$E0
 se indentprefix=" |" quote
 reply
 b1
@@ -11418,11 +11418,11 @@ b7
 __EOT
 	#}}}
 	ck_ex0 1-estat
-	${cat} ./.tall >> "${MBOX}"
-	cke0 1 - "${MBOX}" '385267528 3926'
+	$cat ./.tall >> "$MBOX"
+	cke0 1 - "$MBOX" '385267528 3926'
 
 	# quote-as-attachment, fullnames
-	</dev/null ${MAILX} ${ARGS} -Rf \
+	</dev/null $MAILX $ARGS -Rf \
 		-Sescape=! \
 		-S quote-as-attachment \
 		-Y reply -Y yb1 -Y !. \
@@ -11430,38 +11430,45 @@ __EOT
 		-Y 'reply;yb2' -Y !. \
 		-Y 'set quote-as-attachment fullnames' \
 		-Y ';reply;yb3' -Y !. \
-		./.tmbox >./.tall 2>${E0}
+		./.tmbox >./.tall 2>$E0
 	cke0 2 0 ./.tall '2061651232 2575'
 
 	# Moreover, quoting of several parts with all*
-	gpmX from 'ex1@am.ple' subject for-repl > ./.tmbox
-	ck 3 0 ./.tmbox '1958233015 670'
+	gpmX from 'ex1@am.ple' subject for-repl body 'knodel big ball' > ./.tmbox
+	ck 3 0 ./.tmbox '950738046 692'
 
-	</dev/null ${MAILX} ${ARGS} -Rf -S pipe-text/html=@ \
+	</dev/null $MAILX $ARGS -Rf -S pipe-text/html=@ \
 		-Sescape=! -Sindentprefix=' |' \
 		-Y 'set quote=allheaders' \
 		-Y reply -Y !. \
 		-Y 'set quote=allbodies' \
 		-Y reply -Y !. \
-		./.tmbox >./.tall 2>${E0}
-	cke0 4-nohtml - ./.tall '1213961219 1181'
+		./.tmbox >./.tall 2>$E0
+	cke0 4-nohtml - ./.tall '3329624541 1225'
 
 	if have_feat filter-html-tagsoup; then
-		</dev/null ${MAILX} ${ARGS} -Rf \
-			-Sescape=! -Sindentprefix=' |' \
-			-Y 'set quote=allheaders' \
-			-Y reply -Y !. \
-			-Y 'set quote=allbodies' \
-			-Y reply -Y !. \
-			./.tmbox >./.tall 2>${E0}
-		cke0 4-html - ./.tall '1698313020 1121'
+		xx(){
+			n=$1
+			ck=$2
+			shift 2
+			</dev/null $MAILX $ARGS -Rf "$@" \
+				-Sescape=! -Sindentprefix=' |' \
+				-Y 'set quote=allheaders' \
+				-Y reply -Y !. \
+				-Y 'set quote=allbodies' \
+				-Y reply -Y !. \
+				./.tmbox >./.tall 2>$E0
+			cke0 $n - ./.tall "$ck"
+		}
+		xx 4-html '3910351069 1165'
+		xx 4-html-cols '3956647540 1214' -Scols=13
 	else
-		t_echoskip '[!4-html:!FILTER_HTML_TAGSOUP]'
+		t_echoskip '[!4-html{,-cols}:!FILTER_HTML_TAGSOUP]'
 	fi
 
 	if have_feat filter-quote-fold; then
 		{ t__x2_msg; printf '   Few lead WS\n             Much lead WS\n'; } > ./.tmbox
-		</dev/null ${MAILX} ${ARGS} -Rf \
+		</dev/null $MAILX $ARGS -Rf \
 			-Sescape=! -Sindentprefix=' |' \
 			-Y 'set quote quote-fold' \
 			-Y reply -Y !. \
@@ -11481,13 +11488,13 @@ __EOT
 			-Y reply -Y !. \
 			-Y 'set quote quote-fold=10\ 5\ 6\ \ +' \
 			-Y reply -Y !. \
-			./.tmbox >./.tall 2>${E0}
+			./.tmbox >./.tall 2>$E0
 		cke0 5-fold - ./.tall '595108633 4781'
 	else
 		t_echoskip '[!5-fold:!FILTER_QUOTE_FOLD]'
 	fi
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_attachments() { #{{{
@@ -12149,18 +12156,18 @@ __EOT
 } #}}}
 
 t_cmd_escapes() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	echo 'included file' > ./t.txt
 	{ t__x1_msg && t__x2_msg && t__x3_msg &&
 		gpm from 'ex4@am.ple' sub sub4 &&
 		gpm from 'eximan <ex5@am.ple>' sub sub5 &&
-		gpmX from 'ex6@am.ple' sub sub6; } > ./t.mbox
-	ck 1 - ./t.mbox '911181609 2184'
+		gpmX from 'ex6@am.ple' sub sub6 body 'big kno del'; } > ./t.mbox
+	ck 1 - ./t.mbox '2263076467 2198'
 
 	# ~@ is tested with other attachment stuff, ~^ in compose_edits,digmsg,compose_hooks
 	#{{{
-	${cat} << '__EOT' > ./t2.in
+	$cat << '__EOT' > ./t2.in
 se Sign=SignVar sign=signvar DEAD=./t.txt forward-inject-head quote-inject-head
 headerpick type retain Subject
 headerpick forward retain Subject To from
@@ -12375,27 +12382,35 @@ works
 __EOT
 	#}}}
 
-	< t2.in ${MAILX} ${ARGS} -Rf -Sescape=! -Sindentprefix=' |' \
-		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
+	< t2.in $MAILX $ARGS -Rf -Sescape=! -Sindentprefix=' |' \
+		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>$EX
 	ck_ex0 2-estat
-	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '956737168 8609' '3575876476 49'
+	$cat ./t2-x >> t2-nohtml
+	ck 2-nohtml - ./t2-nohtml '1798962421 8672' '3575876476 49'
 	ck 3-nohtml - ./t3 '1327297557 4917'
 
 	if have_feat filter-html-tagsoup; then
 		> ./t3
-		< t2.in ${MAILX} ${ARGS} -Rf -Sescape=! -Sindentprefix=' |' \
-			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
-		ck_ex0 2-estat
-		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '1391219888 8549' '3575876476 49'
+		< t2.in $MAILX $ARGS -Rf -Sescape=! -Sindentprefix=' |' \
+			-Smta=test://t2-html ./t.mbox >./t2-x 2>$EX
+		ck_ex0 2-html-estat
+		$cat ./t2-x >> t2-html
+		ck 2-html - ./t2-html '2767187033 8612' '3575876476 49'
 		ck 3-html - ./t3 '1327297557 4917'
+
+		> ./t3
+		< t2.in $MAILX $ARGS -Rf -Sescape=! -Sindentprefix=' |' -Scols=8 \
+			-Smta=test://t2-html-cols ./t.mbox >./t2-x 2>$EX
+		ck_ex0 2-html-cols-estat
+		$cat ./t2-x >> t2-html-cols
+		ck 2-html-cols - ./t2-html-cols '289190699 8614' '3575876476 49'
+		ck 3-html-cols - ./t3 '1327297557 4917'
 	else
-		t_echoskip '[!{2,3}-html:!FILTER_HTML_TAGSOUP]'
+		t_echoskip '[!{2,3}-html{,-cols}:!FILTER_HTML_TAGSOUP]'
 	fi
 
 	#{{{ Simple return/error value after *expandaddr* failure test
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! -s testsub one@to.invalid >./t5 2>${EX}
+	<< '__EOT' $MAILX $ARGS -Smta=test://t4 -Sescape=! -s testsub one@to.invalid >./t5 2>$EX
 body
 !:ec --one
 !s This a new subject is
@@ -12422,7 +12437,7 @@ __EOT
 
 	# Modifiers and whitespace indulgence; first matches t_eval():1
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t7 -Sescape=! -Spwd="$(${pwd})" -s testsub one@to.invalid >./t6 2>${EX}
+	<< '__EOT' $MAILX $ARGS -Smta=test://t7 -Sescape=! -Spwd="$($pwd)" -s testsub one@to.invalid >./t6 2>$EX
 
 body
 !:set i=du
@@ -12453,18 +12468,18 @@ __EOT
 
 	# `~x'/`~q' ok
 	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' x |
-		${MAILX} ${ARGS} -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-1-dead > ./txq-1 2>${E0}
+		$MAILX $ARGS -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-1-dead > ./txq-1 2>$E0
 	cke0 xq-1 0 ./txq-1 '1870974669 6'
 	[ -f ./txq.mbox ]; ck_exx xq-1-mbox
 	[ -f ./txq-1-dead ]; ck_exx xq-1-dead
 	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' q |
-		${MAILX} ${ARGS} -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-2-dead > ./txq-2 2>${E0}
+		$MAILX $ARGS -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-2-dead > ./txq-2 2>$E0
 	cke0 xq-2 0 ./txq-2 '822937100 22'
 	[ -f ./txq.mbox ]; ck_exx xq-2-mbox
 	ck xq-2-dead - ./txq-2-dead '452609201 61'
 
 	#{{{ `exit'/`quit' honoured via ~:call
-	<< '__EOT' ${cat} > ./txitquit.in
+	<< '__EOT' $cat > ./txitquit.in
 define fun {
 	ec fun>; eval $cmd $*; ec fun<
 }
@@ -12479,24 +12494,24 @@ b
 ec g2
 __EOT
 	#}}}
-	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=exit -Scall=call > ./txitquit-1 2>${E0}
+	< ./txitquit.in $MAILX $ARGS -Smta=test://txitquit.mbox -Sescape=! -Scmd=exit -Scall=call > ./txitquit-1 2>$E0
 	cke0 xitquit-1 5 ./txitquit-1 '320480849 13'
 	[ -f ./txitquit.mbox ]; ck_exx xitquit-1-mbox
-	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=exit -Scall=xcall > ./txitquit-2 2>${E0}
+	< ./txitquit.in $MAILX $ARGS -Smta=test://txitquit.mbox -Sescape=! -Scmd=exit -Scall=xcall > ./txitquit-2 2>$E0
 	cke0 xitquit-2 5 ./txitquit-2 '320480849 13'
 	[ -f ./txitquit.mbox ]; ck_exx xitquit-2-mbox
-	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=call > ./txitquit-3 2>${E0}
+	< ./txitquit.in $MAILX $ARGS -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=call > ./txitquit-3 2>$E0
 	cke0 xitquit-3 5 ./txitquit-3 '320480849 13'
 	[ -f ./txitquit.mbox ]; ck_exx xitquit-3-mbox
-	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=xcall > ./txitquit-4 2>${E0}
+	< ./txitquit.in $MAILX $ARGS -Smta=test://txitquit.mbox -Sescape=! -Scmd=quit -Scall=xcall > ./txitquit-4 2>$E0
 	cke0 xitquit-4 5 ./txitquit-4 '320480849 13'
 	[ -f ./txitquit.mbox ]; ck_exx xitquit-4-mbox
 
-	< ./txitquit.in ${MAILX} ${ARGS} -Smta=test://txitquit.mbox -Sescape=! -Scmd=: -Scall=call > ./txitquit-5 2>${E0}
+	< ./txitquit.in $MAILX $ARGS -Smta=test://txitquit.mbox -Sescape=! -Scmd=: -Scall=call > ./txitquit-5 2>$E0
 	cke0 xitquit-5 0 ./txitquit-5 '1559643201 26'
 	ck xitquit-5-mbox - ./txitquit.mbox '823956539 99'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_compose_edits() { #{{{ XXX very rudimentary

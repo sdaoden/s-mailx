@@ -1760,7 +1760,7 @@ Classifying 7-bit clean data as
 .Va charset-7bit
 is a problem if the input character set
 .Pf ( Va ttycharset , ttycharset-detect )
-is a multibyte character set that is itself 7-bit clean.
+is a multi-byte character set that is itself 7-bit clean.
 For example, the Japanese character set ISO-2022-JP is, but is capable
 to encode the rich set of Japanese Kanji, Hiragana and Katakana
 characters: in order to notify recipients of this character set the mail
@@ -10064,6 +10064,7 @@ The default command for
 A positive number used instead of
 .Ev COLUMNS
 at times if set (and representable).
+(For example by the \*(oPal HTML-tagsoup-to-text converter.)
 .
 .Mx
 .It Va colour-disable
@@ -10920,9 +10921,10 @@ String used by the
 and
 .Ic ~R
 .Sx "COMMAND ESCAPES" ,
-and by the
+by the
 .Va quote
-option for message indentation.
+option for message indentation,
+and the \*(oPal HTML-tagsoup-to-text converter.
 The \*(PO default is tabulator
 .Ql \et .
 Also see
