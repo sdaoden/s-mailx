@@ -230,12 +230,12 @@ Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
 Content-Type: text/plain; charset=3Dutf-8
 Content-Transfer-Encoding: 8-bit
 
-Body
+big kno del
 
 Content-Type: text/html; charset=3Dutf-8
 Content-Transfer-Encoding: 8-bit
 
-Body
+big kno del
 
 Content-Type: text/troff
 
@@ -251,7 +251,7 @@ Subject: sub6
 
 
 
-Body
+big kno del
 52:M
 -------- Original Message --------
  |From reproducible_build Wed Oct  2 01:50:07 1996
@@ -268,12 +268,12 @@ Body
  |Content-Type: text/plain; charset=3Dutf-8
  |Content-Transfer-Encoding: 8-bit
 
- |Body
+ |big kno del
 
  |Content-Type: text/html; charset=3Dutf-8
  |Content-Transfer-Encoding: 8-bit
 
- |Body
+ |big kno del
 
  |Content-Type: text/troff
 
@@ -289,23 +289,23 @@ Body
 
 
 
- |Body
+ |big kno del
 54:Q
 ex6@am.ple wrote:
 
 
 
- |Body
+ |big kno del
 55:U
 -------- Original Message --------
 
 
- |Body
+ |big kno del
 56:u
 -------- Original Message --------
 
 
-Body
+big kno del
 Line escaping works
 
 1

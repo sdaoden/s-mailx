@@ -235,7 +235,8 @@ big kno del
 Content-Type: text/html; charset=3Dutf-8
 Content-Transfer-Encoding: 8-bit
 
-<HTML><BODY>big kno del<BR></BODY></HTML>
+big kno
+del
 
 Content-Type: text/troff
 
@@ -273,7 +274,8 @@ big kno del
  |Content-Type: text/html; charset=3Dutf-8
  |Content-Transfer-Encoding: 8-bit
 
- |<HTML><BODY>big kno del<BR></BODY></HTML>
+ |big kno
+ |del
 
  |Content-Type: text/troff
 

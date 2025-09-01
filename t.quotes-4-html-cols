@@ -26,7 +26,8 @@ ex1@am.ple wrote:
  |Content-Type: text/html; charset=utf-8
  |Content-Transfer-Encoding: 8-bit
 
- |knodel big ball
+ |knodel big
+ |ball
 
  |Content-Type: text/troff
 
@@ -51,7 +52,8 @@ ex1@am.ple wrote:
  |knodel big ball
 
 
- |knodel big ball
+ |knodel big
+ |ball
 
 
  |Golden Brown

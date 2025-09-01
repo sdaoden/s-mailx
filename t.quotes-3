@@ -13,13 +13,13 @@ Content-Type: multipart/alternative; boundary==BOUNDIN=
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8-bit
 
-Body
+knodel big ball
 
 --=BOUNDIN=
 Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: 8-bit
 
-<HTML><BODY>Body<BR></BODY></HTML>
+<HTML><BODY>knodel big ball<BR></BODY></HTML>
 
 --=BOUNDIN=--
 
