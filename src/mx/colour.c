@@ -1073,11 +1073,13 @@ mx_colour_pen_put(struct mx_colour_pen *self){
 		if(u.cmp != cep->ce_current){
 			if(cep->ce_current != NIL)
 				fwrite(a_colour_g.cg_reset.cp_dat.s, a_colour_g.cg_reset.cp_dat.l, 1, cep->ce_outfp);
-
-			if(u.cmp != NIL)
-				fwrite(self->cp_dat.s, self->cp_dat.l, 1, cep->ce_outfp);
-			cep->ce_current = u.cmp;
 		}
+
+		/* May had seen \n and thus console reset */
+		if(u.cmp != NIL)
+			fwrite(self->cp_dat.s, self->cp_dat.l, 1, cep->ce_outfp);
+
+		cep->ce_current = u.cmp;
 	}
 
 	NYD_OU;
