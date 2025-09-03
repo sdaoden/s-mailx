@@ -41,6 +41,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/icodec.h>
 #include <su/mem.h>
 #include <su/path.h>
 
@@ -58,8 +59,10 @@
 #include "mx/mime-enc.h"
 #include "mx/mime-parse.h"
 #include "mx/mime-type.h"
+#include "mx/names.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
+#include "mx/termios.h"
 #include "mx/time.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
@@ -88,9 +91,12 @@ static FILE *a_send_pipefile(enum sendaction action,
       FILE **qbuf, char const *tmpname, int term_infd);
 
 /* Call mime_write() as appropriate and adjust statistics */
-su_SINLINE sz _out(char const *buf, uz len, FILE *fp,
+SINLINE sz _out(char const *buf, uz len, FILE *fp,
       enum conversion convert, enum sendaction action, struct quoteflt *qf,
       u64 *stats, struct str *outrest, struct str *inrest);
+
+/* TODO v15 gross low effort hack to honour *cols* on encoded data :-( */
+static uz a_send_gross_cols_hack(char const *dp, uz dl, uz cols);
 
 /* Simply (!) print out a LF (via qf if not NIL) */
 static boole a_send_out_nl(FILE *fp, struct quoteflt *qf, u64 *stats);
@@ -490,6 +496,156 @@ jleave:
    return rbuf;
 }
 
+static uz
+a_send_gross_cols_hack(char const *dp, uz dl, uz cols){ /* {{{ */
+   /* This is total braindamage and does not even know wcwidth() */
+   char const *ccp;
+   uz odl, xcols, lastws, lastseq, i;
+   NYD2_IN;
+   ASSERT(dl > cols);
+   ASSERT(dp[dl] == '\0');
+
+   odl = dl;
+   xcols = cols - (cols >> 2);
+   /* We indent follow lines by a space, and must advance beyond! */
+   if(xcols < 2)
+      xcols = 2;
+
+   for(lastseq = lastws = 0, ccp = dp;;){
+      switch(*ccp){
+      case '\0':
+         goto jleave;
+      default:
+         ++ccp;
+         if(P2UZ(ccp - dp) >= cols){
+            if(lastseq != 0)
+               dl = lastseq;
+            else if(lastws != 0)
+               dl = lastws;
+            else
+               break;
+            goto jleave;
+         }
+         break;
+
+      case ',': case ';':
+         i = P2UZ(++ccp - dp);
+         if(i > xcols){
+            dl = i;
+            goto jleave;
+         }
+         if(i >= 2)
+            lastseq = i;
+         break;
+
+      case ' ': case '\t':
+         i = P2UZ(ccp - dp);
+         if(i >= xcols){
+            dl = (lastseq != 0) ? lastseq : i;
+            goto jleave;
+         }
+         if(i >= 2)
+            lastws = i;
+         ++ccp;
+         break;
+
+      case '(':
+         i = P2UZ(ccp - dp);
+         if(i > 2)
+            lastws = i - 1;
+         ccp = mx_name_skip_comment_cp(&ccp[1]);
+         i = P2UZ(ccp - dp);
+         if(i <= xcols){
+            lastws = i;
+            break;
+         }
+         if(i > cols && (lastseq | lastws) != 0){
+            dl = (lastseq != 0) ? lastseq : lastws;
+            goto jleave;
+         }
+         /*if(i <= cols){*/
+            dl = i;
+            goto jleave;
+         /*}*/
+         break;
+
+      case '"':
+         /* Cannot break (raw) quoted-string */
+         for(;;){
+            char c;
+
+            if((c = *++ccp) == '\0')
+               goto jleave;
+            if(c == '"')
+               break;
+            if(c == '\\' && ccp[1] != '\0')
+               ++ccp;
+         }
+         i = P2UZ(++ccp - dp);
+         if(i <= xcols){
+            lastws = i;
+            break;
+         }
+         if(i > cols && (lastseq | lastws) != 0){
+            dl = (lastseq != 0) ? lastseq : lastws;
+            goto jleave;
+         }
+         /*if(i <= cols){*/
+            dl = i;
+            goto jleave;
+         /*}*/
+         break;
+      }
+   }
+
+jleave:
+   /* Do not split RFC 2047 things, give up if we would */
+   if(dl != odl){
+      if(dl <= sizeof("=?A?Q?B?=") -1){
+         /* Beware of fault conversion! */
+         if(su_cs_find_n(dp, "=?", dl) != NIL)
+            dl = odl;
+      }else{
+         char const *maxp;
+
+         maxp = &dp[dl];
+
+         for(ccp = dp;;){
+            i = P2UZ(maxp - ccp);
+            if(i == 0)
+               break;
+            ccp = su_cs_find_n(ccp, "=?", i);
+            if(ccp == NIL)
+               break;
+
+            if(P2UZ(maxp - ccp) <= sizeof("=?A?Q?B?=") -1)
+               break;
+
+            ccp = &ccp[2];
+            while(ccp < maxp && *ccp != '?')
+               ++ccp;
+            if(ccp >= &maxp[-4] || ccp[2] != '?'){
+               dl = odl;
+               break;
+            }
+            ccp += 3;
+            while(ccp < maxp && *ccp != '?')
+               ++ccp;
+            if(ccp >= &maxp[-1] || ccp[1] != '='){
+               dl = odl;
+               break;
+            }
+            ccp += 2;
+            if(ccp == maxp)
+               break;
+         }
+      }
+   }
+
+   NYD2_OU;
+   return dl;
+} /* }}} */
+
 static boole
 a_send_out_nl(FILE *fp, struct quoteflt *qf, u64 *stats){
    boole rv;
@@ -524,6 +680,7 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
    siglongjmp(__sendp_actjmp, 1);
 }
 
+/* sendpart() TODO MONSTER! {{{ */
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct mx_ignore const *doitp, struct quoteflt *qf,
@@ -536,27 +693,29 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       a_F_STAT = 1u<<0,
       a_F_XSTAT = 1u<<1,
       a_F_RICH = 1u<<2,
+      a_F_RICH_COLS = 1u<<3,
 
-      a_F_HANY = 1u<<3,
-      a_F_HIGN = 1u<<4,
+      a_F_HANY = 1u<<4,
+      a_F_HIGN = 1u<<5,
 
-      a_F_HORDER = 1u<<5,
-      a_F_HORDER_WORK = 1u<<6,
+      a_F_HORDER = 1u<<6,
+      a_F_HORDER_WORK = 1u<<7,
 
-      a_F_822 = 1u<<7
+      a_F_822 = 1u<<16
    };
 
    struct mx_mime_type_handler mth_stack, *volatile mthp;
    struct str outrest, inrest;
+   struct n_string hl, *hlp;
    enum sendaction volatile oaction;
    char *cp;
    int c;
    struct mimepart *volatile np;
    enum conversion volatile convert;
-   uz cnt, linelen;
+   uz cnt, cols, linelen;
    int volatile term_infd;
    struct mx_hdrorder *hdrorder;
-   u8 flags;
+   u32 flags;
    FILE *volatile pbuf, *volatile qbuf, *origobuf, *volatile ibuf;
    char const *volatile tmpname;
    n_sighdl_t volatile oldpipe;
@@ -570,7 +729,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    flags = a_F_NONE;
    UNINIT(hdrorder, NIL);
    UNINIT(term_infd, 0);
-   UNINIT(cnt, 0);
+
+   hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
 
    quoteflt_reset(qf, obuf);
 
@@ -580,12 +740,22 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    }
 
    cnt = ip->m_size;
+   cols = 0;
 
    if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
          action == SEND_TODISP_PARTS ||
          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
          action == SEND_TOSRCH){
       flags |= a_F_RICH;
+      if(action != SEND_TOSRCH){
+         tmpname = ok_vlook(cols);
+         if(tmpname != NIL){
+            su_idec_uz_cp(&cols, tmpname, 0, NIL);
+            tmpname = NIL;
+            cols = MIN(cols, mx_termios_dimen.tiosd_width);
+            flags |= a_F_RICH_COLS;
+         }
+      }
 
       if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level != 0){
          a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
@@ -633,12 +803,11 @@ jhdr_redo:
 
    /* Work the headers */
    /* C99 */{
-   struct n_string hl, *hlp;
    uz lineno;
    boole hstop;
 
-   hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
    /* Reserve three lines, still not enough for references and DKIM etc. */
+   hlp = n_string_trunc(hlp, 0);
    hlp = n_string_reserve(hlp, MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
    lineno = 0;
 
@@ -716,7 +885,7 @@ jhdrput:
          goto jhdrtrunc;
 
       /* XXX v15 we yet always require "lines" for anything */
-      if(hlp->s_len > 0 && hlp->s_dat[hlp->s_len - 1] != '\n')
+      if(/*hlp->s_len > 0 &&*/ hlp->s_dat[hlp->s_len - 1] != '\n')
          hlp = n_string_push_c(hlp, '\n');
 
       /* Temporily split header field and body */
@@ -766,16 +935,63 @@ jhdrput:
       /* }}} */
 
       /* Dump it (unite field and body first) */
+      /* C99 */{
 #ifdef mx_HAVE_COLOUR
-      if(mx_COLOUR_IS_ACTIVE())
-         mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
+         struct mx_colour_pen *cpp;
+
+         cpp = mx_colour_pen_create(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
 #endif
-      *cp = ':';
-      _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NIL,NIL);
+         *cp = ':';
+
+         for(cp = n_string_cp(hlp), lcnt = hlp->s_len;;){
+            uz xcnt;
+
+            xcnt = lcnt;
+
+            /* TODO *cols* should NOT be honoured in here, since we walk on raw
+             * TODO header content, instead of decoded data; that in turn is
+             * TODO done in mx_mime_display_from_header() but which gets called
+             * TODO on snippets via _out(); this is all v15; for now: only WS.
+             * TODO (v15 actually it should be a fit-in-*cols* filter) */
+            if(UNLIKELY((flags & a_F_RICH_COLS) && lcnt > cols))
+               xcnt = a_send_gross_cols_hack(cp, lcnt, cols);
+
 #ifdef mx_HAVE_COLOUR
-      if(mx_COLOUR_IS_ACTIVE())
+            mx_colour_pen_put(cpp);
+#endif
+            _out(cp, xcnt, obuf, convert, action, qf, stats, NIL,NIL);
+
+            if(!(flags & a_F_RICH_COLS))
+               break;
+
+            lcnt -= xcnt;
+            if(lcnt == 0)
+               break;
+
+            /* MUST push this \n through normal quote filter! */
+            /*a_send_out_nl(obuf, qf, stats);*/
+            _out("\n", 1, obuf, convert, action, qf, stats, NIL,NIL);
+
+            cp += xcnt;
+            while(su_cs_is_space(*cp)){
+               --lcnt;
+               ++cp;
+            }
+
+            if(lcnt == 0)
+               break;
+
+            /* Prepare follow line */
+            if(lcnt != 0){
+               /* (Much) More than 1 byte available */
+               *--cp = ' ';
+               ++lcnt;
+            }
+         }
+#ifdef mx_HAVE_COLOUR
          mx_colour_reset();
 #endif
+      }
       flags |= a_F_HANY;
 
 jhdrtrunc:
@@ -1553,9 +1769,11 @@ jend:
 #endif
 
 jleave:
+   /*n_string_gut(hlp);*/
+
    NYD_OU;
    return rv;
-}
+} /* }}} */
 
 static boole
 _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,

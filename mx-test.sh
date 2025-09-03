@@ -11461,7 +11461,7 @@ __EOT
 			cke0 $n - ./.tall "$ck"
 		}
 		xx 4-html '3910351069 1165'
-		xx 4-html-cols '3956647540 1214' -Scols=13
+		xx 4-html-cols '1601514628 1226' -Scols=13
 	else
 		t_echoskip '[!4-html{,-cols}:!FILTER_HTML_TAGSOUP]'
 	fi
@@ -12399,12 +12399,12 @@ __EOT
 		ck 3-html - ./t3 '1327297557 4917'
 
 		> ./t3
-		< t2.in $MAILX $ARGS -Rf -Sescape=! -Sindentprefix=' |' -Scols=8 \
+		< t2.in $MAILX $ARGS -Rf -Sescape=! -Sindentprefix=' |' -Scols=11 \
 			-Smta=test://t2-html-cols ./t.mbox >./t2-x 2>$EX
 		ck_ex0 2-html-cols-estat
 		$cat ./t2-x >> t2-html-cols
-		ck 2-html-cols - ./t2-html-cols '289190699 8614' '3575876476 49'
-		ck 3-html-cols - ./t3 '1327297557 4917'
+		ck 2-html-cols - ./t2-html-cols '1636985055 8928' '3575876476 49'
+		ck 3-html-cols - ./t3 '1585159009 5147'
 	else
 		t_echoskip '[!{2,3}-html{,-cols}:!FILTER_HTML_TAGSOUP]'
 	fi
@@ -15092,12 +15092,12 @@ __EOT
 	#}}}
 	ck 1 0 ./t1 '117502109 395' '4266714504 108'
 
-	#{{{
-	t__x1_msg > ./t2.in
+	t__x1_msg > ./tx.in
 
+	#{{{
 	<< '__EOT' $MAILX $ARGS -Smta=test://t2 -Sescape=! > $EX 2>&1
 commanda x ec '"$!/$?/$^ERRNAME"'
-Fi ./t2.in
+Fi ./tx.in
 headerp type retain from to cc subject message-id date
 se quote=headers
 r
@@ -15166,6 +15166,22 @@ forward a@b
 __EOT
 	#}}}
 	ck 2 0 ./t2 '3353868925 12488' '2486761787 546'
+
+	#{{{
+	<< '__EOT' $MAILX $ARGS > ./t3 2>$E0
+commanda x ec '"$!/$?/$^ERRNAME"'
+Fi ./tx.in
+headero subject date cc to
+t
+se cols=25
+t
+se cols=10
+t
+se cols=2
+t
+__EOT
+	#}}}
+	cke0 3 0 ./t3 '2517065012 2085'
 
 	t_epilog "$@"
 } #}}}
