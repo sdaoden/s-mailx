@@ -23,64 +23,141 @@ signvar
 included file
 12: ~F
 =46rom neverneverland  Sun Jul 23 13:47:25 2017
-Subject: Bugstop: five miles out 2
-Reply-To: mister originator2 <mr2@originator>
-From: mister originator2 <mr2@originator>
-To: bugstop-commit@five.miles.out
-Cc: is2@a.list
-In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
-Date: Wed, 19 Jul 2017 09:23:57 -0400
-Message-Id: <20170719132257.766AF781267-2@originator>
+Subject:
+ Bugstop:
+ five
+ miles out
+ 2
+Reply-To:
+ mister
+ originator2
+ <mr2@originator>
+From:
+ mister
+ originator2
+ <mr2@originator>
+To:
+ bugstop-commit@five.miles.out
+Cc:
+ is2@a.list
+In-reply-to:
+ <20170719111113.bkcMz%laber2@backe.eu>
+Date: Wed,
+ 19 Jul
+ 2017
+ 09:23:57
+ -0400
+Message-Id:
+ <20170719132257.766AF781267-2@originator>
 Status: RO
 
 That's appalling, II.
 
 13: ~F 1 3
 =46rom neverneverland  Sun Jul 23 13:46:25 2017
-Subject: Bugstop: five miles out 1
-Reply-To: mister originator1 <mr1@originator>
-From: mister originator1 <mr1@originator>
-To: bugstop-commit@five.miles.out
-Cc: is1@a.list
-In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
-Date: Wed, 19 Jul 2017 09:22:57 -0400
-Message-Id: <20170719132257.766AF781267-1@originator>
-Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+Subject:
+ Bugstop:
+ five
+ miles out
+ 1
+Reply-To:
+ mister
+ originator1
+ <mr1@originator>
+From:
+ mister
+ originator1
+ <mr1@originator>
+To:
+ bugstop-commit@five.miles.out
+Cc:
+ is1@a.list
+In-reply-to:
+ <20170719111113.bkcMz%laber1@backe.eu>
+Date: Wed,
+ 19 Jul
+ 2017
+ 09:22:57
+ -0400
+Message-Id:
+ <20170719132257.766AF781267-1@originator>
+Mail-Followup-To:
+ bugstop@five.miles.out,
+ laber@backe.eu,
+ is@a.list
 Status: RO
 
 That's appalling, I.
 
 =46rom neverneverland  Sun Jul 23 13:48:25 2017
-Subject: Bugstop: five miles out 3
-Reply-To: mister originator3 <mr3@originator>
-From: mister originator3 <mr3@originator>
-To: bugstop-commit@five.miles.out
-Cc: is3@a.list
-In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
-Date: Wed, 19 Jul 2017 09:24:57 -0400
-Message-Id: <20170719132257.766AF781267-3@originator>
+Subject:
+ Bugstop:
+ five
+ miles out
+ 3
+Reply-To:
+ mister
+ originator3
+ <mr3@originator>
+From:
+ mister
+ originator3
+ <mr3@originator>
+To:
+ bugstop-commit@five.miles.out
+Cc:
+ is3@a.list
+In-reply-to:
+ <20170719111113.bkcMz%laber3@backe.eu>
+Date: Wed,
+ 19 Jul
+ 2017
+ 09:24:57
+ -0400
+Message-Id:
+ <20170719132257.766AF781267-3@originator>
 Status: RO
 
 That's appalling, III.
 
 14: ~f (headerpick: subject)
-Subject: Bugstop: five miles out 2
+Subject:
+ Bugstop:
+ five
+ miles out
+ 2
 
 That's appalling, II.
 
 14.1: ~f (!posix: injections; headerpick: subject to)
 -------- Original Message --------
-Subject: Bugstop: five miles out 2
-From: mister originator2 <mr2@originator>
-To: bugstop-commit@five.miles.out
+Subject:
+ Bugstop:
+ five
+ miles out
+ 2
+From:
+ mister
+ originator2
+ <mr2@originator>
+To:
+ bugstop-commit@five.miles.out
 
 That's appalling, II.
 
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 -------- Original Message --------
-Subject: Bugstop: five miles out 3
-From: mister originator3 <mr3@originator>
-To: bugstop-commit@five.miles.out
+Subject:
+ Bugstop:
+ five
+ miles out
+ 3
+From:
+ mister
+ originator3
+ <mr3@originator>
+To:
+ bugstop-commit@five.miles.out
 
 That's appalling, III.
 
@@ -88,15 +165,27 @@ That's appalling, III.
 names)
 TODO ~f etc do not honour fullnames!
 -------- Original Message --------
-Subject: Bugstop: five miles out 1
-From: mister originator1 <mr1@originator>
-To: bugstop-commit@five.miles.out
+Subject:
+ Bugstop:
+ five
+ miles out
+ 1
+From:
+ mister
+ originator1
+ <mr1@originator>
+To:
+ bugstop-commit@five.miles.out
 
 That's appalling, I.
 
 15: ~f 1
 -------- Original Message --------
-Subject: Bugstop: five miles out 1
+Subject:
+ Bugstop:
+ five
+ miles out
+ 1
 
 That's appalling, I.
 
@@ -106,14 +195,32 @@ SignVarSignVar
 18: ~M
 -------- Original Message --------
  |From neverneverland  Sun Jul 23 13:47:25 2017
- |Subject: Bugstop: five miles out 2
- |Reply-To: mister originator2 <mr2@originator>
- |From: mister originator2 <mr2@originator>
- |To: bugstop-commit@five.miles.out
- |Cc: is2@a.list
- |In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
- |Date: Wed, 19 Jul 2017 09:23:57 -0400
- |Message-Id: <20170719132257.766AF781267-2@originator>
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 2
+ |Reply-To:
+ | mister
+ | originator2
+ | <mr2@originator>
+ |From:
+ | mister
+ | originator2
+ | <mr2@originator>
+ |To:
+ | bugstop-commit@five.miles.out
+ |Cc:
+ | is2@a.list
+ |In-reply-to:
+ | <20170719111113.bkcMz%laber2@backe.eu>
+ |Date: Wed,
+ | 19 Jul
+ | 2017
+ | 09:23:57
+ | -0400
+ |Message-Id:
+ | <20170719132257.766AF781267-2@originator>
  |Status: RO
 
  |That's appalling, II.
@@ -121,28 +228,57 @@ SignVarSignVar
 19: ~M 1
 -------- Original Message --------
  |From neverneverland  Sun Jul 23 13:46:25 2017
- |Subject: Bugstop: five miles out 1
- |Reply-To: mister originator1 <mr1@originator>
- |From: mister originator1 <mr1@originator>
- |To: bugstop-commit@five.miles.out
- |Cc: is1@a.list
- |In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
- |Date: Wed, 19 Jul 2017 09:22:57 -0400
- |Message-Id: <20170719132257.766AF781267-1@originator>
- |Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 1
+ |Reply-To:
+ | mister
+ | originator1
+ | <mr1@originator>
+ |From:
+ | mister
+ | originator1
+ | <mr1@originator>
+ |To:
+ | bugstop-commit@five.miles.out
+ |Cc:
+ | is1@a.list
+ |In-reply-to:
+ | <20170719111113.bkcMz%laber1@backe.eu>
+ |Date: Wed,
+ | 19 Jul
+ | 2017
+ | 09:22:57
+ | -0400
+ |Message-Id:
+ | <20170719132257.766AF781267-1@originator>
+ |Mail-Followup-To:
+ | bugstop@five.miles.out,
+ | laber@backe.eu,
+ | is@a.list
  |Status: RO
 
  |That's appalling, I.
  |
 20: ~m
 -------- Original Message --------
- |Subject: Bugstop: five miles out 2
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 2
 
  |That's appalling, II.
  |
 21: ~m 3
 -------- Original Message --------
- |Subject: Bugstop: five miles out 3
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 3
 
  |That's appalling, III.
  |
@@ -217,38 +353,59 @@ and i ~w rite this out to ./t3
 50:F
 -------- Original Message --------
 =46rom reproducible_build Wed Oct  2 01:50:07 1996
-Date: Wed, 02 Oct 1996 01:50:07 +0000
-From: ex6@am.ple
-Subject: sub6
-MIME-Version: 1.0
-Message-ID: <20200204225307.FaKeD%bo@oo-2>
-Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
+Date: Wed,
+ 02 Oct
+ 1996
+ 01:50:07
+ +0000
+From:
+ ex6@am.ple
+Subject:
+ sub6
+MIME-Version:
+ 1.0
+Message-ID:
+ <20200204225307.FaKeD%bo@oo-2>
+Content-Type:
+ multipart/mixed;
+ boundary=3D"=3DBOUNDOUT=3D"
 Status: R
 
-Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
+Content-Type:
+ multipart/alternative;
+ boundary=3D=3DBOUNDIN=3D
 
-Content-Type: text/plain; charset=3Dutf-8
-Content-Transfer-Encoding: 8-bit
+Content-Type:
+ text/plain;
+ charset=3Dutf-8
+Content-Transfer-Encoding:
+ 8-bit
 
 big kno del
 
-Content-Type: text/html; charset=3Dutf-8
-Content-Transfer-Encoding: 8-bit
+Content-Type:
+ text/html;
+ charset=3Dutf-8
+Content-Transfer-Encoding:
+ 8-bit
 
 big kno
 del
 
-Content-Type: text/troff
+Content-Type:
+ text/troff
 
 Golden Brown
 
-Content-Type: text/x-uuencode
+Content-Type:
+ text/x-uuencode
 
 Aprendimos a quererte
 
 51:f
 -------- Original Message --------
-Subject: sub6
+Subject:
+ sub6
 
 
 
@@ -256,38 +413,59 @@ big kno del
 52:M
 -------- Original Message --------
  |From reproducible_build Wed Oct  2 01:50:07 1996
- |Date: Wed, 02 Oct 1996 01:50:07 +0000
- |From: ex6@am.ple
- |Subject: sub6
- |MIME-Version: 1.0
- |Message-ID: <20200204225307.FaKeD%bo@oo-2>
- |Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
+ |Date: Wed,
+ | 02 Oct
+ | 1996
+ | 01:50:07
+ | +0000
+ |From:
+ | ex6@am.ple
+ |Subject:
+ | sub6
+ |MIME-Version:
+ | 1.0
+ |Message-ID:
+ | <20200204225307.FaKeD%bo@oo-2>
+ |Content-Type:
+ | multipart/mixed;
+ | boundary=3D"=3DBOUNDOUT=3D"
  |Status: R
 
- |Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
+ |Content-Type:
+ | multipart/alternative;
+ | boundary=3D=3DBOUNDIN=3D
 
- |Content-Type: text/plain; charset=3Dutf-8
- |Content-Transfer-Encoding: 8-bit
+ |Content-Type:
+ | text/plain;
+ | charset=3Dutf-8
+ |Content-Transfer-Encoding:
+ | 8-bit
 
  |big kno del
 
- |Content-Type: text/html; charset=3Dutf-8
- |Content-Transfer-Encoding: 8-bit
+ |Content-Type:
+ | text/html;
+ | charset=3Dutf-8
+ |Content-Transfer-Encoding:
+ | 8-bit
 
  |big kno
  |del
 
- |Content-Type: text/troff
+ |Content-Type:
+ | text/troff
 
  |Golden Brown
 
- |Content-Type: text/x-uuencode
+ |Content-Type:
+ | text/x-uuencode
 
  |Aprendimos a quererte
 
 53:m
 -------- Original Message --------
- |Subject: sub6
+ |Subject:
+ | sub6
 
 
 
@@ -390,7 +568,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./t3 202/4917
+./t3 338/5147
 i ~w:0/NONE bang-data<>
 shell command output
 shell:0/NONE bang-data<echo shell command output>

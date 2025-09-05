@@ -10,79 +10,168 @@ signvar
 included file
 12: ~F
 From neverneverland  Sun Jul 23 13:47:25 2017
-Subject: Bugstop: five miles out 2
-Reply-To: mister originator2 <mr2@originator>
-From: mister originator2 <mr2@originator>
-To: bugstop-commit@five.miles.out
-Cc: is2@a.list
-In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
-Date: Wed, 19 Jul 2017 09:23:57 -0400
-Message-Id: <20170719132257.766AF781267-2@originator>
+Subject:
+ Bugstop:
+ five
+ miles out
+ 2
+Reply-To:
+ mister
+ originator2
+ <mr2@originator>
+From:
+ mister
+ originator2
+ <mr2@originator>
+To:
+ bugstop-commit@five.miles.out
+Cc:
+ is2@a.list
+In-reply-to:
+ <20170719111113.bkcMz%laber2@backe.eu>
+Date: Wed,
+ 19 Jul
+ 2017
+ 09:23:57
+ -0400
+Message-Id:
+ <20170719132257.766AF781267-2@originator>
 Status: RO
 
 That's appalling, II.
 
 13: ~F 1 3
 From neverneverland  Sun Jul 23 13:46:25 2017
-Subject: Bugstop: five miles out 1
-Reply-To: mister originator1 <mr1@originator>
-From: mister originator1 <mr1@originator>
-To: bugstop-commit@five.miles.out
-Cc: is1@a.list
-In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
-Date: Wed, 19 Jul 2017 09:22:57 -0400
-Message-Id: <20170719132257.766AF781267-1@originator>
-Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+Subject:
+ Bugstop:
+ five
+ miles out
+ 1
+Reply-To:
+ mister
+ originator1
+ <mr1@originator>
+From:
+ mister
+ originator1
+ <mr1@originator>
+To:
+ bugstop-commit@five.miles.out
+Cc:
+ is1@a.list
+In-reply-to:
+ <20170719111113.bkcMz%laber1@backe.eu>
+Date: Wed,
+ 19 Jul
+ 2017
+ 09:22:57
+ -0400
+Message-Id:
+ <20170719132257.766AF781267-1@originator>
+Mail-Followup-To:
+ bugstop@five.miles.out,
+ laber@backe.eu,
+ is@a.list
 Status: RO
 
 That's appalling, I.
 
 From neverneverland  Sun Jul 23 13:48:25 2017
-Subject: Bugstop: five miles out 3
-Reply-To: mister originator3 <mr3@originator>
-From: mister originator3 <mr3@originator>
-To: bugstop-commit@five.miles.out
-Cc: is3@a.list
-In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
-Date: Wed, 19 Jul 2017 09:24:57 -0400
-Message-Id: <20170719132257.766AF781267-3@originator>
+Subject:
+ Bugstop:
+ five
+ miles out
+ 3
+Reply-To:
+ mister
+ originator3
+ <mr3@originator>
+From:
+ mister
+ originator3
+ <mr3@originator>
+To:
+ bugstop-commit@five.miles.out
+Cc:
+ is3@a.list
+In-reply-to:
+ <20170719111113.bkcMz%laber3@backe.eu>
+Date: Wed,
+ 19 Jul
+ 2017
+ 09:24:57
+ -0400
+Message-Id:
+ <20170719132257.766AF781267-3@originator>
 Status: RO
 
 That's appalling, III.
 
 14: ~f (headerpick: subject)
-Subject: Bugstop: five miles out 2
+Subject:
+ Bugstop:
+ five
+ miles out
+ 2
 
 That's appalling, II.
 
 14.1: ~f (!posix: injections; headerpick: subject to)
 -------- Original Message --------
-Subject: Bugstop: five miles out 2
-From: mister originator2 <mr2@originator>
-To: bugstop-commit@five.miles.out
+Subject:
+ Bugstop:
+ five
+ miles out
+ 2
+From:
+ mister
+ originator2
+ <mr2@originator>
+To:
+ bugstop-commit@five.miles.out
 
 That's appalling, II.
 
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
 -------- Original Message --------
-Subject: Bugstop: five miles out 3
-From: mister originator3 <mr3@originator>
-To: bugstop-commit@five.miles.out
+Subject:
+ Bugstop:
+ five
+ miles out
+ 3
+From:
+ mister
+ originator3
+ <mr3@originator>
+To:
+ bugstop-commit@five.miles.out
 
 That's appalling, III.
 
 14.3: ~f (!posix: headerpick: subject to from; forward-add-cc adds mr1 fullnames)
 TODO ~f etc do not honour fullnames!
 -------- Original Message --------
-Subject: Bugstop: five miles out 1
-From: mister originator1 <mr1@originator>
-To: bugstop-commit@five.miles.out
+Subject:
+ Bugstop:
+ five
+ miles out
+ 1
+From:
+ mister
+ originator1
+ <mr1@originator>
+To:
+ bugstop-commit@five.miles.out
 
 That's appalling, I.
 
 15: ~f 1
 -------- Original Message --------
-Subject: Bugstop: five miles out 1
+Subject:
+ Bugstop:
+ five
+ miles out
+ 1
 
 That's appalling, I.
 
@@ -92,14 +181,32 @@ SignVarSignVar
 18: ~M
 -------- Original Message --------
  |From neverneverland  Sun Jul 23 13:47:25 2017
- |Subject: Bugstop: five miles out 2
- |Reply-To: mister originator2 <mr2@originator>
- |From: mister originator2 <mr2@originator>
- |To: bugstop-commit@five.miles.out
- |Cc: is2@a.list
- |In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
- |Date: Wed, 19 Jul 2017 09:23:57 -0400
- |Message-Id: <20170719132257.766AF781267-2@originator>
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 2
+ |Reply-To:
+ | mister
+ | originator2
+ | <mr2@originator>
+ |From:
+ | mister
+ | originator2
+ | <mr2@originator>
+ |To:
+ | bugstop-commit@five.miles.out
+ |Cc:
+ | is2@a.list
+ |In-reply-to:
+ | <20170719111113.bkcMz%laber2@backe.eu>
+ |Date: Wed,
+ | 19 Jul
+ | 2017
+ | 09:23:57
+ | -0400
+ |Message-Id:
+ | <20170719132257.766AF781267-2@originator>
  |Status: RO
 
  |That's appalling, II.
@@ -107,28 +214,57 @@ SignVarSignVar
 19: ~M 1
 -------- Original Message --------
  |From neverneverland  Sun Jul 23 13:46:25 2017
- |Subject: Bugstop: five miles out 1
- |Reply-To: mister originator1 <mr1@originator>
- |From: mister originator1 <mr1@originator>
- |To: bugstop-commit@five.miles.out
- |Cc: is1@a.list
- |In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
- |Date: Wed, 19 Jul 2017 09:22:57 -0400
- |Message-Id: <20170719132257.766AF781267-1@originator>
- |Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 1
+ |Reply-To:
+ | mister
+ | originator1
+ | <mr1@originator>
+ |From:
+ | mister
+ | originator1
+ | <mr1@originator>
+ |To:
+ | bugstop-commit@five.miles.out
+ |Cc:
+ | is1@a.list
+ |In-reply-to:
+ | <20170719111113.bkcMz%laber1@backe.eu>
+ |Date: Wed,
+ | 19 Jul
+ | 2017
+ | 09:22:57
+ | -0400
+ |Message-Id:
+ | <20170719132257.766AF781267-1@originator>
+ |Mail-Followup-To:
+ | bugstop@five.miles.out,
+ | laber@backe.eu,
+ | is@a.list
  |Status: RO
 
  |That's appalling, I.
  |
 20: ~m
 -------- Original Message --------
- |Subject: Bugstop: five miles out 2
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 2
 
  |That's appalling, II.
  |
 21: ~m 3
 -------- Original Message --------
- |Subject: Bugstop: five miles out 3
+ |Subject:
+ | Bugstop:
+ | five
+ | miles out
+ | 3
 
  |That's appalling, III.
  |
