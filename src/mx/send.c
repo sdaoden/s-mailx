@@ -81,8 +81,7 @@ static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
 static void a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,
-      int action, int level, struct mx_ignore const *doitp,
-      struct quoteflt *qf, u64 *stats);
+      int action, int level, struct mx_ignore const *doitp, u64 *statsp);
 
 /* Create a pipe; if mpp is not NULL, place some n_PIPEENV_* environment
  * variables accordingly */
@@ -183,17 +182,19 @@ _out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
    return size;
 }
 
+/* a_send_print_part_info() {{{ */
 static void
 a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,/* TODO str2fmt */
-   int action, int level, struct mx_ignore const *doitp, struct quoteflt *qf,
-   u64 *stats)
-{
+   int action, int level, struct mx_ignore const *doitp, u64 *statsp){
    char buf[64];
    struct str ti, to;
-   boole want_ct, needsep;
    struct str const *cpre, *csuf;
    char const *cp;
+   boole needsep, want_ct;
+   uz wr, i;
    NYD2_IN;
+
+   wr = 0;
 
    if(su_state_has(su_STATE_REPRODUCIBLE) && level == 0)
       goto jleave;
@@ -203,7 +204,7 @@ a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,/* TODO str2fmt */
 
    needsep = (action != SEND_TODISP_PARTS && ok_blook(quiet));
 
-   cpre = csuf = NULL;
+   cpre = csuf = NIL;
 #ifdef mx_HAVE_COLOUR
    if(mx_COLOUR_IS_ACTIVE()){
       struct mx_colour_pen *cpen;
@@ -218,158 +219,208 @@ a_send_print_part_info(FILE *obuf, struct mimepart const *mpp,/* TODO str2fmt */
    if(level == 0)
       cp = (mpp->m_multipart != NIL || mpp->m_nextpart != NIL) ? "1.0 " : " ";
    else{
-      if ((cp = mpp->m_partstring) == NULL || cp[0] == '\0')
+      if((cp = mpp->m_partstring) == NIL || cp[0] == '\0')
          cp = n_qm;
-      if (level || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
-            cp[1] == '.' && cp[2] != '1')) /* TODO code should not look like so */
-         _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      if(level != 0 || (cp[0] != '1' && cp[1] == '\0') || (cp[0] == '1' && /* TODO */
+            cp[1] == '.' && cp[2] != '1')){ /* TODO code should not look like so */
+         ++wr;
+         fputc('\n', obuf);
+      }
    }
 
    if(needsep && !su_state_has(su_STATE_REPRODUCIBLE)){
       if(level == 0)
          goto jleave;
-      if(cpre != NIL)
-         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      _out(":", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      if(csuf != NIL)
-         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      if(cpre != NIL){
+         wr += cpre->l;
+         fwrite(cpre->s, cpre->l, 1, obuf);
+      }
+      i = su_cs_len(cp);
+      wr += i;
+      fwrite(cp, i, 1, obuf);
+      fputc(':', obuf);
+      if(csuf != NIL){
+         wr += csuf->l;
+         fwrite(csuf->s, csuf->l, 1, obuf);
+      }
+      fputc('\n', obuf);
+      wr += 2;
       goto jleave;
    }
 
    /* Part id, content-type, encoding, charset */
-   if (cpre != NULL)
-      _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   if(cpre != NIL){
+      wr += cpre->l;
+      fwrite(cpre->s, cpre->l, 1, obuf);
+   }
 
-   _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-   _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   fwrite("[-- #", 5, 1, obuf);
+   wr += 5;
+   i = su_cs_len(cp);
+   wr += i;
+   fwrite(cp, i, 1, obuf);
 
    if(level != 0){
       to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
-            (uz)mpp->m_lines, (uz)mpp->m_size);
-      _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+            S(uz,mpp->m_lines), S(uz,mpp->m_size));
+      wr += to.l;
+      fwrite(buf, to.l, 1, obuf);
    }
 
    needsep = FAL0;
 
-    if((cp = mpp->m_ct_type_usr_ovwr) != NULL){
-      _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   if((cp = mpp->m_ct_type_usr_ovwr) != NIL){
+      ++wr;
+      fputc('+', obuf);
       want_ct = TRU1;
    }else if((want_ct = mx_ignore_is_ign(doitp, "content-type")))
       cp = mpp->m_ct_type_plain;
-   if (want_ct && (to.l = su_cs_len(cp)) > 30 &&
-            su_cs_starts_with_case(cp, "application/")) {
-      uz const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
-      uz i = to.l - fl;
-      char *x = n_autorec_alloc(al + i +1);
+   else
+      cp = NIL;
 
-      su_mem_copy(x, "appl../", al);
-      su_mem_copy(x + al, cp + fl, i +1);
-      cp = x;
-      to.l = al + i;
+   if(want_ct && (to.l = su_cs_len(cp)) > 30 &&
+         su_cs_starts_with_case(cp, "application/")){
+      wr += sizeof("app./") -1;
+      fwrite("app./", sizeof("app./") -1, 1, obuf);
+      cp += sizeof("application/") -1;
+      to.l -= sizeof("application/") -1;
    }
-   if(cp != NULL){
-      _out(cp, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+
+   if(cp != NIL){
+      wr += to.l;
+      fwrite(cp, to.l, 1, obuf);
       needsep = TRU1;
    }
 
-   if(mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL &&
+   if(mpp->m_multipart == NIL/* TODO */ && (cp = mpp->m_ct_enc) != NIL &&
          (!su_cs_cmp_case(cp, "7bit") ||
           mx_ignore_is_ign(doitp, "content-transfer-encoding"))){
-      if(needsep)
-         _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      if (to.l > 25 && !su_cs_cmp_case(cp, "quoted-printable"))
+      if(needsep){
+         wr += 2;
+         fwrite(", ", 2, 1, obuf);
+      }
+      if(to.l > 25 && !su_cs_cmp_case(cp, "quoted-printable"))
          cp = "qu.-pr.";
-      _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats,
-         NULL,NULL);
+      i = su_cs_len(cp);
+      wr += i;
+      fwrite(cp, i, 1, obuf);
       needsep = TRU1;
    }
 
    if(want_ct && mpp->m_multipart == NIL/* TODO */ &&
          (cp = mpp->m_charset_or_nil) != NIL){
-      if(needsep)
-         _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats,
-         NULL,NULL);
+      if(needsep){
+         wr += 2;
+         fwrite(", ", 2, 1, obuf);
+      }
+      i = su_cs_len(cp);
+      wr += i;
+      fwrite(cp, i, 1, obuf);
    }
 
    needsep = !needsep;
-   _out(&" --]"[su_S(su_u8,needsep)], 4 - needsep,
-      obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-   if (csuf != NULL)
-      _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-   _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   i = 4 - needsep;
+   wr += i;
+   fwrite(&" --]"[su_S(su_u8,needsep)], i, 1, obuf);
+   if(csuf != NIL){
+      wr += csuf->l;
+      fwrite(csuf->s, csuf->l, 1, obuf);
+   }
+   ++wr;
+   fputc('\n', obuf);
 
    /* */
-   if (mpp->m_content_info & CI_MIME_ERRORS) {
-      if (cpre != NULL)
-         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-            NULL, NULL);
-      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   if(mpp->m_content_info & CI_MIME_ERRORS){
+      if(cpre != NIL){
+         wr += cpre->l;
+         fwrite(cpre->s, cpre->l, 1, obuf);
+      }
+      wr += 4;
+      fwrite("[-- ", 4, 1, obuf);
 
-      ti.l = su_cs_len(ti.s = n_UNCONST(_("Defective MIME structure")));
-      mx_makeprint(&ti, &to);
-      to.l = mx_del_cntrl(to.s, to.l);
-      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      n_free(to.s);
+      ti.l = su_cs_len(ti.s = UNCONST(char*,_("Defective MIME structure")));
+      wr += ti.l;
+      fwrite(ti.s, ti.l, 1, obuf);
 
-      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      if (csuf != NULL)
-         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-            NULL, NULL);
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      wr += 4;
+      fwrite(" --]", 4, 1, obuf);
+      if(csuf != NIL){
+         wr += csuf->l;
+         fwrite(csuf->s, csuf->l, 1, obuf);
+      }
+      ++wr;
+      fputc('\n', obuf);
    }
 
    /* Content-Description */
-   if (mx_ignore_is_ign(doitp, "content-description") &&
-         (cp = mpp->m_content_description) != NULL && *cp != '\0') {
-      if (cpre != NULL)
-         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-            NULL, NULL);
-      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   if((cp = mpp->m_content_description) != NIL && *cp != '\0' &&
+         mx_ignore_is_ign(doitp, "content-description")){
+      if(cpre != NIL){
+         wr += cpre->l;
+         fwrite(cpre->s, cpre->l, 1, obuf);
+      }
+      wr += 4;
+      fwrite("[-- ", 4, 1, obuf);
 
-      ti.l = su_cs_len(ti.s = n_UNCONST(mpp->m_content_description));
+      ti.l = su_cs_len(ti.s = UNCONST(char*,mpp->m_content_description));
       if(mx_mime_display_from_header(&ti, &to,
             mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
-         _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NIL, NIL);
+         wr += to.l;
+         fwrite(to.s, to.l, 1, obuf);
          su_FREE(to.s);
+      }else{
+         ++wr;
+         fputc('?', obuf);
       }
 
-      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      if (csuf != NULL)
-         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-            NULL, NULL);
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      wr += 4;
+      fwrite(" --]", 4, 1, obuf);
+      if(csuf != NIL){
+         wr += csuf->l;
+         fwrite(csuf->s, csuf->l, 1, obuf);
+      }
+      ++wr;
+      fputc('\n', obuf);
    }
 
    /* Filename */
-   if (mx_ignore_is_ign(doitp, "content-disposition") &&
-         mpp->m_filename != NULL && *mpp->m_filename != '\0') {
-      if (cpre != NULL)
-         _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-            NULL, NULL);
-      _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   if(mpp->m_filename != NIL && *mpp->m_filename != '\0' &&
+         mx_ignore_is_ign(doitp, "content-disposition")){
+      if(cpre != NIL){
+         wr += cpre->l;
+         fwrite(cpre->s, cpre->l, 1, obuf);
+      }
+      wr += 4;
+      fwrite("[-- ", 4, 1, obuf);
 
       ti.l = su_cs_len(ti.s = mpp->m_filename);
       mx_makeprint(&ti, &to);
       to.l = mx_del_cntrl(to.s, to.l);
-      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      n_free(to.s);
+      wr += to.l;
+      fwrite(to.s, to.l, 1, obuf);
+      su_FREE(to.s);
 
-      _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      if (csuf != NULL)
-         _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-            NULL, NULL);
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+      wr += 4;
+      fwrite(" --]", 4, 1, obuf);
+      if(csuf != NIL){
+         wr += csuf->l;
+         fwrite(csuf->s, csuf->l, 1, obuf);
+      }
+      ++wr;
+      fputc('\n', obuf);
    }
 
-   if(level == 0 && mpp->m_multipart == NIL)
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
+   if(level == 0 && mpp->m_multipart == NIL){
+      ++wr;
+      fputc('\n', obuf);
+   }
 
 jleave:
+   if(statsp != NIL)
+      *statsp += wr;
+
    NYD2_OU;
-}
+} /* }}} */
 
 static FILE *
 a_send_pipefile(enum sendaction action, struct mx_mime_type_handler *mthp,
@@ -758,7 +809,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       }
 
       if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level != 0){
-         a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
+         a_send_print_part_info(obuf, ip, action, level, doitp, stats);
          flags |= a_F_HANY;
       }
       if(ip->m_parent != NIL && ip->m_parent->m_mime_type == mx_MIME_TYPE_822){
@@ -1083,7 +1134,7 @@ jhdrtrunc:
    } /* C99 */
 
    if(ip->m_mime_type != mx_MIME_TYPE_DISCARD && level == 0){
-      a_send_print_part_info(obuf, ip, action, level, doitp, qf, stats);
+      a_send_print_part_info(obuf, ip, action, level, doitp, stats);
       flags |= a_F_HANY;
    }
 
@@ -1321,8 +1372,8 @@ jalter_redo:
                default:
                   if(!(np->m_flag & MDISPLAY)){
                      if(np->m_mime_type != mx_MIME_TYPE_DISCARD)
-                        a_send_print_part_info(obuf, np, action, level,
-                           doitp, qf, stats);
+                        a_send_print_part_info(obuf, np, action, level, doitp,
+                           stats);
                      break;
                   }
 

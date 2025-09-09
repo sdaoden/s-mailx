@@ -42,9 +42,9 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
-#include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
 #include "mx/termios.h"
@@ -60,7 +60,8 @@
 #include "su/code-in.h"
 
 /* Prepare and print "[Message: xy]:" intro */
-static boole a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
+static boole a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no,
+      u64 *tstats);
 
 /* Show the requested messages */
 static int     _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
@@ -76,18 +77,17 @@ static int a_cmsg_top(void *vp, struct mx_ignore const *itp);
 static int     delm(int *msgvec);
 
 static boole
-a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
-   boole rv;
+a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no, u64 *tstats){
+   int rv;
    char const *cpre, *csuf;
    NYD2_IN;
 
-   cpre = csuf = n_empty;
+   cpre = csuf = su_empty;
 #ifdef mx_HAVE_COLOUR
    if(mx_COLOUR_IS_ACTIVE()){
       struct mx_colour_pen *cpen;
 
-      if((cpen = mx_colour_pen_create(mx_COLOUR_ID_VIEW_MSGINFO, NULL)
-            ) != NIL){
+      if((cpen = mx_colour_pen_create(mx_COLOUR_ID_VIEW_MSGINFO, NIL)) != NIL){
          struct str const *s;
 
          if((s = mx_colour_pen_to_str(cpen)) != NIL)
@@ -99,17 +99,20 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
 #endif
 
    /* XXX Message info uses wire format for line count */
-   rv = (fprintf(obuf,
+   rv = fprintf(obuf,
          A_("%s[-- Message %2d -- %lu lines, %lu bytes%s --]:%s\n"),
          cpre, msg_no, S(ul,mp->m_lines), S(ul,mp->m_size),
          ((mp->m_flag & MVALID)
             ? ((mp->m_flag & MBADFROM_)
                ? _(" -- Erroneous: see mbox-rfc4155") : su_empty)
             : _(" -- INVALID (only direct copy/xy)")),
-         csuf) > 0);
+         csuf);
+
+   if(rv > 0 && tstats != NIL)
+      *tstats += rv;
 
    NYD2_OU;
-   return rv;
+   return (rv > 0);
 }
 
 static int
@@ -172,7 +175,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
 #endif
 
    rv = 0;
-   n_autorec_snap_create();
+   su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
    for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = &message[*ip - 1];
       touch(mp);
@@ -182,7 +185,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      if(action != SEND_MBOX && !a_cmsg_show_overview(obuf, mp, *ip)){
+      if(action != SEND_MBOX && !a_cmsg_show_overview(obuf, mp, *ip, tstats)){
          rv = 1;
          break;
       }
@@ -191,17 +194,20 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      n_autorec_snap_unroll();
+      su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
+
       if(formfeed){ /* TODO a nicer way to separate piped messages! */
          if(putc('\f', obuf) == EOF){
             rv = 1;
             break;
          }
+         ++mstats[0];
       }
-      if (tstats != NULL)
-         tstats[0] += mstats[0];
+
+      if(tstats != NIL)
+         *tstats += mstats[0];
    }
-   n_autorec_snap_gut();
+   su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
 
 #ifdef mx_HAVE_COLOUR
    if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
@@ -314,8 +320,8 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
          break;
       }
 
-      if(!a_cmsg_show_overview(iobuf, mp, *ip) ||
-            sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL, NIL) < 0){
+      if(!a_cmsg_show_overview(iobuf, mp, *ip, NIL) ||
+            sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NIL, NIL) < 0){
          n_err(_("top: failed to prepare message %d\n"), *ip);
          vp = NULL;
          break;
@@ -540,7 +546,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout);
 #endif
 
-   if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
+   if(!a_cmsg_show_overview(n_stdout, mp, *msgvec, NIL))
       n_pstate_err_no = su_ERR_IO;
    else if(sendmp(mp, n_stdout, mx_IGNORE_TYPE, NIL, SEND_TODISP_PARTS,
          NIL, NIL) < 0)
