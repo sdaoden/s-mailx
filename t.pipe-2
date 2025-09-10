@@ -1,0 +1,39 @@
+Pipe to: './t2.sh > ./t2.1'
+'./t2.sh > ./t2.1' 168 bytes
+0/0
+Pipe to: './t2.sh > ./t2.2'
+'./t2.sh > ./t2.2' 168 bytes
+0/0
+Pipe raw to: './t2.sh > ./t2.3'
+'./t2.sh > ./t2.3' 126 bytes
+0/0
+1/22
+1/22
+1/22
+Pipe to: './t2.sh > ./t2.4'
+'./t2.sh > ./t2.4' 168 bytes
+0/0
+Pipe to: './t2.sh > ./t2.5'
+'./t2.sh > ./t2.5' 168 bytes
+0/0
+Pipe raw to: './t2.sh > ./t2.6'
+'./t2.sh > ./t2.6' 126 bytes
+0/0
+Pipe to: './t2.sh > ./t2.7'
+'./t2.sh > ./t2.7' 348 bytes
+0/0
+Pipe to: './t2.sh > ./t2.8'
+'./t2.sh > ./t2.8' 348 bytes
+0/0
+Pipe raw to: './t2.sh > ./t2.9'
+'./t2.sh > ./t2.9' 547 bytes
+0/0
+Pipe to: './t2.sh > ./t2.10'
+'./t2.sh > ./t2.10' 518 bytes
+0/0
+Pipe to: './t2.sh > ./t2.11'
+'./t2.sh > ./t2.11' 518 bytes
+0/0
+Pipe raw to: './t2.sh > ./t2.12'
+'./t2.sh > ./t2.12' 675 bytes
+0/0
