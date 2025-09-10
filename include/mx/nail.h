@@ -745,7 +745,7 @@ ok_v_on_compose_splice_shell, /* {notempty=1,obsolete=1} */
    ok_b_POSIXLY_CORRECT, /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
    ok_v_password, /* {chain=1} */
-   ok_b_piperaw,
+ok_b_piperaw, /* {obsolete=1} */
    ok_v_pop3_auth, /* {chain=1} */
    ok_b_pop3_bulk_load,
    ok_v_pop3_keepalive, /* {notempty=1,posnum=1} */

@@ -9241,8 +9241,8 @@ __EOT
 	three
 	_EOT
 	#}}}
-	${MAILX} ${ARGS} -Rf \
-		-Y 'headers;echo 1;Show 1;echo 2;Show 2;echo 3;Show 3;echo 4' \
+	$MAILX $ARGS -Rf \
+		-Y 'headers;echo 1;show 1;echo 2;show 2;echo 3;show 3;echo 4' \
 		-Y 'copy * ./t27' \
 		-Y 'copy 1 ./t28' \
 		./t26.mbox > ./t26 2>${EX}
@@ -9456,20 +9456,20 @@ t_eml_and_stdin_pipe() { #{{{
 } #}}}
 
 t_write() { # c'mon {{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	gpm from c@y sub s2 > ./t.mbox
 	gpmx from c@z sub s2 >> ./t.mbox
 	ck 1 0 ./t.mbox '1534223436 653'
 
 	## TODO `write' behavior is a total mess (especially non-interactively)
-	</dev/null ${MAILX} ${ARGS} -Y '
+	</dev/null $MAILX $ARGS -Y '
 h
 write 1 ./t3
 h
 write 2 t4
 h
-x' -Rf ./t.mbox >./t2 2>${E0}
+x' -Rf ./t.mbox >./t2 2>$E0
 	cke0 2 0 ./t2 '2922586275 538'
 	ck 3 - ./t3 '2203469094 5'
 	ck 4 - ./t4 '4294967295 0'
@@ -9478,8 +9478,80 @@ x' -Rf ./t.mbox >./t2 2>${E0}
 
 	# xxx more tests for now in t_iconv_mbyte_base64() and t_binary_mainbody()
 
-	t_epilog "${@}"
+	t_epilog "$@"
+} #}}}
 
+t_pipe() { # c'mon {{{
+	t_prolog "$@"
+
+	gpm from c@y sub s2 > ./t.mbox
+	gpmx from c@z sub s3 >> ./t.mbox
+	ck 1 0 ./t.mbox '3664267251 653'
+
+	{ echo '#'$SHELL; echo $cat; } > t2.sh
+	$chmod 0755 t2.sh
+
+	</dev/null $MAILX $ARGS -Y '
+headerpick type ignore mime-version content-type content-transfer-encoding
+| "./t2.sh > ./t2.1"
+ec $?/$!
+pipe "./t2.sh > ./t2.2"
+ec $?/$!
+Pipe "./t2.sh > ./t2.3"
+ec $?/$!
+#
+|
+ec $?/$!
+pipe
+ec $?/$!
+Pipe
+ec $?/$!
+#
+se cmd="./t2.sh > ./t2.4"
+|
+ec $?/$!
+se cmd="./t2.sh > ./t2.5"
+pipe
+ec $?/$!
+se cmd="./t2.sh > ./t2.6"
+Pipe
+ec $?/$!
+#
+se cmd="./t2.sh > ./t2.7"
+| 2 ""
+ec $?/$!
+se cmd="./t2.sh > ./t2.8"
+pipe 2 ""
+ec $?/$!
+se cmd="./t2.sh > ./t2.9"
+Pipe 2 ""
+ec $?/$!
+#
+se page cmd="./t2.sh > ./t2.10"
+| * ""
+ec $?/$!
+se cmd="./t2.sh > ./t2.11"
+pipe * ""
+ec $?/$!
+se cmd="./t2.sh > ./t2.12"
+Pipe * ""
+ec $?/$!
+x' -Rf ./t.mbox >./t2 2>$EX
+	ck 2 0 ./t2 '1400919904 769' '1360047456 147'
+	ck 2.1 - ./t2.1 '2038827445 168'
+	ck 2.2 - ./t2.2 '2038827445 168'
+	ck 2.3 - ./t2.3 '2347680411 126'
+	ck 2.4 - ./t2.4 '2038827445 168'
+	ck 2.5 - ./t2.5 '2038827445 168'
+	ck 2.6 - ./t2.6 '2347680411 126'
+	ck 2.7 - ./t2.7 '61354989 348'
+	ck 2.8 - ./t2.8 '61354989 348'
+	ck 2.9 - ./t2.9 '3225520687 547'
+	ck 2.10 - ./t2.10 '4136014224 518'
+	ck 2.11 - ./t2.11 '4136014224 518'
+	ck 2.12 - ./t2.12 '274250061 675'
+
+	t_epilog "$@"
 } #}}}
 #}}}
 
@@ -16911,6 +16983,7 @@ t_all() { #{{{
 	jspawn maildir
 	jspawn eml_and_stdin_pipe
 	jspawn write # (not really vfs)
+	jspawn pipe # "
 	jsync
 
 	# MIME and RFC basics

@@ -1387,8 +1387,8 @@ and
 The displayed
 .Ic headerorder
 is configurable.
-To show raw and unconverted message content, use
-.Ic Show .
+To show raw, undecrypted and unconverted message content, use
+.Ic show .
 Historically the global
 .Pa \*(UR
 not only adjusts the list of displayed header fields, but also sets
@@ -7258,7 +7258,10 @@ Show the given messages in
 even in non-interactive mode (only
 .Ql Ic if Ns \: terminal ) .
 Identical to
-.Ic page .
+.Ic page ,
+and see
+.Ic type
+for more.
 .
 .Mx
 .It Ic mtaaliases
@@ -7361,26 +7364,29 @@ Show the given messages in
 even in non-interactive mode (only
 .Ql Ic if Ns \: terminal ) .
 Identical to
-.Ic more .
+.Ic more ,
+and see
+.Ic type
+for more context.
 .
 .Mx
 .It Ic Pipe
-Like
-.Ic pipe ,
-but pipe all header fields and MIME parts.
+Different to
+.Ic pipe
+the raw message content, neither MIME decoded nor decrypted, is passed.
 .
 .Mx
 .It Ic pipe
-(pi) Takes an optional message list and an optional shell command (or
+(pi) Takes an optional message list,
+and a (lesser) optional shell command (else, or if empty,
 .Va cmd ) ,
-and pipes the messages in visual form (as via
-.Ic page )
-through the command invoked by the
-.Ev SHELL
-If the
+and pipes the messages in the same visual form as
+.Ic type ,
+through the command (via
+.Ev SHELL ) .
+Every message is followed by a formfeed character if
 .Va page
-variable is set,
-every message is followed by a formfeed character.
+is set.
 .
 .It Ic preserve
 (pre) A synonym for
@@ -7933,7 +7939,7 @@ is instead addressed.
 .
 .Mx
 .It Ic show
-Show raw message content (like
+Show raw message data (like
 .Ic type ,
 but perform neither MIME decoding nor decryption).
 .
@@ -8220,7 +8226,9 @@ is used for display instead of the
 is controlled by
 .Va crt .
 .Pf ( Ic more
-always uses
+and
+.Ic page
+alway use
 .Ev PAGER . )
 Message header fields are filtered as chosen by the
 .Ql type
@@ -11967,9 +11975,10 @@ the file should be readable by the invoking user only.
 .
 .Mx
 .It Va piperaw
-\*(BO Send messages to the
-.Ic pipe
-command without performing MIME and character set conversions.
+\*(OB\*(BO Please use
+.Ic Pipe
+instead of
+.Ic pipe .
 .
 .Mx
 .It Va pipe-EXTENSION

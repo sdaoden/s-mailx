@@ -132,10 +132,10 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
    rv = 1;
    obuf = n_stdout;
    formfeed = (dopipe && ok_blook(page));
-   action = ((dopipe && ok_blook(piperaw))
-         ? SEND_MBOX : donotdecode
-         ? SEND_SHOW : doign
-         ? SEND_TODISP : SEND_TODISP_ALL);
+   action = (dopipe < FAL0 ? SEND_MBOX
+         : donotdecode ? SEND_SHOW
+         : doign ? SEND_TODISP
+         : SEND_TODISP_ALL);
    UNINIT(cp, NIL);
 
    if(dopipe){
@@ -240,17 +240,20 @@ a_cmsg_pipe1(void *vp, boole doign){
    rv = 1;
 
    if((cmd = cap->ca_arg.ca_str.s)[0] == '\0' &&
-         ((cmd = ok_vlook(cmd)) == NULL || *cmd == '\0')){
+         ((cmd = ok_vlook(cmd)) == NIL || *cmd == '\0')){
       n_err(_("%s: variable *cmd* not set\n"), cacp->cac_desc->cad_name);
       goto jleave;
    }
 
    cmdq = n_shexp_quote_cp(cmd, FAL0);
-   fprintf(n_stdout, _("Pipe to: %s\n"), cmdq);
+   /* I18n: piping ["raw"] data to "cmd" */
+   fprintf(n_stdout, _("Pipe %sto: %s\n"),
+      (doign ? su_empty : _("raw ")), cmdq);
    stats[0] = 0;
-   if((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, n_UNCONST(cmd), stats)
-         ) == 0)
+   if((rv = _type1(msgvec, doign, FAL0, (doign ? TRU1 : TRUM1), FAL0,
+         UNCONST(char*,cmd), stats)) == 0)
       fprintf(n_stdout, "%s %" PRIu64 " bytes\n", cmdq, stats[0]);
+
 jleave:
    NYD2_OU;
    return rv;
@@ -570,6 +573,7 @@ c_pipe(void *vp){
    NYD_IN;
 
    rv = a_cmsg_pipe1(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -580,6 +584,7 @@ c_Pipe(void *vp){
    NYD_IN;
 
    rv = a_cmsg_pipe1(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
