@@ -529,6 +529,8 @@ a_boswap(void){
 // }}}
 
 // cs TODO only fewest things checked yet!! {{{
+static void a_cs__find(void);
+static void a_cs__find_n(void);
 static void a_cs__sep(void);
 static void a_cs__squeeze(void);
 static void a_cs__trim(void);
@@ -538,9 +540,113 @@ static void a_cs__trim(void);
 
 static void
 a_cs(void){
+	a_cs__find();
+	a_cs__find_n();
 	a_cs__sep();
 	a_cs__squeeze();
 	a_cs__trim();
+}
+
+static void
+a_cs__find(void){
+	char *cp, *cpx;
+
+	cp = cs::find(su_empty, su_empty);
+	if(cp == NIL)
+		a_ERR();
+	else if(*cp != '\0')
+		a_ERR();
+	else if(cp != su_empty)
+		a_ERR();
+
+	cp = cs::find((cpx = UNCONST(char*,"abc")), "");
+	if(cp == NIL)
+		a_ERR();
+	else if(cp != cpx)
+		a_ERR();
+
+	cp = cs::find("abcdef", "ab");
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "cd");
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "ef");
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "ef"))
+		a_ERR();
+}
+
+static void
+a_cs__find_n(void){
+	char *cp, *cpx;
+
+	cp = cs::find(su_empty, su_empty, 0);
+	if(cp == NIL)
+		a_ERR();
+	else if(*cp != '\0')
+		a_ERR();
+	else if(cp != su_empty)
+		a_ERR();
+
+	cp = cs::find((cpx = UNCONST(char*,"abc")), "", 0);
+	if(cp == NIL)
+		a_ERR();
+	else if(cp != cpx)
+		a_ERR();
+
+	cp = cs::find("abcdef", "ab", 6);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "ab", 2);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "aX", 1);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "cd", 6);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "cd", 4);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "d", 3);
+	if(cp != NIL)
+		a_ERR();
+	cp = cs::find("abcdef", "cX", 3);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "ef", 6);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "ef"))
+		a_ERR();
+	cp = cs::find("abcdef", "eX", 5);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "ef"))
+		a_ERR();
 }
 
 static void

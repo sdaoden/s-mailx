@@ -167,6 +167,10 @@ EXPORT boole su_cs_ends_with_case(char const *cp, char const *x);
  * Returns \a{cp} if \a{xp} is the empty buffer. */
 EXPORT char *su_cs_find(char const *cp, char const *xp);
 
+/*! \r{su_cs_find()}, size-cramped.
+ * Returns \a{cp} if \a{n} is 0 or \a{xp} is the empty buffer.} */
+EXPORT char *su_cs_find_n(char const *cp, char const *xp, uz n);
+
 /*! Search \a{xc} within \a{cp}, return pointer to location or \NIL. */
 EXPORT char *su_cs_find_c(char const *cp, char xc);
 
@@ -446,6 +450,9 @@ public:
 
 	/*! \cd{su_cs_find()} */
 	static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}
+
+	/*! \cd{su_cs_find_n()} */
+	static char *find(char const *cp, char const *x, uz n) {return su_cs_find_n(cp, x, n);}
 
 	/*! \cd{su_cs_find_c()} */
 	static char *find(char const *cp, char x) {return su_cs_find_c(cp, x);}

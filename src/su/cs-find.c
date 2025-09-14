@@ -92,6 +92,29 @@ jleave:
 }
 
 char *
+su_cs_find_n(char const *cp, char const *xp, uz n){
+	char xc, c;
+	NYD_IN;
+	ASSERT_NYD_EXEC(n == 0 || cp != NIL, cp = NIL);
+	ASSERT_NYD_EXEC(n == 0 || xp != NIL, cp = NIL);
+
+	/* Return cp if x is empty */
+	if(LIKELY(n > 0 && (xc = *xp) != '\0')){
+		for(; (c = *cp) != '\0'; ++cp){
+			if(c == xc && su_cs_starts_with_n(cp, xp, n))
+				goto jleave;
+			if(--n == 0)
+				break;
+		}
+		cp = NIL;
+	}
+
+jleave:
+	NYD_OU;
+	return UNCONST(char*,cp);
+}
+
+char *
 su_cs_find_c(char const *cp, char xc){
 	NYD_IN;
 	ASSERT_NYD(cp != NIL);
