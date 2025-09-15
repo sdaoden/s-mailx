@@ -52,7 +52,6 @@ enum a_me_qact{
 	a_ME_QM = '?', /* In header, special character ? not always quoted */
 	a_ME_EQ = '=', /* In header, '=' must be quoted in encoded word */
 	a_ME_AL = 6, /* In header, 2047 5.3 gives strict addrlist rules */
-#define a_ME_AL a_ME_N
 	a_ME_HT ='\t', /* Body HT=SP.  Head HT=HT, BUT quote in encoded word */
 	a_ME_NL = 0, /* Don't quote '\n' (NL) */
 	a_ME_CR = a_ME_Q /* Always quote a '\r' (CR) */
