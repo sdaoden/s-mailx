@@ -58,8 +58,9 @@
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
-#include "mx/mime.h"
+#include "mx/mime-charset.h"
 #include "mx/mime-enc.h"
+#include "mx/mime-old.h"
 #include "mx/mime-param.h"
 #include "mx/mime-probe.h"
 #include "mx/mime-type.h"
@@ -631,7 +632,7 @@ a_sendout__infix_heads(struct mx_send_ctx *sctxp, /* {{{ */
 #ifdef mx_HAVE_ICONV
    }else if(need_cnv > FAL0){
       ASSERT(hcs != NIL);
-      mx_mime_charset_iter_reset(sctxp->sc_hp->h_charset, NIL);
+      mx_mime_charset_iter_reset(sctxp->sc_hp->h_charset, hcs);
       ASSERT(mx_mime_charset_iter_is_valid());
 
       if(0){
@@ -668,7 +669,7 @@ jiter:
 
    /* */
    n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
-   if(!n_puthead(SEND_MBOX, FAL0, sicp->sic_encfp, sctxp->sc_hp,
+   if(!n_puthead(FAL0, sicp->sic_encfp, sctxp->sc_hp,
          (GTO | GSUBJECT | GCC | GBCC | GCOMMA | GUA | GMSGID |
           GIDENT | GREF | GDATE))){
 #ifdef mx_HAVE_ICONV
@@ -2880,21 +2881,20 @@ jfail_dead:
 } /* }}} */
 
 FL boole
-n_puthead(enum sendaction action, boole nosend_msg, FILE *fo, /*{{{*/
-      struct header *hp, enum gfield w){
+n_puthead(boole nosend, FILE *fo, struct header *hp, enum gfield w){ /*{{{*/
 #define a_SENDOUT_PUT_CC_BCC_FCC() \
 do{\
-   if((w & GCC) && (hp->h_cc != NIL || nosend_msg > FAL0)){\
+   if((w & GCC) && (hp->h_cc != NIL || nosend > FAL0)){\
       if(!a_sendout_put_addrline("Cc:", hp->h_cc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
-   if((w & GBCC) && (hp->h_bcc != NIL || nosend_msg > FAL0)){\
+   if((w & GBCC) && (hp->h_bcc != NIL || nosend > FAL0)){\
       if(!a_sendout_put_addrline("Bcc:", hp->h_bcc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
-   if((w & GBCC_IS_FCC) && nosend_msg){\
+   if((w & GBCC_IS_FCC) && nosend){\
       for(np = hp->h_fcc; np != NIL; np = np->n_flink){\
          if(fprintf(fo, "Fcc: %s\n", np->n_name) < 0)\
             goto jleave;\
@@ -2906,22 +2906,21 @@ do{\
    char const *addr;
    uz gotcha;
    int stealthmua;
-   boole nodisp;
    enum a_sendout_addrline_flags saf;
    struct mx_name *np, *fromasender, *mft, **mftp;
    boole rv;
    NYD_IN;
 #ifdef mx_HAVE_ICONV
-   ASSERT(!nosend_msg || iconvd == R(iconv_t,-1));
+   ASSERT(!nosend || iconvd == R(iconv_t,-1));
 #endif
 
-   if(nosend_msg)
-      nosend_msg = (ok_blook(quiet) || ok_blook(expert)) ? TRUM1 : TRU1;
+   if(nosend)
+      nosend = (ok_blook(quiet) || ok_blook(expert)) ? TRUM1 : TRU1;
    mftp = NIL;
    fromasender = mft = NIL;
    rv = FAL0;
 
-   if(nosend_msg > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
+   if(nosend > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
          !(hp->h_flags & HF_USER_EDITED)){
       if(fputs(_("# Message will be discarded unless file is saved\n"),
             fo) == EOF)
@@ -2933,9 +2932,8 @@ do{\
    else
       stealthmua = 0;
    gotcha = 0;
-   nodisp = (action != SEND_TODISP);
-   saf = (w & (GCOMMA | GFILES)) | (nodisp ? a_SENDOUT_AL_DOMIME : 0);
-   if(nosend_msg)
+   saf = (w & (GCOMMA | GFILES)) | (!nosend ? a_SENDOUT_AL_DOMIME : 0);
+   if(nosend)
       saf |= a_SENDOUT_AL_INC_INVADDR;
 
    if(w & GDATE){
@@ -2975,7 +2973,7 @@ do{\
    }
 
    /* M-F-T: check this now, and possibly place us in Cc: */
-   if((w & GIDENT) && !nosend_msg){
+   if((w & GIDENT) && !nosend){
       /* Mail-Followup-To: TODO factor out this huge block of code.
        * TODO Also, this performs multiple expensive list operations, which
        * TODO hopefully can be heavily optimized later on! */
@@ -3104,7 +3102,7 @@ j_mft_add:
       }
    }
 
-   if(nosend_msg > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
+   if(nosend > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
          !(hp->h_flags & HF_USER_EDITED)){
       if(fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
@@ -3112,8 +3110,8 @@ j_mft_add:
       ++gotcha;
    }
 
-   if((w & GTO) && (hp->h_to != NULL || (nosend_msg &&
-         (hp->h_flags & HF_COMPOSE_MODE)))) {
+   if((w & GTO) && (hp->h_to != NULL ||
+         (nosend && (hp->h_flags & HF_COMPOSE_MODE)))) {
       if(!a_sendout_put_addrline("To:", hp->h_to, fo, saf))
          goto jleave;
       ++gotcha;
@@ -3123,12 +3121,12 @@ j_mft_add:
       a_SENDOUT_PUT_CC_BCC_FCC();
 
    if((w & GSUBJECT) && ((hp->h_subject != NIL && *hp->h_subject != '\0') ||
-         (nosend_msg && (hp->h_flags & HF_COMPOSE_MODE)))){
+         (nosend && (hp->h_flags & HF_COMPOSE_MODE)))){
       if(fwrite("Subject: ", sizeof(char), 9, fo) != 9 ||
             (hp->h_subject != NIL &&
              mx_xmime_write(hp->h_subject, su_cs_len(hp->h_subject), fo,
-               (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT
+               (nosend ? CONV_NONE : CONV_TOHDR),
+               (nosend ? mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT
                   : mx_MIME_DISPLAY_ICONV), NIL,NIL) < 0))
          goto jleave;
       putc('\n', fo);
@@ -3149,7 +3147,7 @@ j_mft_add:
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL){
-         if(nosend_msg > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
+         if(nosend > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
                !(hp->h_flags & HF_USER_EDITED)){
             if(fputs(_("# Removing or modifying In-Reply-To: "
                      "breaks the old, and starts a new thread.\n"
@@ -3190,7 +3188,7 @@ j_mft_add:
       ++gotcha;
    }while(0);
 
-   if((w & GIDENT) && !nosend_msg){
+   if((w & GIDENT) && !nosend){
       if(mft != NIL){
          if(!a_sendout_put_addrline("Mail-Followup-To:", mft, fo, saf))
             goto jleave;
@@ -3213,7 +3211,7 @@ j_mft_add:
    }
 
    /* Custom headers, as via -C and *customhdr* TODO JOINED AFTER COMPOSE! */
-   if(!nosend_msg){
+   if(!nosend){
       struct n_header_field *chlp[2], *hfp;
       u32 i;
 
@@ -3222,7 +3220,7 @@ j_mft_add:
 
       for(i = 0; i < NELEM(chlp); ++i)
          if((hfp = chlp[i]) != NULL){
-            if(!_sendout_header_list(fo, hfp, nodisp))
+            if(!_sendout_header_list(fo, hfp, !nosend))
                goto jleave;
             ++gotcha;
          }
@@ -3233,7 +3231,7 @@ j_mft_add:
       struct n_header_field *hfp;
 
       if((hfp = hp->h_user_headers) != NULL){
-         if(!_sendout_header_list(fo, hfp, nodisp))
+         if(!_sendout_header_list(fo, hfp, !nosend))
             goto jleave;
          ++gotcha;
       }

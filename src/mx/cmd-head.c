@@ -49,7 +49,7 @@
 #include "mx/cmd-mlist.h"
 #include "mx/compat.h"
 #include "mx/file-streams.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/okeys.h"
 #include "mx/termios.h"
 #include "mx/time.h"

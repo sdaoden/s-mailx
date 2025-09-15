@@ -48,7 +48,7 @@
 #include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
 #include "mx/maildir.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/names.h"
 #include "mx/net-pop3.h"
 #include "mx/okeys.h"

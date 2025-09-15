@@ -84,8 +84,10 @@ c_charsetalias(void *vp){
 
 			if(argv[1] == NIL)
 				dat = S(char const*,su_cs_dict_view_data(&dv));
-			else
+			else{
 				dat = mx_charsetalias_expand(key, TRU1);
+				ASSERT(dat != NIL);
+			}
 
 			slp = mx_xy_dump_dict_gen_ptf("charsetalias", key, dat);
 			rv = (fputs(slp->sl_dat, n_stdout) == EOF);
@@ -161,8 +163,13 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 
 	cp_orig = cp;
 
-	if(!is_normalized)
+	if(!is_normalized){
 		cp = n_iconv_norm_name(cp, FAL0);
+		if(cp == NIL)
+			goto jleave;
+	}else{
+		ASSERT(n_iconv_norm_name(cp, FAL0) != NIL);
+	}
 
 	if(a_csal_dp != NIL)
 		for(i = 0;; ++i){
@@ -176,6 +183,7 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 	if(cp != cp_orig)
 		cp = savestr(n_iconv_norm_name(cp, FAL0));
 
+jleave:
 	NYD_OU;
 	return cp;
 }

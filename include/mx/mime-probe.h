@@ -55,6 +55,7 @@ enum mx_mime_probe_flags{ /* (xxx) split in _INPUT_/_STATE_, or _MODE_ ..?*/
 	mx__MIME_PROBE_MASK = mx__MIME_PROBE_FREE - 1
 };
 
+/* All charsets are iconv_norm_name()d */
 struct mx_mime_probe_charset_ctx{
 	boole mpcc_iconv_disable; /* !mx_HAVE_ICONV||*iconv-disable* */
 	boole mpcc_cs_7bit_is_ascii; /* Whether .mpcc_cs_7bit is indeed US-ASCII */

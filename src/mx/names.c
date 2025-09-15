@@ -52,7 +52,7 @@
 #include "mx/cmd-mlist.h"
 #include "mx/compat.h"
 #include "mx/go.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/mta-aliases.h"
 #include "mx/okeys.h"
 #include "mx/ui-str.h"

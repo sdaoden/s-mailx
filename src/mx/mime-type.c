@@ -36,7 +36,7 @@
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/mime-enc.h"
 #include "mx/mime-probe.h"
 #include "mx/okeys.h"

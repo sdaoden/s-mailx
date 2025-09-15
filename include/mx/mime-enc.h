@@ -50,7 +50,7 @@ enum mx_mime_enc{
 };
 
 /* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
-enum mx__mime_enc_flags{
+enum mx_mime_enc_flags{
 	mx_MIME_ENC_F_NONE,
 	mx_MIME_ENC_F_AUTO_ALLOC = 1u<<0, /* Use AUTO_ALLOC() not normal heap */
 	/* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
@@ -63,11 +63,13 @@ enum mx__mime_enc_flags{
 	/* (encode) Quote with header rules, do not generate soft NL breaks?
 	 * For mustquote(), specifies whether special RFC 2047 header rules should be used instead */
 	mx_MIME_ENC_F_ISHEAD = 1u<<5,
+	/* (encode) Ditto, special RFC 2047 5.3. rules for address fields is to be honoured *additionally* */
+	mx_MIME_ENC_F_ISHEAD_ADDR = 1u<<6,
 	/* (encode) Ditto; for mustquote() this furtherly fine-tunes behavior in that characters which would not be
 	 * reported as "must-quote" when detecting whether quoting is necessary at all will be reported as "must-quote"
 	 * if they have to be encoded in an encoded word */
-	mx_MIME_ENC_F_ISENCWORD = 1u<<6,
-	mx__MIME_ENC_F_LAST = 6
+	mx_MIME_ENC_F_ISENCWORD = 1u<<7,
+	mx__MIME_ENC_F_LAST = 7
 };
 
 enum mx_qp_flags{
@@ -75,6 +77,7 @@ enum mx_qp_flags{
 	mx_QP_AUTO_ALLOC = mx_MIME_ENC_F_AUTO_ALLOC,
 	mx_QP_BUF = mx_MIME_ENC_F_BUF,
 	mx_QP_ISHEAD = mx_MIME_ENC_F_ISHEAD,
+	mx_QP_ISHEAD_ADDR = mx_MIME_ENC_F_ISHEAD_ADDR,
 	mx_QP_ISENCWORD = mx_MIME_ENC_F_ISENCWORD
 };
 
@@ -106,8 +109,9 @@ EXPORT enum mx_mime_enc mx_mime_enc_from_name(char const *hbody);
 /* XXX Try to get rid of that */
 EXPORT char const *mx_mime_enc_name_from_conversion(enum conversion const convert);
 
-/* How many characters of (the complete body) ln need to be quoted */
-EXPORT uz mx_mime_enc_mustquote(char const *ln, uz lnlen, boole ishead);
+/* How many characters of (the complete body) ln need to be quoted.
+ * flags must only contain F_ISHEAD and, then, F_ISHEAD_ADDR flags */
+EXPORT uz mx_mime_enc_mustquote(char const *ln, uz lnlen, BITENUM(u32,mx_mime_enc_flags) flags);
 
 /* QP */
 

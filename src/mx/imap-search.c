@@ -56,7 +56,7 @@ su_EMPTY_FILE()
 #include <su/time.h>
 
 #include "mx/file-streams.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/names.h"
 #include "mx/srch-ctx.h"
 #include "mx/time.h"

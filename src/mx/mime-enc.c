@@ -4,6 +4,7 @@
  *@   $NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $
  *@ TODO We have no notion of a "current message context" and thus badly log.
  *@ TODO This is not final yet, v15 will bring "filters".
+ *@ TODO RFC 2047 5.3 special rules with quoted-strings etc NOT HONOURED!
  *
  * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -50,6 +51,8 @@ enum a_me_qact{
 	a_ME_US = '_', /* In header, ' ' must be quoted as _ in encoded word */
 	a_ME_QM = '?', /* In header, special character ? not always quoted */
 	a_ME_EQ = '=', /* In header, '=' must be quoted in encoded word */
+	a_ME_AL = 6, /* In header, 2047 5.3 gives strict addrlist rules */
+#define a_ME_AL a_ME_N
 	a_ME_HT ='\t', /* Body HT=SP.  Head HT=HT, BUT quote in encoded word */
 	a_ME_NL = 0, /* Don't quote '\n' (NL) */
 	a_ME_CR = a_ME_Q /* Always quote a '\r' (CR) */
@@ -58,7 +61,8 @@ enum a_me_qact{
 /* Lookup tables to decide whether a character must be encoded or not.
  * Email header differences according to RFC 2047, section 4.2:
  * - also quote SP (as the underscore _), TAB, ?, _, CR, LF
- * - don't care about the special ^F[rom] and ^.$ */
+ * - don't care about the special ^F[rom] and ^.$
+ * Section 5.3 gives special rules for address header fields */
 static u8 const a_me_qp_body[] = {
 	 a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
 	 a_ME_Q, a_ME_SP, a_ME_NL,  a_ME_Q,  a_ME_Q, a_ME_CR,  a_ME_Q,  a_ME_Q,
@@ -82,19 +86,19 @@ static u8 const a_me_qp_body[] = {
 	 a_ME_Q, a_ME_HT,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
 	 a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
 	 a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,  a_ME_Q,
-	a_ME_US,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+	a_ME_US,  a_ME_N, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_AL,
+	a_ME_AL, a_ME_AL,  a_ME_N,  a_ME_N, a_ME_AL,  a_ME_N, a_ME_AL,  a_ME_N,
 	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
-	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
-	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N, a_ME_EQ,  a_ME_N, a_ME_QM,
+	 a_ME_N,  a_ME_N, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_EQ, a_ME_AL, a_ME_QM,
 
+	a_ME_AL,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
 	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
 	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
+	 a_ME_N,  a_ME_N,  a_ME_N, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_UU,
+	a_ME_AL,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
 	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
-	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N, a_ME_UU,
 	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
-	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
-	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,
-	 a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_N,  a_ME_Q,
+	 a_ME_N,  a_ME_N,  a_ME_N, a_ME_AL, a_ME_AL, a_ME_AL, a_ME_AL,  a_ME_Q,
 };
 
 /* The decoding table is only accessed via a_ME_B64_DECUI8() */
@@ -141,6 +145,7 @@ a_me_mustquote(char const *s, char const *e, boole sol, BITENUM(u32,mx_mime_enc_
 	u8 const *qtab;
 	enum a_me_qact a, r;
 	NYD2_IN;
+	ASSERT((flags & mx_MIME_ENC_F_ISHEAD) || !(flags & mx_MIME_ENC_F_ISHEAD_ADDR));
 
 	qtab = (flags & (mx_MIME_ENC_F_ISHEAD | mx_MIME_ENC_F_ISENCWORD)) ? a_me_qp_head : a_me_qp_body;
 
@@ -158,6 +163,14 @@ a_me_mustquote(char const *s, char const *e, boole sol, BITENUM(u32,mx_mime_enc_
 
 	/* Special header fields */
 	if(flags & (mx_MIME_ENC_F_ISHEAD | mx_MIME_ENC_F_ISENCWORD)){
+#if 0
+FIXME
+		if((flags & mx_MIME_ENC_F_ISHEAD_ADDR) && a == a_ME_AL){
+			r = a_ME_Q;
+			goto jleave;
+		}
+#endif
+
 		/* Special massage for encoded words */
 		if(flags & mx_MIME_ENC_F_ISENCWORD){
 			switch(a){
@@ -344,11 +357,11 @@ mx_mime_enc_from_name(char const *hbody){
 		union {char const *s; uz l;} u;
 
 		if(*hbody == '"')
-			for(u.s = ++hbody; *u.s != '\0' && *u.s != '"'; ++u.s)
-				;
+			for(u.s = ++hbody; *u.s != '\0' && *u.s != '"'; ++u.s){
+			}
 		else
-			for(u.s = hbody; *u.s != '\0' && !su_cs_is_white(*u.s); ++u.s)
-				;
+			for(u.s = hbody; *u.s != '\0' && !su_cs_is_white(*u.s); ++u.s){
+			}
 		u.l = P2UZ(u.s - hbody);
 
 		for(cte = cte_base;;)
@@ -384,16 +397,14 @@ mx_mime_enc_name_from_conversion(enum conversion const convert){
 }
 
 uz
-mx_mime_enc_mustquote(char const *ln, uz lnlen, boole ishead){
+mx_mime_enc_mustquote(char const *ln, uz lnlen, BITENUM(u32,mx_mime_enc_flags) flags){
 	uz rv;
 	boole sol;
-	BITENUM(u32,mx_mime_enc_flags) flags;
 	NYD2_IN;
-
-	flags = ishead ? mx_MIME_ENC_F_ISHEAD : mx_MIME_ENC_F_NONE;
+	ASSERT((flags & mx_MIME_ENC_F_ISHEAD) || !(flags & mx_MIME_ENC_F_ISHEAD_ADDR));
 
 	for(rv = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
-		switch(a_me_mustquote(ln, ln + lnlen, sol, flags)){
+		switch(a_me_mustquote(ln, &ln[lnlen], sol, flags)){
 		case a_ME_US:
 		case a_ME_EQ:
 		case a_ME_HT:
@@ -452,13 +463,11 @@ jleave:
 
 struct str *
 mx_qp_enc(struct str *out, struct str const *in, BITENUM(u32,mx_qp_flags) flags){
+	boole sol, seenx;
 	uz lnlen;
 	char *qp;
 	char const *is, *ie;
-	boole sol, seenx;
 	NYD_IN;
-
-	sol = (flags & mx_QP_ISHEAD ? FAL0 : TRU1);
 
 	if(!(flags & mx_QP_BUF)){
 		if((lnlen = mx_qp_enc_calc_size(in->l)) == UZ_MAX){
@@ -475,7 +484,9 @@ mx_qp_enc(struct str *out, struct str const *in, BITENUM(u32,mx_qp_flags) flags)
 	if(flags & mx_QP_ISHEAD){
 		BITENUM(u32,mx_mime_enc_flags) ef;
 
-		ef = mx_MIME_ENC_F_ISHEAD | (flags & mx_QP_ISENCWORD ? mx_MIME_ENC_F_ISENCWORD : 0);
+		ef = mx_MIME_ENC_F_ISHEAD |
+			(flags & mx_QP_ISHEAD_ADDR ? mx_MIME_ENC_F_ISHEAD_ADDR : 0) |
+			(flags & mx_QP_ISENCWORD ? mx_MIME_ENC_F_ISENCWORD : 0);
 
 		for(seenx = FAL0, sol = TRU1; is < ie; sol = FAL0, ++qp){
 			char c;
@@ -503,7 +514,7 @@ jheadq:
 	}
 
 	/* The body needs to take care for soft line breaks etc. */
-	for(lnlen = 0, seenx = FAL0; is < ie; sol = FAL0){
+	for(lnlen = 0, sol = TRU1, seenx = FAL0; is < ie; sol = FAL0){
 		char c;
 		enum a_me_qact mq;
 
@@ -655,13 +666,13 @@ jpushc:
 		/* RFC 2045, 6.7:
 		 *   Therefore, when decoding a Quoted-Printable body, any trailing white space on a line must
 		 *   be deleted, as it will necessarily have been added by intermediate transport agents */
-		for(; is <= ie && su_cs_is_blank(*is); ++is)
-			;
+		for(; is <= ie && su_cs_is_blank(*is); ++is){
+		}
 		if(is >= ie){
 			/* Soft line break? */
 			if(*is == '\n')
 				goto jsoftnl;
-		  goto jpushc; /* TODO According to RFC 2045, 6.7,
+			goto jpushc; /* TODO According to RFC 2045, 6.7,
 			* ++is; TODO we should warn the user, but have no context
 			* goto jebody; TODO to do so; can't over and over */
 		}
@@ -757,7 +768,6 @@ mx_b64_enc(struct str *out, struct str const *in, BITENUM(u32,mx_b64_flags) flag
 	uz i, lnlen;
 	char *b64;
 	NYD_IN;
-
 	ASSERT(!(flags & mx_B64_NOPAD) || !(flags & (mx_B64_CRLF | mx_B64_LF | mx_B64_MULTILINE)));
 
 	p = S(u8 const*,in->s);
@@ -1025,14 +1035,14 @@ jrepl:
 
 				pb = ((a << 2) | ((b & 0x30) >> 4));
 				if(pb != S(u8,'\r') || !stripcr)
-					n_string_push_c(&s, (char)pb);
+					n_string_push_c(&s, S(char,pb));
 				pb = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
 				if(pb != S(u8,'\r') || !stripcr)
-					n_string_push_c(&s, (char)pb);
+					n_string_push_c(&s, S(char,pb));
 				if(x != a_ME_B64_EQU){
 					pb = (((c & 0x03) << 6) | x);
 					if(pb != S(u8,'\r') || !stripcr)
-						n_string_push_c(&s, (char)pb);
+						n_string_push_c(&s, S(char,pb));
 				}
 				++b64l;
 			}

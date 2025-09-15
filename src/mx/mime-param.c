@@ -34,7 +34,7 @@
 #include <su/mem-bag.h>
 
 #include "mx/iconv.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/mime-probe.h"
 #include "mx/okeys.h"
 #include "mx/random.h"

@@ -49,7 +49,7 @@
 #include "mx/cmd.h"
 #include "mx/compat.h"
 #include "mx/file-streams.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/mime-probe.h"
 #include "mx/names.h"
 #include "mx/okeys.h"
@@ -728,14 +728,14 @@ n_header_put4compose(FILE *fp, struct header *hp){
 
    t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GFILES |
          GREF_IRT | GNL | GCOMMA;
-   if((hp->h_from != NULL || myaddrs(hp) != NULL) ||
-         (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
-         (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
-            ok_vlook(replyto) != NULL /* v15compat, OBSOLETE */ ||
-         hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
+   if((hp->h_from != NIL || myaddrs(hp) != NIL) ||
+         (hp->h_sender != NIL || ok_vlook(sender) != NIL) ||
+         (hp->h_reply_to != NIL || ok_vlook(reply_to) != NIL) ||
+            ok_vlook(replyto) != NIL /* v15compat, OBSOLETE */ ||
+         hp->h_list_post != NIL || (hp->h_flags & HF_LIST_REPLY))
       t |= GIDENT;
 
-   rv = n_puthead(SEND_TODISP, TRUM1, fp, hp, t);
+   rv = n_puthead(TRUM1, fp, hp, t);
 
    NYD_OU;
    return rv;

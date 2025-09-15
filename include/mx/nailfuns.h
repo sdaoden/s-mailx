@@ -897,12 +897,12 @@ FL enum okay n_mail1(enum n_mailsend_flags flags, enum mx_scope scope,
       struct header *hp, struct message *quote, char const *quotefile);
 
 /* Dump the to, subject, cc header on the passed file buffer.
- * nosend_msg tells us not to dig to deep but to instead go for compose mode or
- * editing a message (yet we are stupid and cannot do it any better).
+ * nosend tells us not to dig to deep but to instead go for compose mode or
+ * editing a message (yet we are stupid and cannot do it any better): it
+ * implies output preparation for the user (display).
  * If hp->h_flags&HF_COMPOSE_MODE then we are really in compose mode and
  * produce some fields for easier filling in */
-FL boole n_puthead(enum sendaction action, boole nosend_msg, FILE *fo,
-      struct header *hp, enum gfield w);
+FL boole n_puthead(boole nosend, FILE *fo, struct header *hp, enum gfield w);
 
 /* Create Date:-style header field body (not field itself).
  * We compare the localtime() and gmtime() results to get the timezone, because

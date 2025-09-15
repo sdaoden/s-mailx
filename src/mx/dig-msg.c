@@ -39,7 +39,7 @@
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/ignore.h"
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 #include "mx/mime-parse.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"

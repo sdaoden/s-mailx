@@ -185,7 +185,7 @@ n_iconv_norm_name(char const *cset, boole mime_norm_name){
 	if(!su_cs_cmp_case(cset, "unknown-8bit") || !su_cs_cmp_case(cset, "binary")){
 		if((cset = ok_vlook(charset_unknown_8bit)) == NIL)
 			cset = mx_var_oklook(CHARSET_8BIT_OKEY);
-		cset = n_iconv_norm_name(cset, mime_norm_name);
+		/* This already is iconv_norm_name()d! */
 	}else if(mime_norm_name)
 		cset = a_iconv_db_lookup(cset);
 

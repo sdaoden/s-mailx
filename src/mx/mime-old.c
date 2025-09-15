@@ -37,9 +37,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#define su_FILE mime
+#define su_FILE mime_old
 #define mx_SOURCE
-#define mx_SOURCE_MIME
+#define mx_SOURCE_MIME_OLD
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -54,6 +54,7 @@
 /* TODO nonsense (should be filter chain!) */
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
+#include "mx/mime-charset.h"
 #include "mx/mime-enc.h"
 #include "mx/mime-probe.h"
 #include "mx/mime-type.h"
@@ -62,7 +63,7 @@
 #include "mx/sigs.h"
 #include "mx/ui-str.h"
 
-#include "mx/mime.h"
+#include "mx/mime-old.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
@@ -75,12 +76,6 @@ enum a_mime_structure_hack{
    a_MIME_SH_QUOTE
 };
 
-static char *a_mime_cs_iter_base, *a_mime_cs_iter;
-#define a_MIME_CS_ITER_GET() \
-   ((a_mime_cs_iter != NIL) ? a_mime_cs_iter : mx_var_oklook(CHARSET_8BIT_OKEY))
-#define a_MIME_CS_ITER_STEP() \
-   a_mime_cs_iter = su_cs_sep_c(&a_mime_cs_iter_base, ',', TRU1)
-
 /* fwrite(3) while checking for displayability */
 static sz a_mime_fwrite_display(struct str const *input,
       BITENUM(u32,mx_mime_display_flags) flags,
@@ -88,13 +83,13 @@ static sz a_mime_fwrite_display(struct str const *input,
 
 /* Convert header fields to RFC 2047 format and write to the file fo */
 static sz a_mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
-      enum a_mime_structure_hack msh);
+      enum a_mime_structure_hack msh, boole isaddr);
 
 #ifdef mx_HAVE_ICONV
 static sz a_mime__convhdra(struct str *inp, FILE *fp, uz *colp,
       enum a_mime_structure_hack msh);
 #else
-# define a_mime__convhdra(S,F,C,MSH) a_mime_write_tohdr(S, F, C, MSH)
+# define a_mime__convhdra(S,F,C,MSH) a_mime_write_tohdr(S, F, C, MSH, TRU1)
 #endif
 
 /* Write an address to a header field */
@@ -288,7 +283,7 @@ jleave:
 
 static sz
 a_mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
-      enum a_mime_structure_hack msh){
+      enum a_mime_structure_hack msh, boole isaddr){
    /* TODO a_mime_write_tohdr(): we don't know the name of our header->maxcol..
     * TODO Totally ignores errors.
     * TODO  MIME/send layer rewrite: more available state!!
@@ -367,7 +362,7 @@ a_mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
     * TODO encoded word must be a self-contained iconv(3) life cycle) */
    if(!su_cs_cmp_case(cset7, "iso-2022-jp") ||
       !su_cs_cmp_case(cset8, "iso-2022-jp") ||
-         mx_mime_enc_target() == mx_MIME_ENC_B64)
+         mx_mime_enc_target() == mx_MIME_ENC_B64 || isaddr < FAL0)
       flags |= a_NO_QP;
 
    wbot = in->s;
@@ -427,14 +422,18 @@ a_mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
       /* Decide whether the range has to become encoded or not.
        * xxx control flow quite messy*/
       i = P2UZ(wend - wcur);
-      j = mx_mime_enc_mustquote(wcur, i, TRU1);
+      j = mx_mime_enc_mustquote(wcur, i, (mx_MIME_ENC_F_ISHEAD |
+            (isaddr ? mx_MIME_ENC_F_ISHEAD_ADDR: mx_MIME_ENC_F_NONE)));
+
       if(flags & a_ALWAYS_ENC)
          goto j_beejump;
+
       /* If it just cannot fit on a SHOULD line length, force encode */
       if(i > a_MAXCOL_NENC){
          flags |= a_SHOULD_BEE; /* (Sigh: SHOULD only, not MUST..) */
          goto j_beejump;
       }
+
       if((flags & a_SHOULD_BEE) || j > 0){
 j_beejump:
          flags |= a_ENCODE;
@@ -569,7 +568,8 @@ jenc_retry:
                xout = mx_b64_enc(&cout, &cin,
                      mx_B64_ISHEAD | mx_B64_ISENCWORD);
             else
-               xout = mx_qp_enc(&cout, &cin, mx_QP_ISHEAD | mx_QP_ISENCWORD);
+               xout = mx_qp_enc(&cout, &cin, mx_QP_ISHEAD | mx_QP_ISENCWORD |
+                     (isaddr ? mx_QP_ISHEAD_ADDR : 0));
             if(xout == NIL)
                goto jerr;
             j = xout->l;
@@ -704,7 +704,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, uz *colp,
       *inp = ciconv;
    }
 
-   rv = a_mime_write_tohdr(inp, fp, colp, msh);
+   rv = a_mime_write_tohdr(inp, fp, colp, msh, TRU1);
 
 jleave:
    if(ciconv.s != NIL)
@@ -725,10 +725,14 @@ a_mime_write_tohdr_a(struct str *in, FILE *f, uz *colp,
    NYD_IN;
 
    in->s[in->l] = '\0';
-
+cp =lastcp=in->s;
+size=0;
+/* FIXME */
+#if 1
    if((cp = mx_name_routeaddr_cp(lastcp = in->s)) != NIL && cp > lastcp){
       xin.s = UNCONST(char*,lastcp);
       xin.l = P2UZ(cp - lastcp);
+
       if((size = a_mime__convhdra(&xin, f, colp, msh)) < 0)
          goto jleave;
       lastcp = cp;
@@ -736,6 +740,7 @@ a_mime_write_tohdr_a(struct str *in, FILE *f, uz *colp,
       cp = lastcp;
       size = 0;
    }
+#endif
 
    for( ; *cp != '\0'; ++cp){
       switch(*cp){
@@ -758,28 +763,60 @@ a_mime_write_tohdr_a(struct str *in, FILE *f, uz *colp,
          size += x;
          lastcp = &cp[1];
          break;
-      case '"':
+
+      case '"':/* C99 */{
+         boole is8b, hasbs;
+         char c;
+
          i = P2UZ(cp - lastcp);
          if(i > 0){
             if(fwrite(lastcp, 1, i, f) != i)
                goto joserr;
             size += i;
          }
-         for(lastcp = ++cp; *cp != '\0'; ++cp){
-            if(*cp == '"')
+
+         /* TODO v15 Problem: quoted-string */
+         for(hasbs = is8b = FAL0, lastcp = ++cp; (c = *cp) != '\0'; ++cp){
+            if(c == '"')
                break;
-            if(*cp == '\\' && cp[1] != '\0')
+            if(c == '\\' && cp[1] != '\0'){
+               hasbs = TRU1;
                ++cp;
+            }
+            if(S(u8,c) & 0x80)
+               is8b = TRU1;
          }
-         /* We want to keep empty quoted-strings, too! */
+is8b=FAL0;
+         /* We want to keep empty quoted-strings, too!
+          * FIXME On the other hand */
          xin.s = UNCONST(char*,lastcp);
          xin.l = P2UZ(cp - lastcp);
-         if((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_QUOTE)) < 0)
+#if 0
+
+
+fprintf(stderr, " = QUST <%.*s>\n",(int)xin.l,xin.s);
+         i = mx_mime_enc_mustquote(xin.s, xin.l,
+               (mx_MIME_ENC_F_ISHEAD /*| mx_MIME_ENC_F_ISHEAD_ADDR*/));
+         if(i > 0){
+fprintf(stderr, "MUST QUOTE %zu\n",i);
+         }else{
+fprintf(stderr, "MUST NOT QUST\n");
+
+            if(fputc('"', f) == EOF)
+            goto joserr;
+         }
+#endif
+
+         if((x = a_mime__convhdra(&xin, f, colp,
+               (is8b ? a_MIME_SH_NONE : a_MIME_SH_QUOTE))) < 0)
             goto jerr;
          size += x;
          ++size;
          lastcp = &cp[1];
-         break;
+         if(i > 0)
+            ++cp;
+
+         }break;
       }
    }
 
@@ -827,221 +864,6 @@ a_mime_append_conv(char **buf, uz *size, uz *pos, char const *str, uz len){
 
    NYD2_OU;
 }
-
-void
-mx_mime_charset_iter_clear(void){
-   a_mime_cs_iter = NIL;
-}
-
-boole
-mx_mime_charset_iter_reset(char const *cset_try1_or_nil, /* TODO dups */
-      char const *cset_try2_or_nil){
-   char const *sarr[4];
-   uz sarrl[4], len;
-   char *cp;
-   boole id;
-   NYD_IN;
-   UNUSED(cset_try1_or_nil);
-   UNUSED(cset_try2_or_nil);
-
-   id = ok_blook(iconv_disable);
-   sarr[0] = sarr[1] = sarr[2] = NIL;
-   sarr[3] = id ? ok_vlook(ttycharset) : mx_var_oklook(CHARSET_8BIT_OKEY);
-
-   if(cset_try1_or_nil != NIL){
-      cset_try1_or_nil = n_iconv_norm_name(cset_try1_or_nil, TRU1);
-      if(su_cs_cmp(cset_try1_or_nil, sarr[3]))
-         sarr[0] = cset_try1_or_nil;
-   }
-   if(cset_try2_or_nil != NIL){
-      cset_try2_or_nil = n_iconv_norm_name(cset_try2_or_nil, TRU1);
-      if(su_cs_cmp(cset_try2_or_nil, sarr[3]) &&
-            (sarr[0] == NIL || su_cs_cmp(cset_try2_or_nil, sarr[0])))
-         sarr[1] = cset_try2_or_nil;
-   }
-
-#ifdef mx_HAVE_ICONV
-   if(!id){
-      if((sarr[2] = ok_vlook(sendcharsets)) == NIL &&
-            ok_blook(sendcharsets_else_ttycharset)){
-         cp = UNCONST(char*,ok_vlook(ttycharset));
-         if(su_cs_cmp(cp, sarr[3]) &&
-               (sarr[0] == NIL || su_cs_cmp(cp, sarr[0])) &&
-               (sarr[1] == NIL || su_cs_cmp(cp, sarr[1])))
-            sarr[2] = cp;
-      }
-   }
-#endif
-
-   sarrl[3] = len = su_cs_len(sarr[3]);
-#ifdef mx_HAVE_ICONV
-   if((cp = UNCONST(char*,sarr[2])) != NIL)
-      len += (sarrl[2] = su_cs_len(cp));
-   else
-      sarrl[2] = 0;
-#endif
-   if((cp = UNCONST(char*,sarr[1])) != NIL)
-      len += (sarrl[1] = su_cs_len(cp));
-   else
-      sarrl[1] = 0;
-   if((cp = UNCONST(char*,sarr[0])) != NIL)
-      len += (sarrl[0] = su_cs_len(cp));
-   else
-      sarrl[0] = 0;
-
-   a_mime_cs_iter_base = cp = su_AUTO_ALLOC(len + 1 + 1 +1);
-
-   if((len = sarrl[0]) != 0){
-      su_mem_copy(cp, sarr[0], len);
-      cp[len] = ',';
-      cp += ++len;
-   }
-   if((len = sarrl[1]) != 0){
-      su_mem_copy(cp, sarr[1], len);
-      cp[len] = ',';
-      cp += ++len;
-   }
-#ifdef mx_HAVE_ICONV
-   if((len = sarrl[2]) != 0){
-      su_mem_copy(cp, sarr[2], len);
-      cp[len] = ',';
-      cp += ++len;
-   }
-#endif
-   len = sarrl[3];
-   su_mem_copy(cp, sarr[3], len);
-   cp[len] = '\0';
-
-   a_MIME_CS_ITER_STEP();
-
-   NYD_OU;
-   return (a_mime_cs_iter != NIL);
-}
-
-boole
-mx_mime_charset_iter_next(void){
-   boole rv;
-   NYD2_IN;
-
-   a_MIME_CS_ITER_STEP();
-   rv = (a_mime_cs_iter != NIL);
-
-   NYD2_OU;
-   return rv;
-}
-
-boole
-mx_mime_charset_iter_is_valid(void){
-   boole rv;
-   NYD2_IN;
-
-   rv = (a_mime_cs_iter != NIL);
-
-   NYD2_OU;
-   return rv;
-}
-
-char const *
-mx_mime_charset_iter(void){
-   char const *rv;
-   NYD2_IN;
-
-   rv = a_mime_cs_iter;
-
-   NYD2_OU;
-   return rv;
-}
-
-char const *
-mx_mime_charset_iter_or_fallback(void){
-   char const *rv;
-   NYD2_IN;
-
-   rv = a_MIME_CS_ITER_GET();
-
-   NYD2_OU;
-   return rv;
-}
-
-#ifdef mx_HAVE_ICONV
-s32
-mx_mime_charset_iter_onetime_fp(FILE **ofpp_or_nil, FILE *ifp,
-      struct mx_mime_type_classify_fp_ctx *mtcfcp,
-      char const *cset_to_try_first_or_nil, char const **emsg_or_nil){
-   char const *emsg, *ics;
-   s32 err;
-   FILE *nfp;
-   NYD_IN;
-   ASSERT(mtcfcp->mtcfc_do_iconv);
-   ASSERT(mtcfcp->mtcfc_mpccp_or_nil != NIL);
-
-   /* Create temporary ourselves as necessary to avoid that iconv_onetime_fp()
-    * guts its own creation upon failure */
-   if((nfp = *ofpp_or_nil) == NIL){
-      nfp = mx_fs_tmp_open(NIL, "mmcnv", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL);
-      if(nfp == NIL){
-         err = su_err();
-         emsg = N_("MIME character set conversion file creation failed");
-         goto jleave;
-      }
-   }
-
-   emsg = NIL;
-   ASSERT(mtcfcp->mtcfc_input_charset != NIL);
-   ics = mtcfcp->mtcfc_input_charset;
-
-   for(mx_mime_charset_iter_reset(cset_to_try_first_or_nil, NIL);;){
-      err = n_iconv_onetime_fp(n_ICONV_NONE, &nfp, ifp,
-            mx_mime_charset_iter(), ics);
-      if(err == su_ERR_NONE){
-         if(*ofpp_or_nil == NIL)
-            *ofpp_or_nil = nfp;
-         mtcfcp->mtcfc_charset = mx_mime_charset_iter();
-         mtcfcp->mtcfc_charset_is_ascii =
-               n_iconv_name_is_ascii(mtcfcp->mtcfc_charset);
-         break;
-      }
-
-      rewind(ifp);
-      fflush_rewind(nfp); /* not in error case */
-
-      if(UNLIKELY(!mx_mime_charset_iter_next())){
-         if(*ofpp_or_nil == NIL)
-            mx_fs_close(nfp);
-
-         if(!ok_blook(mime_force_sendout)){
-            /*XXX n_err(_("Cannot convert from %s to *sendcharsets*\n"), ics);*/
-            err = su_ERR_INVAL; /* XXX NOTSUP */
-         }else{
-            err = su_ERR_NONE;
-            mtcfcp->mtcfc_do_iconv = FAL0;
-            mtcfcp->mtcfc_conversion = CONV_TOB64;
-            mtcfcp->mtcfc_content_type = "application/octet-stream";
-            mtcfcp->mtcfc_charset = mtcfcp->mtcfc_input_charset = NIL;
-            mtcfcp->mtcfc_charset_is_ascii = FAL0;
-         }
-         break;
-      }
-
-      ftrunc_x_trunc(nfp, 0, err);
-      if(err != 0){
-         if((err = su_err_by_errno()) == su_ERR_NONE)
-            err = su_ERR_INVAL;
-         if(*ofpp_or_nil == NIL)
-            mx_fs_close(nfp);
-         emsg = N_("I/O error during MIME character set conversion");
-         break;
-      }
-   }
-
-jleave:
-   if(err != su_ERR_NONE && emsg_or_nil != NIL)
-      *emsg_or_nil = emsg;
-
-   NYD_OU;
-   return err;
-}
-#endif /* mx_HAVE_ICONV */
 
 boole
 mx_mime_display_from_header(struct str const *in, struct str *out,
@@ -1128,7 +950,7 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
                   *ltag = '\0';
 
                fhicd = su_cs_cmp_case(cs, tcs)
-                     ? n_iconv_open(tcs, cs) : R(iconv_t,-1);
+                  ? n_iconv_open(tcs, cs) : R(iconv_t,-1);
 
                su_LOFI_FREE(cs);
             }
@@ -1291,12 +1113,12 @@ mx_mime_fromaddr(char const *name){
       switch(c){
       case '(':
          a_mime_append_str(&res, &ressz, &rescur, lastcp,
-            P2UZ(cp - lastcp + 1));
+               P2UZ(cp - lastcp + 1));
          lastcp = ++cp;
          cp = mx_name_skip_comment_cp(cp);
          if(--cp > lastcp)
             a_mime_append_conv(&res, &ressz, &rescur, lastcp,
-               P2UZ(cp - lastcp));
+                  P2UZ(cp - lastcp));
          lastcp = cp;
          break;
       case '"':
@@ -1385,7 +1207,7 @@ mx_mime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
 #ifdef mx_HAVE_ICONV
    if((dflags & mx_MIME_DISPLAY_ICONV) && iconvd != R(iconv_t,-1) &&
          (convert == CONV_TOQP || convert == CONV_8BIT ||
-         convert == CONV_TOB64 || convert == CONV_TOHDR)) {
+          convert == CONV_TOB64 || convert == CONV_TOHDR)) {
       ASSERT(!ok_blook(iconv_disable));
       if(n_iconv_str(iconvd, n_ICONV_NONE, &out, &in, NIL) != 0){
          su_err_set(n_iconv_err);
@@ -1511,7 +1333,7 @@ jqpb64_enc:
          xsize = quoteflt_push(qf, out.s, out.l);
       break;
    case CONV_TOHDR:
-      xsize = a_mime_write_tohdr(&in, f, NIL, a_MIME_SH_NONE);
+      xsize = a_mime_write_tohdr(&in, f, NIL, a_MIME_SH_NONE, FAL0);
       break;
    case CONV_TOHDR_A:{
       uz col;
@@ -1547,5 +1369,5 @@ jleave:
 #include "su/code-ou.h"
 #undef su_FILE
 #undef mx_SOURCE
-#undef mx_SOURCE_MIME
+#undef mx_SOURCE_MIME_OLD
 /* s-it-mode */

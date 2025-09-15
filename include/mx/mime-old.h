@@ -46,36 +46,6 @@ enum mx_mime_display_flags{
 	mx__MIME_DISPLAY_BUF_CONST = 1u<<15 /* Buffer may be const, copy it */
 };
 
-/* *sendcharsets* .. *charset-8bit* iterator; two character sets may be prepended to try first
- * (e.g., for *reply-in-same-charset*).
- * The returned boolean indicates charset_iter_is_valid().
- * Without HAVE_ICONV, this "iterates" over *ttycharset* only.
- * Due to codeflow _iter_reset() may not always be called: to avoid that _iter_or_fallback() accesses invalidated
- * AUTO_ALLOC() memory _iter_clear() should be called first (or instead) */
-EXPORT void mx_mime_charset_iter_clear(void);
-EXPORT boole mx_mime_charset_iter_reset(char const *cset_try1_or_nil, char const *cset_try2_or_nil);
-EXPORT boole mx_mime_charset_iter_next(void);
-EXPORT boole mx_mime_charset_iter_is_valid(void);
-EXPORT char const *mx_mime_charset_iter(void);
-
-/* And this is (xxx temporary?) which returns the iterator if that is valid and otherwise either *charset-8bit* or
- * *ttycharset*, dep. on mx_HAVE_ICONV */
-EXPORT char const *mx_mime_charset_iter_or_fallback(void);
-
-#ifdef mx_HAVE_ICONV
-/* Successively try to convert ifp via iconv_onetime_fp() via complete iter_reset(cset_to_try_first_or_nil) cycle.
- * Any iconv_onetime_cp() docu is valid for this one; a set *ofpp_or_nil is ftrunc_x_trunc() in between cycles.
- * mtcfcp must hold classification data for ifp, .mtcfc_do_iconv and .mtcfc_mpccp_or_nil are ASSERT()ed;
- * .mtcfc_input_charset, .mtcfc_charset and .mtcfc_charset_is_ascii are updated.
- * With *mime-force-sendout* this function succeeds even if iconv is impossible: result differences are that
- * *ofpp_or_nil is not set (ifp is result), .mtcfc_do_iconv=FAL0, .mtcfc_conversion=CONV_TOB64,
- * .mtcfc_content_type="application/octet-stream", as well as .mtcfc_charset=.mtcfc_input_charset=NIL,
- * .mtcfc_charset_is_ascii=FAL0, and ifp is rewind()ed.
- * INVAL is returned on iter excess XXX NOTSUP */
-EXPORT s32 mx_mime_charset_iter_onetime_fp(FILE **ofpp_or_nil, FILE *ifp, struct mx_mime_type_classify_fp_ctx *mtcfcp,
-		char const *cset_to_try_first_or_nil, char const **emsg_or_nil);
-#endif
-
 /* Convert header fields from RFC 5322 format; out-> must be su_FREE()d.
  * FAL0 on hard error, in which case out->s is NIL */
 EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out,

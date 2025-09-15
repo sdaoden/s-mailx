@@ -48,7 +48,6 @@ mx_mime_probe_charset_ctx_setup(struct mx_mime_probe_charset_ctx *mpccp){
 			&& ok_blook(iconv_disable)
 #endif
 			;
-	/* These are all iconv_norm_name()d! */
 	mpccp->mpcc_cs_7bit = ok_vlook(charset_7bit);
 	mpccp->mpcc_cs_7bit_is_ascii = n_iconv_name_is_ascii(mpccp->mpcc_cs_7bit);
 	mpccp->mpcc_ttyc5t = ok_vlook(ttycharset);

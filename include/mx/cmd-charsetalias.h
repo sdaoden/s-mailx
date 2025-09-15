@@ -30,7 +30,8 @@ EXPORT int c_uncharsetalias(void *vp);
 
 /* Try to expand a charset, return mapping or itself.
  * If is_normalized is true iconv_norm_name(,FAL0) will not be called on cp.
- * It will on match etc anyway call iconv_norm_name(,TRU1) for return value. */
+ * It will on match etc anyway call iconv_norm_name(,TRU1) for return value.
+ * Especially in !is_normalized cases it can return NIL on error */
 EXPORT char const *mx_charsetalias_expand(char const *cp, boole is_normalized);
 
 #include <su/code-ou.h>
