@@ -40,47 +40,14 @@
 
 /* Update mailname (if name != NIL) and displayname, return whether displayname was large enough to swallow mailname */
 static boole a_folder_update_mailname(char const *name, boole rdonly);
-#ifdef mx_HAVE_C90AMEND1
-SINLINE uz a_folder__narrow_suffix(char const *cp, uz cpl, uz maxl);
-#endif
 
 /**/
 static void a_folder_info(void);
 
-#ifdef mx_HAVE_C90AMEND1
-SINLINE uz
-a_folder__narrow_suffix(char const *cp, uz cpl, uz maxl){
-	int err;
-	uz i, ok;
-	NYD2_IN;
-
-	for(err = ok = i = 0; cpl > maxl || err;){
-		int ml = mblen(cp, cpl);
-		if(ml < 0){ /* XXX _narrow_suffix(): mblen() error; action? */
-			(void)mblen(NIL, 0);
-			err = 1;
-			ml = 1;
-		}else{
-			if(!err)
-				ok = i;
-			err = 0;
-			if(ml == 0)
-				break;
-		}
-		cp += ml;
-		i += ml;
-		cpl -= ml;
-	}
-
-	NYD2_OU;
-	return ok;
-}
-#endif /* mx_HAVE_C90AMEND1 */
-
 static boole
 a_folder_update_mailname(char const *name, boole rdonly){ /* TODO 2MUCH work */
 	char const *foldp;
-	char *mailp, *dispp;
+	char *mailp, *mailbp, *dispp;
 	uz i, j, maillen, foldlen;
 	boole rv;
 	NYD_IN;
@@ -97,8 +64,9 @@ a_folder_update_mailname(char const *name, boole rdonly){ /* TODO 2MUCH work */
 		if(p == n_PROTO_FILE || p == n_PROTO_MAILDIR || p == n_PROTO_EML ||
 				p == n_PROTO_SMBOX || p == n_PROTO_XMBOX){
 			name = adjname;
-			if(realpath(name, mailname) == NIL && su_err_by_errno() != su_ERR_NOENT){
-				n_err(_("Cannot canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
+			if(realpath(name, mailname) == NIL){
+				if(su_err_by_errno() != su_ERR_NOENT)
+					n_err(_("Cannot canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
 				goto jdocopy;
 			}
 		}else
@@ -106,11 +74,11 @@ jdocopy:
 #endif
 			su_cs_pcopy_n(mailname, name, sizeof(mailname));
 	}
+	ASSERT(mailname[0] != '\0');
 
 	mailp = mailname;
-	dispp = displayname;
 
-	/* Don't display an absolute path but "+FOLDER" if within *folder* */
+	/* Do not display an absolute path but "+FOLDER" if within *folder* */
 	n_pstate &= ~n_PS_MAILNAME_WITHIN_FOLDER;
 	if(*(foldp = n_folder_query()) != '\0'){
 		foldlen = su_cs_len(foldp);
@@ -121,54 +89,55 @@ jdocopy:
 	}else
 		foldlen = 0;
 
-	/* And never include any paths in displayname when reproducible */
+	/* Never include any paths in displayname when reproducible */
 	if(su_state_has(su_STATE_REPRODUCIBLE))
 		mailp = n_filename_to_repro(mailp);
 
 	maillen = su_cs_len(mailp);
 
-	/* We want to see the name of the folder .. on the screen */
-	i = maillen;
-	if(i < sizeof(displayname) - 3 -1){
-		if(foldlen > 0 /* xxx -> n_pstate & n_PS_MAILNAME_WITHIN_FOLDER */){
-			*dispp++ = '+';
-			*dispp++ = '[';
-			if(su_state_has(su_STATE_REPRODUCIBLE))
-				foldlen = 0;
-			else{
-				su_mem_copy(dispp, mailp, foldlen);
-				dispp += foldlen;
-				mailp += foldlen;
+	/* basename */
+	mailbp = &mailp[maillen];
+	/*if(maillen > 0)*/
+		while(--mailbp > mailp)
+			if(*mailbp == '/'){ /* DIRSEP */
+				if(mailbp[1] != '\0')
+					++mailbp;
+				break;
 			}
-			*dispp++ = ']';
-			su_mem_copy(dispp, mailp, i -= foldlen);
-			dispp[i] = '\0';
-		}else
-			su_mem_copy(dispp, mailp, i +1);
-		rv = TRU1;
-	}else{
-		/* Avoid disrupting multibyte sequences (if possible) */
-#ifndef mx_HAVE_C90AMEND1
-		j = sizeof(displayname) / 3 - 3;
-		i -= sizeof(displayname) - (1/* + */ + 3) - j;
-#else
-		j = mx_field_detect_clip(sizeof(displayname) / 3, mailp, i);
-		i = j + a_folder__narrow_suffix(mailp + j, i - j, sizeof(displayname) - (1/* + */ + 3 + 1) - j);
-#endif
-		snprintf(dispp, sizeof(displayname), "%s%.*s...%s",
-			(foldlen > 0 ? "[+]" : ""), (int)j, mailp, mailp + i);
-		rv = FAL0;
+
+	/* We want to see the name of the folder .. on the screen */
+	dispp = displayname;
+
+	if(foldlen > 0){
+		dispp[0] = '+';
+		dispp[1] = '[';
+		dispp += 2;
 	}
 
-	for(dispp = &mailp[maillen]; --dispp != mailp;)
-		if(*dispp == '/'){ /* DIRSEP */
-			if(dispp[1] != '\0')
-				mailp = &dispp[1];
-			break;
+	j = mx_field_detect_clip(sizeof(displayname) - 16/* user prompt */ - 3 - n_mb_cur_max -1, mailp, maillen);
+	if(j != maillen){
+		dispp[0] = dispp[1] = '.';
+		dispp += 2;
+		i = su_cs_len(mailbp);
+		j = mx_field_detect_clip(sizeof(displayname) - 3 - 2 - 1 - n_mb_cur_max -1, mailbp, i);
+		if(j == i){
+			*dispp++ = '/';
+			su_mem_copy(dispp, mailbp, i);
+			dispp += i;
 		}
+		rv = FAL0;
+	}else{
+		su_mem_copy(dispp, mailp, maillen);
+		dispp += maillen;
+		rv = TRU1;
+	}
+
+	if(foldlen > 0)
+		*dispp++ = ']';
+	*dispp = '\0';
 
 	n_PS_ROOT_BLOCK((
-		ok_vset(mailbox_basename, mailp),
+		ok_vset(mailbox_basename, mailbp),
 		ok_vset(mailbox_display, displayname),
 		ok_vset(mailbox_resolved, mailname),
 		(rdonly ? ok_bset(mailbox_read_only) : ok_bclear(mailbox_read_only))

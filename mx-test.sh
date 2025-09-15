@@ -11363,26 +11363,26 @@ t_e_H_L_opts() { #{{{
 } #}}}
 
 t_on_mailbox() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	gm from 'ex1@am.ple' sub s1 > ./t1x.mbox
 	gm from 'ex2@am.ple' sub s2 > ./t1y.mbox
 	gm from 'ex3@am.ple' sub s3 > ./t1z.mbox
 
-	xfolder=$(${pwd})
+	xfolder=$($pwd)
 
 	#{{{
-	</dev/null ${MAILX} ${ARGS} -Y '#
-\set noautosort noshowto \
+	</dev/null $MAILX $ARGS -Y '#
+\se noautosort noshowto \
 	on-mailbox-event=ome on-mailbox-event-+t1x.mbox=ome-z on-mailbox-event-+t1y.mbox=ome-z
 \def ome {
 	\echon "ome #<$#> 1<$1> <$mailbox-basename,$mailbox-display,$mailbox-read-only>: "
 	\if $1 == open
 		\ec "open as<$autosort> showto<$showto> kuh<$kuh>"
-		\set autosort=to showto kuh=muh
+		\se autosort=to showto kuh=muh
 	\eli $1 == newmail
 		\ec "newmail as<$autosort> showto<$showto> kuh<$kuh>"
-		\set autosort=from kuh=wuff
+		\se autosort=from kuh=wuff
 		\ec =newest;\sea:N;\ec =all;\sea*
 	\el
 		\ec
@@ -11398,32 +11398,32 @@ t_on_mailbox() { #{{{
 #
 e 1;\Fi ./t1x.mbox
 e 2;\h;\newmail
-e 3;\!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
+e 3;\!'"$cat"' ./t1y.mbox >> ./t1x.mbox
 e 4;\newmail
 e 5;\h
-e 6;\!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
-e 7;\set header;\newmail;\unset header
+e 6;\!'"$cat"' ./t1y.mbox >> ./t1x.mbox
+e 7;\se header;\newmail;\uns header
 e 8;\h
 #
-\set folder='"${xfolder}"'
+\se folder='"$xfolder"'
 #
 e 11;\Fi +t1y.mbox
 e 12;\h;\newmail
-e 13;\!'"${cat}"' ./t1z.mbox >> ./t1y.mbox
+e 13;\!'"$cat"' ./t1z.mbox >> ./t1y.mbox
 e 14;\newmail
 e 15;\h
 #
 e 21;\Fi ./t1x.mbox
 e 22;\h;\newmail
-e 23;\!'"${cat}"' ./t1z.mbox >> ./t1x.mbox
+e 23;\!'"$cat"' ./t1z.mbox >> ./t1x.mbox
 e 24;\newmail
 e 25;\h
 ' \
-	-R > ./t1 2>${E0}
+		-R > ./t1 2>$E0
 	#}}}
-	cke0 1 0 ./t1 '4024483557 4042'
+	cke0 1 0 ./t1 '292522297 4042'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_q_t_etc_opts() { #{{{

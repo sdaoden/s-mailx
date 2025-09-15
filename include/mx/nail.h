@@ -924,7 +924,7 @@ VL s32 n_pstate_ex_no; /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 VL int msgCount; /* Count of messages read in */
 VL struct mailbox mb; /* Current mailbox */
 VL char mailname[PATH_MAX]; /* Name of current file TODO URL/object*/
-VL char displayname[80 - 16]; /* Prettyfied for display TODO URL/obj*/
+VL char displayname[80]; /* Prettyfied for display TODO URL/obj*/
 VL char prevfile[PATH_MAX]; /* Name of previous file TODO URL/obj */
 VL s64 mailsize; /* Size of system mailbox */
 VL struct message *dot; /* Pointer to current message */
