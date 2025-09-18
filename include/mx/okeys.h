@@ -53,14 +53,16 @@
  * + posnum=1 value must be positive 32-bit number (mutual num=)
  * + lower=1 value will be ASCII-lowercased
  * + obsolete=1 var is obsolete
- * - rc=1/VAL informational: i3val=/defval= "builtin rc" "UI improvement";
+ * - rc=1/VAL|norc=1: i3val=/defval= is "builtin rc" "UI improvement";
  *   If VAL, it is original setting; update manual!?  Adjust $OKEY_RC_ in test!!
+ * - posix=1 means variable is part of POSIX standard
  *
  * Notes:
  * - Most default VAL_ues come from in from build system via ./make.rc
  * - Other i3val=s and/or defval=s are imposed by POSIX
  * - Keep in sync with manual and eg t_posix__compat() test
- * - See the introductional source comments before changing *anything* in here */
+ * - See the introductional source comments before changing *anything* in here
+ * TODO: could auto-generate posix tests etc */
 enum okeys{
 	/* This is used for all macro(-local) variables etc., i.e.,
 	 * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
@@ -72,25 +74,25 @@ enum okeys{
 
 	ok_v_account, /* {nolopts=1,rdonly=1,nodel=1} */
 ok_v_agent_shell_lookup, /* {obsolete=1} */
-	ok_b_allnet,
+	ok_b_allnet, /* {posix=1} */
 	/* *ask* is auto-mapped to *asksub* as imposed by standard! */
 	ok_b_ask, /* {vip=1} */
 	ok_b_askatend,
 	ok_b_askattach,
-	ok_b_askbcc,
-	ok_b_askcc,
+	ok_b_askbcc, /* {posix=1} */
+	ok_b_askcc, /* {posix=1} */
 	ok_b_asksign,
-	ok_b_asksend,
-	ok_b_asksub, /* {i3val=TRU1} */
+	ok_b_asksend, /* {i3val=TRU1,norc=1} */
+	ok_b_asksub, /* {posix=1,i3val=TRU1} */
 	ok_v_attrlist,
 	ok_v_autobcc,
 	ok_v_autocc,
 	ok_b_autocollapse,
-	ok_b_autoprint,
+	ok_b_autoprint, /* {posix=1} */
 ok_b_autothread, /* {obsolete=1} */
 	ok_v_autosort,
 
-	ok_b_bang,
+	ok_b_bang, /* {posix=1} */
 	ok_v_bang_data, /* {nolopts=1,rdonly=1,nodel=1} */
 ok_v_bind_timeout, /* {vip=1,obsolete=1,notempty=1,posnum=1} */
 	ok_v_bind_inter_byte_timeout, /* {\ } */
@@ -115,7 +117,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
 	ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
 	ok_v_charset_locale, /* {vip=1,nolopts=1,rdonly=1,nodel=1} */
 	ok_v_charset_unknown_8bit, /* {vip=1,notempty=1} */
-	ok_v_cmd, /* {notempty=1} */
+	ok_v_cmd, /* {posix=1,notempty=1} */
 	ok_b_colour_disable,
 	ok_b_colour_pager, /* {obsolete=1} */
 	ok_v_contact_mail, /* {virt=VAL_CONTACT_MAIL} */
@@ -128,71 +130,70 @@ ok_b_bsdannounce, /* {obsolete=1} */
 		/* {defval=mx_CONTENT_DESC_SMIME_MESSAGE} */
 	ok_v_content_description_smime_signature, /* {\ } */
 		/* {defval=mx_CONTENT_DESC_SMIME_SIG} */
-
-	ok_v_crt, /* {posnum=1} */
+	ok_v_crt, /* {posix=1,posnum=1,i3val="",norc=1} */
 	ok_v_customhdr, /* {vip=1} */
 
 	ok_v_DEAD, /* {notempty=1,env=1,defval=VAL_DEAD} */
 	ok_v_datefield, /* {i3val="%Y-%m-%d %H:%M"} */
 	ok_v_datefield_markout_older, /* {i3val="%Y-%m-%d"} */
-	ok_b_debug, /* {vip=1} */
+	ok_b_debug, /* {posix=1,vip=1} */
 	ok_b_disposition_notification_send,
-	ok_b_dot,
+	ok_b_dot, /* {posix=1} */
 	ok_b_dotlock_disable,
 ok_b_dotlock_ignore_error, /* {obsolete=1} */
 
 	ok_v_EDITOR, /* {env=1,notempty=1,defval=VAL_EDITOR} */
 	ok_v_editalong,
-	ok_b_editheaders,
-	ok_b_emptystart,
+	ok_b_editheaders, /* {i3val=TRU1,norc=1} */
+	ok_b_emptystart, /* {i3val=TRU1,norc=1} */
 ok_v_encoding, /* {obsolete=1} */
 	ok_b_errexit,
 	ok_v_errors_limit, /* {notempty=1,posnum=1,defval=VAL_ERRORS_LIMIT} */
-	ok_v_escape, /* {defval=n_ESCAPE} */
+	ok_v_escape, /* {posix=1,defval=n_ESCAPE} */
 	ok_v_expandaddr,
 	ok_v_expandaddr_domaincheck, /* {notempty=1} */
 	ok_v_expandargv,
 	ok_b_expert,
 
 	ok_v_features, /* {virt=VAL_FEATURES} */
-	ok_b_flipr,
-	ok_v_folder, /* {vip=1} */
+	ok_b_flipr, /* {posix=1} */
+	ok_v_folder, /* {posix=1,vip=1} */
 	ok_v_folder_resolved, /* {rdonly=1,nodel=1} */
 ok_v_folder_hook, /* {obsolete=1} */
-	ok_b_followup_to,
+	ok_b_followup_to, /* {i3val=TRU1,norc=1} */
 	ok_b_followup_to_add_cc,
-	ok_v_followup_to_honour,
+	ok_v_followup_to_honour, /* {i3val="ask-yes",norc=1} */
 	ok_b_forward_add_cc,
 	ok_b_forward_as_attachment,
 	ok_v_forward_inject_head,
 	ok_v_forward_inject_tail,
 	ok_v_from, /* {vip=1} */
-	ok_b_fullnames,
+	ok_b_fullnames, /* {i3val=TRU1,norc=1} */
 ok_v_fwdheading, /* {obsolete=1} */
 
 	ok_v_HOME, /* {vip=1,nodel=1,notempty=1,import=1} */
-	ok_b_header, /* {i3val=TRU1} */
+	ok_b_header, /* {posix=1,i3val=TRU1} */
 	ok_v_headline,
 	ok_v_headline_bidi,
 	ok_b_headline_plain,
 	ok_v_history_file,
-	ok_v_history_gabby,
+	ok_v_history_gabby, /* {i3val="all",norc=1} */
 	ok_b_history_gabby_persist,
 	ok_v_history_size, /* {notempty=1,posnum=1} */
-	ok_b_hold, /* {i3val=TRU1} */
+	ok_b_hold, /* {posix=1,i3val=TRU1} */
 	ok_v_hostname, /* {vip=1} */
 
 	ok_b_iconv_disable,
 	ok_b_idna_disable,
 	ok_v_ifs, /* {vip=1,defval=" \t\n"} */
 	ok_v_ifs_ws, /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
-	ok_b_ignore,
-	ok_b_ignoreeof,
+	ok_b_ignore, /* {posix=1} */
+	ok_b_ignoreeof, /* {posix=1} */
 	ok_v_inbox,
-	ok_v_indentprefix, /* {defval="\t"} */
+	ok_v_indentprefix, /* {posix=1,defval="> ",rc=\t} */
 
-	ok_b_keep, /* {i3val=TRU1} */
-	ok_b_keepsave, /* {i3val=TRU1} */
+	ok_b_keep, /* {posix=1,i3val=TRU1} */
+	ok_b_keepsave, /* {posix=1,i3val=TRU1} */
 
 	ok_v_LANG, /* {vip=1,env=1,notempty=1} */
 	ok_v_LC_ALL, /* {name=LC_ALL,vip=1,env=1,notempty=1} */
@@ -218,18 +219,18 @@ ok_v_fwdheading, /* {obsolete=1} */
 	ok_v_mailbox_resolved, /* {nolopts=1,rdonly=1,nodel=1} */
 	ok_b_mailcap_disable,
 	ok_v_mailx_extra_rc, /* {notempty=1} */
-	ok_b_markanswered,
-	ok_b_mbox_fcc_and_pcc, /* {i3val=1} */
+	ok_b_markanswered, /* {i3val=TRU1,norc=1} */
+	ok_b_mbox_fcc_and_pcc, /* {i3val=TRU1} */
 	ok_b_mbox_rfc4155,
 	ok_b_memdebug, /* {vip=1} */
 	ok_v_message_id,
 	ok_b_message_id_disable,
 	ok_v_message_inject_head,
 	ok_v_message_inject_tail,
-	ok_b_metoo,
+	ok_b_metoo, /* {posix=1} */
 	ok_b_mime_allow_text_controls,
 	ok_b_mime_alternative_favour_rich,
-	ok_v_mime_counter_evidence, /* {posnum=1} */
+	ok_v_mime_counter_evidence, /* {posnum=1,i3val="0b1111",norc=1} */
 	ok_v_mime_encoding,
 	ok_b_mime_force_sendout, /* {i3val=TRU1} */
 	ok_v_mimetypes_load_control,
@@ -268,13 +269,13 @@ ok_v_on_compose_splice_shell, /* {notempty=1,obsolete=1} */
 	ok_v_on_program_exit, /* {notempty=1} */
 	ok_v_on_resend_cleanup, /* {notempty=1} */
 	ok_v_on_resend_enter, /* {notempty=1} */
-	ok_b_outfolder,
+	ok_b_outfolder, /* {posix=1} */
 
 	ok_v_PAGER, /* {env=1,notempty=1,defval=VAL_PAGER} */
 	ok_v_PATH, /* {nodel=1,import=1} */
 	/* XXX POSIXLY_CORRECT->posix: needs initial call via main()! */
 	ok_b_POSIXLY_CORRECT, /* {vip=1,import=1,name=POSIXLY_CORRECT} */
-	ok_b_page,
+	ok_b_page, /* {posix=1} */
 	ok_v_password, /* {chain=1} */
 ok_b_piperaw, /* {obsolete=1} */
 	ok_v_pop3_auth, /* {chain=1} */
@@ -284,11 +285,11 @@ ok_b_piperaw, /* {obsolete=1} */
 	ok_b_pop3_use_starttls, /* {chain=1} */
 	ok_b_posix, /* {vip=1} */
 	ok_b_print_alternatives,
-	ok_v_prompt, /* {i3val="? "} */
+	ok_v_prompt, /* {posix=1,i3val="? "} */
 	ok_v_prompt2, /* {i3val=".. "} */
 
-	ok_b_quiet,
-	ok_v_quote,
+	ok_b_quiet, /* {posix=1} */
+	ok_v_quote, /* {i3val="",norc=1} */
 	ok_b_quote_add_cc,
 	ok_b_quote_as_attachment,
 	ok_v_quote_chars, /* {vip=1,notempty=1,defval=">|}:"} */
@@ -297,22 +298,22 @@ ok_b_piperaw, /* {obsolete=1} */
 	ok_v_quote_inject_tail,
 
 	ok_b_r_option_implicit,
-	ok_b_recipients_in_cc,
-	ok_v_record,
+	ok_b_recipients_in_cc, /* {i3val=TRU1,norc=1} */
+	ok_v_record, /* {posix=1} */
 	ok_b_record_files,
 	ok_b_record_resent,
 	ok_b_reply_in_same_charset,
 	ok_v_reply_strings,
 ok_v_replyto, /* {vip=1,obsolete=1,notempty=1} */
 	ok_v_reply_to, /* {vip=1,notempty=1} */
-	ok_v_reply_to_honour,
+	ok_v_reply_to_honour, /* {i3val="ask-yes",norc=1} */
 	ok_v_reply_to_swap_in,
 	ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */
 
 	ok_v_SHELL, /* {import=1,notempty=1,defval=VAL_SHELL} */
 ok_b_SYSV3, /* {env=1,obsolete=1} */
-	ok_b_save, /* {i3val=TRU1} */
-	ok_v_screen, /* {notempty=1,posnum=1} */
+	ok_b_save, /* {posix=1,i3val=TRU1} */
+	ok_v_screen, /* {posix=1,notempty=1,posnum=1} */
 	ok_b_searchheaders,
 	/* Charset lowercase conversion handled via vip= */
 	ok_v_sendcharsets, /* {vip=1} */
@@ -322,12 +323,12 @@ ok_v_sendmail, /* {obsolete=1} */
 ok_v_sendmail_arguments, /* {obsolete=1} */
 ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
 ok_v_sendmail_progname, /* {obsolete=1} */
-	ok_v_sendwait, /* {i3val=""} */
+	ok_v_sendwait, /* {posix=1,i3val=""} */
 	ok_b_showlast,
-	ok_b_showname,
-	ok_b_showto,
-	ok_v_Sign,
-	ok_v_sign,
+	ok_b_showname, /* {i3val=TRU1,norc=1} */
+	ok_b_showto, /* {posix=1,i3val=TRU1,norc=1} */
+	ok_v_Sign, /* {posix=1} */
+	ok_v_sign, /* {posix=1} */
 ok_v_signature, /* {obsolete=1} */
 	ok_b_skipemptybody, /* {vip=1} */
 	ok_v_smime_ca_dir,
@@ -411,7 +412,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
 	ok_v_tls_fingerprint_digest, /* {chain=1} */
 	ok_v_tls_rand_file,
 	ok_v_tls_verify, /* {chain=1} */
-	ok_v_toplines, /* {notempty=1,num=1,defval="5"} */
+	ok_v_toplines, /* {posix=1,notempty=1,num=1,defval="5"} */
 	ok_b_topsqueeze,
 	/* Charset lowercase conversion handled via vip= */
 	ok_v_ttycharset, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */

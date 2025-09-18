@@ -1,0 +1,124 @@
+.\"@ mx-config.7 - S-nail(1) configuration examples.
+.\"
+.\" Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
+.\" SPDX-License-Identifier: ISC
+.\"
+.\" Permission to use, copy, modify, and/or distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\"--MKREL-START--
+.\"@ S-nail v14.9.25 / 2024-06-27
+.Dd June 27, 2024
+.ds VV \\%v14.9.25
+.\"--MKREL-END--
+.\"--MKMAN-START--
+.ds XX \\%S-NAIL
+.ds Xx \\%S-nail
+.ds xX \\%s-nail
+.ds UR \\%s-nail.rc
+.ds ur \\%~/.mailrc
+.ds VD \\%~/dead.letter
+.ds VM \\%~/mbox
+.ds VN \\%~/.netrc
+.ds VT \\%/tmp
+.ds vS /etc/mime.types
+.ds vU ~/.mime.types
+.\"--MKMAN-END--
+.\" --BEGINSTRIP--
+.\"
+.ds BO (Boolean)
+.ds CM (Compose mode)
+.ds ID [v15 behavior may differ]
+.ds NF [No field splitting]
+.ds NQ [Only new quoting rules]
+.ds OB [Obsolete]
+.ds OP [Option]
+.ds oP [option]
+.\"IEEE Std 1003.1-2024
+.ds PO POSIX.1-2024
+.ds RO (Read-only)
+.ds SM (Send mode)
+.ds OU #-> \:
+.ds IN #<- \:
+.ds IX #..
+.
+.
+.Dt "\*(XX-CONFIG" 7
+.Os
+.Mx -enable
+.
+.
+.Sh NAME
+.Nm \*(Xx-config \%[\*(VV]
+.Nd configuration examples
+.
+.
+.Mx -toc -tree html pdf ps xhtml
+.
+.
+.Sh DESCRIPTION
+.
+.Bl -bullet
+.It
+In order to be able to copy-and-paste from this manual,
+viewing it in the
+.Dq C
+locale may be necessary:
+.Dl LC_ALL=C man \*(xX-config
+.It
+Generic documentation can be found in the base manual of
+.Xr \*(xX 1 ,
+configuration related are especially the sections
+.Sx "A starter" ,
+also showing deriviations from the POSIX.1-2024 standard mandated
+initial settings iterated in
+.Sx "INTERNAL VARIABLES"
+\(rA
+.Sx "Initial settings" .
+File syntax and related as such are documented in
+.Sx FILES
+\(rA
+.Sx "Resource files" .
+.It
+Upon desire to create a configuration portable in between
+.Xr mailx 1
+implementations, \*(xX specific settings can be placed in a dedicated
+.Va \&\&mailx-extra-rc
+file, like so:
+.Dl set mailx-extra-rc=~/.s-mailxrc
+(Almost all content of this manual falls into this category.)
+.It
+Availability of entries marked \*(OP is a compile-time decision.
+.It
+The built-in set of variables and settings can be queried via
+.Dl \*(xX -:/ -v -Xset -Xx
+.El
+.
+.
+.\"--MKROFF-START--
+.Bd -literal -offset indent
+.pso sed -e '/^#[@#]/d' -e 's|\\\\|\\\\e|g' ./mx-config.7.in
+.Ed
+.\"--MKROFF-END--
+.
+.
+.Sh "SEE ALSO"
+.
+.Xr \*(xX 1
+.
+.
+.Sh AUTHORS
+.
+.An -nosplit
+.An "Steffen Nurpmeso" Aq s-mailx@lists.sdaoden.eu .
+.
+.\" s-ts-mode

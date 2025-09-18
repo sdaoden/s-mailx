@@ -147,8 +147,7 @@ EXPORT char *mx_go_input_cp(BITENUM(u32,mx_go_input_flags) gif, char const *prom
 EXPORT boole mx_go_load_rc(char const *name);
 
 /* "Load" or go_inject() command line option "cmd" arguments in order.
- * *Only* for main(), returns whether program shall continue unless injectit is set, in which case it does not fail.
- * If lines is NIL the builtin RC file is used, and errors are ignored */
+ * *Only* for main(), returns whether program shall continue unless injectit is set, in which case it does not fail */
 EXPORT boole mx_go_load_lines(boole injectit, char const **lines, uz cnt);
 
 /* Evaluate a complete macro / a single command.

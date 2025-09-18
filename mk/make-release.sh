@@ -52,8 +52,8 @@ update_stable_hook() {
 	${git} add -f include/mx/gen-version.h
 
 	#
-	echo 'nail.1: expanding MKREL'
-	< nail.1 > nail.1x ${awk} '
+	echo 'mx.1: expanding MKREL'
+	< mx.1 > mx.1x ${awk} '
 		BEGIN { written = 0 }
 		/\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {
 			if (written++ != 0)
@@ -67,13 +67,13 @@ update_stable_hook() {
 		}
 		{print}
 	' &&
-	${mv} -f nail.1x nail.1
-	${git} add nail.1
+	${mv} -f mx.1x mx.1
+	${git} add mx.1
 
 	#
 	if [ -z "${grappa}" ] && command -v ${roff} >/dev/null 2>&1; then
 		echo 'NEWS: updating anchors'
-		< nail.1 ${SHELL} mk/mdocmx.sh |
+		< mx.1 ${SHELL} mk/mdocmx.sh |
 			MDOCMX_ENABLE=1 ${roff} -U -Tutf8 -mdoc -dmx-anchor-dump=/tmp/anchors -dmx-toc-force=tree >/dev/null
 		${SHELL} mk/make-news-anchors.sh /tmp/anchors < NEWS > NEWSx
 		${mv} -f NEWSx NEWS
@@ -81,8 +81,8 @@ update_stable_hook() {
 	fi
 
 	#
-	echo 'nail.rc: expanding MKREL'
-	< nail.rc > nail.rcx ${awk} '
+	echo 'mx.rc: expanding MKREL'
+	< mx.rc > mx.rcx ${awk} '
 		BEGIN { written = 0 }
 		/^#--MKREL-START--/, /^#--MKREL-END--/ {
 			if (written++ != 0)
@@ -94,8 +94,8 @@ update_stable_hook() {
 		}
 		{print}
 	' &&
-	${mv} -f nail.rcx nail.rc
-	${git} add nail.rc
+	${mv} -f mx.rcx mx.rc
+	${git} add mx.rc
 
 	#
 	${make} d-cmd-tab && ${git} add -f src/mx/gen-cmd-tab.h
@@ -109,29 +109,29 @@ update_stable_hook() {
 
 update_release_hook() {
 	#
-	echo 'nail.1: stripping MKREL etc.'
+	echo 'mx.1: stripping MKREL etc.'
 	${sed} -e '/^\.\\"--MKREL-START--/d' \
 		-e '/^\.\\"--MKREL-END--/d' \
 		-e '/--BEGINSTRIP--/,$ {' \
 			-e '/^\.[	 ]*$/d' -e '/^\.[	 ]*\\"/d' \
 		-e '}' \
 		-e '/^\.$/d' \
-		< nail.1 > nail.1x
-	${mv} -f nail.1x nail.1
-	${SHELL} mk/mdocmx.sh < nail.1 > nail.1x
-	${mv} -f nail.1x nail.1
+		< mx.1 > mx.1x
+	${mv} -f mx.1x mx.1
+	${SHELL} mk/mdocmx.sh < mx.1 > mx.1x
+	${mv} -f mx.1x mx.1
 	# And generate the HTML manual, while here
 	if [ -z "${grappa}" ] && command -v ${roff} >/dev/null 2>&1; then
-		echo 'nail.1: creating HTML manual'
-		< nail.1 MDOCMX_ENABLE=1 ${roff} -Thtml -mdoc > /tmp/nail-manual.html
+		echo 'mx.1: creating HTML manual'
+		< mx.1 MDOCMX_ENABLE=1 ${roff} -Thtml -mdoc > /tmp/mx-manual.html
 	fi
-	${git} add nail.1
+	${git} add mx.1
 
 	#
-	echo 'nail.rc: stripping MKREL etc.'
-	${sed} -e '/^#--MKREL-START--/d' -e '/^#--MKREL-END--/d' < nail.rc > nail.rcx
-	${mv} -f nail.rcx nail.rc
-	${git} add nail.rc
+	echo 'mx.rc: stripping MKREL etc.'
+	${sed} -e '/^#--MKREL-START--/d' -e '/^#--MKREL-END--/d' < mx.rc > mx.rcx
+	${mv} -f mx.rcx mx.rc
+	${git} add mx.rc
 
 	${SHELL} mk/su-make-strip-cxx.sh
 

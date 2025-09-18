@@ -3957,7 +3957,7 @@ if feat_no AMALGAMATION; then
 else
 	(cd "$SRCDIR"; COUNT_MODE=0 $SHELL ../mk/make-rules.sh mx/*.c) >> $mk
 	mx_obj=mx-main.o
-	printf 'mx-main.o: gen-bltin-rc.h gen-mime-types.h\n' >> $mk
+	printf 'mx-main.o: gen-mime-types.h\n' >> $mk
 
 	printf '/* mx_HAVE_AMALGAMATION: include sources */\n' >> $h
 	echo '#ifdef mx_MASTER_GEN_CONFIG' >> $h

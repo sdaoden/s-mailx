@@ -70,18 +70,17 @@ enum a_go_flags{
 	a_GO_MACRO = 1u<<3, /* Running a macro */
 	a_GO_MACRO_FREE_DATA = 1u<<4, /* Lines are allocated, FREE() once done */
 	/* TODO For simplicity this is yet _MACRO plus specialization overlay
-	 * TODO (_X_OPTION, _BLTIN_RC, _CMD) -- should be types on their own! */
+	 * TODO (_X_OPTION, _CMD) -- should be types on their own! */
 	a_GO_MACRO_X_OPTION = 1u<<5, /* Macro indeed command line -X option */
-	a_GO_MACRO_BLTIN_RC = 1u<<6, /* Macro indeed command line -:x option */
 	a_GO_MACRO_CMD = 1u<<7, /* Macro indeed single-line: ~:COMMAND */
 	/* TODO v15-compat: remove! <> search SPLICE! <> *on-compose-splice(-shell)?* */
 	a_GO_SPLICE = 1u<<8,
 	/* If it is none of those, it must be the outermost, the global one */
 	a_GO_TYPE_MASK = a_GO_PIPE | a_GO_FILE | a_GO_MACRO |
-			/* a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD | */
+			/* a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD | */
 			a_GO_SPLICE,
 
-	a_GO_TYPE_MACRO_MASK = a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD,
+	a_GO_TYPE_MACRO_MASK = a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD,
 
 	a_GO_FORCE_EOF = 1u<<14, /* go_input() shall return EOF next */
 	a_GO_IS_EOF = 1u<<15,
@@ -188,10 +187,6 @@ struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
 	FILE *grc_fp;
 	s32 grc_fd; /* Based upon file-descriptor, -1 otherwise */
 	char grc_name[VFIELD_SIZE(4)]; /* User input for identification purposes */
-};
-
-static char const * const a_go_bltin_rc_lines[] = {
-#include "gen-bltin-rc.h" /* */
 };
 
 static n_sighdl_t a_go_oldpipe;
@@ -1337,7 +1332,7 @@ jerr:
 						? _("executing `source'd pipe")
 						: (gcp->gc_flags & a_GO_FILE
 							? _("loading `source'd file") : _(a_GO_MAINCTX_NAME)))))
-			 : (((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_BLTIN_RC)) == a_GO_MACRO)
+			 : ((gcp->gc_flags & a_GO_MACRO)
 				 ? ((gcp->gc_flags & a_GO_MACRO_X_OPTION)
 					 ? _("evaluating command line")
 					 : _("evaluating macro"))
@@ -1936,7 +1931,7 @@ jinject:
 			if(!(a_go_ctx->gc_flags & a_GO_MACRO_FREE_DATA))
 				*linebuf = su_cs_dup_cbuf(*linebuf, *linesize, 0);
 
-			iftype = ((a_go_ctx->gc_flags & (a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC))
+			iftype = ((a_go_ctx->gc_flags & a_GO_MACRO_X_OPTION)
 					? "COMMAND-LINE" : ((a_go_ctx->gc_flags & a_GO_MACRO_CMD) ? "CMD" : "MACRO"));
 		}
 		n = S(int,*linesize);
@@ -2197,12 +2192,12 @@ jleave:
 
 boole
 mx_go_load_lines(boole injectit, char const **lines, uz cnt){
-	static char const a_name_x[] = "-X", a_name_bltin[] = "builtin RC file";
+	static char const a_name_x[] = "-X";
 
 	union{
 		boole rv;
 		u64 align;
-		char uf[VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) + MAX(sizeof(a_name_x), sizeof(a_name_bltin))];
+		char uf[VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) + sizeof(a_name_x)];
 	} b;
 	char const *srcp, *xsrcp;
 	char *cp;
@@ -2214,13 +2209,7 @@ mx_go_load_lines(boole injectit, char const **lines, uz cnt){
 	gcp = S(void*,b.uf);
 	su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
 
-	if(lines == NIL){
-		su_mem_copy(gcp->gc_name, a_name_bltin, sizeof a_name_bltin);
-		lines = C(char const**,a_go_bltin_rc_lines);
-		cnt = a_GO_BLTIN_RC_LINES_CNT;
-		gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_BLTIN_RC | a_GO_MACRO_ROBOT | a_GO_MACRO_FREE_DATA;
-		nofail = TRUM1;
-	}else if(!injectit){
+	if(!injectit){
 		su_mem_copy(gcp->gc_name, a_name_x, sizeof a_name_x);
 		gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_ROBOT | a_GO_MACRO_FREE_DATA;
 		nofail = FAL0;

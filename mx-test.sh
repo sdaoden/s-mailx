@@ -2,6 +2,7 @@
 #@ See usage() below.
 #@ MUST be edited as LATIN1!
 #@ P.S.: some redundancy cannot be avoided.
+#@ TODO get rid of ${old} style syntax
 #
 # Public Domain
 
@@ -72,17 +73,17 @@ _EOT
 	exit 1
 }
 
-if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
+if [ -z "$MAILX__CC_TEST_RUNNING" ]; then
 	CHECK= RUN_TEST= MAILX=
 
-	while [ ${#} -gt 0 ]; do
-		if [ "${1}" = --keep-data ]; then
+	while [ $# -gt 0 ]; do
+		if [ "$1" = --keep-data ]; then
 			KEEP_DATA=y
 			shift
-		elif [ "${1}" = --no-colour ]; then
+		elif [ "$1" = --no-colour ]; then
 			NO_COLOUR=y
 			shift
-		elif [ "${1}" = -h ] || [ "${1}" = --help ]; then
+		elif [ "$1" = -h ] || [ "$1" = --help ]; then
 			usage
 			exit 0
 		else
@@ -90,18 +91,18 @@ if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
 		fi
 	done
 
-	if [ "${1}" = check ]; then
-		CHECK=1 MAILX=${2}
+	if [ "$1" = check ]; then
+		CHECK=1 MAILX=$2
 		shift 2
-		SKIPTEST="${@} ${SKIPTEST}"
-		echo 'Mode: check, binary: '"${MAILX}"
-	elif [ "${1}" = run-test ]; then
-		[ ${#} -ge 2 ] || usage
-		RUN_TEST=1 MAILX=${2}
+		SKIPTEST="$@ $SKIPTEST"
+		echo 'Mode: check, binary: '"$MAILX"
+	elif [ "$1" = run-test ]; then
+		[ $# -ge 2 ] || usage
+		RUN_TEST=1 MAILX=$2
 		shift 2
-		echo 'Mode: run-test, binary: '"${MAILX}"
+		echo 'Mode: run-test, binary: '"$MAILX"
 	else
-		[ ${#} -eq 0 ] || usage
+		[ $# -eq 0 ] || usage
 		echo 'Mode: full compile test, this will take a long time...'
 		MAILX__CC_TEST_NO_DATA_FILES=1
 		export MAILX__CC_TEST_NO_DATA_FILES
@@ -119,9 +120,9 @@ i=
 while :; do
 	if [ -f ./mk-config.env ]; then
 		break
-	elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.env ]; then
+	elif [ -f snailmail.jpg ] && [ -f "$OBJDIR"/mk-config.env ]; then
 		i=`pwd`/ # not from environment, sic
-		cd "${OBJDIR}"
+		cd "$OBJDIR"
 		break
 	else
 		echo >&2 'S-nail/S-mailx is not configured.'
@@ -138,18 +139,20 @@ done
 . ./mk-config.env
 
 # Re-exxec ourselves with the "correct" $SHELL, if not already.
-if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
+if [ -z "$MAILX__CC_TEST_RUNNING" ]; then
 	MAILX__CC_TEST_RUNNING=y
 	export MAILX__CC_TEST_RUNNING
-	exec ${SHELL} "${i}${0}" "${@}"
+	exec $SHELL "$i$0" "$@"
 fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as such is a compile-time variable
+. ${TOPDIR}gen-test-ada.sh
 ARGS='-:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok -Smemdebug -Sstealthmua'
-	ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Scharset-8bit=UTF-8 -Snosave'
-	ARGS="${ARGS}"' -Smailcap-disable -Smimetypes-load-control='
-NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
-	ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
+	ARGS=$ARGS' -Smime-encoding=quoted-printable -Scharset-8bit=UTF-8 -Snosave'
+	ARGS=$ARGS' -Smailcap-disable -Smimetypes-load-control='
+ARGS="$ARGS $OKEY_BLTIN_ADAS"
+NOBATCH_ARGS=$ARGS' -Sexpandaddr'
+	ARGS=$ARGS' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc
 # XXX BODY,MBOX,ERR: leading dot reminiscent
@@ -159,7 +162,7 @@ E=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 E0=./.cc-test0.err # Empty file expected
 EX=./.cc-testx.err # Non-empty file expected
 MAIL=/dev/null
-TMPDIR=$(${pwd})
+TMPDIR=$($pwd)
 
 export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX ERR MAIL TMPDIR
 
@@ -168,7 +171,7 @@ export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX ERR MAIL TMPDIR
 # Those which use this have checksums for 2001 and 201.  Some use the smaller automatically if +debug.
 # With KEEP_DATA all cases run!
 LOOPS_BIG=2001 LOOPS_SMALL=201
-: ${LOOPS_MAX:=${LOOPS_SMALL}} ${LOOPS_MAX_OTHER:=${LOOPS_BIG}}
+: ${LOOPS_MAX:=$LOOPS_SMALL} ${LOOPS_MAX_OTHER:=$LOOPS_BIG}
 #}}}
 
 # Setup and exec support {{{
@@ -3095,10 +3098,10 @@ __EOT
 } #}}}
 
 t_posix_compat() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	#{{{ In POSIX C181 standard order
-	<< '__EOT' ${MAILX} ${ARGS} 2>${E0} | ${sed} -e 's/:.*$//' > ./tabbrev
+	<< '__EOT' $MAILX $ARGS 2>$E0 | $sed -e 's/:.*$//' > ./tabbrev
 echon alias/a\ ; ? a; echon group/g\ ; ?g
 echon alternates/alt\ ; ? alt
 echon chdir/ch\ ; ? ch
@@ -3141,8 +3144,8 @@ __EOT
 	#}}}
 	cke0 abbrev 0 ./tabbrev '1012680481 968'
 
-	# keep in sync with manual and okeys enum
-	</dev/null ${MAILX} -:/ -Sdotlock-disable -X '
+	# keep in sync with manual and okeys enum TODO auto-generate from posix=1
+	</dev/null $MAILX -:/ -Sdotlock-disable $OKEY_BLTIN_ADAS -X '
 var allnet asksub askbcc askcc autoprint # a
 var bang cmd crt debug dot escape flipr folder # b-f
 var header hold ignore ignoreeof indentprefix # g-i
@@ -3151,10 +3154,10 @@ var page prompt quiet record # p-r
 var save screen sendwait showto Sign sign # s
 var toplines # t-z
 xit
-' > ./tvardefs 2>${E0}
+' > ./tvardefs 2>$E0
 	cke0 vardefs 0 ./tvardefs '4044980853 597'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 #}}}
 
@@ -14814,25 +14817,24 @@ _EOT
 } #}}}
 
 t_pipe_handlers() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	if have_feat cmd-fop; then :; else
 		t_echoskip '[!CMD_FOP]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
 	# "Test for" [d6f316a] (Gavin Troy)
 	printf "m ./t1\n~s subject1\nEmail body\n~.\nfi ./t1\np\nx\n" |
-	${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="?* ${cat}" > ./t2 2>${E0}
+		$MAILX $ARGS $ADDARG_UNI -Spipe-text/plain="?* $cat" > ./t2 2>$E0
 	ck 1 0 ./t1 '3942990636 118'
 	cke0 2 - ./t2 '3951695530 170'
 
 	printf "m ./t3_7\n~s subject2\n~@%s\nBody2\n~.\nFi ./t3_7\nmimeview\nx\n" "${TOPDIR}snailmail.jpg" |
-		${MAILX} ${ARGS} ${ADDARG_UNI} \
-			-S 'pipe-text/plain=?' \
+		$MAILX $ARGS $ADDARG_UNI -S 'pipe-text/plain=?' \
 			-S 'pipe-image/jpeg=?=&?'\
-'trap \"'"${rm}"' -f '\ '\\"${MAILX_FILENAME_TEMPORARY}\\"\" EXIT;'\
+'trap \"'"$rm"' -f '\ '\\"$MAILX_FILENAME_TEMPORARY\\"\" EXIT;'\
 'trap \"trap \\\"\\\" INT QUIT TERM; exit 1\" INT QUIT TERM;'\
 '{ echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
@@ -14840,22 +14842,21 @@ t_pipe_handlers() { #{{{
 'echo F=$MAILX_FILENAME;'\
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
-''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[	 ]\{1,\}/ /g"; } > ./t4-x 2>&1;'"${mv}"' ./t4-x ./t4-y' \
-				> ./t4 2>${E0}
+''"$cksum"' < \"$MAILX_FILENAME_TEMPORARY\" |'\
+''"$sed"' -e "s/[	 ]\{1,\}/ /g"; } > ./t4-x 2>&1;'"$mv"' ./t4-x ./t4-y' \
+		> ./t4 2>$E0
 	ck 3 0 ./t3_7 '686702965 13437'
 	cke0 4 - ./t4 '4176760868 495'
 	ckasync 4-hdl - ./t4-y '144517347 151'
 
 	# Keep $MBOX..
-	if [ -z "${ln}" ]; then
+	if [ -z "$ln" ]; then
 		t_echoskip '[!5:ln(1) not found]'
 	else
 		# Let us fill in tmpfile, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t5.one-link\n'\
 'eval se "$v";ec "should be $st_nlink link"\nx\n' |
-			${MAILX} ${ARGS} ${ADDARG_UNI} \
-				-S 'pipe-text/plain=?' \
+			$MAILX $ARGS $ADDARG_UNI -S 'pipe-text/plain=?' \
 				-S 'pipe-image/jpeg=?=++?'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
@@ -14863,48 +14864,46 @@ t_pipe_handlers() { #{{{
 'echo F=$MAILX_FILENAME;'\
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
-"${ln}"' -f $MAILX_FILENAME_TEMPORARY .t5.one-link;'\
-''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[	 ]\{1,\}/ /g"' \
-					> ./t5 2>${E0}
+"$ln"' -f $MAILX_FILENAME_TEMPORARY .t5.one-link;'\
+''"$cksum"' < \"$MAILX_FILENAME_TEMPORARY\" |'\
+''"$sed"' -e "s/[	 ]\{1,\}/ /g"' \
+			> ./t5 2>$E0
 		cke0 5 0 ./t5 '604845616 663'
 
 		# Fill in ourselves, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t6.one-link\n'\
 'eval se "$v";ec "should be $st_nlink link"\nx\n' |
-			${MAILX} ${ARGS} ${ADDARG_UNI} \
-				-S 'pipe-text/plain=?' \
+			$MAILX $ARGS $ADDARG_UNI -S 'pipe-text/plain=?' \
 				-S 'pipe-image/jpeg=?++?'\
-"${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
+"$cat"' > $MAILX_FILENAME_TEMPORARY;'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
 'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
 'echo F=$MAILX_FILENAME;'\
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
-"${ln}"' -f $MAILX_FILENAME_TEMPORARY .t6.one-link;'\
-''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[	 ]\{1,\}/ /g"' \
-					> ./t6 2>${E0}
+"$ln"' -f $MAILX_FILENAME_TEMPORARY .t6.one-link;'\
+''"$cksum"' < \"$MAILX_FILENAME_TEMPORARY\" |'\
+''"$sed"' -e "s/[	 ]\{1,\}/ /g"' \
+			> ./t6 2>$E0
 		cke0 6 0 ./t6 '604845616 663'
 
 		# And the same, via copiousoutput (fake)
 		printf 'Fi ./t3_7\np\n>v fop stat .t7.one-link\n'\
 'eval se "$v";ec "should be $st_nlink link"\nx\n' |
-			${MAILX} ${ARGS} ${ADDARG_UNI} \
-				-S 'pipe-text/plain=?' \
+			$MAILX $ARGS $ADDARG_UNI -S 'pipe-text/plain=?' \
 				-S 'pipe-image/jpeg=?*++?'\
-"${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
+"$cat"' > $MAILX_FILENAME_TEMPORARY;'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
 'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
 'echo F=$MAILX_FILENAME;'\
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
-"${ln}"' -f $MAILX_FILENAME_TEMPORARY .t7.one-link;'\
-''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[	 ]\{1,\}/ /g"' \
-					> ./t7 2>${E0}
+"$ln"' -f $MAILX_FILENAME_TEMPORARY .t7.one-link;'\
+''"$cksum"' < \"$MAILX_FILENAME_TEMPORARY\" |'\
+''"$sed"' -e "s/[	 ]\{1,\}/ /g"' \
+			> ./t7 2>$E0
 		cke0 7 0 ./t7 '2698061312 679'
 	fi
 
@@ -14920,79 +14919,78 @@ mimetype application/y-fun x.tar
 mimetype application/y-xfun x
 mimetype application/y-tar  tar
 mimetype application/y-gzip  tgz gz emz
-mimetype "${x}" application/x-unix-readme README INSTALL TODO COPYING NEWS
-mimetype "${x}" application/x-tar-gz tgz tar.gz
-mimetype "${x}" application/x-ma-tar-gz ma.tar.gz
-mimetype "${x}" application/x-x-ma-tar-gz x.ma.tar.gz
-mimetype "${x}" application/x-fun x.tar
-mimetype "${x}" application/x-xfun x
-mimetype "${x}" application/x-tar	tar
-mimetype "${x}" application/x-gzip  tgz gz emz
+mimetype "$x" application/x-unix-readme README INSTALL TODO COPYING NEWS
+mimetype "$x" application/x-tar-gz tgz tar.gz
+mimetype "$x" application/x-ma-tar-gz ma.tar.gz
+mimetype "$x" application/x-x-ma-tar-gz x.ma.tar.gz
+mimetype "$x" application/x-fun x.tar
+mimetype "$x" application/x-xfun x
+mimetype "$x" application/x-tar	tar
+mimetype "$x" application/x-gzip  tgz gz emz
 '
 
-	tfs='README x.gz x.ma.tar.gz x.tar x.tar.gz '\
-'y.x.ma.tar.gz .x .x.ma.tar.gz .x.tar y.x.tar x.x NEWS'
+	tfs='README x.gz x.ma.tar.gz x.tar x.tar.gz y.x.ma.tar.gz .x .x.ma.tar.gz .x.tar y.x.tar x.x NEWS'
 
-	for f in ${tfs}; do printf 'body '${f}'\n' > ./${f}; done
+	for f in $tfs; do printf 'body '$f'\n' > ./$f; done
 
-	printf 'm ./t11\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x -Y "${tmt}" ${ARGS} > ./t10 2>${E0}
+	printf 'm ./t11\nLine1\n~@ %s\n~.\nxit' "$tfs" | $MAILX $ARGS -S x -Y "$tmt" > ./t10 2>$E0
 	ck0e0 10 0 ./t10
 	ck 11 - ./t11 '567955322 2176'
 
-	printf 'type\nxit' | ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t12 2>${E0}
+	printf 'type\nxit' | $MAILX $ARGS -S x -Y "$tmt" -Rf ./t11 > ./t12 2>$E0
 	cke0 12 0 ./t12 '1737171988 2390'
 
 	# base handler: text
-	printf 'type\nxit' | ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t13 2>${E0}
+	printf 'type\nxit' | $MAILX $ARGS -S x=? -Y "$tmt" -Rf ./t11 > ./t13 2>$E0
 	cke0 13 0 ./t13 '2402061837 1859'
 
 	# handler-only, text: text
-	printf 'type\nxit' | ${MAILX} -S x='?only-handler,t' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t14 2>${E0}
+	printf 'type\nxit' | $MAILX $ARGS -S x='?only-handler,t' -Y "$tmt" -Rf ./t11 > ./t14 2>$E0
 	cke0 14 0 ./t14 '2402061837 1859'
 
 	# handler-only, no text: unhandled
-	printf 'type\nxit' | ${MAILX} -S x='?o' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t15 2>${E0}
+	printf 'type\nxit' | $MAILX $ARGS -S x='?o' -Y "$tmt" -Rf ./t11 > ./t15 2>$E0
 	cke0 15 0 ./t15 '1737171988 2390'
 
 	# hdl-only type-marker is *not* honoured when sending
-	printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x='?o' -Y "${tmt}" ${ARGS} > ./t20 2>${E0}
+	printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "$tfs" | $MAILX $ARGS -S x='?o' -Y "$tmt" > ./t20 2>$E0
 	ck0e0 20 0 ./t20
 	ck 21 - ./t21 '3051683085 2176'
 
-	printf 'type\nxit' | ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t22 2>${E0}
+	printf 'type\nxit' | $MAILX $ARGS -S x -Y "$tmt" -Rf ./t21 > ./t22 2>$E0
 	cke0 22 0 ./t22 '1367388189 2390'
 
-	printf 'type\nxit' | ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t23 2>${E0}
+	printf 'type\nxit' | $MAILX $ARGS -S x=? -Y "$tmt" -Rf ./t21 > ./t23 2>$E0
 	cke0 23 0 ./t23 '1367388189 2390'
 
 	printf 'type\nxit' |
-		${MAILX} -Sx -Y "${tmt}" \
+		$MAILX $ARGS -Sx -Y "$tmt" \
 		-Y 'mimetype ?o,t application/y-ma-tar-gz ma.tar.gz' \
 		-Y 'mimetype ?t,only-handler application/x-x-ma-tar-gz x.ma.tar.gz' \
 		-Y 'mimetype ?t application/x-unix-readme README' \
-		${ARGS} -Rf ./t21 > ./t24 2>${E0}
+		-Rf ./t21 > ./t24 2>$E0
 	cke0 24 0 ./t24 '4241547105 2311'
 
 	# .. and * still needs a handler
 	printf 'type\nxit' |
-		${MAILX} -Sx -S mime-counter-evidence=0b0110 -Y "${tmt}" \
+		$MAILX $ARGS -Sx -S mime-counter-evidence=0b0110 -Y "$tmt" \
 		-Y 'mimetype ?only-handler,t application/z-ma-tar-gz ma.tar.gz' \
 		-Y 'mimetype ?t,o application/z-x-ma-tar-gz x.ma.tar.gz' \
 		-Y 'mimetype ?t application/z-unix-readme README' \
 		-Y 'mimetype ?o application/z-xfun x' \
 		-Y 'mimetype ?o application/z-fun x.tar' \
-		-S pipe-application/z-fun="?* echo in; ${cat}; echo out" \
-		${ARGS} -Rf ./t21 > ./t25 2>${E0}
+		-S pipe-application/z-fun="?* echo in; $cat; echo out" \
+		-Rf ./t21 > ./t25 2>$E0
 	cke0 25 0 ./t25 '1303101797 2473'
 
 	# ~ enforces plain/txt
 	printf 'dödeldü' > INSTALL
-	printf 'm ./t27\nLine1\n~@ %s\n~.\nxit' "${tfs} INSTALL" |
-		${MAILX} -S x='?send-text' -Y "${tmt}" -S ttycharset-detect=latin1 -Siconv-disable ${ARGS} > ./t26 2>${E0}
+	printf 'm ./t27\nLine1\n~@ %s\n~.\nxit' "$tfs INSTALL" |
+		$MAILX $ARGS -S x='?send-text' -Y "$tmt" -S ttycharset-detect=latin1 -Siconv-disable > ./t26 2>$E0
 	ck0e0 26 0 ./t26
 	ck 27 - ./t27 '860307946 2493'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_mailcap() { #{{{

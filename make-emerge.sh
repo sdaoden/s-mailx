@@ -71,6 +71,8 @@ $cp "$topdir"mx-config.h include/mx/config.h
 $cp "$topdir"include/mx/gen-version.h include/mx/
 set +e
 
-echo 'You should now be able to proceed as normal (e.g., "$ make all")'
+echo 'You should now be able to proceed as normal, for example'
+echo '   $ make all'
+echo '(Do not use "$ make distclean", it makes "the emerge" unusable.)'
 
 # s-sht-mode

@@ -1,0 +1,639 @@
+## COLOURS AND BINDINGS {{{
+#..Sh "COLOURS AND BINDINGS"
+#.It can only be a shock of personal taste.
+#! If interactive etc only..
+if t && $features =% ,+key-bindings, && $features =% ,+colour,
+	bind base $'\e',d mle-snarf-word-fwd
+	bind base $'\e',$'\c?' mle-snarf-word-bwd
+	bind base $'\e',f mle-go-word-fwd
+	bind base $'\e',b mle-go-word-bwd
+	bind base $'\cL' mle-clear-screen
+
+	bind default :kf1 Fi%
+	bind default :kf2 Fi'&'
+	bind default :kf3 Fi+download
+	bind default :kf4 Fi+gmane
+	bind default :kf5 Fi+sent
+	bind default :kf6 Fi~/traffic/.spam~
+	bind default :kf12 fi%
+	bind default :kf11 fi'&'
+	bind default :kf10 fi+download
+	bind default :kf9 fi+gmane
+
+	bind compose :kf1 "${escape}v"
+	bind compose :kf2 "${escape}p"
+
+	#! Note!  In order for this to work:
+	environ unset LESS
+
+	define bg_dark {
+		col 256 mle-position fg=203,ft=reverse
+		col 256 mle-prompt fg=203
+		col 256 mle-prompt2 fg=203,ft=bold
+		col 256 mle-promptx fg=150,ft=bold
+		col 256 mle-error bg=124
+
+		col iso mle-position fg=brown,ft=bold
+		col iso mle-prompt fg=red
+		col iso mle-prompt2 fg=white,ft=bold
+		col iso mle-promptx fg=red,ft=bold
+		col iso mle-error bg=red
+
+		col mono mle-position ft=reverse
+		col mono mle-prompt ft=bold
+		col mono mle-prompt2 ft=bold,ft=reverse
+		col mono mle-promptx ft=bold
+		col mono mle-error ft=reverse
+
+		col 256 sum-dotmark fg=204,ft=bold dot
+		col 256 sum-header fg=39 older
+		col 256 sum-header fg=39,ft=reverse dot
+		col 256 sum-header fg=45
+		col 256 sum-thread fg=39,ft=bold,ft=reverse dot
+		col 256 sum-thread fg=172
+
+		col iso sum-dotmark ft=reverse,fg=brown dot
+		col iso sum-header fg=brown dot
+		col iso sum-thread fg=brown dot
+		col iso sum-thread fg=magenta
+
+		col mono sum-dotmark ft=bold,ft=reverse dot
+		col mono sum-header ft=bold dot
+		col mono sum-thread ft=bold dot
+
+		col 256 view-from_ fg=142
+		col 256 view-header fg=214,ft=bold from,subject
+		col 256 view-header fg=214 author,cc,sender,to
+		col 256 view-header fg=217 \
+			reply-to,mail-followup-to,user-agent
+		col 256 view-header fg=219
+		col 256 view-msginfo fg=76,ft=bold
+		col 256 view-partinfo fg=76 #161
+
+		col iso view-from_ fg=red
+		col iso view-header fg=white \
+			author,from,sender,subject
+		col iso view-header fg=brown
+		col iso view-msginfo fg=green
+		col iso view-partinfo fg=brown
+
+		col mono view-header ft=bold author,from,sender,subject
+		col mono view-msginfo ft=reverse,ft=underline
+		col mono view-partinfo  ft=bold,ft=underline
+	}
+
+	define bg_light {
+		col 256 mle-position fg=202
+		col 256 mle-prompt fg=red
+		col 256 mle-error bg=124,fg=7
+
+		col iso mle-position ft=bold
+		col iso mle-prompt fg=red,fg=white
+
+		col mono mle-position ft=bold
+		col mono mle-prompt ft=bold
+		col mono mle-error ft=reverse
+
+		col 256 sum-dotmark ft=bold,fg=13 dot
+		col 256 sum-header fg=19 older
+		col 256 sum-header fg=16,bg=219 dot
+		col 256 sum-header fg=17
+		col 256 sum-thread ft=bold,fg=164,bg=219 dot
+		col 256 sum-thread fg=172
+
+		col iso sum-dotmark ft=reverse,fg=blue dot
+		col iso sum-header fg=blue dot
+		col iso sum-thread fg=blue dot
+		col iso sum-thread fg=magenta
+
+		col mono sum-dotmark ft=bold,ft=reverse dot
+		col mono sum-header ft=bold dot
+		col mono sum-thread ft=bold dot
+
+		col 256 view-from_ fg=142
+		col 256 view-header ft=bold,fg=red from,subject
+		col 256 view-header fg=124 author,cc,sender,to
+		col 256 view-header fg=203 \
+			reply-to,mail-followup-to,user-agent
+		col 256 view-header fg=88
+		col 256 view-msginfo fg=green
+		col 256 view-partinfo fg=brown
+
+		col iso view-from_ fg=brown
+		col iso view-header ft=bold,fg=red \
+			author,from,sender,subject
+		col iso view-header fg=red
+		col iso view-msginfo fg=green
+		col iso view-partinfo fg=brown
+
+		col mono view-header ft=bold from,subject
+		col mono view-msginfo ft=reverse,ft=underline
+		col mono view-partinfo  ft=bold,ft=underline
+	}
+\en
+## }}}
+##
+## MIME TYPE {{{
+#..Sh "MIME TYPE"
+#.The following example reintegrates HTML formatted by the text browsers
+#..Xr lynx 1
+#.or
+#..Xr elinks 1 ,
+#.registers a JSON MIME type handled as plain text,
+#.and establishes a setting to open PDF parts in an external viewer,
+#.asynchronously and with some other magic attached, like
+#..Sx "Command modifiers" .
+if $features =% ,+filter-html-tagsoup,
+	unmimetype text/html
+	mimetype ?h text/html html htm
+	set cols=72
+else
+	#set pipe-text/html='?* elinks -force-html -dump 1'
+	set pipe-text/html='?* lynx -stdin -dump -force_html'
+endif
+
+mimetype ?t application/json json
+
+set pipe-application/pdf='?&=? \
+	trap "rm -f \"$MAILX_FILENAME_TEMPORARY\"" EXIT;\
+	trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
+	mupdf "$MAILX_FILENAME_TEMPORARY"'
+##
+#..Ss Mailcap
+#.Using mailcap files which are shared in between applications
+#.seems to be a good option; several
+#..Ql x-mailx-
+#.style options may improve usability.
+#.These files are evaluated top-down.
+application/pdf;\
+	/Applications/Preview.app/Contents/MacOS/Preview %s;\
+	test = [ "$OSTYPE" = darwin ] >/dev/null 2>&1;\
+	nametemplate=%s.pdf; x-mailx-test-once
+application/pdf;\
+	mupdf %s;\
+	test = [ -n "$DISPLAY" ] >/dev/null 2>&1;\
+	nametemplate = %s.pdf; x-mailx-ignore
+application/pdf;\
+	infile=%s\;\
+		trap "rm -f \"$infile\"" EXIT\;\
+		trap "exit 75" INT QUIT TERM\;\
+		mupdf "$infile";\
+	test = [ -n "$DISPLAY" ] >/dev/null 2>&1;\
+	nametemplate = %s.pdf; x-mailx-async; x-mailx-test-once
+application/pdf;\
+	pdfinfo %s\; pdftotext -layout %s -;\
+	test = command -v pdfinfo >/dev/null 2>&1;\
+	copiousoutput; nametemplate=%s.pdf; x-mailx-test-once
+
+application/*;\
+	echo 'This is "%t", it looks like:'\;\
+		< %s head -c 512 | cat -vet\; echo;\
+	copiousoutput; x-mailx-noquote; x-mailx-last-resort
+
+image/*;\
+	display %s;\
+	test = { [ -n "$DISPLAY" ] &&\
+		command -v display\; } >/dev/null 2>&1;\
+	x-mailx-ignore
+image/*;\
+	infile=%s\;\
+		trap "rm -f \"$infile\"" EXIT\;\
+		trap 'exit 75' INT QUIT TERM\;\
+		display "$infile";\
+	test = { [ -n "$DISPLAY" ] &&\
+		command -v display\; } >/dev/null 2>&1;\
+	x-mailx-async; x-mailx-test-once
+
+#!text/html; lynx -dump %s; copiousoutput; nametemplate=%s.html
+## }}}
+##
+## OAUTH INTEGRATION {{{
+#..Sh "OAUTH INTEGRATION"
+#.OAuth authorization methods are available,
+#.but integration does currently not exist.
+#.However, an external Python3 tool,
+#..Va build-oauth-helper ,
+#.can be driven to use OAuth, via the support macros shown next.
+#.The macros
+#..Dq play some games
+#.with scopes of
+#..Sx VARIABLES ,
+#.it is therefore best to use these from within an
+#..Ic account
+#.scope.
+#..Ss "OAuth: personal code"
+#.An example how to use the OAuth support macros below.
+account my-acc {
+	\call my-acc
+}
+define my-acc {
+	# do account stuff ..., then
+	\xcall my-oauth-activate my-acc
+}
+
+define my-oauth-activate { # [$1=account-name]
+	\local se a=$1
+	\if -z $a; \se a=$account; \en
+
+	# (Examples..)
+	\se password \
+		imap-auth=xoauth2 pop3-auth=xoauth2 \
+		smtp-config=-allmechs,xoauth2 \
+
+	# How to drive machine: unfortunately it, before v15,
+	# is not called when credentials are needed, but must
+	# "keep credentials hot"
+	\se on-main-loop-tick=oauth-check-token \
+		on-compose-enter=oauth-check-token
+
+	# Set generic code callback(s), and initialize machine
+	\call oauth-check-token-init
+	\se oauth-helper="$build-oauth-helper -R ~/.$a.oauth" \
+		oauth-helper-times=~/.$a.oauth \
+		on-oauth-password-change=.my-oauth-on-new-token
+}
+
+define .my-oauth-on-new-token { # [$1=password, or empty]
+	\if -n $1
+		\echoe ' .. updating password to OAuth token '"$1"
+		\se password=$1
+		\if $mailbox-resolved =~ ^imaps?://
+			\echoe '.. password change, reconnect IMAP'
+			\disco
+			\conn
+		\en
+	\el
+		\echoe ' .. deleting password'
+		\uns password
+	\en
+}
+##
+#..Ss "OAuth: support macros"
+#.Support macros which
+#..Bl -bullet -compact
+#..It
+#.Call the
+#..Va oauth-helper
+#.script, and expect a password to appear on its standard output.
+#..Va build-oauth-helper ,
+#.if available, complies.
+#..It
+#.Invoke the
+#..Va on-oauth-password-change
+#.macro if that condition triggers.
+#..It
+#.Can avoid invoking the helper too often if
+#..Va oauth-helper-times
+#.is set, and points to an .INI-style configuration file that has
+#..Ql timestamp=
+#.and
+#..Ql timeout=
+#.directives, interpreted as UNIX time epoch seconds.
+#..Va build-oauth-helper ,
+#.if available, complies.
+#..El
+#! Initialize needed variables "in scope",
+#! so they disappear again when that is left:
+#! to be called first
+define oauth-check-token-init {
+	\se oauth-helper oauth-helper-times \
+		on-oauth-password-change \
+		_oauth-pass _oauth-timeout
+}
+
+#! Workhorse, to be called periodically
+#! TODO v15: will be called from within, when needed
+define oauth-check-token {
+	\if -Z oauth-helper; \retu; \en
+
+	\if -n $_oauth-timeout
+		\local >sec vexpr seconds
+		\if $((sec + 60*21)) -lt $_oauth-timeout
+			\retu
+		\en
+		\uns _oauth-timeout
+	\en
+
+	\eval local >i ! $oauth-helper # eval to resolve $VARs
+	\local se j=$? d=$?/$!/$^ERRDOC
+	\if $j -ne 0
+		\echoe '! $oauth-helper failed, unset: '\
+			"$d: $oauth-helper"
+		\uns oauth-helper
+		\call_if "$on-oauth-password-change"
+		\retu
+	\en
+
+	\>i csop trim "$i"
+	\if $_oauth-pass != $i
+		\se _oauth-pass=$i
+		\if -N verbose
+			\echoe 'New Oauth 2.0 access token'
+		\en
+		\if -N on-oauth-password-change
+			\call_if "$on-oauth-password-change" \
+				"$_oauth-pass"
+		\el
+			\echoe '! No $on-oauth-password-change \
+				to update"
+		\en
+	\en
+
+	\if -n $oauth-helper-times
+		\xcall .oauth-helper-times
+	\en
+}
+
+define .oauth-helper-times {
+	# eval to resolve $VARs
+	\eval readctl create "$oauth-helper-times"
+	\local se j=$? d=$^ERRDOC
+	\if $j -ne 0
+		\echoe '! $oauth-helper-times inaccessible, \
+			unset: '"$d: $oauth-helper-times"
+		\uns oauth-helper-times
+		\retu
+	\en
+	\local readall _oauth_args
+	\eval readctl remove "$oauth-helper-times"
+
+	\local se ifs=$'\n'; \vpospar evalset "$_oauth_args"; \
+		\uns ifs
+	\our call .oauth-check-token-recur "$@"
+
+	\if -N _oauth_ts && -N _oauth_to
+		: $((_oauth-timeout = _oauth_ts + _oauth_to))
+		\if -N verbose
+			\local >sec vexpr seconds
+			\echoe 'I OAuth password timeout at epoch '\
+				"$_oauth-timeout, now $sec, to-go \
+				$((_oauth-timeout - sec))"
+		\en
+	\el
+		\echoe '! $oauth-helper-times content bogus, \
+			unset: '"$oauth-helper-times"
+		\uns oauth-helper-times
+	\en
+}
+
+define .oauth-check-token-recur {
+	\if $# -eq 0; \retu; \en
+	\if $1 =~ ^[[:space:]]*time(stamp|out)[[:space:]]*=\
+			[[:space:]]*([[:digit:]]+).*
+		\if $^1 == stamp
+			\se _oauth_ts=$^2
+		el
+			\se _oauth_to=$^2
+		\en
+	\en
+	\shift
+	\xcall .oauth-check-token-recur "$@"
+}
+## }}}
+##
+## SIGNATURES {{{
+#..Sh SIGNATURES
+#.Appending signatures can be achieved in multiple ways.
+#.The possibly easiest approach uses the
+#..Va \&\&on-compose-embed
+#.hook to include some persistent file:
+#.again, multiple ways are possible.
+set on-compose-embed=.sig.embed
+define .sig.embed {
+	~< ~/.mysig
+}
+
+#! ..or..
+
+\def .sig.embed {
+Yes, part of message body!
+	Ciao!
+	~:se sign=$'\en--Silver'
+	~a
+	~:call ..sig.embed
+}
+\def ..sig.embed {
+	echo normal macro, it has no body access!
+
+	digmsg - h l
+	ec "1:$^0: $^*"
+
+	# via I/O protocol
+	digmsg create -
+	digmsg - h l
+	local readall x
+	ec "2:$x"
+	digmsg remove -
+
+	# but easier, via built-in "in-memory" protocol
+	digmsg - h l
+	ec "3:$^0: $^*"
+}
+##
+#..Pp
+#.However, the
+#..Va \&\&on-compose-leave
+#.hook can also used, even though not usable
+#..Dq as if interactive ,
+#.the
+#..Ic \&\&digmsg
+#.command, for example, is still accessible.
+\se on-compose-leave=.sig.embed
+\def .sig.embed {
+	readctl creat ~/.mysig
+	\if $? -eq 0
+		\local readall i
+		\if $? -gt 0
+			\our >message-inject-tail csop trim-end "$i"
+		\en
+		\readctl remo ~/.mysig
+	\en
+}
+## }}}
+##
+## ZZZ THIS AND THAT {{{
+#..Sh "ZZZ THIS AND THAT"
+
+#! Request strict TLS transport layer security checks
+\se tls-verify=strict
+
+#! Where are the up-to-date TLS certificates?
+#! Since we manage up-to-date ones explicitly, do not use any,
+#! possibly outdated, default certificates shipped with OpenSSL
+#!\set tls-ca-dir=/etc/ssl/certs
+\set tls-ca-file=/etc/ssl/certs/ca-certificates.crt \
+	tls-ca-no-defaults
+#!\set tls-ca-flags=partial-chain
+\set smime-ca-file=$tls-ca-file smime-ca-no-defaults \
+	smime-ca-flags=$tls-ca-flags
+
+#! Could also be outsourced to a central configuration file via
+#! *tls-config-file* plus *tls-config-module* iff library allows.
+#! CipherString: explicitly define the list of ciphers, which may
+#!   improve security, especially with protocols older than TLS v1.2.
+#!   See ciphers(1).  Possibly best to use *tls-config-pairs-HOST*
+#!   (or -USER@HOST), as necessary, again..
+#!   Note that TLSv1.3 uses Ciphersuites= instead, which will join
+#!   with CipherString (if protocols older than v1.3 are allowed)
+#! Curves: especially with TLSv1.3 curves selection may be desired.
+#! MinProtocol,MaxProtocol: do not use protocols older than TLS v1.2.
+#!   Change this only when the remote server does not support it:
+#!   maybe use chain support via *tls-config-pairs-HOST* / -USER@HOST
+#!   to define such explicit exceptions, then, e.g.,
+#!     MinProtocol=TLSv1.1
+\if $tls-features =% ,+ctx-set-maxmin-proto,
+	\set tls-config-pairs='\
+		CipherString = EECDH+AESGCM:EECDH+AES256:\
+			EDH+AESGCM:CHACHA20:!TLSv1,\
+		Curves=P-521:P-384:P-256,\
+		MinProtocol = TLSv1.2'
+\el
+	\set tls-config-pairs='\
+		CipherString = EECDH+AESGCM:EECDH+AES256:\
+			EDH+AESGCM:CHACHA20:!TLSv1,\
+		Curves = P-521:P-384:P-256,\
+		Protocol = -ALL\, +TLSv1.2\, +TLSv1.3'
+\en
+
+#! Default directory where we act in (relative to $HOME)
+\set folder=mail
+#! A leading "+" (often) means: under *folder*
+#! *record* is used to save copies of sent messages
+\set MBOX=+mbox.mbox DEAD=+dead.txt \
+	record=+sent.mbox record-files record-resent
+
+#! Make "file mymbox" and "file myrec" go to..
+\shortcut  mymbox %:+mbox.mbox  myrec +sent.mbox
+
+#! Not really optional as it is needed for, e.g., S/MIME
+\set from='Your Name <address@exam.ple>'
+
+#! It may be necessary to set *hostname* and/or *smtp-from*
+#! if the "SERVER" of *mta* and "domain" of *from* do not match.
+#! The `urlencode' command can be used to encode USER and PASS
+#!\set mta=(smtps?|submissions?)://[USER[:PASS]@]SERVER[:PORT]
+\set mta=test
+\set \
+	autocollapse autosort=thread \
+	followup-to-add-cc forward-add-cc \
+	history-file=+.mailx-hist history-size=2102102 \
+		history-gabby=all history-gabby-persist \
+	prompt='?\$?!\$!/\$^ERRNAME[\$account#\$mailbox-display]? ' \
+	quote=allbodies quote-add-cc \
+	reply-to-swap-in=mlist \
+	sendcharsets=utf-8,iso-8859-1 \
+	umask=
+
+#! Only include the selected header fields when printing messages
+retain date author sender from to cc subject \
+	message-id mail-followup-to reply-to
+#!\headerpick type retain ...
+#! - when forwarding messages
+#!\headerpick forward retain date author sender from to cc subject
+#! - and do not include these when saving message, etc.
+#!\if $features =% ,+regex,
+#!	\headerpick save ignore '^Original-.*$' '^X-.*$'
+#!\end
+
+#! Unify header display
+headerorder Author From To Cc Subject Date \
+	Message-ID Reply-To Mail-Followup-To
+
+#! Some mailing lists
+\mlist  list.one@exam.ple  '@xyz-editor\.xyz$'  '@xyzf\.xyz$'
+\mlsubscribe  list.two@exam.ple  '^xfans@xfans\.xyz$'
+
+#! A real life example of a very huge free mail provider
+#! Instead of directly placing content inside `account',
+#! we `define' a macro: like that we could "switch accounts"
+#! from within *on-compose-embed*, for example!
+\account u1-XooglX {
+	\call u1-XooglX
+}
+\define u1-XooglX {
+	\local >a alternates
+	\if -n $a; \unalternates *; \en
+	\alt u2@XY u3@XY
+	\se \
+		folder=u1-XooglX/mail \
+		hostname=gmail.com \
+		mta=smtp://smtp.gmail.com:587 \
+		nonetrc-lookup \
+		on-account-cleanup=.u1-XooglX-oac \
+		pop3-bulk-load-pop.gmail.com \
+			pop3-no-apop-pop.gmail.com \
+			pop3-keepalive-pop.gmail.com=210 \
+		record=+sent \
+		Sign=$'\n--\nu1' sign=$'\n--U1' \
+			stealthmua=noagent \
+		user=u1
+	\se message-inject-tail=$sign
+	\shortcut  pop %:pop3s://pop.gmail.com \
+		imap %:imaps://imap.gmail.com
+	commandalias xp 'fi pop'
+
+	\se smtp-from=$user@$hostname from='U1 <u1@XmaiX.com>'
+	\xcall my-oauth-activate u1-XooglX
+}
+define .u1-XooglX-oac {
+	unshortcut pop
+	uncommandalias xp
+}
+
+#! Here is a pretty large one which does not allow sending mails
+#! if there is a domain name mismatch on the SMTP protocol level,
+#! which would bite us if the value of *from* does not match, e.g.,
+#! for people who have a sXXXXeforge project and want to speak
+#! with the mailing list under their project account (in *from*),
+#! still sending the message through their normal mail provider
+account u1-y {
+	\call u1-y
+}
+define u1-y {
+	\se hostname=yandex.com \
+		mta=smtps://smtp.yandex.com:465 \
+		nonetrc-lookup \
+		on-account-cleanup=.u1-y-oac \
+		tls-config-pairs=MinProtocol=TLSv1.3
+
+	\shortcut imap %:imaps://imap.yandex.com
+	ca xi 'fi imap'
+
+	\se smtp-from=u1@$hostname from='U1 <u1@Y.com>'
+	\xcall my-oauth-activate u1-y
+}
+define .u1-y-oac {
+	unshortcut imap
+	uncommandalias xi
+}
+
+#! One more
+account u1-ms {
+	\call u1-ms
+}
+define u1-ms {
+	\se hostname=outlook.com \
+		mta=submission://smtp.office365.com \
+		nonetrc-lookup \
+		on-account-cleanup=.u1-ms-oac \
+		tls-config-pairs=MinProtocol=TLSv1.2 \
+		user=u1@outlook.com
+	\shortcut pop %:pop3s://outlook.office365.com \
+		imap %:imaps://outlook.office365.com
+	ca xp 'fi pop'
+	ca xi 'fi imap'
+
+	\se smtp-from=$user from=$user
+	\xcall my-oauth-activate u1-ms
+}
+define .u1-oac {
+	unshortcut pop imap
+	uncommandalias xp xi
+}
+
+#! Create some new commands so that, e.g., "? ls /tmp" will..
+\commandalias lls '!ls -aFlrS'
+\commandalias llS '!ls -aFlS'
+## }}}
+##
+## s-itt-mode

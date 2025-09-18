@@ -1,4 +1,4 @@
-.\"@ nail.1 - S-nail(1) reference manual.
+.\"@ mx.1 - S-nail(1) reference manual.
 .\"
 .\" Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
 .\" SPDX-License-Identifier: ISC
@@ -52,7 +52,8 @@
 .ds IX #..
 .\"
 .if !d str-Lb-libterminfo \
-  .ds str-Lb-libterminfo Terminal Information Library (libterminfo, \-lterminfo)
+. ds str-Lb-libterminfo Terminal Information Library (libterminfo, \-lterminfo)
+.
 .
 .Dt "\*(XX" 1
 .Os
@@ -140,7 +141,7 @@
 (with value) is default since v14.10.0, and the manual
 expects this context;
 Most old (other context) documentation has been removed.
-S-nail (\*(Xx) will see major changes until v15.0 (circa 2023).
+S-nail (\*(Xx) will see major changes until v15.0 (circa 2028).
 Some backward incompatibilities cannot be avoided, for example
 .Sx COMMANDS
 will change to
@@ -179,10 +180,7 @@ for the system-wide
 .Ql u
 for the personal file
 .Ev MAILRC
-.Pf ( Pa \*(ur ) ,
-and
-.Ql x
-for a compiled-in copy of the (upstream) system-wide file.
+.Pf ( Pa \*(ur ) .
 The letters
 .Ql -
 or
@@ -195,20 +193,24 @@ This option overrides
 .
 .Mx
 .It Fl A Ar name , Fl Fl account Ns =..
-Activate user
+Assign
+.Ar name
+to
+.Va account ;
+activate
 .Ic account
 .Ar name
-after program startup (resource files loaded,
+after
+.Sx "Resource files"
+are loaded, but with
 .Fl X
-commands etc to follow), and switch to its
+commands etc. to follow;
+switch to its
 .Mx -sx
 .Sx "primary system mailbox"
 .Pf ( Va inbox )
 once startup is completed.
-The variable
-.Va account
-flags the account request immediately.
-Upon failure the program
+Failures cause
 .Pf e Ic xit Ns
 s if used non-interactively, or if any of
 .Va errexit
@@ -231,61 +233,62 @@ In
 the
 .Sx "COMMAND ESCAPES"
 .Ic ~@
-and especially the scriptable
+and
 .Ic ~^
-provide alternatives for attaching files.
+(scriptable) provide alternatives for attaching files.
 .Pp
 If
 .Ar file
-is not accessible but contains an equal-sign
-.Ql =
-a character set specification is split off.
-If only an input one is given it is fixated and no conversion is applied;
+is inaccessible, but contains an equal-sign
+.Ql = ,
+a specification of
+.Sx "Character sets"
+is
+.Dq split off .
+Only an input one causes fixation without conversion;
 an empty, or the special string hyphen-minus
 .Ql -
 means
 .Va ttycharset .
-If an output one is given the conversion is performed on-the-fly, not
-considering file type nor content; however, empty string or hyphen-minus
+If an output one is given the conversion is performed on-the-fly,
+not considering file type nor content;
+however, empty string or hyphen-minus
 .Ql -
-enforce the default
-.Sx "Character sets"
-conversion
+enforce the
+.Dq default conversion
 .Pf ( Ql -a file ,
 .Ql -a file=# ,
 and
 .Ql -a file=-#-
-are identical),
-later applied after MIME-classifying
+are identical), performed after MIME-classifying
 .Ar file
-.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files") .
-This is the only available mode without
+.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files") ;
+Only this variant exists without
 .Ql ,+iconv,
-in
+support in
 .Va features ,
 or with
 .Va iconv-disable
-set.
-The character set names may be prefixed with exclamation mark
+.Ic set .
+Character set names prefixed with exclamation mark
 .Ql \&!
-to enforce base64
+enforce base64
 .Va mime-encoding
-of the attachment.
+over-the-wire.
 .
 .Mx
 .It Fl b Ar addr , Fl Fl bcc Ns =..
-\*(SM Send a blind carbon copy of the message to
-.Ar addr ,
-invisible for other recipients.
+\*(SM Add
+.Ar addr
+to the list of blind (invisible) carbon copy recipients.
 May be used multiple times.
-See also
-.Sx "Sending mail, and non-interactive mode" .
+(Also see
+.Sx "Sending mail, and non-interactive mode" ) .
 .
 .Mx
 .It Fl C Ar """name: content""" , Fl Fl custom-header Ns =..
-Create a custom header field
-.Ar name
-that lasts for the entire session.
+Create a constant custom header field
+.Ar name .
 Content follows after a colon
 .Ql \&: ,
 for example
@@ -294,12 +297,11 @@ May be used multiple times;
 .Ar name
 may not be a standard header field.
 Adjustable custom headers can be created via
-.Va customhdr ;
-in
+.Va customhdr ,
+and in
 .Sx "Compose mode"
 .Ic ~^
-.Pf ( Sx "COMMAND ESCAPES" )
-is the most powerful options.
+.Pf ( Sx "COMMAND ESCAPES" ) .
 .
 .Mx
 .It Fl c Ar addr , Fl Fl cc Ns =..
@@ -330,10 +332,9 @@ Also see
 .
 .Mx
 .It Fl E , Fl Fl discard-empty-messages
-\*(SM
-.Ic set
+Startup with
 .Va skipemptybody
-and discard messages with an empty message part body, successfully.
+.Ic set .
 .
 .Mx
 .It Fl e , Fl Fl check-and-exit
@@ -374,7 +375,7 @@ instead of the
 .Va hold , keepsave ) ;
 .Ar file
 is not an option argument, but taken from the command line after
-command line option processing.
+option processing is completed.
 It equals using the
 .Ic folder
 command, so
@@ -419,55 +420,40 @@ to list long options.
 .
 .Mx
 .It Fl i
-.Ic set
+Startup with
 .Va ignore
-to ignore tty interrupt signals.
+.Ic set .
 .
 .Mx
 .It Fl L Ar spec , Fl Fl search Ns =..
-Display a summary of message
-.Ic headers
-matching
+Like
+.Fl H ,
+but only show what matches
 .Ar spec
-.Pf ( Sx "Specifying messages" )
-in
-.Ic folder
-(dependent on
-.Fl u ,
-.Va inbox
-or
-.Ev MAIL ,
-or as specified via
-.Fl f ) ,
-then exit.
-.Va showlast
-is ignored.
+.Pf ( Sx "Specifying messages" ) .
 In conjunction with
 .Fl e
 display is suppressed.
-Quickrun: does not open an interactive session.
-Tip:
-.Ev COLUMNS
-can be honoured in batch mode
-.Pf ( Fl # ) .
 .
 .Mx
 .It Fl N , Fl Fl no-header-summary
-.Ic unset
+Startup with
 .Va header
-to inhibit displaying the summary of
+.Ic unset
+to inhibit summary of
 .Ic headers
-when opening a
+display when opening a
 .Ic folder .
 .
 .Mx
 .It Fl n
-Inhibit reading the system-wide
-.Pa \*(UR .
+Inhibit reading system-wide
+.Pa \*(UR
+.Pf ( Sx "Resource files" ) .
 .
 .Mx
 .It Fl q Ar file , Fl Fl quote-file Ns =..
-\*(SM Initialize the message body from
+\*(SM Initialize message body from
 .Ar file ;
 only non-interactively this may denote standard input (hyphen-minus
 .Ql - ) .
@@ -485,24 +471,24 @@ The RFC 5321 reverse-path used for relaying and delegating messages,
 for example to report back delivery errors, is derived from
 .Va from
 (or
-.Va sender ) .
-However, a file-based (local)
+.Va sender ) ,
+but a file-based (local)
 .Va mta
-(Message-Transfer-Agent) will instead use
+(Message-Transfer-Agent) uses
 .Ev LOGNAME .
-With this option
+This option assigns
 .Ar from-addr
-is assigned to
+to
 .Va from ,
 and in addition file-based
 .Va mta Ns s
-are invoked via
-.Ql Fl \&\&f Ar from-addr .
-If
+are invoked with a
+.Ql Fl \&\&f Ar from-addr
+option; with
+.Va fullnames ,
+and if
 .Ar from-addr
-includes non-address components
-.Pf ( Va fullnames ) ,
-these are instead passed via
+includes non-address components, those are passed via
 .Ql Fl \&\&F Ar name .
 If
 .Ar from-addr
@@ -520,8 +506,8 @@ Even though not a recipient the
 flag is supported.
 .Pp
 Remarks: many MTA installations and sites disallow setting an explicit
-reverse-path but for members of dedicated user groups or after MTA
-reconfiguration.
+reverse-path but for members of dedicated user groups,
+or after MTA reconfiguration.
 .
 .Mx
 .It Fl S Ar var Ns Oo = Ns value Oc , Fl Fl set Ns =..
@@ -699,7 +685,7 @@ This can for example be used to format the composed message text:
 .Bd -literal -offset indent
 $ ( echo 'line    one. Word.     Word2.';
     echo '~| /usr/bin/fmt -tuw11' ) |
-  LC_ALL=C \*(xX -d~:/ -Sttycharset-detect ex@am.ple
+  LC_ALL=C \*(xX -~ -:/ -Smta=test x@exam.ple
 .Ed
 .
 .Mx
@@ -746,7 +732,7 @@ For example :
 $ for name in bob alice@exam.ple lisa@exam.ple; do
     printf 'mail %s\en~s ubject\enText\en~.\en' "${name}"
   done |
-  LC_ALL=C \*(xX -#:x -Smta=test \e
+  LC_ALL=C \*(xX -#:/ -Smta=test -Sttycharset-detect \e
     -X'alias bob bob@exam.ple'
 .Ed
 .
@@ -785,6 +771,9 @@ $ \*(xX -#:/ -X 'addrcodec enc <silver@go> Hey, ho' -Xx
 .\" .Ss "A starter" {{{
 .Ss "A starter"
 .
+.Sx NAME
+.Sx SYNOPSIS
+.Sx "TABLE OF CONTENTS"
 \*(Xx is a direct descendant of
 .Bx
 Mail, itself a successor to the Research
@@ -821,10 +810,7 @@ There is an important deviation: POSIX
 is (\*(ID increasingly) used instead of POSIX mailx's
 .Sx "Old-style argument quoting" ,
 which is believed to be a feature.
-Some built-in settings, and the built-in as well as the (default) global
-.Pa \*(UR
-.Pf ( Sx "Resource files" )
-also bend standard imposed settings.
+And some built-in settings bend standard imposed settings.
 .
 .Pp
 For example, even if the opened
@@ -840,9 +826,9 @@ avoids address skinning, when
 .Ic reply Ns
 ing responded messages are
 .Va quote Ns
-d, prefixed with an
-.Va indentprefix
-that also deviates from standard imposed settings, and
+d, prefixed with a non-standard
+.Va indentprefix ,
+and
 .Va followup-to-honour
 and
 .Va reply-to-honour
@@ -901,13 +887,17 @@ a terminal, non-interactive mode is entered:
 $ echo Hello, world | \*(xX -:/ -Smta=test -s test $LOGNAME
 
 # Via sendmail(1) MTA
-$ </dev/null \*(xX -:x -s test $LOGNAME
+$ </dev/null \*(xX -:/ -s test $LOGNAME
 
 # Debug dry-run mode:
 $ </dev/null LC_ALL=C \*(xX -d -:/ \e
    -Sttycharset=utf8 -Sfullnames \e
    -b bcc@exam.ple -c cc@exam.ple -. \e
    '(Lovely) Bob <bob@exam.ple>' ex@am.ple
+
+# Compose-mode snoopy
+$ \*(xX -:/ -Smta=test -Sttycharset-detect \e
+  -s test -Y '~?' -Y '~x' ex@am.ple
 
 # With SMTP (no real sending due to -d debug dry-run)
 $ LC_ALL=C \*(xX -d -:/ -Sttycharset-detect \e
@@ -1051,11 +1041,14 @@ by excluding configuration files via
 .Fl \&: ,
 and use repetitions of
 .Fl S
-to specify variables:
+to specify variables, in case no dedicated
+.Sx "Resource files"
+are possible:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(xX -:/ \e
-    -Sttycharset-detect \e
+    -Sttycharset-detect=latin1 \e
+    -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-allmechs,plain \e
     -S from=scriptreply@exam.ple \e
@@ -1076,6 +1069,8 @@ but nonetheless takes and sends UTF-8 message text via
 active classification via
 .Va ttycharset-detect
 might be an even better option, reflecting reality.
+.
+.Pp
 If character set conversion is available
 .Pf ( Va features
 includes
@@ -1091,25 +1086,6 @@ handler for
 .Ql application/octet-stream ,
 or possibly automatically through
 .Va mime-counter-evidence ) .
-.
-.Pp
-In interactive mode messages can be send with the command
-.Ic mail
-and a list of recipient addresses, in the entered
-.Sx "Compose mode"
-.Sx "COMMAND ESCAPES" ,
-like
-.Ic ~? ,
-can then be used:
-.
-.Bd -literal -offset indent
-$ \*(xX -:/ -Squiet -Semptystart -Sfullnames -Smta=test
-"/var/spool/mail/user": 0 messages
-mail "Recipient 1 <rec1@exam.ple>", rec2@exam.ple
-\*(IX
-# Will do the right thing (tm)
-m rec1@exam.ple rec2@exam.ple
-.Ed
 .\" }}}
 .
 .\" .Ss "Compose mode" {{{
@@ -1341,14 +1317,15 @@ Whether and when
 is used for display instead of dumping to the
 .Va screen
 is controlled by
-.Va crt .
+.Va crt ,
+whereas
 .Ic more
 always uses
 .Ev PAGER .
 .Ic top
 shows only the first
 .Va toplines
-of messages, even
+of messages,
 .Va topsqueeze Ns
 d.
 Setting
@@ -1359,7 +1336,7 @@ can improve real-life display experience, and also see
 .Bd -literal -offset indent
 type :nu # new and unread
 \*(IX
-type @'time drift' # that substring in Subject:
+type @didgeridoo # (search Subject:s for substring
 .Ed
 .
 .Pp
@@ -1383,12 +1360,8 @@ and
 The displayed
 .Ic headerorder
 is configurable.
-To show raw, undecrypted and unconverted message content, use
+For raw, undecrypted and unconverted message content, use
 .Ic show .
-Historically the global
-.Pa \*(UR
-not only adjusts the list of displayed header fields, but also sets
-.Va crt .
 .
 .Pp
 Automatic message moving:
@@ -1507,7 +1480,7 @@ A small set of types is built-in, onto which
 are added under
 .Va mimetypes-load-control .
 .Ic mimetype
-can create further types, and dynamically manage the list.
+controls types dynamically.
 .Va mime-counter-evidence
 tries to address the faulty MIME part declarations of real life by
 possibly providing better fitting MIME types.
@@ -1542,40 +1515,13 @@ Except with
 .Va mime-alternative-favour-rich
 plain text alternatives are used.
 .
-.Pp
-The following example reintegrates HTML formatted by the text browsers
-.Xr lynx 1
-or
-.Xr elinks 1 ,
-registers a JSON MIME type handled as plain text,
-and establishes a setting to open PDF parts in an external viewer,
-asynchronously and with some other magic attached, like
-.Sx "Command modifiers" :
-.
 .Bd -literal -offset indent
-set noprompt # unset prompt for this early example
-
-if $features =% ,+filter-html-tagsoup,
-  unmimetype text/html
-  mimetype ?h text/html html htm
-  set cols=72
-else
-  #set pipe-text/html='?* elinks -force-html -dump 1'
-  set pipe-text/html='?* lynx -stdin -dump -force_html'
-endif
-
-mimetype ?t application/json json
-
-set pipe-application/pdf='?&=? \e
-  trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
-  trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
-  mupdf "${MAILX_FILENAME_TEMPORARY}"'
-
+# Easy view HTML alternative parts (needs built-in HTML viewer)
 define showhtml {
-  \elocal set mime-alternative-favour-rich pipe-text/html=?h?
-  \etype "$@"
+  local set mime-alternative-favour-rich pipe-text/html=?h?
+  type "$@"
 }
-\ecommandalias html \e\ecall showhtml
+commandalias html 'call showhtml'
 .Ed
 .\" }}}
 .
@@ -4224,7 +4170,10 @@ Refers to a
 .Ar file
 in the
 .Va folder
-directory (if set).
+directory (if
+.Ic set ,
+and see
+.Va outfolder ) .
 .
 .It Ar %:filespec
 Expands to the same value as
@@ -5150,7 +5099,7 @@ commandalias q q; commandalias x q; help x
 but copy messages to a file named after the local part of the
 sender of the first message instead of taking a pathname argument;
 .Va outfolder
-is inspected to decide on the actual storage location.
+is honoured.
 .
 .Mx
 .It Ic copy
@@ -7274,7 +7223,7 @@ Similar to
 but move messages to a file named after the local part of the
 sender of the first message instead of taking a pathname argument;
 .Va outfolder
-is inspected to decide on the actual storage location.
+is honoured.
 .
 .Mx
 .It Ic move
@@ -7791,7 +7740,7 @@ occurs.
 but save messages to a file named after the local part of the
 sender of the first message instead of taking a pathname argument;
 .Va outfolder
-is inspected to decide on the actual storage location.
+is honoured.
 .
 .Mx
 .It Ic save
@@ -9520,11 +9469,10 @@ The standard \*(PO mandates these initial settings
 .Pf no Va autoprint ,
 .Pf no Va bang ,
 .Pf no Va cmd ,
-.Pf no Va crt ,
+.Pf (no) Va crt ,
 .Pf no Va debug ,
 .Pf no Va dot ,
-.Va escape Ns ='~'
-(tilde),
+.Va escape Ns ='~' ,
 .Pf no Va flipr ,
 .Pf no Va folder ,
 .Va header ,
@@ -9532,7 +9480,7 @@ The standard \*(PO mandates these initial settings
 .Pf no Va ignore ,
 .Pf no Va ignoreeof ,
 .Va indentprefix Ns =$'\et'
-(tabulator),
+.Pf ( Ql '>\0' ) ,
 .Pf (no) Va keep ,
 .Pf (no) Va keepsave ,
 .Pf no Va metoo ,
@@ -9545,7 +9493,7 @@ The standard \*(PO mandates these initial settings
 .Va save ,
 .Pf no Va screen ,
 .Pf (no) Va sendwait ,
-.Pf no Va showto ,
+.Pf (no) Va showto ,
 .Pf no Va Sign ,
 .Pf no Va sign ,
 .Va toplines Ns =5 .
@@ -9863,7 +9811,7 @@ if
 .Va bsdflags
 is set):
 .Pp
-.Bl -tag -compact -width ".It Ql _%%_
+.Bl -tag -compact -width ".It Ql _%%_"
 .It Ql N
 New.
 .It Ql U
@@ -11743,17 +11691,20 @@ Current minimum and maximum are
 .
 .Mx
 .It Va outfolder
-\*(BO Causes a non-absolute pathname specified in
+\*(BO Causes non-absolute pathnames (compare
+.Sx "Filename transformations" )
+specified in
 .Va record ,
-as well as the sender-based pathnames of the
+or as sender-based arguments of
 .Ic Copy ,
 .Ic Save ,
 .Ic Followup
 and
 .Ic followup
-commands to be interpreted relative to the
+to be interpreted relative to
 .Va folder
-directory rather than relative to the current directory.
+instead of the current directory
+.Pf ( Ic cwd ) .
 .
 .Mx Va on-account-cleanup
 .It Va on-account-cleanup-ACCOUNT , on-account-cleanup
@@ -11800,40 +11751,9 @@ user interaction has ended (but see
 It runs in
 .Sx "COMMAND ESCAPES"
 mode and can act like an interactive user.
-.
-.Bd -literal -offset indent
-# Create a signature
-set on-compose-embed=ocm
-
-define ocm {
-  ~< ~/.mysig
-}
-
-define ocm {
-  Yes, part of message body!
-  Ciao!
-  ~:set sign=$'\en--Silver'
-  ~a
-  ~:call .ocm
-}
-define .ocm {
-  echo normal macro: no body access
-
-  digmsg - h l
-  ec "1:$^0: $^*"
-
-  # via I/O protocol
-  digmsg create -
-  digmsg - h l
-  local readall x
-  ec "2:$x"
-  digmsg remove -
-
-  # back to built-in "in-memory"
-  digmsg - h l
-  ec "3:$^0: $^*"
-}
-.Ed
+The
+.Xr \*(xX-config 7
+manual provides examples.
 .
 .
 .Mx
@@ -11855,20 +11775,9 @@ hook which is run before
 .Sx "Compose mode"
 is left; the message can still be accessed via
 .Ic digmsg .
-.Bd -literal -offset indent
-# Create a signature
-set on-compose-leave=ocl
-define ocl {
-  readctl create ~/.mysig
-  if $? -eq 0
-    local readall i
-    if $? -gt 0
-      our >message-inject-tail csop trim-end "$i"
-    en
-    readctl remove ~/.mysig
-  en
-}
-.Ed
+The
+.Xr \*(xX-config 7
+manual provides examples.
 .
 .Mx
 .It Va on-history-addition
@@ -12066,7 +11975,8 @@ type-markers achieve the same.)
 It is indeed also a trigger character to indicate the following flags:
 .
 .Bd -literal -offset indent
-set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
+set pipe-text/html='?* lynx -stdin -dump -force_html'
+set pipe-X/Y='?!++=? vim $MAILX_FILENAME_TEMPORARY'
 .Ed
 .
 .Pp
@@ -12603,13 +12513,12 @@ when saving to this mailbox fails the message is not sent, but instead
 .Va save Ns
 d to
 .Ev DEAD .
-The standard defines that relative (fully expanded) paths are to be
-interpreted relative to the current directory
-.Pf ( Ic cwd ) ,
-to force interpretation relative to
-.Va folder
+Relative paths are interpreted relative to the current directory
+.Pf ( Ic cwd )
+unless,
 .Va outfolder
-needs to be set in addition.
+forces usage of
+.Va folder .
 .
 .Mx
 .It Va record-files
@@ -12893,9 +12802,11 @@ Also see
 .
 .Mx
 .It Va skipemptybody
-\*(BO If an outgoing message has an empty first or only message part, do
-not send, but discard it, successfully (also see the command line option
-.Fl E ) .
+\*(BO Discard outgoing messages with an empty body part
+(ignoring other MIME parts / attachments),
+successfully.
+(Also see
+.Fl E . )
 .
 .Mx
 .Mx
@@ -14276,8 +14187,14 @@ Also see
 \*(RO Variables with specific
 .Ic version
 information.
-The first is a string with the complete version identification,
-the second the release date in ISO 8601 notation without time.
+The first is the complete version identification,
+by convention not containing hyphen-minus
+.Ql -
+for mainline releases;
+.Dq alpha ,
+.Dq beta
+or similar may follow thereafter otherwise.
+The second is the release date in ISO 8601 notation without time.
 The third is a 32-bit hexadecimal number with the upper 8 bits storing
 the major, followed by the minor and update version numbers which occupy
 12 bits each.
@@ -14734,9 +14651,6 @@ command line options, or by setting the
 .Sx ENVIRONMENT
 variable
 .Ev MAILX_NO_SYSTEM_RC .
-A(n unmodified) version of this is also compiled-in, accessible via
-.Fl \&:
-.Ql x .
 .
 .Mx
 .It Pa \*(ur
@@ -14866,7 +14780,6 @@ If it does, the type is no longer optional, but must be given
 explicitly, if so desired:
 .
 .
-.Pp
 .Bl -tag -width ".It Ar BaNg"
 .It Ar only-handler , o
 The given MIME media type shall only be matched when looking for
@@ -16204,6 +16117,7 @@ Directly using encrypted communication channels should be preferred.
 .Xr terminfo 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
+.Xr \*(xX-config 7 ,
 .Xr re_format 7
 .Pf (or\0 Xr regex 7 ) ,
 .Xr mailwrapper 8 ,

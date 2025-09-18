@@ -332,31 +332,7 @@ OPT_MAILCAP=yes
 # Whether support for Maildir email directories shall be enabled.
 OPT_MAILDIR=yes
 
-# Line editing and -history (manual "On terminal and line editor").
-# If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
-# system then our built-in MLE (Mailx-Line-Editor) version can be used.
-# An enabled & available OPT_TERMCAP may affect and improve the MLE.
-# VAL_MLE_CONFIG is used as the default *line-editor-config*.
-# Can be "require"d.
-OPT_MLE=yes
-	VAL_MLE_CONFIG=srch-case,srch-pos0,srch-regex
-
-	# Add support for `history' management.
-	OPT_HISTORY=yes
-
-	# Add support for `(un)?bind'ing of key sequences.
-	OPT_KEY_BINDINGS=yes
-
-	# Use termcap(5) for MLE terminal control; can be "require"d.
-	# Today most environments ship a termcap(5) that in fact is part of
-	# terminfo(5), and acts as a converting wrapper for this library.
-	# To avoid this redundancy we also support terminfo(5), and use it
-	# instead if we find it (assuming that termcap(5) is a stub, then).
-	# Note that terminfo(5) offers access to more key sequences, for
-	# example kLFT5, for which no termcap(5) entry exists.
-	# terminfo(5) support can (thus) be "require"d.
-	OPT_TERMCAP=yes
-		OPT_TERMCAP_VIA_TERMINFO=yes
+# OPT_MLE below
 
 # Whether support for MTA aliases(5) shall be included.
 # With it, and if *mta-aliases* is set to a file, MTA aliases will be
@@ -452,6 +428,37 @@ OPT_SPAM_SPAMC=no
 # OpenCSW on SunOS/Solaris, etc., specific paths shall be automatically
 # included in $C_INCLUDE_PATH and $LD_LIBRARY_PATH when seen?
 OPT_USE_PKGSYS=yes
+
+# Line editing and -history (manual "On terminal and line editor").
+# If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
+# system then our built-in MLE (Mailx-Line-Editor) version can be used.
+# An enabled & available OPT_TERMCAP may affect and improve the MLE.
+# VAL_MLE_CONFIG is used as the default *line-editor-config*.
+# Can be "require"d.
+OPT_MLE=yes
+	VAL_MLE_CONFIG=$(\
+		if feat_yes REGEX; then \
+			echo 'srch-case,srch-pos0,srch-regex';\
+		else \
+			echo 'srch-case,srch-pos0,srch-any';\
+		fi)
+
+	# Add support for `history' management.
+	OPT_HISTORY=yes
+
+	# Add support for `(un)?bind'ing of key sequences.
+	OPT_KEY_BINDINGS=yes
+
+	# Use termcap(5) for MLE terminal control; can be "require"d.
+	# Today most environments ship a termcap(5) that in fact is part of
+	# terminfo(5), and acts as a converting wrapper for this library.
+	# To avoid this redundancy we also support terminfo(5), and use it
+	# instead if we find it (assuming that termcap(5) is a stub, then).
+	# Note that terminfo(5) offers access to more key sequences, for
+	# example kLFT5, for which no termcap(5) entry exists.
+	# terminfo(5) support can (thus) be "require"d.
+	OPT_TERMCAP=yes
+		OPT_TERMCAP_VIA_TERMINFO=yes
 
 ##  --  >8  --  8<  --  ##
 ## Normally packagers etc. should not need to read any further

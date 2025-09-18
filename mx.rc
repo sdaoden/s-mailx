@@ -1,0 +1,56 @@
+#--MKRC-START--
+#@ /etc/s-nail.rc - global configuration file for S-nail(1)
+#--MKRC-END--
+#--MKREL-START--
+#@ S-nail v14.9.25 / 2024-06-27
+#--MKREL-END--
+#@
+#@ NOTE:
+#@ This file now only contains "controversial" settings in respect
+#@ to personal taste of some users -- its evaluation can be disabled
+#@ entirely by setting the MAILX_NO_SYSTEM_RC environment variable.
+
+#@ Manual page documentation on this file:
+#@ - File syntax: FILES -> "Resource files".
+#@ - POSIX.1-2024 standard mandated initial settings:
+#@   "INTERNAL VARIABLES" -> "Initial settings".
+#@ - Deriviations and extensions thereof: "A starter" (and follow-ups).
+#@ An extra manual page with configuration examples is available.
+#@
+#@ File notes:
+#@ - Non-portable things may be placed in a dedicated file,
+#@   addressed either via $MAILRC, or portably via
+#@     set mailx-extra-rc=/etc/s-mailxrc
+#@ - Availability of entries marked [OPTION] is a compile-time decision.
+#@
+#@ Show active configuration: plain "set", or
+#@   se verbose; se; uns verbose
+
+# If threaded mode is activated, automatically `collapse' thread.
+# Enter threaded mode automatically.
+#set autocollapse
+#set autosort=thread
+
+# Directly enter $EDITOR in compose mode, as via `~e'.
+# Assign "v" for $VISUAL, as via `~v'.
+set editalong=v
+
+# [OPTION] Add more entries to line editor history as is done by default.
+# With a *history-file* the latter saves them to permanent storage.
+set history-gabby=all history-gabby-persist
+
+# Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
+# Builtin types exist and may be sufficient!  The default equals "us".
+#set mimetypes-load-control
+
+# An informational prompt (and see "Gimmicks" below).
+# Of interest may also be \${^ERRQUEUE-EXISTS} and \${^ERRQUEUE-COUNT}.
+# The _real_ evaluation occurs once used (see *prompt* manual entry).
+#set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
+
+# When responding to a message, try to answer in the same character set
+# (subject to `charsetalias' expansion).
+set reply-in-same-charset
+
+# Only include the selected header fields when printing messages
+#retain date author sender from to cc subject message-id mail-followup-to reply-to

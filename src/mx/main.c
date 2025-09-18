@@ -704,9 +704,8 @@ main(int argc, char *argv[]){ /* {{{ */
 		a_RF_SET = 1u<<0,
 		a_RF_SYSTEM = 1u<<1,
 		a_RF_USER = 1u<<2,
-		a_RF_BLTIN = 1u<<3,
 		a_RF_DEFAULT = a_RF_SYSTEM | a_RF_USER,
-		a_RF_MASK = a_RF_SYSTEM | a_RF_USER | a_RF_BLTIN
+		a_RF_MASK = a_RF_SYSTEM | a_RF_USER
 	};
 
 	static char const a_sopts[] = "::A:a:Bb:C:c:DdEeFfHhiL:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
@@ -980,7 +979,9 @@ main(int argc, char *argv[]){ /* {{{ */
 				switch(i){
 				case 'S': case 's': resfiles |= a_RF_SYSTEM; break;
 				case 'U': case 'u': resfiles |= a_RF_USER; break;
-				case 'X': case 'x': resfiles |= a_RF_BLTIN; break;
+				case 'X': case 'x':
+					mx_OBSOL_14_10_0("no more -:x (just go, it is there)");
+					break;
 				case '-': case '/': resfiles &= ~a_RF_MASK; break;
 				default:
 					emsg = N_("Invalid argument of -:");
@@ -1145,9 +1146,6 @@ jgetopt_done:
 		if((resfiles & a_RF_USER) &&
 				(cp = mx_fexpand(ok_vlook(MAILRC), mx_FEXP_DEF_LOCAL_FILE_VAR)) != NIL &&
 				!mx_go_load_rc(cp))
-			goto jleave;
-
-		if((resfiles & a_RF_BLTIN) && !mx_go_load_lines(FAL0, NIL, 0))
 			goto jleave;
 	}
 

@@ -1,5 +1,19 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Account, macro and variable handling; `vexpr' and `vpospar'. Implementation of okeys.h.
+ *@
+ *@ TODO . To deal with many more initial values efficiently, we should
+ *@ TODO   - extend a_amv_var_map.avm_flags to 32-bit,
+ *@ TODO   - add two new u16 offsets into secondary arrays,
+ *@ TODO   - one for amv_var_defvals, and one for amv_var_i3vals,
+ *@ TODO   - that could also be a shared 32-bit offset?  .. etc ..
+ *@ TODO   - and, i3vals-was-used could be a bitset, so anything else RODATA.
+ *@ TODO   - and to make VIP stuff "more loosely bound, add yet another offset
+ *@ TODO     into a secondary array of PTFs which point to funs that actually deal.
+ *@ TODO   - Also, storing variable names can be optional for non-chain built-ins.
+ *@ TODO   - For *posix* / $POSIXLY_CORRECT we may need alternating defaults!
+ *@ TODO . Split in macro / variable, use specific headers.
+ .@ TODO . `global' command modifier.
+ *@
  *@ FIXME . Drop our way of `local' and `our'.
  *@ FIXME   Instead only support `local' AS `our', like the sh(1)ell does.
  *@ FIXME   This gets rid of special handling of built-ins etc for `local'.
@@ -31,10 +45,6 @@
  *@ FIXME     We need something like n_var_setup_verify(), but called a bit later,
  *@ FIXME     that then simply embeds anything set in the dict in the normal map.
  *@ FIXME     ie n_var_setup_unfreeze() or something.
- *@ TODO . Split in macro / variable, use specific headers.
- .@ TODO . `global' command modifier.
- *@ TODO . Drop the VIP stuff.  Allow PTF callbacks to be specified, call them.
- *@ TODO . Also, storing variable names can be optional for non-chain built-ins
  *@ TODO . Have macro/var counters so we know ++COUNT does not wrap U32_MAX!!
  *@ TODO   (Ie NIL terminated array alloc+set, and such.)
  *
