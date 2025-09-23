@@ -4263,16 +4263,12 @@ may be displayed as
 .
 .Mx
 .It Ic \&! Ar command
-Execute the given
+Invoke the given
 .Ev SHELL
 .Ar command .
-May expand each non-reverse solidus
-.Ql \e
-escaped exclamation mark
-.Ql \&!
-when
+May expand
 .Va bang
-is set (see there); reverse solidus has no other special meaning.
+when set (see there; reverse solidus has no other special meaning).
 .Cm >
 .Pf ( Sx "Command modifiers" )
 is supported.
@@ -8923,16 +8919,12 @@ may cause leaving compose mode and program exits.
 .Bl -tag -width ".It Ic BaNg"
 .Mx
 .It Ic ~! Ar command
-Execute the given
+Invoke the given
 .Ev SHELL
 .Ar command .
-May expand each non-reverse solidus
-.Ql \e
-escaped exclamation mark
-.Ql \&!
-when
+May expand
 .Va bang
-is set (see there); reverse solidus has no other special meaning.
+when set (see there; reverse solidus has no other special meaning).
 .
 .Mx
 .It Ic ~.
@@ -9910,18 +9902,24 @@ for example
 .
 .Mx
 .It Va bang
-\*(BO Enable special-case treatment of non-reverse-solidus
+\*(BO
+.Ic \&!
+.Pf ( Sx COMMANDS )
+and
+.Ic ~!
+.Pf ( Sx "Compose mode"
+.Sx "COMMAND ESCAPES" )
+invoke
+.Ev SHELL
+to run a command, and save that in
+.Va bang-data .
+If enabled, any non-reverse-solidus
 .Ql \e
 escaped exclamation mark
 .Ql \&!
-characters in
-.Ic \&!
-.Sx COMMANDS
-and
-.Ic ~!
-.Sx "Compose mode"
-.Sx "COMMAND ESCAPES" .
-After normal operation has started (see
+character in the command string is replaced with
+.Va bang-data
+after normal operation has started (see
 .Fl X ) ,
 and if not executing a
 .Mx -sx
@@ -9929,10 +9927,7 @@ and if not executing a
 nor loading files via
 .Ic source ,
 but processing input lines (also via
-.Fl Y ) ,
-any such non-escaped exclamation mark will be replaced with the last
-command executed (under the same circumstances) and stored in
-.Va bang-data .
+.Fl Y ) .
 .
 .Mx
 .It Va bang-data

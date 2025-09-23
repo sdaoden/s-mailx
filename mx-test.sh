@@ -15125,6 +15125,61 @@ application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2
 #}}}
 
 # Unclassified rest {{{
+t_bang() { #{{{
+	t_prolog "$@"
+
+	gm > ./t.mbox
+
+	$cat > ./t.dat <<'_EOT'
+var bang-data ? ^ERRNAME
+!echo f:a\!b!c
+var bang-data ? ^ERRNAME
+!echo f:d\!e!f
+var bang-data ? ^ERRNAME
+_EOT
+
+	x() {
+		</dev/null $MAILX $ARGS -Rf -$2 '
+define fn {
+	var bang-data ? ^ERRNAME
+	!echo fn:1\!2!3
+	var bang-data ? ^ERRNAME
+	!echo fn:4\!5!6
+	var bang-data ? ^ERRNAME
+}
+se '$3'
+var bang-data ? ^ERRNAME
+!echo 1
+var bang-data ? ^ERRNAME
+!echo 2\!3!4\!5!6
+var bang-data ? ^ERRNAME
+!echo 7\!8!9
+var bang-data ? ^ERRNAME
+call fn
+source ./t.dat
+'$5'
+mail a@b
+~:var bang-data ? ^ERRNAME
+~!echo a\!b!c
+~:var bang-data ? ^ERRNAME
+~!echo d\!e!f
+~:var bang-data ? ^ERRNAME
+~i bang-data
+~.
+call fn
+source ./t.dat
+#		' ./t.mbox > ./t$1 2>$E0
+		cke0 $1 0 ./t$1 "$4"
+	}
+	x 1 X bang '2411036821 432' 'xit'
+	x 2 X nobang '2411036821 432' 'xit'
+
+	x 3 Y bang '1851017349 1768' '#'
+	x 4 Y nobang '1388161438 1108' '#'
+
+	t_epilog "$@"
+} #}}}
+
 t_headerorder() { #{{{
 	t_prolog "$@"
 
@@ -17040,6 +17095,7 @@ t_all() { #{{{
 	jsync
 
 	# Unclassified rest
+	jspawn bang
 	jspawn headerorder
 	jspawn top
 	jspawn z
