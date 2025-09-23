@@ -1,0 +1,76 @@
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+1
+#set bang-data='echo 1'
+#?=0
+#^ERRNAME=NONE
+2!3!4!5!6
+#set bang-data='echo 2!3!4!5!6'
+#?=0
+#^ERRNAME=NONE
+7!8!9
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+fn:1!2!3
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+fn:4!5!6
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+f:a!b!c
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+f:d!e!f
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+#set bang-data='echo 7!8!9'
+#?=0
+#^ERRNAME=NONE
+a!b!c
+#set bang-data='echo a!b!c'
+#?=0
+#^ERRNAME=NONE
+d!e!f
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: a@b
+
+echo d!e!f
+
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE
+fn:1!2!3
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE
+fn:4!5!6
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE
+f:a!b!c
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE
+f:d!e!f
+#set bang-data='echo d!e!f'
+#?=0
+#^ERRNAME=NONE

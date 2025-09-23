@@ -1,0 +1,37 @@
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+1
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+2!3!4!5!6
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+7!8!9
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+fn:1!2!3
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+fn:4!5!6
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+f:a!b!c
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
+f:d!e!f
+#unset: bang-data
+#?=0
+#^ERRNAME=NONE
