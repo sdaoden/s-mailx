@@ -71,6 +71,7 @@ su_EMPTY_FILE()
 #include "mx/iconv.h"
 #include "mx/file-streams.h"
 #include "mx/mime-enc.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/time.h"
 #include "mx/net-socket.h"
@@ -3128,7 +3129,7 @@ c_imapcodec(void *vp){
    }
 
    if(cacp->cac_vput != NIL){
-      if(!n_var_vset(cacp->cac_vput, R(up,vres), cacp->cac_scope_vput)){
+      if(!mx_var_vset(cacp->cac_vput, R(up,vres), cacp->cac_scope_vput)){
          n_pstate_err_no = su_ERR_NOTSUP;
          vp = NIL;
       }
@@ -4520,7 +4521,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       goto jleave;
    }
    ok_bclear(disconnected);
-   n_var_vset(savecat("disconnected-", url.url_u_h_p.s), R(up,NIL),
+   mx_var_vset(savecat("disconnected-", url.url_u_h_p.s), R(up,NIL),
       mx_SCOPE_NONE);
 
    if (mb.mb_type == MB_CACHE) {
@@ -4628,7 +4629,7 @@ disconnected(const char *file)
       rv = 0;
       goto jleave;
    }
-   rv = (n_var_vlook(savecat("disconnected-", url.url_u_h_p.s), FAL0) != NULL);
+   rv = (mx_var_vlook(savecat("disconnected-", url.url_u_h_p.s), FAL0) != NULL);
 
 jleave:
    NYD_OU;

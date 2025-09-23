@@ -40,6 +40,7 @@
 #include <su/path.h>
 
 #include "mx/cmd-shortcut.h"
+#include "mx/okeys.h"
 
 #include "mx/fexpand.h"
 /*#define NYDPROF_ENABLE*/

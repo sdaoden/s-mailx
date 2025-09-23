@@ -38,6 +38,7 @@ su_EMPTY_FILE()
 
 #include "mx/child.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 

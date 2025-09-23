@@ -52,6 +52,7 @@ su_EMPTY_FILE()
 #include <su/mem-bag.h>
 #include <su/utf.h>
 
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 

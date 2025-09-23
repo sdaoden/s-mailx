@@ -214,46 +214,7 @@ FL boole n_var_setup_verify(char const **account, boole error_out);
 /* Can name freely be used as a variable by users? */
 FL boole n_var_is_user_writable(char const *name);
 
-/* Don't use n_var_* unless you *really* have to! */
-
-/* Constant option key look/(un)set/clear */
-FL char *n_var_oklook(enum okeys okey);
-#define ok_blook(C) (n_var_oklook(su_CONCAT(ok_b_, C)) != NULL)
-#define ok_vlook(C) n_var_oklook(su_CONCAT(ok_v_, C))
-
-FL boole n_var_okset(enum okeys okey, up val);
-#define ok_bset(C) \
-   n_var_okset(su_CONCAT(ok_b_, C), (up)TRU1)
-#define ok_vset(C,V) \
-   n_var_okset(su_CONCAT(ok_v_, C), (up)(V))
-
-FL boole n_var_okclear(enum okeys okey);
-#define ok_bclear(C) n_var_okclear(su_CONCAT(ok_b_, C))
-#define ok_vclear(C) n_var_okclear(su_CONCAT(ok_v_, C))
-
-/* Variable option key lookup/(un)set/clear.
- * If try_getenv is true we will getenv(3) _if_ vokey is not a known enum okey;
- * it will also cause obsoletion messages only for doing lookup (once).
- * _vexplode() is to be used by the shell expansion stuff when encountering
- * $@/$^@ in double-quotes, in order to provide sh(1)ell compatible behavior;
- * it returns whether there are any elements in argv (*cookie): TRUM1 is
- * returned if all elements are empty strings (elements may point to static
- * constant and non-aligned data).
- * Calling vset with val==NIL is a clear request */
-FL char const *n_var_vlook(char const *vokey, boole try_getenv);
-FL boole n_var_vexplode(void const **cookie, boole rset);
-FL boole n_var_vset(char const *vokey, up val, enum mx_scope scope);
-
-/* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
- * variable chains; oxm is a bitmix which tells which combinations to test */
-#ifdef mx_HAVE_NET
-FL char *n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
-      enum okey_xlook_mode oxm);
-# define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
-# define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
-# define xok_blook(C,URL,M) xok_BLOOK(su_CONCAT(ok_b_, C), URL, M)
-# define xok_vlook(C,URL,M) xok_VLOOK(su_CONCAT(ok_v_, C), URL, M)
-#endif
+/* okey lookup funs in okeys.h */
 
 /* User variable access: `set', `local' and `unset' */
 FL int c_set(void *vp);

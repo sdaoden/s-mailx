@@ -46,6 +46,7 @@ su_EMPTY_FILE()
 #endif
 
 #include "mx/go.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"
 

@@ -30,6 +30,8 @@
 #include <su/mem.h>
 #include <su/mem-bag.h>
 
+#include "mx/okeys.h"
+
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/

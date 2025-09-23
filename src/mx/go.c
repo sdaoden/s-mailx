@@ -46,6 +46,7 @@
 #include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/tty.h"

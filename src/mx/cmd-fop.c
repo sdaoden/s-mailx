@@ -43,6 +43,7 @@ su_EMPTY_FILE()
 #include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/time.h"
 
 #include "mx/cmd-fop.h"
@@ -978,7 +979,7 @@ jestr:
 			n_pstate_err_no = su_err_by_errno();
 			f |= a_FOP_ERR;
 		}
-	}else if(!n_var_vset(cacp->cac_vput, R(up,fc.fc_varres), cacp->cac_scope_vput)){
+	}else if(!mx_var_vset(cacp->cac_vput, R(up,fc.fc_varres), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		f |= a_FOP_ERR;
 	}

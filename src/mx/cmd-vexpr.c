@@ -40,6 +40,7 @@ su_EMPTY_FILE()
 #endif
 
 #include "mx/cmd.h"
+#include "mx/okeys.h"
 #include "mx/random.h"
 #include "mx/time.h"
 #include "mx/ui-str.h"
@@ -940,7 +941,7 @@ jestr:
 			n_pstate_err_no = su_err_by_errno();
 			f |= a_VEXPR_ERR;
 		}
-	}else if(!n_var_vset(cacp->cac_vput, R(up,vc.vc_varres), cacp->cac_scope_vput)){
+	}else if(!mx_var_vset(cacp->cac_vput, R(up,vc.vc_varres), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		f |= a_VEXPR_ERR;
 	}

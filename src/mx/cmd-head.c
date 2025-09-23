@@ -50,6 +50,7 @@
 #include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/mime.h"
+#include "mx/okeys.h"
 #include "mx/termios.h"
 #include "mx/time.h"
 #include "mx/ui-str.h"

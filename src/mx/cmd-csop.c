@@ -36,6 +36,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 #include "mx/cmd.h"
+#include "mx/okeys.h"
 
 #include "mx/cmd-csop.h"
 /*#define NYDPROF_ENABLE*/
@@ -430,7 +431,7 @@ jestr:
 			n_pstate_err_no = su_err_by_errno();
 			f |= a_CSOP_ERR;
 		}
-	}else if(!n_var_vset(cacp->cac_vput, S(up,csc.csc_varres), cacp->cac_scope_vput)){
+	}else if(!mx_var_vset(cacp->cac_vput, S(up,csc.csc_varres), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		f |= a_CSOP_ERR;
 	}

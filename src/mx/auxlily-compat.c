@@ -60,6 +60,7 @@
 #include <su/path.h>
 
 #include "mx/cmd-filetype.h"
+#include "mx/okeys.h"
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/

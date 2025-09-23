@@ -30,6 +30,8 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/mem-bag.h>
 
+#include "mx/okeys.h"
+
 #include "mx/privacy.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -102,7 +104,7 @@ mx_privacy_encrypt_try(FILE *ip, char const *to){
 	su_mem_copy(vs, k, sizeof(k) -1);
 	su_mem_copy(&vs[sizeof(k) -1], to, nl +1);
 
-	if((cp = n_var_vlook(vs, FAL0)) != NIL){
+	if((cp = mx_var_vlook(vs, FAL0)) != NIL){
 #ifdef mx_HAVE_TLS
 		rv = smime_encrypt(ip, cp, to);
 		goto jleave;

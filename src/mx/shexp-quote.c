@@ -29,6 +29,7 @@
 #include <su/utf.h>
 
 #include "mx/iconv.h"
+#include "mx/okeys.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */

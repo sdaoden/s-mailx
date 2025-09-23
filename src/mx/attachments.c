@@ -37,6 +37,7 @@
 #include "mx/go.h"
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
 

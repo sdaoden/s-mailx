@@ -53,6 +53,7 @@
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"
 #include "mx/termios.h"

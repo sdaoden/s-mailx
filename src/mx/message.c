@@ -50,6 +50,7 @@
 #include "mx/mime.h"
 #include "mx/names.h"
 #include "mx/net-pop3.h"
+#include "mx/okeys.h"
 #include "mx/srch-ctx.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"

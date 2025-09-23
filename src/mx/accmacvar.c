@@ -1,9 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Account, macro and variable handling; `vexpr' and `vpospar'.
- *@ HOWTO add a new non-dynamic boolean or value option:
- *@ - add an entry to nail.h:enum okeys
- *@ - run make-okey-map.pl (which is highly related..)
- *@ - update the manual!
+ *@ Account, macro and variable handling; `vexpr' and `vpospar'. Implementation of okeys.h.
  *@ FIXME . Drop our way of `local' and `our'.
  *@ FIXME   Instead only support `local' AS `our', like the sh(1)ell does.
  *@ FIXME   This gets rid of special handling of built-ins etc for `local'.
@@ -86,6 +82,7 @@
 #include "mx/ui-str.h"
 #include "mx/url.h"
 
+#include "mx/okeys.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
@@ -126,46 +123,6 @@ enum a_amv_loflags{
 	a_AMV_LF_CALL_TO_SCOPE_SHIFT = 2
 };
 
-/* mk/make-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that _IMPORT implies _ENV; it does not verify
- * anything...  More description at nail.h:enum okeys */
-enum a_amv_var_flags{
-	a_AMV_VF_NONE = 0,
-
-	/* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
-	a_AMV_VF_BOOL = 1u<<0, /* ok_b_* */
-	a_AMV_VF_CHAIN = 1u<<1, /* Has -HOST and/or -USER@HOST variants */
-	a_AMV_VF_VIRT = 1u<<2, /* "Stateless" automatic variable */
-	a_AMV_VF_VIP = 1u<<3, /* Wants _var_check_vips() evaluation */
-	a_AMV_VF_RDONLY = 1u<<4, /* May not be set by user */
-	a_AMV_VF_NODEL = 1u<<5, /* May not be deleted */
-	a_AMV_VF_I3VAL = 1u<<6, /* Has an initial value */
-	a_AMV_VF_DEFVAL = 1u<<7, /* Has a default value */
-	a_AMV_VF_IMPORT = 1u<<8, /* Import ONLY from env (pre n_PSO_STARTED) */
-	a_AMV_VF_ENV = 1u<<9, /* Update environment on change */
-	a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
-	a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
-	/* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
-	a_AMV_VF_NUM = 1u<<12, /* Value must be a 32-bit number */
-	a_AMV_VF_POSNUM = 1u<<13, /* Value must be positive 32-bit number */
-	a_AMV_VF_LOWER = 1u<<14, /* Values will be stored in lowercase version */
-	a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
-	a_AMV_VF__MASK = (1u<<(15+1)) - 1,
-
-	/* Extended flags, not part of struct a_amv_var_map.avm_flags */
-	/* Indicates the instance is actually a variant of a _VF_CHAIN, it thus uses the a_amv_var_map of the base
-	 * variable, but it is not the base itself and therefore care must be taken */
-	a_AMV_VF_EXT_CHAIN = 1u<<22,
-	a_AMV_VF_EXT_LOCAL = 1u<<23, /* `local' */
-	a_AMV_VF_EXT_LINKED = 1u<<24, /* `environ' link'ed */
-	a_AMV_VF_EXT_FROZEN = 1u<<25, /* Has been set by -S,.. */
-	a_AMV_VF_EXT_FROZEN_UNSET = 1u<<26, /* ..and was used to unset a variable */
-	a_AMV_VF_EXT__FROZEN_MASK = a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET,
-	a_AMV_VF_EXT__MASK = (1u<<(26+1)) - 1,
-	/* All the flags that could be set for customs / `local' variables */
-	a_AMV_VF_EXT__CUSTOM_MASK = a_AMV_VF_EXT_LOCAL | a_AMV_VF_EXT_LINKED | a_AMV_VF_EXT_FROZEN,
-	a_AMV_VF_EXT__LOCAL_MASK = a_AMV_VF_EXT_LOCAL | a_AMV_VF_EXT_LINKED,
-	a_AMV_VF_EXT__TMP_FLAG = 1u<<27
-};
 
 enum a_amv_var_lookup_flags{
 	a_AMV_VLOOK_NONE = 0,
@@ -220,6 +177,9 @@ enum a_amv_var_vip_mode{
 	a_AMV_VIP_SET_POST,
 	a_AMV_VIP_CLEAR
 };
+
+/* Data structures shared in between accmacvar.c and make-okey-map.pl. */
+#include "mx/accmacvar.h" /* $(MX_SRCDIR) */
 
 struct a_amv_pospar{
 	u32 app_max_count; /* == slots in .app_dat (or 0 upon "single-chunk alloc") */
@@ -290,31 +250,6 @@ struct a_amv_var{
 };
 CTA(a_AMV_VF_EXT__MASK <= U32_MAX, "Enumeration excesses storage datatype");
 
-/* After inclusion of gen-okeys.h we ASSERT keyoff fits in 16-bit */
-struct a_amv_var_map{
-	u32 avm_hash;
-	u16 avm_keyoff;
-	BITENUM(u16,a_amv_var_flags) avm_flags; /* Without extended bits */
-};
-CTA(a_AMV_VF__MASK <= U16_MAX, "Enumeration excesses storage datatype");
-
-/* XXX Since there is no indicator character used for variable chains, we just
- * XXX cannot do better than using expensive detection.
- * The length of avcmb_prefix is highly hardwired with make-okey-map.pl etc. */
-struct a_amv_var_chain_map_bsrch{
-	char avcmb_prefix[4];
-	u16 avcmb_chain_map_off;
-	u16 avcmb_chain_map_eokey; /* This is an enum okeys */
-};
-
-/* Use 16-bit for enum okeys; all around here we use 32-bit for it instead, but that owed to faster access (?) */
-struct a_amv_var_chain_map{
-	u16 avcm_keyoff;
-	u16 avcm_okey;
-};
-/* Not <= because we have _S_MAILX_TEST */
-CTA(n_OKEYS_MAX < U16_MAX, "Enumeration excesses storage datatype");
-
 struct a_amv_var_virt{
 	u32 avv_okey;
 	u8 avv__dummy[4];
@@ -344,8 +279,9 @@ struct a_amv_var_carrier{
 	u32 avc_param_position;
 	su_64(u8 avc__pad2[4];)
 };
-CTAV(n_OKEYS_MAX <= U16_MAX);
+CTAV(mx_OKEYS_MAX <= U16_MAX);
 
+/* above: #include "mx/accmacvar.h" *//* $(MX_SRCDIR) */
 /* Include constant make-okey-map.pl output, and the generated version data */
 #include "mx/gen-version.h" /* - */
 #include "mx/gen-okeys.h" /* $(MX_SRCDIR) */
@@ -1951,7 +1887,7 @@ jskip_local:
 			for(i = 0; arr[i] != NIL; ++i){
 				u16 xo;
 
-				LCTAV(n_OKEYS_MAX <= U16_MAX);
+				LCTAV(mx_OKEYS_MAX <= U16_MAX);
 				xo = arr[i]->avdv_okey;
 
 				if(avcp->avc_okey == xo){
@@ -2093,7 +2029,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 		rv = su_ienc(iencbuf, *ep, 10, su_IENC_MODE_SIGNED_TYPE);
 		break;
 	}
-	n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, R(up,rv)));
+	n_PS_ROOT_BLOCK(mx_var_okset(avcp->avc_okey, R(up,rv)));
 
 	avcp->avc_hash = avmp->avm_hash;
 	avcp->avc_map = avmp;
@@ -2808,10 +2744,10 @@ a_amv_var_show_instantiate_all(void){
 	NYD2_IN;
 
 	for(i = a_AMV_VAR_I3VALS_CNT; i-- > 0;)
-		n_var_oklook(a_amv_var_i3vals[i].avdv_okey);
+		mx_var_oklook(a_amv_var_i3vals[i].avdv_okey);
 
 	for(i = a_AMV_VAR_DEFVALS_CNT; i-- > 0;)
-		n_var_oklook(a_amv_var_defvals[i].avdv_okey);
+		mx_var_oklook(a_amv_var_defvals[i].avdv_okey);
 
 	NYD2_OU;
 }
@@ -3303,7 +3239,7 @@ mx_account_leave(void){
 
 	/* Is there a cleanup hook? */
 	var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
-	if((cp = n_var_vlook(var, FAL0)) != NIL || (cp = ok_vlook(on_account_cleanup)) != NIL){
+	if((cp = mx_var_vlook(var, FAL0)) != NIL || (cp = ok_vlook(on_account_cleanup)) != NIL){
 		if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
 			amcap = su_LOFI_CALLOC(sizeof *amcap);
 			amcap->amca_name = cp;
@@ -3627,13 +3563,13 @@ mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev){ /* TODO v15: dro
 jredo:
 	/* First try the fully resolved path */
 	su_cs_pcopy(su_cs_pcopy(var, "on-mailbox-event-"), mn);
-	if((cp = n_var_vlook(var, FAL0)) != NIL)
+	if((cp = mx_var_vlook(var, FAL0)) != NIL)
 		goto jmac;
 
 	if(onmbev == mx_ON_MAILBOX_EVENT_OPEN || onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
 		v15_compat = FAL0;
 		su_cs_pcopy(su_cs_pcopy(var, "folder-hook-"), mn);
-		if((cp = n_var_vlook(var, FAL0)) != NIL)
+		if((cp = mx_var_vlook(var, FAL0)) != NIL)
 			goto jmac;
 		v15_compat = TRU1;
 	}
@@ -4091,8 +4027,8 @@ n_var_is_user_writable(char const *name){
 	return rv;
 }
 
-FL char *
-n_var_oklook(enum okeys okey){
+char *
+mx_var_oklook(enum okeys okey){
 	struct a_amv_var_carrier avc;
 	char *rv;
 	struct a_amv_var_map const *avmp;
@@ -4113,8 +4049,8 @@ n_var_oklook(enum okeys okey){
 	return rv;
 }
 
-FL boole
-n_var_okset(enum okeys okey, up val){
+boole
+mx_var_okset(enum okeys okey, up val){
 	struct a_amv_var_carrier avc;
 	boole ok;
 	struct a_amv_var_map const *avmp;
@@ -4132,8 +4068,8 @@ n_var_okset(enum okeys okey, up val){
 	return ok;
 }
 
-FL boole
-n_var_okclear(enum okeys okey){
+boole
+mx_var_okclear(enum okeys okey){
 	struct a_amv_var_carrier avc;
 	boole rv;
 	struct a_amv_var_map const *avmp;
@@ -4151,8 +4087,8 @@ n_var_okclear(enum okeys okey){
 	return rv;
 }
 
-FL char const *
-n_var_vlook(char const *vokey, boole try_getenv){
+char const *
+mx_var_vlook(char const *vokey, boole try_getenv){
 	struct a_amv_var_carrier avc;
 	char const *rv;
 	NYD_IN;
@@ -4186,8 +4122,8 @@ n_var_vlook(char const *vokey, boole try_getenv){
 	return rv;
 }
 
-FL boole
-n_var_vexplode(void const **cookie, boole rset){
+boole
+mx_var_vexplode(void const **cookie, boole rset){
 	boole rv;
 	struct a_amv_pospar *appp;
 	NYD2_IN;
@@ -4222,8 +4158,8 @@ n_var_vexplode(void const **cookie, boole rset){
 	return rv;
 }
 
-FL boole
-n_var_vset(char const *vokey, up val, enum mx_scope scope){
+boole
+mx_var_vset(char const *vokey, up val, enum mx_scope scope){
 	struct a_amv_var_carrier avc;
 	boole ok;
 	NYD_IN;
@@ -4245,8 +4181,8 @@ n_var_vset(char const *vokey, up val, enum mx_scope scope){
 }
 
 #ifdef mx_HAVE_NET
-FL char *
-n_var_xoklook(enum okeys okey, struct mx_url const *urlp, enum okey_xlook_mode oxm){
+char *
+mx_var_xoklook(enum okeys okey, struct mx_url const *urlp, enum okey_xlook_mode oxm){
 	struct a_amv_var_carrier avc;
 	struct str const *usp;
 	uz nlen;
@@ -4294,7 +4230,7 @@ jvar:
 
 jplain:
 	/*avc.avc_is_chain_variant = FAL0;*/
-	rv = (oxm & OXM_PLAIN) ? n_var_oklook(okey) : NIL;
+	rv = (oxm & OXM_PLAIN) ? mx_var_oklook(okey) : NIL;
 
 jleave:
 	if(nbuf != NIL)
@@ -4371,7 +4307,7 @@ c_varshow(void *vp){
 
 		a_amv_var_show_instantiate_all();
 
-		for(no = n_OKEYS_FIRST; no < n_OKEYS_MAX; ++no)
+		for(no = mx_OKEYS_FIRST; no < mx_OKEYS_MAX; ++no)
 			i += a_amv_var_show(&a_amv_var_names[a_amv_var_map[no].avm_keyoff], fp, msgp, FAL0);
 	}else{
 		struct mx_cmd_arg *cap;
@@ -4423,7 +4359,7 @@ c_environ(void *vp){ /* {{{ */
 					rv = su_EX_OK;
 				else
 					n_pstate_err_no = su_err_by_errno();
-			}else if(!n_var_vset(cacp->cac_vput, R(up,evcp), cacp->cac_scope_vput))
+			}else if(!mx_var_vset(cacp->cac_vput, R(up,evcp), cacp->cac_scope_vput))
 				n_pstate_err_no = su_ERR_NOTSUP;
 			else
 				rv = su_EX_OK;
@@ -4724,7 +4660,7 @@ jeover:
 				n_pstate_err_no = su_err_by_errno();
 				f |= a_ERR;
 			}
-		}else if(!n_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_scope_vput)){
+		}else if(!mx_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_scope_vput)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			f |= a_ERR;
 		}

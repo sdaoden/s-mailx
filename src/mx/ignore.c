@@ -35,6 +35,7 @@
 
 #include "mx/cmd.h"
 #include "mx/go.h"
+#include "mx/okeys.h"
 #include "mx/termios.h"
 
 #include "mx/ignore.h"
@@ -1145,7 +1146,7 @@ c_headerorder(void *vp){
 		n_string_cp(s);
 
 		if(cacp->cac_vput != NIL){
-			if(n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput))
+			if(mx_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput))
 				rv = su_EX_OK;
 			else{
 				n_pstate_err_no = su_ERR_NOTSUP;

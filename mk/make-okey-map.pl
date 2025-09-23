@@ -1,12 +1,13 @@
 #!/usr/bin/env perl
 require 5.008_001;
 use utf8;
-#@ Parse 'enum okeys' from nail.h and create gen-okeys.h.
+#@ Parse 'enum okeys' (see there!) and create gen-okeys.h.
 #@ Just like enum okeys it has to create case-insensitive sorted entries!
 #
 # Public Domain
 
-my $IN = 'include/mx/nail.h';
+my $IN = 'include/mx/okeys.h';
+my $IN_PRIV = 'src/mx/accmacvar.h';
 my $OUT = 'src/mx/gen-okeys.h';
 
 # We use `csop' for hashing
@@ -102,9 +103,10 @@ sub parse_in_h{
 						$1 ne 'rdonly' && $1 ne 'nodel' &&
 						$1 ne 'i3val' && $1 ne 'defval' &&
 						$1 ne 'import' && $1 ne 'env' && $1 ne 'nolopts' &&
-						$1 ne 'notempty' && $1 ne 'nocntrls' &&
+						$1 ne 'notempty' &&
 							$1 ne 'num' && $1 ne 'posnum' && $1 ne 'lower' &&
-						$1 ne 'chain' && $1 ne 'obsolete');
+						$1 ne 'chain' && $1 ne 'obsolete' &&
+						$1 ne 'rc');
 				$vals{$1} = $2
 			}
 		}
@@ -134,62 +136,15 @@ sub create_c_tool{
 #define u32 uint32_t
 #define u16 uint16_t
 #define u8 uint8_t
-
-enum a_amv_var_flags{
-	a_AMV_VF_NONE = 0,
-
-	/* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
-	a_AMV_VF_BOOL = 1u<<0, /* ok_b_* */
-	a_AMV_VF_CHAIN = 1u<<1, /* Has -HOST and/or -USER@HOST variants */
-	a_AMV_VF_VIRT = 1u<<2, /* "Stateless" automatic variable */
-	a_AMV_VF_VIP = 1u<<3, /* Wants _var_check_vips() evaluation */
-	a_AMV_VF_RDONLY = 1u<<4, /* May not be set by user */
-	a_AMV_VF_NODEL = 1u<<5, /* May not be deleted */
-	a_AMV_VF_I3VAL = 1u<<6, /* Has an initial value */
-	a_AMV_VF_DEFVAL = 1u<<7, /* Has a default value */
-	a_AMV_VF_IMPORT = 1u<<8, /* Import ONLY from env (pre n_PSO_STARTED) */
-	a_AMV_VF_ENV = 1u<<9, /* Update environment on change */
-	a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
-	a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
-	/* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
-	a_AMV_VF_NUM = 1u<<12, /* Value must be a 32-bit number */
-	a_AMV_VF_POSNUM = 1u<<13, /* Value must be positive 32-bit number */
-	a_AMV_VF_LOWER = 1u<<14, /* Values will be stored in lowercase version */
-	a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
-	a_AMV_VF__MASK = (1u<<(15+1)) - 1,
-
-	/* Extended flags, not part of struct a_amv_var_map.avm_flags */
-	/* Indicates the instance is actually a variant of a _VF_CHAIN, it thus uses
-	 * the a_amv_var_map of the base variable, but it is not the base itself and
-	 * therefore care must be taken */
-	a_AMV_VF_EXT_CHAIN = 1u<<22,
-	a_AMV_VF_EXT_LOCAL = 1u<<23, /* `local' */
-	a_AMV_VF_EXT_LINKED = 1u<<24, /* `environ' link'ed */
-	a_AMV_VF_EXT_FROZEN = 1u<<25, /* Has been set by -S,.. */
-	a_AMV_VF_EXT_FROZEN_UNSET = 1u<<26, /* ..and was used to unset a variable */
-	a_AMV_VF_EXT__FROZEN_MASK = a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET,
-	a_AMV_VF_EXT__MASK = (1u<<(26+1)) - 1
-};
-
-struct a_amv_var_map{
-	u32 avm_hash;
-	u16 avm_keyoff;
-	BITENUM(u16,a_amv_var_flags) avm_flags;
-};
-
-struct a_amv_var_chain_map_bsrch{
-	char avcmb_prefix[4];
-	u16 avcmb_chain_map_off;
-	u16 avcmb_chain_map_eokey; /* This is an enum okeys */
-};
-
-struct a_amv_var_chain_map{
-	u16 avcm_keyoff;
-	u16 avcm_okey;
-};
-
 #define CTA(A,S)
+
 _EOT
+
+	die "$IN_PRIV: open: $^E" unless open FPH, '<', $IN_PRIV;
+	while(<FPH>){
+		print F $_
+	}
+	close FPH;
 
 	print F '#include "', $OUT, "\"\n\n";
 
@@ -319,7 +274,6 @@ sub dump_map{
 		if($e->{env}) {push @fa, 'a_AMV_VF_ENV'}
 		if($e->{nolopts}) {push @fa, 'a_AMV_VF_NOLOPTS'}
 		if($e->{notempty}) {push @fa, 'a_AMV_VF_NOTEMPTY'}
-		if($e->{nocntrls}) {push @fa, 'a_AMV_VF_NOCNTRLS'}
 		if($e->{num}) {push @fa, 'a_AMV_VF_NUM'}
 		if($e->{posnum}) {push @fa, 'a_AMV_VF_POSNUM'}
 		if($e->{lower}) {push @fa, 'a_AMV_VF_LOWER'}

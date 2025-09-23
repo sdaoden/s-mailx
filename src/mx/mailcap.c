@@ -42,6 +42,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/mime-param.h"
 #include "mx/mime-type.h"
+#include "mx/okeys.h"
 
 #include "mx/mailcap.h"
 /*#define NYDPROF_ENABLE*/

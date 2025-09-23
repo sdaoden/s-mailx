@@ -39,6 +39,8 @@
 # include <su/icodec.h>
 #endif
 
+#include "mx/okeys.h"
+
 #include "mx/filter-quote.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/

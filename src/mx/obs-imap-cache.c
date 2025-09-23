@@ -57,6 +57,7 @@ su_EMPTY_FILE()
 #include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/url.h"
 
 /* TODO fake */

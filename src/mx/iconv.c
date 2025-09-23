@@ -29,6 +29,8 @@
 #include <su/mem-bag.h>
 #include <su/utf.h>
 
+#include "mx/okeys.h"
+
 #ifdef mx_HAVE_ICONV
 # include "mx/file-streams.h"
 #endif
@@ -182,7 +184,7 @@ n_iconv_norm_name(char const *cset, boole mime_norm_name){
 	/* And some names just cannot be used as such */
 	if(!su_cs_cmp_case(cset, "unknown-8bit") || !su_cs_cmp_case(cset, "binary")){
 		if((cset = ok_vlook(charset_unknown_8bit)) == NIL)
-			cset = n_var_oklook(CHARSET_8BIT_OKEY);
+			cset = mx_var_oklook(CHARSET_8BIT_OKEY);
 		cset = n_iconv_norm_name(cset, mime_norm_name);
 	}else if(mime_norm_name)
 		cset = a_iconv_db_lookup(cset);

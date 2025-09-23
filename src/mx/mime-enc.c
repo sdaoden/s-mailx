@@ -32,6 +32,8 @@
 #include <su/mem.h>
 #include <su/mem-bag.h>
 
+#include "mx/okeys.h"
+
 #include "mx/mime-enc.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/

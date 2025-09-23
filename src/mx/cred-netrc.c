@@ -40,6 +40,7 @@ su_EMPTY_FILE()
 #include "mx/child.h"
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/url.h"
 
 #include "mx/cred-netrc.h"

@@ -47,6 +47,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/okeys.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 

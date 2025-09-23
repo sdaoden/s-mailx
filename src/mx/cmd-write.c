@@ -51,6 +51,7 @@
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/

@@ -35,6 +35,7 @@
 #endif
 
 #include "mx/cmd.h"
+#include "mx/okeys.h"
 
 #include "mx/cndexp.h"
 /*#define NYDPROF_ENABLE*/
@@ -325,7 +326,7 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 	case a_CNDEXP_OP_N:
 	case a_CNDEXP_OP_Z:
 		if(act){
-			lhv = n_var_vlook(lhv, TRU1);
+			lhv = mx_var_vlook(lhv, TRU1);
 			rv = ((lhv == NIL) == ((op & a_CNDEXP_OP_MASK) == a_CNDEXP_OP_Z));
 		}
 		break;

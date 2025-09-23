@@ -55,6 +55,7 @@
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
+#include "mx/okeys.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 

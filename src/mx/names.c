@@ -54,6 +54,7 @@
 #include "mx/go.h"
 #include "mx/mime.h"
 #include "mx/mta-aliases.h"
+#include "mx/okeys.h"
 #include "mx/ui-str.h"
 
 #include "mx/names.h"
@@ -1561,7 +1562,7 @@ c_addrcodec(void *vp){ /* {{{ */
 			n_pstate_err_no = su_err_by_errno();
 			vp = NIL;
 		}
-	}else if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
+	}else if(!mx_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		vp = NIL;
 	}

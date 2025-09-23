@@ -84,6 +84,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/net-socket.h"
+#include "mx/okeys.h"
 #include "mx/random.h"
 #include "mx/tty.h"
 #include "mx/url.h"
@@ -1646,7 +1647,7 @@ a_xtls_smime_cipher(char const *name, boole *freeit){
 
    vn = su_LOFI_ALLOC(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, S(int,i), "smime-cipher-%s", name);
-   cp = n_var_vlook(vn, FAL0);
+   cp = mx_var_vlook(vn, FAL0);
    su_LOFI_FREE(vn);
 
    if(cp == NIL && (cp = ok_vlook(smime_cipher)) == NIL){
@@ -1755,7 +1756,7 @@ jloop:
           * whether it is the right one for the message */
          vn = n_lofi_alloc(vs = su_cs_len(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
-         cp = n_var_vlook(vn, FAL0);
+         cp = mx_var_vlook(vn, FAL0);
          n_lofi_free(vn);
          if (cp != NULL) {
             if (match != NULL)
@@ -1814,7 +1815,7 @@ a_xtls_smime_sign_include_certs(char const *name){
          vn = su_LOFI_ALLOC(vs = su_cs_len(np->n_name) + 30);
 
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
-         rv = n_var_vlook(vn, FAL0);
+         rv = mx_var_vlook(vn, FAL0);
 
          su_LOFI_FREE(vn);
 
@@ -1890,9 +1891,9 @@ a_xtls_smime_sign_digest(char const *name, char const **digname,
          vn = su_LOFI_ALLOC(vs = su_cs_len(np->n_name) + 30);
 
          snprintf(vn, vs, "smime-sign-digest-%s", np->n_name);
-         if((cp = n_var_vlook(vn, FAL0)) == NIL){
+         if((cp = mx_var_vlook(vn, FAL0)) == NIL){
             snprintf(vn, vs, "smime-sign-message-digest-%s",np->n_name);/*v15*/
-            cp = n_var_vlook(vn, FAL0);
+            cp = mx_var_vlook(vn, FAL0);
          }
 
          su_LOFI_FREE(vn);
@@ -1962,7 +1963,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)/*TODO nevertried*/
    any = FAL0;
 
 jredo_v15:
-   if ((crl_file = n_var_oklook(fok)) != NULL) {
+   if ((crl_file = mx_var_oklook(fok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       if((crl_file = mx_fexpand(crl_file, mx_FEXP_DEF_LOCAL_FILE_VAR)) == NIL ||
             load_crl1(store, crl_file) != OKAY)
@@ -1974,7 +1975,7 @@ jredo_v15:
 #endif
    }
 
-   if ((crl_dir = n_var_oklook(dok)) != NULL) {
+   if ((crl_dir = mx_var_oklook(dok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       char *x;
 

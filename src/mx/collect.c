@@ -43,6 +43,7 @@
 #include "mx/go.h"
 #include "mx/ignore.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
@@ -2234,7 +2235,7 @@ jev_go:
 			/* Insert a variable into the file */
 			if(cnt == 0)
 				goto jearg;
-			cp = n_var_vlook(cp, TRU1);
+			cp = mx_var_vlook(cp, TRU1);
 jIi_putesc:
 			n_pstate_err_no = su_ERR_NONE; /* XXX */
 			n_pstate_ex_no = 0; /* XXX */

@@ -30,6 +30,7 @@
 #include <su/utf.h>
 
 #include "mx/iconv.h"
+#include "mx/okeys.h"
 
 #include "mx/mime-probe.h"
 /*#define NYDPROF_ENABLE*/

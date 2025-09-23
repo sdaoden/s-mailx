@@ -34,6 +34,7 @@
 #include <su/path.h>
 
 #include "mx/cmd.h"
+#include "mx/okeys.h"
 
 #include "mx/cmd-filetype.h"
 /*#define NYDPROF_ENABLE*/
@@ -395,12 +396,12 @@ mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file){
 		su_mem_copy(vbuf, a_X1, sizeof(a_X1) -1);
 		su_mem_copy(&vbuf[sizeof(a_X1) -1], lext, l);
 		vbuf[sizeof(a_X1) -1 + l] = '\0';
-		cload = n_var_vlook(vbuf, FAL0);
+		cload = mx_var_vlook(vbuf, FAL0);
 
 		su_mem_copy(vbuf, a_X2, sizeof(a_X2) -1);
 		su_mem_copy(&vbuf[sizeof(a_X2) -1], lext, l);
 		vbuf[sizeof(a_X2) -1 + l] = '\0';
-		csave = n_var_vlook(vbuf, FAL0);
+		csave = mx_var_vlook(vbuf, FAL0);
 
 		su_LOFI_FREE(vbuf);
 #undef a_X2

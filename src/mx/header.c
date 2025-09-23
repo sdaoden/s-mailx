@@ -52,6 +52,7 @@
 #include "mx/mime.h"
 #include "mx/mime-probe.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 #include "mx/srch-ctx.h"
 #include "mx/time.h"
 #include "mx/ui-str.h"

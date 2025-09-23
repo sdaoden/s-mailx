@@ -33,6 +33,8 @@
 #include <su/mem.h>
 #include <su/time.h>
 
+#include "mx/okeys.h"
+
 #include "mx/time.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/

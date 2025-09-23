@@ -43,6 +43,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
 
@@ -298,6 +299,7 @@ jleave:
 jsigwinch:
 	if(n_psonce & n_PSO_INTERACTIVE){
 		a_termios_dimen_query(&mx_termios_dimen);
+		/* Below in termios_controller_setup() is a comment on this */
 		if(mx_termios_dimen.tiosd_width > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
 			--mx_termios_dimen.tiosd_width;
 		n_pstate |= n_PS_SIGWINCH_PEND;

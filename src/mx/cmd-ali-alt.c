@@ -34,6 +34,7 @@
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 
 #include "mx/cmd-ali-alt.h"
 /*#define NYDPROF_ENABLE*/
@@ -549,7 +550,7 @@ c_alternates(void *vp){ /* {{{ */
 			n_string_cp(s);
 
 			if(cacp->cac_vput != NIL){
-				if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput)){
+				if(!mx_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput)){
 					n_pstate_err_no = su_ERR_NOTSUP;
 					rv = su_EX_ERR;
 				}

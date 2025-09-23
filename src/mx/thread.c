@@ -52,6 +52,7 @@
 
 #include "mx/compat.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */

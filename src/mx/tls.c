@@ -55,6 +55,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/mime-param.h"
 #include "mx/net-socket.h"
+#include "mx/okeys.h"
 #include "mx/time.h"
 #include "mx/tty.h"
 #include "mx/url.h"
@@ -561,7 +562,7 @@ jleave:
          n_pstate_err_no = su_err_by_errno();
          vp = NIL;
       }
-   }else if(!n_var_vset(cacp->cac_vput,
+   }else if(!mx_var_vset(cacp->cac_vput,
          R(up,vp != NIL ? S(char const*,vp) : su_empty),
          cacp->cac_scope_vput)){
       n_pstate_err_no = su_ERR_NOTSUP;

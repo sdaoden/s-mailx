@@ -53,6 +53,8 @@
 #include <su/mem-bag.h>
 #include <su/utf.h>
 
+#include "mx/okeys.h"
+
 #include "mx/ui-str.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -158,7 +160,7 @@ mx_locale_init(void){
 #else
 
    if(setlocale(LC_ALL, su_empty) == NIL && (n_psonce & n_PSO_INTERACTIVE))
-      n_err(_("Cannot set locale to $LC_ALL=%s\n"), n_var_oklook(ok_v_LC_ALL));
+      n_err(_("Cannot set locale to $LC_ALL=%s\n"), mx_var_oklook(ok_v_LC_ALL));
 
    n_mb_cur_max = MB_CUR_MAX;
 # ifdef mx_HAVE_NL_LANGINFO

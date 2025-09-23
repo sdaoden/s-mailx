@@ -39,6 +39,7 @@
 #include "mx/mime.h"
 #include "mx/mime-enc.h"
 #include "mx/mime-probe.h"
+#include "mx/okeys.h"
 
 #ifdef mx_HAVE_MAILCAP
 # include "mx/mailcap.h"
@@ -1326,7 +1327,7 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *m
 			for(cp = &buf[a__L]; *cp != '\0'; ++cp)
 				*cp = su_cs_to_lower(*cp);
 
-			if((mthp->mth_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NIL){
+			if((mthp->mth_shell_cmd = ccp = mx_var_vlook(buf, FAL0)) != NIL){
 				rv = a_mt_pipe_check(mthp, action);
 				if((rv & mx_MIME_TYPE_HDL_TYPE_MASK) != mx_MIME_TYPE_HDL_NIL)
 					goto jleave;
@@ -1346,7 +1347,7 @@ jc_t:
 		*cp = su_cs_to_lower(*cp);
 
 	/* II.: *pipe-TYPE/SUBTYPE* */
-	if((mthp->mth_shell_cmd = n_var_vlook(buf, FAL0)) != NIL){
+	if((mthp->mth_shell_cmd = mx_var_vlook(buf, FAL0)) != NIL){
 		rv = a_mt_pipe_check(mthp, action);
 		if((rv & mx_MIME_TYPE_HDL_TYPE_MASK) != mx_MIME_TYPE_HDL_NIL)
 			goto jleave;

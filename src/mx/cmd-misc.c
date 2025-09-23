@@ -36,6 +36,7 @@
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/ui-str.h"
 
@@ -149,7 +150,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* {{{ */
 			e = su_err_by_errno();
 		rv |= (ferror(fp) != 0);
 		n_pstate_err_no = e;
-	}else if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
+	}else if(!mx_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		rv = -1;
 	}else{
@@ -331,7 +332,7 @@ a_cmisc_read_set(char const *cp, char const *value, enum mx_scope scope){
 		value = N_("not a valid variable name");
 	else if(!n_var_is_user_writable(cp))
 		value = N_("variable is read-only");
-	else if(!n_var_vset(cp, S(up,value), scope))
+	else if(!mx_var_vset(cp, S(up,value), scope))
 		value = N_("failed to update variable value");
 	else{
 		rv = TRU1;
@@ -419,7 +420,7 @@ mx_shell_cmd(char const *cmd, char const *vputvar_or_nil, enum mx_scope scope){ 
 	}
 
 	if(vputvar_or_nil != NIL){
-		if(!n_var_vset(vputvar_or_nil, R(up,varres), scope)){
+		if(!mx_var_vset(vputvar_or_nil, R(up,varres), scope)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			rv = -1;
 		}
@@ -495,7 +496,7 @@ c_cwd(void *vp){
 		}
 
 		if(cacp->cac_vput != NIL){
-			if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput))
+			if(!mx_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput))
 				vp = NIL;
 		}else{
 			l = su_cs_len(s->s_dat);
@@ -718,7 +719,7 @@ c_shcodec(void *vp){ /* {{{ */
 
 	if(cacp->cac_vput != NIL){
 		n_string_cp(soup);
-		if(!n_var_vset(cacp->cac_vput, R(up,soup->s_dat), cacp->cac_scope_vput)){
+		if(!mx_var_vset(cacp->cac_vput, R(up,soup->s_dat), cacp->cac_scope_vput)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			vp = NIL;
 		}
@@ -819,7 +820,7 @@ c_version(void *vp){ /* {{{ */
 	cacp = vp;
 
 	if(cacp->cac_vput != NIL)
-		rv = n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput) ? su_EX_OK : -1;
+		rv = mx_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput) ? su_EX_OK : -1;
 	else{
 		if(fputs(cp, n_stdout) != EOF)
 			rv = su_EX_OK;

@@ -42,6 +42,7 @@
 #endif
 
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 

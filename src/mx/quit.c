@@ -50,6 +50,7 @@
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
 #include "mx/net-pop3.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
 
@@ -643,9 +644,10 @@ savequitflags(void)
    uz i;
    NYD_IN;
 
-   for (i = 0; i < NELEM(_quitnames); ++i)
-      if (n_var_oklook(_quitnames[i].okey) != NULL)
+   for(i = 0; i < NELEM(_quitnames); ++i)
+      if(mx_var_oklook(_quitnames[i].okey) != NIL)
          qf |= _quitnames[i].flag;
+
    NYD_OU;
    return qf;
 }
@@ -656,14 +658,17 @@ restorequitflags(int qf)
    uz i;
    NYD_IN;
 
-   for (i = 0;  i < NELEM(_quitnames); ++i) {
-      char *x = n_var_oklook(_quitnames[i].okey);
-      if (qf & _quitnames[i].flag) {
-         if (x == NULL)
-            n_var_okset(_quitnames[i].okey, TRU1);
-      } else if (x != NULL)
-         n_var_okclear(_quitnames[i].okey);
+   for(i = 0;  i < NELEM(_quitnames); ++i){
+      char *x;
+
+      x = mx_var_oklook(_quitnames[i].okey);
+      if(qf & _quitnames[i].flag){
+         if(x == NIL)
+            mx_var_okset(_quitnames[i].okey, TRU1);
+      }else if(x != NIL)
+         mx_var_okclear(_quitnames[i].okey);
    }
+
    NYD_OU;
 }
 

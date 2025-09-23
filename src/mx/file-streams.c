@@ -36,6 +36,7 @@
 
 #include "mx/child.h"
 #include "mx/cmd-filetype.h"
+#include "mx/okeys.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"

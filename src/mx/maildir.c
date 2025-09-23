@@ -59,6 +59,7 @@ su_EMPTY_FILE()
 
 #include "mx/compat.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/time.h"
 

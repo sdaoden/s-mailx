@@ -58,6 +58,7 @@
 #include "mx/mime-probe.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/ui-str.h"
 
@@ -76,7 +77,7 @@ enum a_mime_structure_hack{
 
 static char *a_mime_cs_iter_base, *a_mime_cs_iter;
 #define a_MIME_CS_ITER_GET() \
-   ((a_mime_cs_iter != NIL) ? a_mime_cs_iter : n_var_oklook(CHARSET_8BIT_OKEY))
+   ((a_mime_cs_iter != NIL) ? a_mime_cs_iter : mx_var_oklook(CHARSET_8BIT_OKEY))
 #define a_MIME_CS_ITER_STEP() \
    a_mime_cs_iter = su_cs_sep_c(&a_mime_cs_iter_base, ',', TRU1)
 
@@ -845,7 +846,7 @@ mx_mime_charset_iter_reset(char const *cset_try1_or_nil, /* TODO dups */
 
    id = ok_blook(iconv_disable);
    sarr[0] = sarr[1] = sarr[2] = NIL;
-   sarr[3] = id ? ok_vlook(ttycharset) : n_var_oklook(CHARSET_8BIT_OKEY);
+   sarr[3] = id ? ok_vlook(ttycharset) : mx_var_oklook(CHARSET_8BIT_OKEY);
 
    if(cset_try1_or_nil != NIL){
       cset_try1_or_nil = n_iconv_norm_name(cset_try1_or_nil, TRU1);

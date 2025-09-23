@@ -52,6 +52,7 @@
 # include "mx/fexpand.h"
 # include "mx/file-locks.h"
 # include "mx/go.h"
+# include "mx/okeys.h"
 # include "mx/sigs.h"
 # include "mx/termcap.h"
 # include "mx/termios.h"

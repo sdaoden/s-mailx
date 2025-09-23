@@ -13,7 +13,7 @@
  *@  this defines most necessary compat macros.
  *@  We still need s64, u64, S64_MIN, savestr(CP) <> strdup(3) that does not
  *@  return NIL (only with _ERROR_TRACK).  Plus stdint.h, ctype.h, string.h.
- *@  We need su_idec_cp(), su_ienc_s64(), n_var_vlook() and n_var_vset().
+ *@  We need su_idec_cp(), su_ienc_s64(), mx_var_vlook() and mx_var_vset().
  *@  We need su_IDEC_STATE_EMASK (= 1) and su_IDEC_STATE_REMAINS (= 2), e.g.:
  *@    errno = 0;
  *@    res = strto_arith_t(cbuf, (char**)endptr_or_nil);
@@ -928,7 +928,7 @@ a_shexp__arith_val_eval(struct a_shexp_arith_ctx *self, struct a_shexp_arith_val
 	savp->sav_val = 0;
 
 	/* Also look in program environment XXX configurable? */
-	cp = n_var_vlook(savp->sav_var, TRU1);
+	cp = mx_var_vlook(savp->sav_var, TRU1);
 	if(cp == NIL)
 		goto jleave;
 
@@ -1185,7 +1185,7 @@ jquick:
 
 		if(!ign){
 			bp = su_ienc_s64(buf, val, 10);
-			if(!n_var_vset(nums_top->sav_var, S(up,bp), self->sac_cookie)){
+			if(!mx_var_vset(nums_top->sav_var, S(up,bp), self->sac_cookie)){
 				self->sac_error = a_SHEXP_ARITH_ERR_SYNTAX; /* scope error? */
 				goto jleave;
 			}

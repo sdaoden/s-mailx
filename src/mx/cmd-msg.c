@@ -47,6 +47,7 @@
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
+#include "mx/okeys.h"
 #include "mx/termios.h"
 
 #ifdef mx_HAVE_COLOUR
@@ -744,7 +745,7 @@ c_pdot(void *vp){
          n_pstate_err_no = su_err_by_errno();
          vp = NIL;
       }
-   }else if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput)){
+   }else if(!mx_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NIL;
    }

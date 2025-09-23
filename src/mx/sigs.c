@@ -32,6 +32,7 @@
 #include <su/time.h>
 
 #include "mx/cmd.h"
+#include "mx/okeys.h"
 
 #include "mx/sigs.h"
 /*#define NYDPROF_ENABLE*/

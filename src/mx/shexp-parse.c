@@ -36,6 +36,7 @@
 #include "mx/cmd.h"
 #include "mx/cmd-shortcut.h"
 #include "mx/iconv.h"
+#include "mx/okeys.h"
 
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -1014,7 +1015,7 @@ jebracenoc:
 			char const **xcookie;
 			boole xrv;
 
-			xrv = n_var_vexplode(spcp->spc_cookie, rset);
+			xrv = mx_var_vexplode(spcp->spc_cookie, rset);
 			if(!xrv){
 				*spcp->spc_cookie = NIL;
 				goto jleave;
@@ -1027,7 +1028,7 @@ jebracenoc:
 
 			/**/
 			if(LIKELY(spcp->spc_quotec == '"') || !(state & a_SHEXP_PARSE_FS_SPLIT)){
-				xcookie = S(char const**,*spcp->spc_cookie);
+				xcookie = S(char const**,C(void*,*spcp->spc_cookie));
 				ASSERT(xcookie != NIL && xcookie[0] != NIL);
 				/* The pointers need to be aligned in order to store flags, and they may not be so */
 				for(; *xcookie != NIL; ++xcookie){
@@ -1040,7 +1041,7 @@ jebracenoc:
 				*xcookie = R(char const*,R(up,
 						(spcp->spc_quotec == '\0' ? a_SHEXP_PARSE_COOKIE_FLAGS_NO_QUOTES : 0) |
 						a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN));
-				xcookie = S(char const**,*spcp->spc_cookie);
+				xcookie = S(char const**,C(void*,*spcp->spc_cookie));
 
 				*xcookie = R(char const*,R(up,*xcookie) | a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN);
 				state |= a_SHEXP_PARSE_COOKIE;
@@ -1049,7 +1050,7 @@ jebracenoc:
 			}
 			ASSERT(spcp->spc_quotec == '\0');
 
-			xcookie = S(char const**,*spcp->spc_cookie);
+			xcookie = S(char const**,C(void*,*spcp->spc_cookie));
 			ASSERT(xcookie != NIL && xcookie[0] != NIL);
 			*spcp->spc_cookie = NIL;
 
@@ -1064,7 +1065,7 @@ jebracenoc:
 			 * at minimum follow ksh88 and field split the quoted variant.
 			 * POSIX however standardized ksh93 behavior.  Go with No 1 but for *posix* */
 			if(!spcp->spc_posix_mode && *spcp->spc_ifs != '\0' && !su_cs_is_space(*spcp->spc_ifs)){
-				cp = n_var_vlook((!rset ? n_star : "^*"), TRU1);
+				cp = mx_var_vlook((!rset ? n_star : "^*"), TRU1);
 				goto jfs_split;
 			}
 
@@ -1163,7 +1164,7 @@ jebracenoc:
 		}
 
 		/* Check getenv(3) shall no internal variable exist */
-		if(UNLIKELY((cp = n_var_vlook(vp, TRU1)) == NIL)){
+		if(UNLIKELY((cp = mx_var_vlook(vp, TRU1)) == NIL)){
 			if(flags & n_SHEXP_PARSE_SUBST_FLAG_OUTPUT)
 				spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT;
 			goto jleave;
@@ -1346,7 +1347,7 @@ a_shexp_parse__strlist_to_cookie(struct a_shexp_parse_ctx *spcp, struct n_strlis
 
 		i += ALIGN_Z_PZ(1);
 		cp = su_AUTO_TALLOC(char, i);
-		cppx = R(char const**,cp);
+		cppx = R(char const**,S(void*,cp));
 		cp += ++n * sizeof(char const**);
 
 		*spcp->spc_cookie = R(void const*,cppx);
@@ -1451,7 +1452,7 @@ jrestart_empty:
 
 		ASSERT(spc.spc_store != NIL);
 		i = spc.spc_store->s_len;
-		xcookie = S(char const**,*spc.spc_cookie);
+		xcookie = S(char const**,C(void*,*spc.spc_cookie));
 		ASSERT(xcookie != NIL);
 		xrestart = FAL0;
 

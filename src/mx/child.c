@@ -45,6 +45,7 @@
 
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"
 #include "mx/termios.h"

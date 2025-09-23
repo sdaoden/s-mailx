@@ -47,6 +47,7 @@
 #include "mx/child.h"
 #include "mx/fexpand.h"
 #include "mx/net-pop3.h"
+#include "mx/okeys.h"
 #include "mx/tty.h"
 
 /*#define NYDPROF_ENABLE*/

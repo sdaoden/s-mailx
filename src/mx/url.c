@@ -36,6 +36,7 @@
 #include "mx/cred-auth.h"
 #include "mx/cred-netrc.h"
 #include "mx/file-streams.h"
+#include "mx/okeys.h"
 #include "mx/ui-str.h"
 
 #include "mx/url.h"
@@ -175,7 +176,7 @@ c_urlcodec(void *vp){
 	}
 
 	if(cacp->cac_vput != NIL){
-		if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
+		if(!mx_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			vp = NIL;
 		}

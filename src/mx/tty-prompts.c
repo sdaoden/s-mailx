@@ -30,6 +30,7 @@
 #include "mx/cmd-cnd.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
+#include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"

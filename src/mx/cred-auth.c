@@ -30,6 +30,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 #include "mx/cred-netrc.h"
+#include "mx/okeys.h"
 #include "mx/tty.h"
 #include "mx/url.h"
 
