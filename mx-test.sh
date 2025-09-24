@@ -15180,6 +15180,126 @@ source ./t.dat
 	t_epilog "$@"
 } #}}}
 
+t_colour() { #{{{
+	t_prolog "$@"
+
+	if have_feat colour; then :; else
+		t_echoskip '[!COLOUR]'
+		t_epilog "$@"
+		return
+	fi
+
+	$cat > t.in <<'_EOT'
+colour 256 mle-position fg=203,ft=reverse
+colou 256 mle-prompt fg=203
+colo 256 mle-error bg=124
+
+col iso mle-position fg=brown,ft=bold
+\col iso mle-prompt fg=brown
+\col iso mle-error bg=red
+
+\col mono mle-position ft=reverse
+\col mono mle-prompt ft=bold
+\col mono mle-error ft=reverse
+
+\col 256 sum-dotmark fg=204,ft=bold dot
+\col 256 sum-header fg=39 older
+
+\col iso sum-dotmark ft=reverse,fg=brown dot
+\col iso sum-header fg=brown dot
+
+\col mono sum-dotmark ft=bold,ft=reverse dot
+\col mono sum-header ft=bold dot
+
+\col 256 view-from_ fg=142
+\col 256 view-header fg=214,ft=bold from,subject
+\col 256 view-header fg=219
+\col 256 view-msginfo fg=76,ft=bold
+\col 256 view-partinfo fg=76 #161
+
+\col iso view-from_ fg=red
+\col iso view-header fg=white author,from,sender,subject
+\col iso view-header fg=brown
+\col iso view-msginfo fg=green
+\col iso view-partinfo fg=brown
+
+\col mono view-header ft=bold author,from,sender,subject
+\col mono view-msginfo ft=reverse,ft=underline
+\col mono view-partinfo  ft=bold,ft=underline
+_EOT
+
+	<< '_EOT' $MAILX $ARGS > ./t1 2>$EX
+\so ./t.in
+\ec =1=:$?:$^ERRNAME
+
+\col
+\ec =2=:$?:$^ERRNAME
+\uncolo* *
+\ec =3=:$?:$^ERRNAME
+\col
+\ec =4=:$?:$^ERRNAME
+\uncolo* *
+\ec =5=:$?:$^ERRNAME
+
+\so ./t.in
+\ec =6=:$?:$^ERRNAME
+
+\col mono
+\ec =7=:$?:$^ERRNAME
+\uncolo mono *
+\ec =8=:$?:$^ERRNAME
+\col mono
+\ec =9=:$?:$^ERRNAME
+
+\col iso
+\ec =10=:$?:$^ERRNAME
+\uncolo iso *
+\ec =11=:$?:$^ERRNAME
+\col iso
+\ec =12=:$?:$^ERRNAME
+
+\col 256
+\ec =13=:$?:$^ERRNAME
+\uncolo 256 *
+\ec =14=:$?:$^ERRNAME
+\col 256
+\ec =15=:$?:$^ERRNAME
+
+\col
+\ec =16=:$?:$^ERRNAME
+\uncolo* *
+\ec =17=:$?:$^ERRNAME
+
+\so ./t.in
+\ec =18=:$?:$^ERRNAME
+
+\uncolo iso view-from_
+\ec =19=:$?:$^ERRNAME
+\uncolo iso view-header
+\ec =20=:$?:$^ERRNAME
+
+\uncolo 256 view-partinfo
+\ec =21=:$?:$^ERRNAME
+\uncolo 256 view-header from,subject
+\ec =22=:$?:$^ERRNAME
+\uncolo 256 sum-header older
+\ec =23=:$?:$^ERRNAME
+
+\uncolo mono sum-dotmark dot
+\ec =24=:$?:$^ERRNAME
+\uncolo mono sum-header dot
+\ec =25=:$?:$^ERRNAME
+\uncolo mono sum-header
+\ec =26=:$?:$^ERRNAME
+
+\col
+\ec =27=:$?:$^ERRNAME
+_EOT
+	ck 1 0 ./t1 '2856600753 3558' '634243129 69'
+
+	t_epilog "$@"
+} #}}}
+
 t_headerorder() { #{{{
 	t_prolog "$@"
 
@@ -17096,6 +17216,7 @@ t_all() { #{{{
 
 	# Unclassified rest
 	jspawn bang
+	jspawn colour
 	jspawn headerorder
 	jspawn top
 	jspawn z

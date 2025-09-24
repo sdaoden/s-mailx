@@ -1,13 +1,14 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of colour.h.
  *@ TODO As stated in header:
- *@ TODO All the colour (pen etc.) interfaces below have to vanish.
- *@ TODO What we need here is a series of query functions which take context,
- *@ TODO like a message* for the _VIEW_ series, and which return a 64-bit
- *@ TODO flag carrier which returns font-attributes as well as foreground and
- *@ TODO background colours (at least 24-bit each).
- *@ TODO And the actual drawing stuff is up to the backend, maybe in termios,
- *@ TODO or better termcap, or in ui-str.  I do not know.
+ *@ TODO - All the colour (pen etc.) interfaces below have to vanish.
+ *@ TODO   What we need here is a series of query functions which take context,
+ *@ TODO   like a message* for the _VIEW_ series, and which return a 64-bit
+ *@ TODO   flag carrier which returns font-attributes as well as foreground and
+ *@ TODO   background colours (at least 24-bit each).
+ *@ TODO - And the actual drawing stuff is up to the backend, maybe in termios,
+ *@ TODO   or better termcap, or in ui-str.  I do not know.
+ *@ TODO - 24-bit aka 0x1000000 RGB support (38;2;<r>;<g>;<b> and 48;2;<r>;<g>;<b>).
  *
  * Copyright (c) 2014 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -59,10 +60,12 @@ su_EMPTY_FILE()
 #define a_COLOUR_TAG_IS_SPECIAL(P) (P2UZ(P) >= P2UZ(-3))
 
 enum a_colour_type{
-	a_COLOUR_T_256,
+	a_COLOUR_T_FIRST,
+	a_COLOUR_T_256 = a_COLOUR_T_FIRST,
 	a_COLOUR_T_8,
 	a_COLOUR_T_1,
-	a_COLOUR_T_NONE, /* EQ largest real colour + 1! */
+	a_COLOUR_T_MAX, /* EQ largest real colour + 1! */
+	a_COLOUR_T_NONE = a_COLOUR_T_MAX,
 	a_COLOUR_T_UNKNOWN /* Initial value: real one queried before 1st use */
 };
 
@@ -109,9 +112,9 @@ struct a_colour_map /* : public mx_colour_pen */{
 struct a_colour_g{
 	boole cg_is_init;
 	u8 cg_type; /* a_colour_type */
-	u8 __cg_pad[6];
+	u8 cg__pad[6];
 	struct mx_colour_pen cg_reset; /* The reset sequence */
-	struct a_colour_map *cg_maps[a_COLOUR_T_NONE][mx__COLOUR_CTX_MAX1][mx__COLOUR_IDS];
+	struct a_colour_map *cg_maps[a_COLOUR_T_MAX][mx__COLOUR_CTX_MAX1][mx__COLOUR_IDS];
 	char cg__reset_buf[ALIGN_Z(sizeof("\033[0m"))];
 };
 
@@ -250,12 +253,12 @@ a_colour__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 
 SINLINE boole
 a_colour_ok_to_go(u32 get_flags){
-	u32 po;
+	u32 po_save;
 	boole rv;
 	NYD2_IN;
 
 	rv = FAL0;
-	po = (n_poption & n_PO_V_MASK);/* TODO *colour-disable* */
+	po_save = (n_poption & n_PO_V_MASK);/* TODO *colour-disable* */
 	n_poption &= ~n_PO_V_MASK; /* TODO log too loud - need "no log" bit!! */
 
 	/* xxx Entire preamble could later be a shared function */
@@ -269,7 +272,8 @@ a_colour_ok_to_go(u32 get_flags){
 
 	rv = TRU1;
 jleave:
-	n_poption |= po;
+	n_poption |= po_save;
+
 	NYD2_OU;
 	return rv;
 }
@@ -332,8 +336,8 @@ a_colour_mux(char const * const *argv){
 		goto jleave;
 	}
 
-	/* Check whether preconditions are at all allowed, verify them as far as possible as necessary.  For
-	 * shell_quote() simplicity let's just ignore an empty precondition */
+	/* Check whether preconditions are at all allowed, verify them as far as possible as necessary.
+	 * For shell_quote() simplicity let's just ignore an empty precondition */
 	if((ctag = argv[2]) != NIL && *ctag != '\0'){
 		char const *xtag;
 
@@ -349,10 +353,10 @@ a_colour_mux(char const * const *argv){
 		ctag = xtag;
 	}
 
-	/* At this time we have all the information to be able to query whether such
-	 * a mapping is yet established. If so, destroy it */
-	for(blcmp = lcmp = NIL, cmp = *(cmap = &a_colour_g.cg_maps[ct][cmip->cmi_ctx][cmip->cmi_id]);
-			cmp != NIL; blcmp = lcmp, lcmp = cmp, cmp = cmp->cm_next){
+	/* At this time we have all the information to be able to query whether such a mapping is yet established.
+	 * If so, destroy it */
+	cmap = &a_colour_g.cg_maps[ct][cmip->cmi_ctx][cmip->cmi_id];
+	for(blcmp = lcmp = NIL, cmp = *cmap; cmp != NIL; blcmp = lcmp, lcmp = cmp, cmp = cmp->cm_next){
 		char const *xctag;
 
 		if((xctag = cmp->cm_tag) == ctag || (ctag != NIL && !a_COLOUR_TAG_IS_SPECIAL(ctag) &&
@@ -379,8 +383,9 @@ a_colour_mux(char const * const *argv){
 		}
 
 		tl = (ctag != NIL && !a_COLOUR_TAG_IS_SPECIAL(ctag)) ? su_cs_len(ctag) : 0;
-		cmp = su_ALLOC(VSTRUCT_SIZEOF(struct a_colour_map,cm_buf) + tl +1 +
-				(usrl = su_cs_len(argv[1])) +1 + (cl = su_cs_len(cp)) +1);
+		usrl = su_cs_len(argv[1]);
+		cl = su_cs_len(cp);
+		cmp = su_ALLOC(VSTRUCT_SIZEOF(struct a_colour_map,cm_buf) + tl +1 + usrl +1 + cl +1);
 
 		/* .cm_buf stuff */
 		cmp->cm_pen.cp_dat.s = bp = cmp->cm_buf;
@@ -396,6 +401,7 @@ a_colour_mux(char const * const *argv){
 			cmp->cm_tag = bp;
 			su_mem_copy(bp, ctag, ++tl);
 			/*bp += tl;*/
+
 		}else if(a_COLOUR_TAG_IS_SPECIAL(ctag))
 			cmp->cm_tag = ctag;
 		else
@@ -434,7 +440,7 @@ jleave:
 
 static boole
 a_colour_unmux(char const * const *argv){
-	char const *mapname, *ctag, *xtag;
+	char const *mapname, *ctag, *xctag;
 	struct a_colour_map **cmap, *lcmp, *cmp;
 	struct a_colour_map_id const *cmip;
 	enum a_colour_type ct;
@@ -451,7 +457,7 @@ a_colour_unmux(char const * const *argv){
 			goto j_leave;
 		}
 		aster = TRU1;
-		ct = 0;
+		ct = a_COLOUR_T_FIRST;
 	}
 
 	mapname = argv[0];
@@ -477,43 +483,46 @@ jredo:
 		if((cmip = a_colour_map_id_find(mapname)) == NIL){
 			rv = FAL0;
 jemap:
-			/* I18N: colour cmd, mapping and precondition (option in quotes) */
-			n_err(_("uncolour: non-existing mapping: %s%s%s\n"),
-				n_shexp_quote_cp(mapname, FAL0), (ctag == NIL ? su_empty : " "),
-				(ctag == NIL ? su_empty : n_shexp_quote_cp(ctag, FAL0)));
+			if(!aster){
+				/* I18N: colour cmd, mapping and precondition (option in quotes) */
+				n_err(_("uncolour: %s: non-existing mapping: %s%s%s\n"),
+					a_colour_types[ct], n_shexp_quote_cp(mapname, FAL0),
+					(ctag == NIL ? su_empty : " "),
+					(ctag == NIL ? su_empty : n_shexp_quote_cp(ctag, FAL0)));
+			}
 			goto jleave;
 		}
 
-		if((xtag = ctag) != NIL){
+		if((xctag = ctag) != NIL){
+			char const *xcp;
+
 			if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-				n_err(_("uncolour: %s does not support preconditions\n"), n_shexp_quote_cp(mapname, FAL0));
+				n_err(_("uncolour: %s: %s does not support preconditions\n"),
+					a_colour_types[ct], n_shexp_quote_cp(mapname, FAL0));
 				rv = FAL0;
 				goto jleave;
-			}else if((xtag = a_colour__tag_identify(cmip, ctag, NIL)) == mx_COLOUR_TAG_ERR){
-				n_err(_("uncolour: %s: invalid precondition: %s\n"),
-					n_shexp_quote_cp(mapname, FAL0), n_shexp_quote_cp(ctag, FAL0));
+			}else if((xcp = a_colour__tag_identify(cmip, xctag, NIL)) == mx_COLOUR_TAG_ERR){
+				n_err(_("uncolour: %s: %s: invalid precondition: %s\n"),
+					a_colour_types[ct], n_shexp_quote_cp(mapname, FAL0),
+					n_shexp_quote_cp(xctag, FAL0));
 				rv = FAL0;
 				goto jleave;
 			}
-
-			/* (Improve user experience) */
-			if(xtag != NIL && !a_COLOUR_TAG_IS_SPECIAL(xtag))
-				ctag = xtag;
+			xctag = xcp;
 		}
 
-		lcmp = NIL;
-		cmp = *(cmap = &a_colour_g.cg_maps[ct][cmip->cmi_ctx][cmip->cmi_id]);
-		for(;;){
-			char const *xctag;
+		cmap = &a_colour_g.cg_maps[ct][cmip->cmi_ctx][cmip->cmi_id];
+		for(lcmp = NIL, cmp = *cmap;;){
+			char const *xcp;
 
 			if(cmp == NIL){
 				rv = FAL0;
 				goto jemap;
 			}
-			if((xctag = cmp->cm_tag) == ctag)
+			if((xcp = cmp->cm_tag) == xctag)
 				break;
-			if(ctag != NIL && !a_COLOUR_TAG_IS_SPECIAL(ctag) &&
-					xctag != NIL && !a_COLOUR_TAG_IS_SPECIAL(xctag) && !su_cs_cmp(xctag, ctag))
+			if(xctag != NIL && !a_COLOUR_TAG_IS_SPECIAL(xctag) &&
+					xcp != NIL && !a_COLOUR_TAG_IS_SPECIAL(xcp) && !su_cs_cmp(xctag, xcp))
 				break;
 			lcmp = cmp;
 			cmp = cmp->cm_next;
@@ -527,7 +536,7 @@ jemap:
 	}
 
 jleave:
-	if(aster && ++ct != a_COLOUR_T_NONE)
+	if(aster && ++ct != a_COLOUR_T_MAX)
 		goto jredo;
 
 j_leave:
@@ -569,7 +578,7 @@ jredo:
 			}
 		}
 
-	if(rv && ++ct != a_COLOUR_T_NONE)
+	if(rv && ++ct != a_COLOUR_T_MAX)
 		goto jredo;
 
 	rv = TRU1;
@@ -775,7 +784,7 @@ jbail:
 
 		if(!su_cs_cmp_case(cp, "ft")){
 			if(!su_cs_cmp_case(x, "inverse")){
-				n_OBSOLETE(_("please use reverse for ft= fonts, not inverse"));
+				mx_OBSOL_14_9_25(_("please use reverse for ft= fonts, not inverse"));
 				x = UNCONST(char*,"reverse");
 			}
 
@@ -793,10 +802,10 @@ jbail:
 					break;
 				}
 		}else if(!su_cs_cmp_case(cp, "fg")){
-			y = cfg + 0;
+			y = &cfg[0];
 			goto jiter_colour;
 		}else if(!su_cs_cmp_case(cp, "bg")){
-			y = cfg + 1;
+			y = &cfg[1];
 jiter_colour:
 			if(ct == a_COLOUR_T_1){
 				*store = UNCONST(char*,_("colours are not allowed"));
@@ -816,10 +825,10 @@ jiter_colour:
 					goto jleave;
 				}
 				y[0] = 5;
-				su_mem_copy((y == &cfg[0] ? y + 2 : y + 1 + sizeof("255")), x,
+				su_mem_copy((y == &cfg[0] ? &y[2] : &y[1 + sizeof("255")]), x,
 					(x[1] == '\0' ? 2 : (x[2] == '\0' ? 3 : 4)));
 			}else for(idp = ca;; ++idp)
-				if(idp == ca + NELEM(ca)){
+				if(idp == &ca[NELEM(ca)]){
 					*store = UNCONST(char*,_("invalid colour attribute"));
 					goto jleave;
 				}else if(!su_cs_cmp_case(x, idp->id_name)){
@@ -852,7 +861,7 @@ jiter_colour:
 				xspec[1] = cfg[2];
 				xspec += 2;
 			}else{
-				su_mem_copy(xspec + 1, "8;5;", 4);
+				su_mem_copy(&xspec[1], "8;5;", 4);
 				xspec += 5;
 				for(ftno = 2; cfg[ftno] != '\0'; ++ftno)
 					*xspec++ = cfg[ftno];
@@ -867,7 +876,7 @@ jiter_colour:
 				xspec[1] = cfg[3];
 				xspec += 2;
 			}else{
-				su_mem_copy(xspec + 1, "8;5;", 4);
+				su_mem_copy(&xspec[1], "8;5;", 4);
 				xspec += 5;
 				for(ftno = 2 + sizeof("255"); cfg[ftno] != '\0'; ++ftno)
 					*xspec++ = cfg[ftno];
