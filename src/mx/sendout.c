@@ -1489,7 +1489,7 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
 
    if(to != NIL){
       ccp = cp = savestr(to->n_name);
-      while(*cp != '\0' && *cp != '@')
+      while(*cp != '\0' && *cp != '@') /* FIXME quoted @ */
          ++cp;
       *cp = '\0';
    }else
