@@ -209,23 +209,21 @@ a_colour_termcap_init(void){
 	if(n_psonce & n_PSO_STARTED){
 		struct mx_termcap_value tv;
 
-		if(!mx_termcap_query(mx_TERMCAP_QUERY_colors, &tv))
-			a_colour_g.cg_type = a_COLOUR_T_NONE;
-		else{
-			rv = TRU1;
+		a_colour_g.cg_type = a_COLOUR_T_NONE;
+		if(mx_termcap_query(mx_TERMCAP_QUERY_colors, &tv)){
 			switch(tv.tv_data.tvd_numeric){
+			case 16777216: /* TODO a_colour_g.cg_type = a_COLOUR_T_RGB; break; */ FALLTHRU
 			case 256: a_colour_g.cg_type = a_COLOUR_T_256; break;
 			case 8: a_colour_g.cg_type = a_COLOUR_T_8; break;
 			case 1: a_colour_g.cg_type = a_COLOUR_T_1; break;
+			case 0: break;
 			default:
 				if(n_poption & n_PO_D_V)
-					n_err(_("Ignoring unsupported termcap entry for Co(lors)\n"));
-				/* FALLTHRU */
-			case 0:
-				a_colour_g.cg_type = a_COLOUR_T_NONE;
-				rv = FAL0;
+					n_err(_("Ignoring unsupported termcap entry for Co(lors): %lu\n"),
+						S(ul,tv.tv_data.tvd_numeric));
 				break;
 			}
+			rv = (a_colour_g.cg_type != a_COLOUR_T_NONE);
 		}
 	}
 
