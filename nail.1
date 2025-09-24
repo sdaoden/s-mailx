@@ -1760,7 +1760,7 @@ Classifying 7-bit clean data as
 .Va charset-7bit
 is a problem if the input character set
 .Pf ( Va ttycharset , ttycharset-detect )
-is a multi-byte character set that is itself 7-bit clean.
+is a multibyte character set that is itself 7-bit clean.
 For example, the Japanese character set ISO-2022-JP is, but is capable
 to encode the rich set of Japanese Kanji, Hiragana and Katakana
 characters: in order to notify recipients of this character set the mail
@@ -2636,7 +2636,7 @@ Move the cursor backward one word boundary
 .Pf ( Cd mle-raise-tstp ) .
 .
 .It Ql \ec[
-Escape: reset a possibly used multi-byte character input state machine
+Escape: reset a possibly used multibyte character input state machine
 and \*(oPally a lingering, incomplete key binding
 .Mx
 .Pf ( Cd mle-cancel ) .
@@ -2644,7 +2644,7 @@ Note this needs to be assigned to a single-letter control code
 in order to become recognized and executed during input of a key-sequence
 (only three single-letter control codes can be used for that shortcut
 purpose).
-The control code may also be part of a multi-byte sequence, but if
+The control code may also be part of a multibyte sequence, but if
 a sequence is active and the very control code is currently also an
 expected input, then the active sequence takes precedence and will
 consume the control code.
@@ -9943,7 +9943,7 @@ expansion.
 .
 .Mx
 .It Va bind-inter-byte-timeout
-\*(OP Often terminals generate multi-byte sequences for diverse keys,
+\*(OP Often terminals generate multibyte sequences for diverse keys,
 yet these cannot be read as a unit.
 (Such sequences can also be freely defined via
 .Ic bind . )
@@ -11237,7 +11237,7 @@ character sets are identified as binary data.
 (Wide means that each character is stored in a datatype that is larger
 than a byte, for UTF-16 the number stands for the bits of the datatype;
 possibly multiple such are needed to represent the character.
-Byte-based multi-byte character sets, like UTF-8, are (also) capable to
+Byte-based multibyte character sets, like UTF-8, are (also) capable to
 store all characters of the world, but form byte sequences that are not
 detected as binary data.)
 If set, and if the data was unambiguously identified as text at first
