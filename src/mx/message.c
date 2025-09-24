@@ -1070,7 +1070,7 @@ a_msg_match_sender(struct message *mp, char const *str, boole allnet){
    if(allnet){
       for(; namep != NULL; str = str_base, namep = namep->n_flink){
          for(np_base = np = namep->n_name;;){
-            if((c = *str++) == '@')
+            if((c = *str++) == '@') /* FIXME could be quoted @ */
                c = '\0';
             if((nc = *np++) == '@' || nc == '\0' || c == '\0'){
                if((rv = (c == '\0')))
