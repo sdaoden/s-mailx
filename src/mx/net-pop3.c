@@ -269,7 +269,7 @@ a_pop3_lookup_apop_timestamp(char const *bp){
    for(ep = cp; *ep != '\0'; ++ep){
       if(su_cs_is_space(*ep))
          goto jleave;
-      else if(*ep == '@')
+      else if(*ep == '@') /* FIXME what about quoted @ */
          hadat = TRU1;
       else if(*ep == '>'){
          if(!hadat)
