@@ -1,5 +1,28 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of names.h.
+
+
+
+FIXME : dig-msg MUST still be able to dig
+
+			149-67a28e00-2d-65d6a100@37406365
+		or
+			/DASDSA/dasdas
+			bug-2735-1757-npkZ95pgT0@http.bz.selenic.com/
+			"HuuR6B.A._iE.eeOGSB"@Phoebe.vpn.opengroup.org
+			CAFpi07zDWyV==-+D7SjS8qvm_egwpztVADf-iK7RTpvTG_wW9Q@mail.gmail.com
+			/p/forge/site-support/10722/8f813a932cf0809c55dac0496e705369a6a6fcc3.site-support@forge.p.sourceforge.net
+		als message id!!!  
+
+THIS IS ALREADY FALSE for LAST!!! ADD TESTS!!!!  MUST BE "AN ADDRESS"
+
+while we are here, it would be nice if List-ID: -- which is no address but list-id RFC 2919
+	   list-id = list-label "." list-id-namespace
+	   list-label = dot-atom-text
+	   list-id-namespace = domain-name / unmanaged-list-id-namespace
+	    unmanaged-list-id-namespace    = "localhost"
+
+
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
