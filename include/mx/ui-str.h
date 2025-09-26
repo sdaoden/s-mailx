@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Visual strings, string classification/preparation for the user interface.
+ *@ TODO ctext
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
@@ -115,6 +116,26 @@ EXPORT char *mx_substr(char const *str, char const *sub);
 
 /* Only remove (remaining) control characters, reterminate, return length */
 EXPORT uz mx_del_cntrl(char *cp, uz len);
+
+#ifdef mx_HAVE_NATCH_CHAR
+INLINE boole mx_ui_ignore_wc(wchar_t wc){ /* TODO ctext */
+	boole rv;
+
+	/* Actively filter out L-TO-R and R-TO-R marks */
+	if(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E))
+		rv = TRU1;
+	/* And some zero-width messes */
+	else if(wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D))
+		rv = TRU1;
+	/* Oh about the ISO C wide character interfaces, baby! */
+	else if(wc == 0xFEFF)
+		rv = TRU1;
+	else
+		rv = FAL0;
+
+	return rv;
+}
+#endif
 
 #include <su/code-ou.h>
 #endif /* mx_UI_STR_H */

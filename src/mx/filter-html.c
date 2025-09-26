@@ -55,6 +55,7 @@ su_EMPTY_FILE()
 #include "mx/okeys.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
+#include "mx/ui-str.h"
 
 #include "mx/filter-html.h"
 /*#define NYDPROF_ENABLE*/
@@ -510,13 +511,7 @@ a_flthtml_store(struct mx_flthtml *self, char c){
 			self->fh_last_ws = l;
 		}else{
 			if((x = mbtowc(&wc, &self->fh_line[self->fh_mboff], l - self->fh_mboff)) > 0){
-				if((w = wcwidth(wc)) == -1 ||
-						/* Actively filter out L-TO-R and R-TO-R marks TODO ctext */
-						(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E)) ||
-						/* And some zero-width messes */
-						wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D) ||
-						/* Oh about the ISO C wide character interfaces, baby! */
-						(wc == 0xFEFF)){
+				if((w = wcwidth(wc)) == -1 || mx_ui_ignore_wc(wc)){
 					self->fh_len -= x;
 					self->fh_mboff = self->fh_len;
 					goto jleave;

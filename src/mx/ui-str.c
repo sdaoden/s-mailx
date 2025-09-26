@@ -522,15 +522,8 @@ mx_makeprint(struct str const *in, struct str *out){ /* TODO <-> TTYCHARSET! */
                wc = isuni ? 0x2421 : '?';
             else
                wc = isuni ? 0x2426 : '?';
-         }else if(isuni){ /* TODO ctext */
-            /* Need to filter out L-TO-R and R-TO-R marks TODO ctext */
-            if(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E))
-               continue;
-            /* And some zero-width messes */
-            if(wc == 0x00AD || (wc >= 0x200B && wc <= 0x200D))
-               continue;
-            /* Oh about the ISO C wide character interfaces, baby! */
-            if(wc == 0xFEFF)
+         }else if(isuni){
+            if(mx_ui_ignore_wc(wc))
                continue;
          }
 
