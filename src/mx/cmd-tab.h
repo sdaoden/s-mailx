@@ -1036,7 +1036,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vexpr),
 	 N_("Evaluate [according to] <operation> [any :<argument>:].  Operations are: "
-		"locale-agnostic: date-utc, date-stamp-utc, epoch, seconds, random; "
+		"locale-agnostic: date-utc, date-stamp-utc, epoch, seconds, rand[us], random; "
 		"locale-aware: makeprint, regex; "
 		"numeric: unary: =, ~, +, -; binary: +, -, *, /, %, |, &, ^, <<, >>, >>>, pbase")},
 	{"vpospar", &c_vpospar, (HG | G | M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar),

@@ -33,6 +33,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/random.h>
 #include <su/time.h>
 
 #ifdef mx_HAVE_REGEX
@@ -74,6 +75,8 @@ enum a_vexpr_cmd{
 	a_VEXPR_CMD_AGN_DATE_STAMP_UTC,
 	a_VEXPR_CMD_AGN_EPOCH,
 	a_VEXPR_CMD_AGN_SECONDS,
+	a_VEXPR_CMD_AGN_RANDS,
+	a_VEXPR_CMD_AGN_RANDU,
 	a_VEXPR_CMD_AGN_RANDOM,
 	a_VEXPR_CMD_AGN__MAX,
 
@@ -171,6 +174,8 @@ static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
 	{a_X(a_VEXPR_CMD_AGN_DATE_STAMP_UTC, 0), "date-stamp-utc"},
 	{a_X(a_VEXPR_CMD_AGN_EPOCH, 0), "epoch"},
 		{a_X(a_VEXPR_CMD_AGN_SECONDS, 0), "seconds"},
+	{a_X(a_VEXPR_CMD_AGN_RANDS, 0), "rands"},
+	{a_X(a_VEXPR_CMD_AGN_RANDU, 0), "randu"},
 	{a_X(a_VEXPR_CMD_AGN_RANDOM, 0), "random"},
 
 	{a_X(a_VEXPR_CMD_STR_MAKEPRINT, 0), "makeprint"},
@@ -472,6 +477,7 @@ jleave:
 
 static void
 a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
+	u64 ui64;
 	u32 utc[6];
 	struct su_timespec ts;
 	struct n_string s_b, *s;
@@ -599,6 +605,13 @@ jeepoch_num:
 
 		vcp->vc_varres = n_string_cp(s);
 		/* n_string_gut(n_string_drop_ownership(s)); */
+		break;
+
+	case a_VEXPR_CMD_AGN_RANDS:
+	case a_VEXPR_CMD_AGN_RANDU:
+		su_random_builtin_generate(&ui64, sizeof(ui64), su_STATE_ERR_PASS);
+		vcp->vc_varres = ((vcp->vc_cmderr == a_VEXPR_CMD_AGN_RANDS)
+				? su_ienc_s64(vcp->vc_iencbuf, ui64, 10) : su_ienc_u64(vcp->vc_iencbuf, ui64, 10));
 		break;
 
 	case a_VEXPR_CMD_AGN_RANDOM:
