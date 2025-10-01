@@ -1,0 +1,104 @@
+=1=:0:NONE
+colour 256 sum-dotmark   fg=204,ft=bold dot
+colour 256 sum-header    fg=39 older
+colour 256 view-from_    fg=142 ''
+colour 256 view-header   fg=214,ft=bold from,subject
+colour 256 view-header   fg=219 ''
+colour 256 view-msginfo  fg=76,ft=bold ''
+colour 256 view-partinfo fg=76 ''
+colour 256 mle-position  fg=203,ft=reverse ''
+colour 256 mle-prompt    fg=203 ''
+colour 256 mle-error     bg=124 ''
+colour iso sum-dotmark   ft=reverse,fg=brown dot
+colour iso sum-header    fg=brown dot
+colour iso view-from_    fg=red ''
+colour iso view-header   fg=white author,from,sender,subject
+colour iso view-header   fg=brown ''
+colour iso view-msginfo  fg=green ''
+colour iso view-partinfo fg=brown ''
+colour iso mle-position  fg=brown,ft=bold ''
+colour iso mle-prompt    fg=brown ''
+colour iso mle-error     bg=red ''
+colour mono sum-dotmark   ft=bold,ft=reverse dot
+colour mono sum-header    ft=bold dot
+colour mono view-header   ft=bold author,from,sender,subject
+colour mono view-msginfo  ft=reverse,ft=underline ''
+colour mono view-partinfo ft=bold,ft=underline ''
+colour mono mle-position  ft=reverse ''
+colour mono mle-prompt    ft=bold ''
+colour mono mle-error     ft=reverse ''
+=2=:0:NONE
+=3=:0:NONE
+=4=:0:NONE
+=5=:0:NONE
+=6=:0:NONE
+colour mono sum-dotmark   ft=bold,ft=reverse dot
+colour mono sum-header    ft=bold dot
+colour mono view-header   ft=bold author,from,sender,subject
+colour mono view-msginfo  ft=reverse,ft=underline ''
+colour mono view-partinfo ft=bold,ft=underline ''
+colour mono mle-position  ft=reverse ''
+colour mono mle-prompt    ft=bold ''
+colour mono mle-error     ft=reverse ''
+=7=:0:NONE
+=8=:0:NONE
+=9=:0:NONE
+colour iso sum-dotmark   ft=reverse,fg=brown dot
+colour iso sum-header    fg=brown dot
+colour iso view-from_    fg=red ''
+colour iso view-header   fg=white author,from,sender,subject
+colour iso view-header   fg=brown ''
+colour iso view-msginfo  fg=green ''
+colour iso view-partinfo fg=brown ''
+colour iso mle-position  fg=brown,ft=bold ''
+colour iso mle-prompt    fg=brown ''
+colour iso mle-error     bg=red ''
+=10=:0:NONE
+=11=:0:NONE
+=12=:0:NONE
+colour 256 sum-dotmark   fg=204,ft=bold dot
+colour 256 sum-header    fg=39 older
+colour 256 view-from_    fg=142 ''
+colour 256 view-header   fg=214,ft=bold from,subject
+colour 256 view-header   fg=219 ''
+colour 256 view-msginfo  fg=76,ft=bold ''
+colour 256 view-partinfo fg=76 ''
+colour 256 mle-position  fg=203,ft=reverse ''
+colour 256 mle-prompt    fg=203 ''
+colour 256 mle-error     bg=124 ''
+=13=:0:NONE
+=14=:0:NONE
+=15=:0:NONE
+=16=:0:NONE
+=17=:0:NONE
+=18=:0:NONE
+=19=:0:NONE
+=20=:0:NONE
+=21=:0:NONE
+=22=:0:NONE
+=23=:0:NONE
+=24=:0:NONE
+=25=:0:NONE
+=26=:1:INVAL
+colour 256 sum-dotmark   fg=204,ft=bold dot
+colour 256 view-from_    fg=142 ''
+colour 256 view-header   fg=219 ''
+colour 256 view-msginfo  fg=76,ft=bold ''
+colour 256 mle-position  fg=203,ft=reverse ''
+colour 256 mle-prompt    fg=203 ''
+colour 256 mle-error     bg=124 ''
+colour iso sum-dotmark   ft=reverse,fg=brown dot
+colour iso sum-header    fg=brown dot
+colour iso view-header   fg=white author,from,sender,subject
+colour iso view-msginfo  fg=green ''
+colour iso view-partinfo fg=brown ''
+colour iso mle-position  fg=brown,ft=bold ''
+colour iso mle-prompt    fg=brown ''
+colour iso mle-error     bg=red ''
+colour mono view-header   ft=bold author,from,sender,subject
+colour mono view-msginfo  ft=reverse,ft=underline ''
+colour mono view-partinfo ft=bold,ft=underline ''
+colour mono mle-position  ft=reverse ''
+colour mono mle-prompt    ft=bold ''
+colour mono mle-error     ft=reverse ''
+=27=:0:NONE
