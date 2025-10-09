@@ -19,7 +19,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifndef mx_CONFIG_H
-# define mx_CONFIG_H
+#define mx_CONFIG_H
+
+/* TODO code.h yet includes limits.h etc, and we require this here
+ * It actually includes mx/gen-config.h via su/config.h. */
+#define su_USECASE_MX
+#include <mx/gen-config.h>
+#include <su/code.h>
 
 #define ACCOUNT_NULL "null" /* Name of "null" account */
 #define mx_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
@@ -65,7 +71,7 @@
 /* * */
 
 /* Default log level */
-#define n_LOG_LEVEL su_DBGOR(su_LOG_WARN, su_LOG_CRIT)
+#define n_LOG_LEVEL su_DBGOR(su_LOG_NOTICE, su_LOG_CRIT)
 
 /* * */
 
@@ -113,14 +119,22 @@
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
-/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS)
- * TODO su_path sources perform a proper check! */
+/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) <> su_path! */
+/* POSIX 2008/Cor 1-2013 defines for
+ * - _POSIX_PATH_MAX a minimum of 256
+ * - _XOPEN_PATH_MAX a minimum of 1024
+ * NFS RFC 1094 from March 1989 defines a MAXPATHLEN of 1024, so we really
+ * should avoid anything smaller than that! */
 #ifndef PATH_MAX
 # ifdef MAXPATHLEN
 #  define PATH_MAX MAXPATHLEN
 # else
-#  define PATH_MAX 1024 /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
+#  define PATH_MAX 1024
 # endif
+#endif
+#if PATH_MAX + 0 < 1024
+# undef PATH_MAX
+# define PATH_MAX 1024
 #endif
 
 /* Some environment variables for pipe hooks etc. */
@@ -150,8 +164,8 @@
 #define mx_TLS_IMPL_OPENSSL 1
 #define mx_TLS_IMPL_RESSL 2
 
-/* ... */
-
+/* TODO NAME_MAX: fixed-size buffer is always wrong (think NFS) <> su_path! */
+/* POSIX 2008/Cor 1-2013 defines a minimum of 14 for _POSIX_NAME_MAX */
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
 #  define NAME_MAX _POSIX_NAME_MAX

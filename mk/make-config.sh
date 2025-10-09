@@ -3824,7 +3824,7 @@ echo >> ${mk}
 
 # mk-config.h (which becomes mx/gen-config.h)
 ${mv} ${h} ${tmp}
-printf '#ifndef mx_GEN_CONFIG_H\n# define mx_GEN_CONFIG_H 1\n' > ${h}
+printf '#ifndef mx_GEN_CONFIG_H\n#define mx_GEN_CONFIG_H\n' > ${h}
 ${cat} ${tmp} >> ${h}
 printf '\n#ifdef mx_SOURCE\n' >> ${h}
 
@@ -3934,42 +3934,34 @@ su_sources=$(
 		done
 		)
 
+printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> $h
+
 mx_obj= su_obj=
 if feat_no AMALGAMATION; then
-	(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ${su_sources}) >> ${mk}
-	(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
+	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh $su_sources) >> $mk
+	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh mx/*.c) >> $mk
 	mx_obj='$(MX_C_OBJ)' su_obj='$(SU_C_OBJ)'
 else
-	(cd "${SRCDIR}"; COUNT_MODE=0 ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
+	(cd "$SRCDIR"; COUNT_MODE=0 $SHELL ../mk/make-rules.sh mx/*.c) >> $mk
 	mx_obj=mx-main.o
-	printf 'mx-main.o: gen-bltin-rc.h gen-mime-types.h' >> ${mk}
+	printf 'mx-main.o: gen-bltin-rc.h gen-mime-types.h\n' >> $mk
 
-	printf '\n#endif /* mx_SOURCE */\n' >> ${h}
-	printf '/* mx_HAVE_AMALGAMATION: include sources */\n' >> ${h}
-	printf '#elif mx_GEN_CONFIG_H + 0 == 1\n' >> ${h}
-	printf '# undef mx_GEN_CONFIG_H\n' >> ${h}
-	printf '# define mx_GEN_CONFIG_H 2\n#ifdef mx_MASTER\n' >> ${h}
-
-	for i in $(printf '%s\n' ${su_sources} | ${sort}); do
-		printf '# include "%s%s"\n' "${SRCDIR}" "${i}" >> ${h}
+	printf '/* mx_HAVE_AMALGAMATION: include sources */\n' >> $h
+	echo '#ifdef mx_MASTER_GEN_CONFIG' >> $h
+	for i in $(printf '%s\n' $su_sources | $sort); do
+		printf '# include "%s%s"\n' "$SRCDIR" "$i" >> $h
 	done
-	echo >> ${mk}
-
-	for i in $(printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}); do
-		i=$(basename "${i}")
-		if [ "${i}" = main.c ]; then
-			continue
-		fi
-		printf '# include "%s%s"\n' "${SRCDIR}mx/" "${i}" >> ${h}
+	for i in $(printf '%s\n' "$SRCDIR"mx/*.c | $sort); do
+		i=$(basename "$i")
+		[ "$i" = main.c ] && continue
+		printf '# include "%s%s"\n' "${SRCDIR}mx/" "$i" >> $h
 	done
-	echo >> ${mk}
+	echo '#endif /* mx_MASTER_GEN_CONFIG */' >> $h
 fi
-printf 'OBJ = %s\n' "${mx_obj} ${su_obj}" >> "${mk}"
+printf 'OBJ = %s\n' "$mx_obj $su_obj" >> $mk
 
-printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> ${h}
-
-echo >> ${mk}
-${cat} "${TOPDIR}"mk/make-config.in >> ${mk}
+echo >> $mk
+$cat "$TOPDIR"mk/make-config.in >> $mk
 
 ##
 ## Finished!

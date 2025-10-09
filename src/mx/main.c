@@ -1326,7 +1326,9 @@ jleave:
 
 /* Source the others in that case! */
 #ifdef mx_HAVE_AMALGAMATION
+# define mx_MASTER_GEN_CONFIG
 # include <mx/gen-config.h>
+# undef mx_MASTER_GEN_CONFIG
 #endif
 
 #undef mx_MASTER

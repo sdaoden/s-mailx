@@ -34,10 +34,9 @@
  * SUCH DAMAGE.
  */
 #ifndef n_NAIL_H
-# define n_NAIL_H
+#define n_NAIL_H
 
-#define su_USECASE_MX
-#include <mx/gen-config.h>
+#include <mx/config.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -45,11 +44,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include <su/code.h>
-
-/* Many things possibly of interest for adjustments have been outsourced */
-#include <mx/config.h>
 
 /* TODO fake */
 #include "su/code-in.h"
