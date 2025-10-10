@@ -10447,7 +10447,7 @@ __EOT
 } #}}}
 
 t_states_and_primary_secondary() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	{
 		gpm from 'ex1@am.ple' sub s1 body b1
@@ -10459,7 +10459,7 @@ t_states_and_primary_secondary() { #{{{
 	> nix
 
 	#{{{
-	${cat} << '__EOT' > ./t.p
+	$cat << '__EOT' > ./t.p
 commandalias x ec '"$?/$^ERRNAME"'
 \if ! [ -N hold && -N keep && -N keepsave ]; \xit 100; \en
 ! > ./t.rash
@@ -10485,7 +10485,7 @@ h;x
 Fi nix
 #
 ec =-hold
-unset hold
+uns hold
 fi "$f";x;fi
 h;x
 Fi "$f";x;fi
@@ -10495,8 +10495,8 @@ Fi nix
 ec =state
 fi "$f";x
 h;x
-mbox 1;x # (is default)
-copy 2 ./t.rash;x
+mb 1;x # (is default)
+c 2 ./t.rash;x
 Fi nix
 Fi "$f";x;fi
 h;x
@@ -10521,7 +10521,7 @@ Fi nix
 ec =refill,nokeepsave
 Fi ./t.tpl;x
 c * "$p://t.$p";x
-unset keepsave
+uns keepsave
 fi "$f";x;fi
 h;x
 s * &;x
@@ -10536,7 +10536,7 @@ Fi nix
 ec =refill,hold
 Fi ./t.tpl;x
 c * "$p://t.$p";x
-set hold
+se hold
 fi "$f";x;fi
 s * &;x
 h;x
@@ -10550,7 +10550,7 @@ Fi nix
 ec =refill,nohold,nokeep
 Fi ./t.tpl;x
 c * "$p://t.$p";x
-unset hold keep
+uns hold keep
 fi "$f";x;fi
 s * &;x
 h;x
@@ -10561,14 +10561,14 @@ eval i "$o" "t.$p";ec n;el;ec y;en
 __EOT
 	#}}}
 
-	< ./t.p ${MAILX} ${ARGS} -S p=mbox -S o=-f -S f=% > ./t1 2>${EX}
+	< ./t.p $MAILX $ARGS -S p=mbox -S o=-f -S f=% > ./t1 2>$EX
 	ck 1-1 0 ./t1 '3220621126 7129' '3778887936 129'
 	[ -f ./t.mbox ]; ck_exx 1-2
 	ck 1-3 - ./t-mbox.mbox '2668747897 3760'
 	ck 1-4 - ./t-save.mbox '3292035903 131'
 
 	${rm} -f ./t.mbox ./t-mbox.mbox ./t-save.mbox
-	< ./t.p ${MAILX} ${ARGS} -S p=mbox -S o=-f -S f=%:mbox://t.mbox > ./t2 2>${EX}
+	< ./t.p $MAILX $ARGS -S p=mbox -S o=-f -S f=%:mbox://t.mbox > ./t2 2>$EX
 	ck 2-1 0 ./t2 '3220621126 7129' '3778887936 129'
 	[ -f ./t.mbox ]; ck_exx 2-2
 	ck 2-3 - ./t-mbox.mbox '2668747897 3760'
@@ -10577,7 +10577,7 @@ __EOT
 	#xxx check without %: prefix
 
 	if have_feat maildir; then
-		< ./t.p ${MAILX} ${ARGS} -S p=maildir -S o=-d -S f=% > ./t3 2>${EX}
+		< ./t.p $MAILX $ARGS -S p=maildir -S o=-d -S f=% > ./t3 2>$EX
 		ck 3-1 0 ./t3 '3612654491 7258' '3778887936 129'
 		[ -d ./t.maildir ] &&
 			[ -d ./t.maildir/tmp ] && [ -d ./t.maildir/new ] && [ -d ./t.maildir/cur ]; ck_exx 3-2
@@ -10585,8 +10585,8 @@ __EOT
 		#ck 3-4 - ./t-mbox.maildir
 		ck 3-5 - ./t-save.maildir '1069891918 123'
 
-		${rm} -rf ./t.maildir ./t-mbox.maildir ./t-save.maildir
-		< ./t.p ${MAILX} ${ARGS} -S p=maildir -S o=-d -S f=%:maildir://t.maildir > ./t4 2>${EX}
+		$rm -rf ./t.maildir ./t-mbox.maildir ./t-save.maildir
+		< ./t.p $MAILX $ARGS -S p=maildir -S o=-d -S f=%:maildir://t.maildir > ./t4 2>$EX
 		ck 4-1 0 ./t4 '3612654491 7258' '3778887936 129'
 		[ -d ./t.maildir ] &&
 			[ -d ./t.maildir/tmp ] && [ -d ./t.maildir/new ] && [ -d ./t.maildir/cur ]; ck_exx 4-2
@@ -10601,25 +10601,25 @@ __EOT
 
 # TODO`seen' for "states" test above
 	# touch,mbox,hold,preserve {{{
-	${cat} << '__EOT' | ${MAILX} ${ARGS} > ./t5 2>${EX}
-\if ! -N hold; \xit 100; \en
+	$cat << '__EOT' | $MAILX $ARGS > ./t5 2>$EX
+\if ! [ -N hold && -N keep && -N keepsave ]; \xit 100; \en
 commandalias x ec '"$?/$^ERRNAME"'
-ec =1;set MBOX=./t5-2m;Fi ./t.tpl;x;c * ./t5-2;x;fi ./t5-2;x;tou 1;x;mb 2;x;ho 3;x;pre 3;x;Fi nix
-ec =2;set MBOX=./t5-3m;Fi ./t.tpl;x;c * ./t5-3;x;fi %:./t5-3;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
-ec =3;set MBOX=./t5-4m inbox=./t5-4;Fi ./t.tpl;x;c * "$inbox";x;fi %;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
-set nohold noinbox
-ec =4;set MBOX=./t5-5m;Fi ./t.tpl;x;c * ./t5-5;x;fi %:./t5-5;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
-ec =5;set MBOX=./t5-6m inbox=./t5-6;Fi ./t.tpl;x;c * "$inbox";x;fi %;x;tou 1;x;mb 2;x;ho 3;x;Fi nix
+ec =1;se MBOX=./t5-2m;Fi ./t.tpl;x;c * ./t5-2;x;fi ./t5-2;x;ho1;mb1;tou1;x;tou2;ho2;mb2;x;mb3;tou3;ho3;x;pre3;x;Fi nix
+ec =2;se MBOX=./t5-3m;Fi ./t.tpl;x;c * ./t5-3;x;fi %:./t5-3;x;mb1;ho1;tou1;x;ho2;tou2;mb2;x;tou3;mb3;ho3;x;Fi nix
+ec =3;se MBOX=./t5-4m inbox=./t5-4;Fi ./t.tpl;x;c * "$inbox";x;fi%;x;mb1;ho1;tou1;x;tou2;ho2;mb2;x;tou3;mb3;ho3;x;Fi nix
+se nohold noinbox nokeepsave nokeep
+ec =4;se MBOX=./t5-5m;Fi ./t.tpl;x;c * ./t5-5;x;fi %:./t5-5;x;mb1;ho1;tou1;x;tou2;ho2;mb 2;x;mb3;tou3;ho 3;x;Fi nix
+ec =5;se MBOX=./t5-6m inbox=./t5-6;Fi ./t.tpl;x;c * "$inbox";x;fi%;x;mb1;ho1;tou1;x;tou2;ho2;mb2;x;tou3;mb3;ho3;x;Fi nix
 __EOT
 	#}}}
-	ck 5-1 0 ./t5 '474585476 594' '1800982073 209'
+	ck 5-1 0 ./t5 '474585476 594' '1023092311 479'
 	ck 5-2 - ./t5-2 '2981580159 962'; [ -f ./t5-2m ]; ck_exx 5-2m
 	ck 5-3 - ./t5-3 '1447808012 262'; ck 5-3m - ./t5-3m '286389240 700'
 	ck 5-4 - ./t5-4 '1447808012 262'; ck 5-4m - ./t5-4m '286389240 700'
 	ck 5-5 - ./t5-5 '3292035903 131'; ck 5-5m - ./t5-5m '3305129155 831'
 	ck 5-6 - ./t5-6 '3292035903 131'; ck 5-6m - ./t5-6m '3305129155 831'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_specifying_sorting() { #{{{

@@ -1395,44 +1395,45 @@ not only adjusts the list of displayed header fields, but also sets
 .Va crt .
 .
 .Pp
-Automatic message moving: when reading the
+Automatic message moving:
 .Mx -ix "automatic message moving"
-.Va inbox ,
-or when
-.Fl f
-or
-.Ic folder
-were given mailbox names prefixed with
-.Ql %:
-to turn them into a
+out of
+.Sx HISTORY
+there is a notion of a
 .Mx -sx
 .Sx "primary system mailbox" ,
-read messages
-.Pf ( Sx "Message states" )
-will be automatically moved to the
+and a
 .Mx -sx
-.Sx "secondary mailbox" ,
-the users
-.Ev MBOX ,
-when the mailbox is left (also via normal program termination,
-.Ic quit ) ,
-and unless the variable
-.Va hold
-is set; This automatic email management is complemented by the commands
-.Ic hold , mbox
-and
-.Ic touch ,
-which partially override the variable
-.Va hold ,
-and also
-.Ic save
-(see
-.Va keepsave ) .
-Messages may of course be
+.Sx "secondary mailbox" .
+The former are
+.Va inbox ,
+.Ev MAIL ,
+and all
+.Ic folder Ns
+s (also via
+.Fl f )
+opened with
+.Ql %:
+prefix, the latter is
+.Ev MBOX .
+When leaving a primary mailbox,
+(also via normal program termination,
+.Ic quit )
+dependent upon
+.Sx "Message states" ,
+which there can also be enforced or overwritten with the
+.Sx COMMANDS
+.Ic hold , mbox , touch ,
+automatic deletion and moving happens dependent on the settings of
+.Va hold , keep , keepsave .
+Deviating from the standard these are
+.Ic set ,
+so automatic message moving does not occur.
+Manually
 .Ic move Ns
-d manually, whereas
-.Ic copy
-keeps the original message.
+ing or
+.Ic copy Ns
+ing messages is possible,
 .Ic write
 saves selected message parts.
 .
@@ -1906,10 +1907,13 @@ It may be
 d, but other than that disappeared.
 .
 .It Ql preserved
-Marked via
+Only available in a
+.Mx -sx
+.Sx "primary system mailbox" :
+marked via
 .Ic hold
-or
-.Ic preserve ,
+(or
+.Ic preserve ) ,
 and will be retained.
 .
 .It Ql saved
@@ -1917,7 +1921,11 @@ Processed by
 .Ic save
 or
 .Ic write .
-Except when left via
+The flag may be cleared by
+.Ic undelete .
+Unless overwritten by
+.Ic hold ,
+and except when left via
 .Ic exit ,
 .Ql saved
 messages of a
@@ -4182,7 +4190,10 @@ When opening a
 the name is checked for being a primary mailbox, first
 .Va \&\&inbox ,
 then
-.Ev MAIL .
+.Ev MAIL ;
+.Mx -sx
+.Sx "automatic message moving"
+does apply.
 .
 .It Ar %user
 Expands to the primary system mailbox of
@@ -5299,7 +5310,7 @@ echo "$?/$!/$^ERRNAME"
 .Ql deleted ,
 one of the
 .Sx "Message states" .
-If
+With the former, if
 .Va autoprint
 is set, the new
 .Dq dot
@@ -5307,6 +5318,9 @@ or the last message restored, respectively, is automatically
 .Ic type Ns
 d; also see
 .Ic dp , dt .
+The latter clears the
+.Ql saved
+message state.
 .\"}}}
 .
 .
@@ -6649,9 +6663,9 @@ Also see
 .Mx
 .Mx
 .It Ic hold
-(ho) also
+(ho) Also
 .Ic preserve
-(pre) Allowed only in a
+(pre); Allowed only in a
 .Mx -sx
 .Sx "primary system mailbox" .
 Marks the given message list to be preserved in the current
@@ -10981,12 +10995,9 @@ like
 .Va inbox
 into other
 .Ic folder Ns
-s for the
-.Va hold
-implied
+s during
 .Mx -sx
-.Sx "automatic message moving"
-action.
+.Sx "automatic message moving" .
 .
 .Mx
 .It Va line-editor-config
