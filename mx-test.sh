@@ -582,15 +582,17 @@ jtimeout() {
 
 # add, modulo, color_init, have_feat, echoes, checks, $FILTER_ERR impls {{{
 if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
-	add() { echo "$((${1} + ${2}))"; }
-	modulo() { echo "$((${1} % ${2}))"; }
+	add() { echo "$(($1 + $2))"; }
+	sub() { echo "$(($1 - $2))"; }
+	modulo() { echo "$(($1 % $2))"; }
 else
-	add() { ${awk} 'BEGIN{print '${1}' + '${2}'}'; }
-	modulo() { ${awk} 'BEGIN{print '${1}' % '${2}'}'; }
+	add() { $awk 'BEGIN{print '$1' + '$2'}'; }
+	sub() { $awk 'BEGIN{print '$1' - '$2'}'; }
+	modulo() { $awk 'BEGIN{print '$1' % '$2'}'; }
 fi
 
 color_init() {
-	[ -n "${NO_COLOUR}" ] && return
+	[ -n "$NO_COLOUR" ] && return
 	# We do not want color for "make test > .LOG"!
 	if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
 		{ sgr0=$(tput sgr0); } 2>/dev/null
@@ -606,73 +608,73 @@ color_init() {
 		{ b=$(tput bold); } 2>/dev/null
 		[ $? -eq 0 ] || return
 
-		COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
-		COLOR_DBGERR_ON=${saf5} COLOR_DBGERR_OFF=${sgr0}
-		COLOR_WARN_ON=${saf3}${b} COLOR_WARN_OFF=${sgr0}
-		COLOR_OK_ON=${saf2} COLOR_OK_OFF=${sgr0}
+		COLOR_ERR_ON=$saf1$b COLOR_ERR_OFF=$sgr0
+		COLOR_DBGERR_ON=$saf5 COLOR_DBGERR_OFF=$sgr0
+		COLOR_WARN_ON=$saf3$b COLOR_WARN_OFF=$sgr0
+		COLOR_OK_ON=$saf2 COLOR_OK_OFF=$sgr0
 		unset saf1 saf2 saf3 b
 	fi
 }
 
 have_feat() {
-	</dev/null ${RAWMAILX} ${ARGS} -X '
-		\if ${features} !% ,+'"${1}"',
+	</dev/null $RAWMAILX $ARGS -X '
+		\if $features !% ,+'"$1"',
 			\xit 1
-		\endif
+		\end
 	' 2>/dev/null
 }
 
 t_prolog() {
 	shift
-	ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 TEST_NAME=${1} TEST_ANY=
-	printf '%s[%s]%s\n' "" "${TEST_NAME}" ""
+	ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 TEST_NAME=$1 TEST_ANY=
+	printf '%s[%s]%s\n' "" "$TEST_NAME" ""
 }
 
 t_epilog() {
-	[ -n "${TEST_ANY}" ] && printf '\n'
+	[ -n "$TEST_ANY" ] && printf '\n'
 	printf '%s %s %s %s %s\n' \
-		${ESTAT} ${TESTS_PERFORMED} ${TESTS_OK} ${TESTS_FAILED} ${TESTS_SKIPPED} > ../t.${1}.result
+		$ESTAT $TESTS_PERFORMED $TESTS_OK $TESTS_FAILED $TESTS_SKIPPED > ../t.$1.result
 }
 
 t_echo() {
-	[ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-	printf "${__i__}"'%s' "${*}"
+	[ -n "$TEST_ANY" ] && __i__=' ' || __i__=
+	printf "$__i__"'%s' "$*"
 	TEST_ANY=1
 }
 
 t_echook() {
-	[ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-	printf "${__i__}"'%s%s:ok%s' "${COLOR_OK_ON}" "${*}" "${COLOR_OK_OFF}"
+	[ -n "$TEST_ANY" ] && __i__=' ' || __i__=
+	printf "$__i__"'%s%s:ok%s' "$COLOR_OK_ON" "$*" "$COLOR_OK_OFF"
 	TEST_ANY=1
 }
 
 t_echoerr() {
 	ESTAT=1
-	t_echo0err "${@}"
+	t_echo0err "$@"
 }
 
 t_echo0err() {
-	[ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-	printf "${__i__}"'%sERROR: %s%s\n' "${COLOR_ERR_ON}" "${*}" "${COLOR_ERR_OFF}"
+	[ -n "$TEST_ANY" ] && __i__="\n" || __i__=
+	printf "$__i__"'%sERROR: %s%s\n' "$COLOR_ERR_ON" "$*" "$COLOR_ERR_OFF"
 	TEST_ANY=
 }
 
 t_echowarn() {
-	[ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-	printf "${__i__}"'%s%s%s' "${COLOR_WARN_ON}" "${*}" "${COLOR_WARN_OFF}"
+	[ -n "$TEST_ANY" ] && __i__=' ' || __i__=
+	printf "$__i__"'%s%s%s' "$COLOR_WARN_ON" "$*" "$COLOR_WARN_OFF"
 	TEST_ANY=1
 }
 
 t_echoskip() {
-	[ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-	printf "${__i__}"'%s%s[skip]%s' "${COLOR_WARN_ON}" "${*}" "${COLOR_WARN_OFF}"
+	[ -n "$TEST_ANY" ] && __i__=' ' || __i__=
+	printf "$__i__"'%s%s[skip]%s' "$COLOR_WARN_ON" "$*" "$COLOR_WARN_OFF"
 	TEST_ANY=1
-	TESTS_SKIPPED=$(add ${TESTS_SKIPPED} 1)
+	TESTS_SKIPPED=$(add $TESTS_SKIPPED 1)
 }
 
 t_echoskip_job() {
-	printf '%s[skip]%s' "${COLOR_WARN_ON}" "${COLOR_WARN_OFF}"
-	TESTS_SKIPPED=$(add ${TESTS_SKIPPED} 1)
+	printf '%s[skip]%s' "$COLOR_WARN_ON" "$COLOR_WARN_OFF"
+	TESTS_SKIPPED=$(add $TESTS_SKIPPED 1)
 }
 
 ckasync() {
@@ -17328,16 +17330,13 @@ t_all() { #{{{
 } #}}}
 
 # Running{{{
-xsec=y
-ssec=$SECONDS
-if [ -z "${ssec}" ]; then
+xsec=y ssec=$SECONDS
+if [ -z "$ssec" ]; then
 	xsec=
-	if { ssec=$(date +%s); } >/dev/null 2>&1; then
-		xsec=date
-	fi
+	{ ssec=$(date +%s); } >/dev/null 2>&1 && xsec=date
 fi
 
-if [ -z "${CHECK}${RUN_TEST}" ]; then
+if [ -z "$CHECK$RUN_TEST" ]; then
 	jobs_max
 	cc_all_configs
 else
@@ -17383,19 +17382,17 @@ else
 	fi
 fi
 
-if [ -n "${xsec}" ]; then
+if [ -n "$xsec" ]; then
 	esec=$SECONDS
-	[ ${xsec} = date ] && esec=$(date +%s)
+	[ $xsec = date ] && esec=$(date +%s)
 fi
 
 printf '%u tests: %s%u ok%s, %s%u failure(s)%s.  %s%u test(s) skipped%s\n' \
-	"${TESTS_PERFORMED}" "${COLOR_OK_ON}" "${TESTS_OK}" "${COLOR_OK_OFF}" \
-	"${COLOR_ERR_ON}" "${TESTS_FAILED}" "${COLOR_ERR_OFF}" \
-	"${COLOR_WARN_ON}" "${TESTS_SKIPPED}" "${COLOR_WARN_OFF}"
-if [ -n "${xsec}" ]; then
-	(echo 'Elapsed seconds: '$($awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'))
-fi
+	"$TESTS_PERFORMED" "$COLOR_OK_ON" "$TESTS_OK" "$COLOR_OK_OFF" \
+	"$COLOR_ERR_ON" "$TESTS_FAILED" "$COLOR_ERR_OFF" \
+	"$COLOR_WARN_ON" "$TESTS_SKIPPED" "$COLOR_WARN_OFF"
+[ -n "$xsec" ] && echo 'Elapsed seconds: '$($awk 'BEGIN{print '"$esec"' - '"$ssec"'}')
 #}}}
 
-exit ${ESTAT}
+exit $ESTAT
 # s-sht-mode  vim:set fenc=latin1:
