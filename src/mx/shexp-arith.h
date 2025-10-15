@@ -4,9 +4,7 @@
  *@ saturated mode is not supported, division by zero is handled via error.
  *@ The expression length limit is ~100.000.000 on 32-bit, U32_MAX otherwise.
  *@ After reading on Dijkstra's two stack algorithm, as well as bash:expr.c.
- *@ Most heavily inspired by busybox -- conclusion: the Dijkstra algorithm
- *@ scales very badly to ternary as are used to implement conditionals and
- *@ their ignored sub-expressions.
+ *@ Most heavily inspired by busybox.
  *@
  *@ #define's:
  *@ - a_SHEXP_ARITH_COMPAT_SHIMS: for inclusion in other code bases, setting
@@ -519,7 +517,7 @@ jenomem:
 				uz i;
 
 				i = P2UZ(cp - ep);
-				/* (move not copy for !_ARITH_ERROR cases (says ISO C?)) */
+				/* (move not copy for !_ARITH_ERROR cases (*says ISO C*)) */
 				su_mem_move(sasp->sas_nums_top->sav_var = varp, ep, i);
 				varp += i;
 				*varp++ = '\0';
@@ -589,7 +587,8 @@ jtok_go:/* C99 */{
 
 		/* Correct our understanding of what there is.
 		 * Post grammar: VAR++ reduces to num */
-		if((lop & 0xFF) == a_SHEXP_ARITH_PREC_POSTFIX){
+		lop &= 0xFF;
+		if(lop == a_SHEXP_ARITH_PREC_POSTFIX){
 			lop = a_SHEXP_ARITH_OP_NUM;
 			a_SHEXP_ARITH_L((" + _arith_eval LOP POSTFIX REDUCED to NUM\n"));
 		}
@@ -613,8 +612,7 @@ junapre:
 				break;
 			}
 		}
-		/* Special: +10++VAR -> +10 + +VAR.  (Since we do handle +10++11
-		 * correctly via "prefix split", we should also handle this) */
+		/* Special: +10++VAR -> +10 + +VAR.  (We handle +10++11 via "prefix split", so just handle this, too) */
 		else if(prec == a_SHEXP_ARITH_PREC_POSTFIX){
 			ASSERT(lop == a_SHEXP_ARITH_OP_NUM);
 			if((c = ep[0]) == ' ')
