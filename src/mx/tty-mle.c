@@ -835,6 +835,11 @@ a_tty_hist_load(boole feedback){ /* {{{ */
 				}
 			}
 
+			/* Unfortunate non-version-tracked compose mode normalization "fix" TODO remove "Y2033" */
+			if(UNLIKELY(gif == mx_GO_INPUT_CTX_COMPOSE && *cp == ':'))
+				while(su_cs_is_space(cp[1]))
+					*++cp = ':';
+
 			if(!a_tty_hist_add(cp, gif))
 				break;
 			++ents;

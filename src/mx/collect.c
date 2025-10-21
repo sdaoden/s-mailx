@@ -1854,7 +1854,6 @@ jputnl:
 				a_coll->cc_flags |= a_COLL_EVAL;
 				++eval_cnt;
 			}else if(su_cs_is_space(c)){
-				/* Must have seen modifier, ok */
 			}else
 				break;
 			if(--cnt == 0)
@@ -1893,10 +1892,8 @@ jputnl:
 					s = n_string_push_c(s, '$');
 			}
 			s = n_string_push_c(s, c);
-			if(cnt > 0){
-				s = n_string_push_c(s, ' ');
+			if(cnt > 0)
 				s = n_string_push_buf(s, cp, cnt);
-			}
 		}
 
 		/* This may be an eval request */
