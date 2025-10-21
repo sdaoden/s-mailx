@@ -2908,19 +2908,26 @@ jleave:
 
 static u32
 a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
-# ifdef mx_HAVE_REGEX
+	/* xxx It is a bit of a hack, but let us just hard-code the knowledge that
+	 * xxx in compose mode the first character is *escape* and must be skipped
+	 * xxx when searching the history.  Alternatively we would need to have
+	 * xxx context-specific history search hooks which would do the search,
+	 * xxx which is overkill for our sole special case compose mode */
+#  ifdef mx_HAVE_REGEX
 	struct su_re re;
-# endif
+#  endif
 	struct str orig_savec;
-	u32 xoff, rv;
+	u32 rv;
 	struct a_tty_hist *thp;
 	NYD2_IN;
 
-	thp = NIL;
-# ifdef mx_HAVE_REGEX
+#  ifdef mx_HAVE_REGEX
 	if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX)
 		su_re_create(&re);
-# endif
+#  endif
+	thp = NIL;
+
+	rv = ((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK) == mx_GO_INPUT_CTX_COMPOSE);
 
 	/* We cannot complete an empty line */
 	if(UNLIKELY(tlp->tl_count == 0)){
@@ -2932,74 +2939,74 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
 		goto jleave;
 	}
 
-	/* xxx It is a bit of a hack, but let us just hard-code the knowledge that
-	 * xxx in compose mode the first character is *escape* and must be skipped
-	 * xxx when searching the history.  Alternatively we would need to have
-	 * xxx context-specific history search hooks which would do the search,
-	 * xxx which is overkill for our sole special case compose mode */
-	if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK) == mx_GO_INPUT_CTX_COMPOSE)
-		xoff = 1;
-	else
-		xoff = 0;
-
 	if((thp = tlp->tl_hist) == NIL){
 		a_tty_cell2save(tlp);
 		if((thp = a_tty.tg_hist) == NIL) /* TODO Should end "doing nothing"! */
 			goto jleave;
+		/* Ensure in compose mode command( escape)s can be reached at all */
+		if(rv){
+			char const *esc;
+
+			esc = ok_vlook(escape);
+			if(*esc == '\0' || *esc != tlp->tl_savec.s[0]){
+				thp = NIL;
+				goto jleave;
+			}
+		}
 		if(fwd)
 			while(thp->th_older != NIL)
 				thp = thp->th_older;
 		orig_savec.s = NIL;
 		orig_savec.l = 0; /* silence CC */
+		if(rv)
+			goto jin;
 	}else{
-		while((thp = fwd ? thp->th_younger : thp->th_older) != NIL){
-			/* Applicable to input context?  Compose mode swallows anything */
-			if(xoff != 0)
-				break;
-			if((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
-				break;
-		}
-		if(thp == NIL)
-			goto jleave;
-
+		/* In compose mode we first iterate the compose mode entries */
+		if(rv && (thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
+			++rv;
 		orig_savec = tlp->tl_savec;
+		if(orig_savec.s == NIL)
+			a_tty_cell2save(tlp);
 	}
 
-	if(xoff >= tlp->tl_savec.l){
-		thp = NIL;
-		goto jleave;
-	}
-
-	if(orig_savec.s == NIL)
-		a_tty_cell2save(tlp);
-
-# ifdef mx_HAVE_REGEX
-	if((tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX) &&
-			su_re_setup_cp(&re, &tlp->tl_savec.s[xoff], (su_RE_SETUP_EXT | su_RE_SETUP_TEST_ONLY |
-				 ((tlp->tl_conf_flags & a_TTY_CONF_SRCH_CASE) ? su_RE_SETUP_ICASE : su_RE_SETUP_NONE))
-			) != su_RE_ERROR_NONE){
-		n_err(_("Invalid regular expression: %s: %s\n"),
-			n_shexp_quote_cp(&tlp->tl_savec.s[xoff], FAL0), su_re_error_doc(&re));
-		thp = NIL;
-		goto jleave;
-	}
-# endif
-
-	for(; thp != NIL; thp = fwd ? thp->th_younger : thp->th_older){
-		/* Applicable to input context?  Compose mode swallows anything */
-		if(xoff != 1 && (thp->th_flags & a_TTY_HIST_CTX_MASK) == a_TTY_HIST_CTX_COMPOSE)
+	for(;;){
+		thp = fwd ? thp->th_younger : thp->th_older;
+		if(thp == NIL){
+			if(rv != 1)
+				goto jleave;
+			++rv;
+			thp = a_tty.tg_hist;
+			if(fwd)
+				while(thp->th_older != NIL)
+					thp = thp->th_older;
+		}
+jin:
+		if(!(((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE) ^ (rv == 1)))
 			continue;
-# ifdef mx_HAVE_REGEX
-		else if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX){
+#  ifdef mx_HAVE_REGEX
+		if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX){
+			if(UNLIKELY(!su_re_is_setup(&re)) &&
+					su_re_setup_cp(&re, &tlp->tl_savec.s[rv != 0],
+						(su_RE_SETUP_EXT | su_RE_SETUP_TEST_ONLY |
+						 ((tlp->tl_conf_flags & a_TTY_CONF_SRCH_CASE
+							) ? su_RE_SETUP_ICASE : su_RE_SETUP_NONE))
+					) != su_RE_ERROR_NONE){
+				n_err(_("Invalid regular expression: %s: %s\n"),
+					n_shexp_quote_cp(&tlp->tl_savec.s[rv != 0], FAL0),
+					su_re_error_doc(&re));
+				thp = NIL;
+				goto jleave;
+			}
+
 			if(su_re_eval_cp(&re, thp->th_dat, su_RE_EVAL_NONE))
 				break;
-		}
-# endif
-		else{
+		}else
+#  endif
+		{
 			char *cp;
 
 			cp = ((tlp->tl_conf_flags & a_TTY_CONF_SRCH_CASE) ? mx_substr : su_cs_find)
-					(thp->th_dat, &tlp->tl_savec.s[xoff]);
+					(thp->th_dat, &tlp->tl_savec.s[rv != 0]);
 			if(cp != thp->th_dat && !(tlp->tl_conf_flags & a_TTY_CONF_SRCH_ANY))
 				cp = NIL;
 			if(cp != NIL)
@@ -3011,10 +3018,10 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
 		tlp->tl_savec = orig_savec;
 
 jleave:
-# ifdef mx_HAVE_REGEX
+#  ifdef mx_HAVE_REGEX
 	if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX)
 		su_re_gut(&re);
-# endif
+#  endif
 
 	rv = a_tty__khist_shared(tlp, thp);
 
