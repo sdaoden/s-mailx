@@ -2854,22 +2854,48 @@ a_tty_khist(struct a_tty_line *tlp, boole fwd){
 	u32 rv;
 	NYD2_IN;
 
+	rv = ((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK) == mx_GO_INPUT_CTX_COMPOSE);
+
 	/* If we are not in history mode yet, save line content */
 	if((thp = tlp->tl_hist) == NIL){
-		a_tty_cell2save(tlp);
+		if(tlp->tl_count > 0)
+			a_tty_cell2save(tlp);
 		if((thp = a_tty.tg_hist) == NIL)
 			goto jleave;
+		/* Ensure in compose mode command( escape)s can be reached at all */
+		if(rv){
+			char const *esc;
+
+			esc = ok_vlook(escape);
+			if(*esc == '\0' || (tlp->tl_count > 0 && *esc != tlp->tl_savec.s[0])){
+				thp = NIL;
+				goto jleave;
+			}
+		}
 		if(fwd)
 			while(thp->th_older != NIL)
 				thp = thp->th_older;
+		if(rv)
+			goto jin;
 		goto jleave;
 	}
+	/* In compose mode we first iterate the compose mode entries */
+	else if(rv && (thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
+		++rv;
 
-	while((thp = fwd ? thp->th_younger : thp->th_older) != NIL){
-		/* Applicable to input context?  Compose mode swallows anything */
-		if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK) == mx_GO_INPUT_CTX_COMPOSE)
-			break;
-		if((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
+	for(;;){
+		thp = fwd ? thp->th_younger : thp->th_older;
+		if(thp == NIL){
+			if(rv != 1)
+				break;
+			++rv;
+			thp = a_tty.tg_hist;
+			if(fwd)
+				while(thp->th_older != NIL)
+					thp = thp->th_older;
+		}
+jin:
+		if(((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE) ^ (rv == 1))
 			break;
 	}
 
