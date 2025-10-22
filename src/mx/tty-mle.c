@@ -2246,7 +2246,9 @@ a_tty_kdel(struct a_tty_line *tlp){
 			su_mem_move(tcap, &tcap[1], S(u32,i) * sizeof(*tcap));
 		}
 		f = a_TTY_VF_MOD_CONTENT;
-	}else if(cnt == 0 && !ok_blook(ignoreeof)){
+	}
+	/* All callees have special *ignoreeof* handling, pass EOF through! */
+	else if(cnt == 0){
 		putc('^', mx_stdout);
 		putc('D', mx_stdout);
 		i = -1;

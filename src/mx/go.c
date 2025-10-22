@@ -1575,7 +1575,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 	struct a_go_eval_ctx gec;
 	sigset_t sigholdctx;
 	uz sigholdlvl;
-	int n, eofcnt;
+	int n;
 	boole volatile rv;
 	NYD_IN;
 
@@ -1611,7 +1611,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 		safe_signal(SIGPIPE, a_go_oldpipe);
 	}
 
-	for(eofcnt = 0;; gec.gec_ever_seen = TRU1){
+	for(;; gec.gec_ever_seen = TRU1){
 		interrupts = 0;
 		DVL( su_nyd_reset_level(1); )
 
@@ -1732,9 +1732,8 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 		gec.gec_line.l = S(u32,n);
 
 		if(n < 0){
-			if(!(n_pstate & n_PS_ROBOT) && (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
-					++eofcnt < 4){
-				fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
+			if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) && ok_blook(ignoreeof)){
+				fprintf(n_stdout, _("\a*ignoreeof* set, use `quit' or `xit' to terminate program\n"));
 				mx_go_input_clearerr();
 				continue;
 			}

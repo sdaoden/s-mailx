@@ -115,10 +115,9 @@ struct a_coll_ctx{
 	u8 cc_sig_int_last; /* (Not by that) */
 	u8 cc__pad1[2];
 	ZIPENUM(u8,mx_scope) cc_scope;
-	u8 cc_eof_cnt;
 	char cc_escape;
 	char cc_exit_cmd; /* Tested by .cc_ocembed after return (and sig_jmp_int) */
-	u8 cc__pad2[4];
+	u8 cc__pad2[5];
 	struct header *cc_hp;
 	s8 *cc_checkaddr_err;
 	FILE *cc_fp; /* File for saving away */
@@ -1791,8 +1790,13 @@ jtick:
 			}
 
 			if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-					ok_blook(ignoreeof) && ++a_coll->cc_eof_cnt < 4){
-				fprintf(n_stdout, _("*ignoreeof* set, use `~.' to terminate letter\n"));
+					a_coll->cc_escape != '\0' && ok_blook(ignoreeof)){
+				c = a_coll->cc_escape;
+				if(!su_cs_is_print(c))
+					c = '?';
+				fprintf(n_stdout,
+					_("\a*ignoreeof* set, use `%c.', `%cq' or `%cx' to terminate letter\n"),
+					c, c, c);
 				mx_go_input_clearerr();
 				continue;
 			}
