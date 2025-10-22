@@ -161,7 +161,7 @@ EXPORT void mx_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout
 EXPORT void mx_go_splice_hack_remove_after_jump(void);
 
 /* XXX Hack: may we release our (interactive) (terminal) control to a different XXX program, e.g., a $PAGER? */
-EXPORT boole mx_go_may_yield_control(void);
+EXPORT boole mx_go_may_yield_control(boole pre_pso_started_ok);
 
 /* Whether the current go context is a macro */
 EXPORT boole mx_go_ctx_is_macro(void);

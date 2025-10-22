@@ -712,7 +712,7 @@ jwhite:
 		}
 		/* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
 		 * TODO n_PS_ROBOT; see a.._may_yield_control()! */
-		if((n_pstate & n_PS_ROBOT) && !mx_go_may_yield_control()){
+		if((n_pstate & n_PS_ROBOT) && !mx_go_may_yield_control(FAL0)){
 			ccp = N_("cannot be used in this program state");
 			goto jenotsup;
 		}
@@ -2462,7 +2462,7 @@ mx_go_splice_hack_remove_after_jump(void){
 }
 
 boole
-mx_go_may_yield_control(void){ /* TODO this is a terrible hack */
+mx_go_may_yield_control(boole pre_pso_started_ok){ /* TODO this is a terrible hack */
 	struct a_go_ctx *gcp;
 	boole rv;
 	NYD2_IN;
@@ -2470,7 +2470,7 @@ mx_go_may_yield_control(void){ /* TODO this is a terrible hack */
 	rv = FAL0;
 
 	/* Only when startup completed */
-	if(!(n_psonce & n_PSO_STARTED))
+	if(!pre_pso_started_ok && !(n_psonce & n_PSO_STARTED))
 		goto jleave;
 	/* Only interactive or batch mode (assuming that is ok) */
 	if(!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG))

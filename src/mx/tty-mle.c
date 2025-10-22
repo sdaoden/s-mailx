@@ -97,11 +97,11 @@
 
 /* macros, enums {{{ */
 # ifdef mx_HAVE_KEY_BINDINGS
-	/* We have a chicken-and-egg problem with `bind' and our termcap layer, because we may not initialize the
-	 * latter automatically to allow users to specify *termcap-disable*, and let it mean exactly that.  On the
-	 * other hand users can be expected to use `bind' in resource files.  Therefore bindings which involve
-	 * termcap/terminfo sequences will be (partially) delayed until tty_init() is called.  And we preallocate space
-	 * for the expansion of the resolved capability */
+   /* We have a chicken-and-egg problem with `bind' and our termcap layer, because we may not initialize the
+    * latter automatically to allow users to specify *termcap-disable*, and let it mean exactly that.  On the
+    * other hand users can be expected to use `bind' in resource files.  Therefore bindings which involve
+    * termcap/terminfo sequences will be (partially) delayed until tty_init() is called.  And we preallocate space
+    * for the expansion of the resolved capability */
 #  define a_TTY_BIND_CAPNAME_MAX 15
 #  define a_TTY_BIND_CAPEXP_ROUNDUP 16
 
@@ -109,15 +109,16 @@ CTAV(IS_POW2(a_TTY_BIND_CAPEXP_ROUNDUP));
 CTA(a_TTY_BIND_CAPEXP_ROUNDUP <= S8_MAX / 2, "Variable must fit in 6-bit");
 CTA(a_TTY_BIND_CAPEXP_ROUNDUP >= 8, "Variable too small");
 
-	/* Bind lookup trees organized in (wchar_t indexed) hashmaps */
+   /* Bind lookup trees organized in (wchar_t indexed) hashmaps */
 #  define a_TTY_PRIME 0xBu
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 # ifdef mx_HAVE_HISTORY
-	/* The first line of the history file is used as a marker after >v14.9.6 */
-#  define a_TTY_HIST_MARKER "@s-mailx history v2"
+   /* The first line of the history file is used as a marker after >v14.9.6 */
+#  define a_TTY_HIST_MARKER "@s-mailx history v"
+#  define a_TTY_HIST_MARKER_VERSION 2
 
-	/* Flags for a_tty_global.tg_hist_dict that uses data space; non-fatal errors we want */
+   /* Flags for a_tty_global.tg_hist_dict that uses data space; non-fatal errors we want */
 #  define a_TTY_HIST_DICT_FLAGS (su_CS_DICT_HEAD_RESORT | su_CS_DICT_DATA_SPACE_RAW | su_CS_DICT_ERR_PASS)
 #  define a_TTY_HIST_DICT_THRESHOLD 3
 # endif
@@ -750,33 +751,35 @@ static boole
 a_tty_hist_load(boole feedback){ /* {{{ */
 	u8 version;
 	uz lsize, cnt, llen, ents;
-	char *lbuf, *cp;
 	s32 eno;
 	FILE *fp;
-	char const *hfname;
+	char const *hfname, *emsg;
+	char *lbuf, *cp;
 	boole rv;
 	NYD_IN;
 
 	rv = TRU1;
-
 	if((hfname = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0)
 		goto j_leave;
+	rv = FAL0;
+
+	a_tty_hist_clear();
+	mx_fs_linepool_aquire(&lbuf, &lsize);
+	emsg = NIL;
 
 	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
 	if((fp = fopen(hfname, "r")) == NIL){
 		eno = su_err_by_errno();
-		goto jerr;
+		emsg = N_("file open failed");
+		goto jleave;
 	}
 
 	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TSHARE | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
 		eno = su_err();
-		goto jerr;
+		emsg = N_("file cannot be locked");
+		goto jleave;
 	}
-
-	a_tty_hist_clear();
-
-	mx_fs_linepool_aquire(&lbuf, &lsize);
 
 	cnt = S(uz,fsize(fp));
 	ents = 0;
@@ -784,36 +787,47 @@ a_tty_hist_load(boole feedback){ /* {{{ */
 
 	while(fgetline(&lbuf, &lsize, &cnt, &llen, fp, FAL0) != NIL){
 		cp = lbuf;
-		/* Hand-edited history files may have this, probably */
-		while(llen > 0 && su_cs_is_space(cp[0])){
-			++cp;
-			--llen;
-		}
-		if(llen > 0 && cp[llen - 1] == '\n')
-			cp[--llen] = '\0';
 
-		/* Skip empty and comment lines */
-		if(llen == 0 || cp[0] == '#')
+		/* Ignore empty and comment lines */
+		if(llen == 0)
+			continue;
+		if(cp[llen - 1] == '\n'){
+			if(--llen == 0)
+				continue;
+			cp[llen] = '\0';
+		}
+		if(*cp == '#')
 			continue;
 
 		if(UNLIKELY(version == 0)){
-			version = su_cs_cmp(cp, a_TTY_HIST_MARKER) ? 1 : 2;
+			LCTAV(a_TTY_HIST_MARKER_VERSION == 2);
+
+			if(llen != sizeof(a_TTY_HIST_MARKER) ||
+					su_mem_cmp(cp, a_TTY_HIST_MARKER, sizeof(a_TTY_HIST_MARKER) -1))
+				version = 1;
+			else if(cp[sizeof(a_TTY_HIST_MARKER) -1] == '2')
+				version = 2;
+			else
+				version = U8_MAX;
 			if(version != 1)
 				continue;
-			n_OBSOLETE(_("Legacy *history-file*, please `history save' to update version!"));/*v15-compat*/
 		}
 
 		/* C99 */{
 			BITENUM(u32,mx_go_input_flags) gif;
 
-			if(version == 2){
-				if(llen <= 2){
-					/* XXX n_err(_("Skipped invalid *history-file* entry: %s\n"),
-					 * XXX  n_shexp_quote_cp(cp));*/
-					continue;
+			if(version > 1){
+				if(llen < 2){
+jeinval:
+					emsg = N_("invalid content line");
+					eno = su_ERR_INVAL;
+					goto jleave;
 				}
 				switch(*cp++){
 				default:
+					if(version == 2)
+						goto jeinval;
+					continue;
 				case 'd':
 					gif = mx_GO_INPUT_CTX_DEFAULT; /* == a_TTY_HIST_CTX_DEFAULT */
 					break;
@@ -822,11 +836,22 @@ a_tty_hist_load(boole feedback){ /* {{{ */
 					break;
 				}
 
-				if(*cp++ == '*')
-					gif |= mx_GO_INPUT_HIST_GABBY;
-
-				while(*cp == ' ')
+				if(*cp == '*'){
 					++cp;
+					gif |= mx_GO_INPUT_HIST_GABBY;
+				}
+
+				/* Unfortunate non-version-tracked compose mode normalization "fix" */
+				if(a_TTY_HIST_MARKER_VERSION < 3 || version < 3){
+					while(*cp == ' ')
+						++cp;
+					if(gif == mx_GO_INPUT_CTX_COMPOSE && *cp == ':')
+						while(su_cs_is_space(cp[1]))
+							*++cp = ':';
+				}
+
+				if(*cp == '\0')
+					goto jeinval;
 			}else{
 				gif = mx_GO_INPUT_CTX_DEFAULT;
 				if(cp[0] == '*'){
@@ -835,58 +860,60 @@ a_tty_hist_load(boole feedback){ /* {{{ */
 				}
 			}
 
-			/* Unfortunate non-version-tracked compose mode normalization "fix" TODO remove "Y2033" */
-			if(UNLIKELY(gif == mx_GO_INPUT_CTX_COMPOSE && *cp == ':'))
-				while(su_cs_is_space(cp[1]))
-					*++cp = ':';
-
 			if(!a_tty_hist_add(cp, gif))
 				break;
 			++ents;
 		}
 	}
 
-	mx_fs_linepool_release(lbuf, lsize);
+	if(ferror(fp)){
+		eno = su_ERR_IO;
+		emsg = "input error";
+		goto jleave;
+	}
 
-	if(ferror(fp))
-		goto jioerr;
-
-	if(feedback && (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-		n_err(_("Loaded %" PRIuZ " entries from *history-file*=%s\n"), ents, n_shexp_quote_cp(hfname, FAL0));
-
+	rv = TRU1;
 jleave:
 	if(fp != NIL)
 		fclose(fp);
+	if(lbuf != NIL)
+		mx_fs_linepool_release(lbuf, lsize);
 
 	mx_sigs_all_rele(); /* XXX remove jumps */
+
+	if(UNLIKELY(!rv || (eno = (feedback && (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)))))
+		hfname = n_shexp_quote_cp(hfname, FAL0);
+	if(rv){
+		if(eno)
+			n_err(_("*history-file*: loaded %" PRIuZ " entries: %s\n"), ents, hfname);
+		if(version != a_TTY_HIST_MARKER_VERSION){
+			n_err(_("*history-file*: WARNING: content version mismatch (%u != %d)!\n"
+				"  WARNING: the next `history save' synchronizes, possibly backward incompatibly!\n"),
+				version, a_TTY_HIST_MARKER_VERSION);
+		}
+	}else
+		n_err(_("*history-file*: %s: %s: %s\n"), hfname, V_(emsg), su_err_doc(eno));
+
 j_leave:
 	NYD_OU;
 	return rv;
-
-jioerr:
-	n_err(_("I/O error while reading *history-file*=%s\n"), n_shexp_quote_cp(hfname, FAL0));
-	rv = FAL0;
-	goto jleave;
-jerr:
-	n_err(_("Cannot read/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
-	rv = FAL0;
-	goto jleave;
 } /* }}} */
 
 static boole
 a_tty_hist_save(boole feedback){ /* {{{ */
 	uz i, ents;
-	struct a_tty_hist *thp;
+	s32 eno;
 	FILE *fp;
-	char const *v, *emsg;
+	struct a_tty_hist *thp;
+	char const *hfname, *emsg;
 	boole rv, dogabby;
 	NYD_IN;
 
 	rv = TRU1;
-
-	if((v = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0 ||
+	if((hfname = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0 ||
 			!(a_tty.tg_flags & a_TTY_FLAGS_HIST_INIT))
 		goto j_leave;
+	rv = FAL0;
 
 	dogabby = ok_blook(history_gabby_persist);
 
@@ -895,20 +922,25 @@ a_tty_hist_save(boole feedback){ /* {{{ */
 			if((dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)) && --i == 0)
 				break;
 
-	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
-
 	emsg = NIL;
 
-	if((fp = fopen(v, "w")) == NIL){ /* TODO mx_fs_tmp_open() + rename? */
-		su_err_by_errno();
-		goto jerr;
+	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
+
+	if((fp = fopen(hfname, "w")) == NIL){ /* TODO mx_fs_tmp_open() + rename? */
+		eno = su_err_by_errno();
+		emsg = N_("file open failed");
+		goto jleave;
 	}
 
-	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG)))
-		goto jerr;
+	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
+		eno = su_err();
+		emsg = N_("file cannot be locked");
+		goto jleave;
+	}
 
-	if(fwrite(a_TTY_HIST_MARKER "\n", sizeof *a_TTY_HIST_MARKER, sizeof(a_TTY_HIST_MARKER "\n") -1, fp
-			) != sizeof(a_TTY_HIST_MARKER "\n") -1)
+	if(fwrite(a_TTY_HIST_MARKER STRING(a_TTY_HIST_MARKER_VERSION) "\n", sizeof *a_TTY_HIST_MARKER,
+			sizeof(a_TTY_HIST_MARKER STRING(a_TTY_HIST_MARKER_VERSION) "\n") -1, fp
+			) != sizeof(a_TTY_HIST_MARKER STRING(a_TTY_HIST_MARKER_VERSION) "\n") -1)
 		goto jioerr;
 
 	for(ents = 0; thp != NIL; thp = thp->th_younger){
@@ -919,41 +951,46 @@ a_tty_hist_save(boole feedback){ /* {{{ */
 
 			if(putc(c, fp) == EOF)
 				goto jioerr;
-			if((thp->th_flags & a_TTY_HIST_GABBY) && putc('*', fp) == EOF)
+			if(thp->th_flags & a_TTY_HIST_GABBY){
+				if(putc('*', fp) == EOF)
+					goto jioerr;
+			}
+			if(a_TTY_HIST_MARKER_VERSION < 3 && putc(' ', fp) == EOF)
 				goto jioerr;
-			if(putc(' ', fp) == EOF || fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, fp
-						) != sizeof(*thp->th_dat) * thp->th_len ||
-					putc('\n', fp) == EOF)
+			if(fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, fp) != thp->th_len)
+				goto jioerr;
+			if(putc('\n', fp) == EOF)
 				goto jioerr;
 
 			++ents;
 		}
 	}
 
-	if(fflush(fp) == EOF)
-		goto jioerr;
+	if(fflush(fp) == EOF){
+jioerr:
+		eno = su_err_by_errno();
+		emsg = N_("output error");
+		goto jleave;
+	}
 
-	if(feedback && (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-		n_err(_("Saved %" PRIuZ " entries to *history-file*=%s\n"), ents, n_shexp_quote_cp(v, FAL0));
-
+	rv = TRU1;
 jleave:
 	if(fp != NIL)
 		fclose(fp);
 
 	mx_sigs_all_rele(); /* XXX remove jumps */
+
+	if(UNLIKELY(!rv || (eno = (feedback && (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)))))
+		hfname = n_shexp_quote_cp(hfname, FAL0);
+	if(rv){
+		if(eno)
+			n_err(_("*history-file*: saved %" PRIuZ " entries: %s\n"), ents, hfname);
+	}else
+		n_err(_("*history-file*: %s: %s: %s\n"), hfname, V_(emsg), su_err_doc(eno));
+
 j_leave:
 	NYD_OU;
 	return rv;
-
-jioerr:
-	su_err_by_errno();
-	emsg = N_("I/O error while writing *history-file*=%s\n");
-jerr:
-	if(emsg == NIL)
-		emsg = N_("Cannot write/lock *history-file*=%s %s\n");
-	n_err(V_(emsg), n_shexp_quote_cp(v, FAL0), su_err_doc(-1));
-	rv = FAL0;
-	goto jleave;
 } /* }}} */
 
 static char const *
@@ -1028,7 +1065,9 @@ a_tty_hist_list(void){ /* {{{ */
 
 		if(n_poption & n_PO_D_V)
 			fprintf(fp, "# Length +%" PRIu32 ", total %" PRIuZ "\n", thp->th_len, b);
-		fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
+		fprintf(fp, "%c%c%4" PRIuZ "\t", c1, c2, no);
+		mx_makeprint_write_fp(thp->th_dat, thp->th_len, fp);
+		putc('\n', fp);
 	}
 
 	if(fp != mx_stdout){
@@ -1122,9 +1161,11 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){ /* {{{ */
 				a_tty.tg_hist = othp;
 		}
 
+		/* I18N: selected a history entry for deletion or evaluation */
+		fprintf(mx_stdout, _("history: %s %" PRIdZ ": "), (dele ? _("deleting") : _("evaluating")), entry);
+		mx_makeprint_write_fp(thp->th_dat, thp->th_len, mx_stdout);
+		putc('\n', mx_stdout);
 
-		fprintf(mx_stdout, _("history: %s %" PRIdZ ": %s\n"),
-			(dele ? _("deleting") : _("evaluating")), entry, thp->th_dat);
 		if(!dele){
 			if((thp->th_older = a_tty.tg_hist) != NIL)
 				a_tty.tg_hist->th_younger = thp;
