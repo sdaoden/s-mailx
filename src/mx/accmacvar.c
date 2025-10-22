@@ -2946,7 +2946,7 @@ jspecial:
 		msgp = n_string_push_cp(msgp, "environ ");
 	if(avp != NIL)
 		msgp = n_string_push_cp(msgp, "set ");
-	msgp = n_string_push_cp(msgp, name);
+	msgp = n_string_push_cp(msgp, n_shexp_quote_cp(name, TRU1));
 
 	if(!(flags & a_AMV_VF_BOOL)){
 		msgp = n_string_push_c(msgp, '=');
