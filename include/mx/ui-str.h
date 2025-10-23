@@ -93,7 +93,9 @@ EXPORT void mx_locale_init(void);
 
 /* Parse (onechar of) a given buffer, and generate infos along the way.
  * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
- * vicp must be zeroed before first use */
+ * vicp must be zeroed before first use (onechar stepping).
+ * In conjunction with VISUAL_INFO_SKIP_ERRORS "incomplete multibyte character" errors at the end of .vic_indat
+ * are treated as normal errors and cause replacement to happen! */
 EXPORT boole mx_visual_info(struct mx_visual_info_ctx *vicp, BITENUM(u32,mx_visual_info_flags) vif);
 
 /* Check (MB-safe) how many bytes of buf (blen bytes) can be safely placed in a buffer (field width) of maxlen bytes */

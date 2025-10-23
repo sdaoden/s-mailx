@@ -236,12 +236,11 @@ mx_visual_info(struct mx_visual_info_ctx *vicp,
    if(il > 0){
       do/* while(!(vif & mx_VISUAL_INFO_ONE_CHAR) && il > 0) */{
 #ifdef mx_HAVE_C90AMEND1
-         uz i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
+         uz i;
 
-         if(i == S(uz,-2)){
-            rv = FAL0;
-            break;
-         }else if(i == S(uz,-1)){
+         i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
+
+         if(i == S(uz,-2) || i == S(uz,-1)){
             if(!(vif & mx_VISUAL_INFO_SKIP_ERRORS)){
                rv = FAL0;
                break;
@@ -303,6 +302,7 @@ mx_visual_info(struct mx_visual_info_ctx *vicp,
 
    if(vif & mx_VISUAL_INFO_WOUT_CREATE)
       vicp->vic_woudat[vicp->vic_woulen] = '\0';
+
    vicp->vic_oudat = ib;
    vicp->vic_oulen = il;
    vicp->vic_flags = vif;
