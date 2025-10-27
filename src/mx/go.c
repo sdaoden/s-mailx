@@ -1009,6 +1009,7 @@ jmsglist_go:
 		cac.cac_scope = scope_cmd;
 		cac.cac_scope_vput = scope_vput;
 		cac.cac_scope_pp = scope_pp;
+		cac.cac_nignerr = ((flags & a_IGNERR) == FAL0);
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);

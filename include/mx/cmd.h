@@ -191,7 +191,8 @@ struct mx_cmd_arg_ctx{
 	ZIPENUM(u8,mx_scope) cac_scope; /* Desired scope, ... */
 	ZIPENUM(u8,mx_scope) cac_scope_vput; /* .cac_vput scope, ... */
 	ZIPENUM(u8,mx_scope) cac_scope_pp; /* positional parameter scope */
-	u8 cac__dummy[5];
+	boole cac_nignerr; /* NOT `ignerr' command modifier */
+	u8 cac__dummy[4];
 	/* TODO mx_cmd_arg_ctx should carry around per-cmd pstate_err_no! */
 	char const *cac_vput; /* `>' command modifier used: varname */
 };

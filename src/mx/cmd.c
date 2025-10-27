@@ -661,6 +661,7 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_ak
 	shin_orig = shin;
 	cacp->cac_no = cacp->cac_option_result_set = 0;
 	cacp->cac_scope = cacp->cac_scope_vput = cacp->cac_scope_pp = mx_SCOPE_NONE;
+	cacp->cac_nignerr = FAL0;
 	cacp->cac_arg = lcap = NIL;
 	cacp->cac_vput = NIL;
 
