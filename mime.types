@@ -110,9 +110,12 @@ audio/x-ms-wma	wma
 audio/x-pn-realaudio	ram ra
 audio/x-wav	wav
 
+image/avif	avif
+image/bmp	bmp
+image/heic	heic
+image/heif	heif
 image/svg+xml	svg svgz
 image/tiff	tiff tif
-image/x-ms-bmp	bmp dib
 image/x-rgb	rgb
 image/x-xbitmap	xbm
 image/x-xpixmap	xpm
