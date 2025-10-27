@@ -270,12 +270,13 @@ struct a_amv_var_carrier{
 	struct a_amv_var_map const *avc_map;
 	BITENUM(u16,okeys) avc_okey;
 	ZIPENUM(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
+	boole avc_ignerr; /* `ignerr' command modifier */
 #undef a_AMV_OKEY
 #define a_AMV_OKEY(X) S(u16,X)
 	boole avc_is_chain_variant; /* Base is a chain, this a variant thereof */
 	u8 avc_special_cat;
 	BITENUM(u8,a_amv_var_special_type) avc_special_type;
-	u8 avc__pad1[2];
+	u8 avc__pad1[1];
 	u32 avc_param_position;
 	su_64(u8 avc__pad2[4];)
 };
@@ -1018,6 +1019,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
 		avp = avp->av_link;
 
 		a_amv_var_revlookup(&avc, x->av_name, TRU1);
+		avc.avc_ignerr = TRU1;/* xxx */
 
 		avscf = a_AMV_VSETCLR_UNROLL;
 		if(x->av_flags & a_AMV_VF_ENV)
@@ -2173,7 +2175,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 		}
 		/* MACKY_MACK does not know about [*@#] */
 		/*else*/ if(ismacky){
-			if(n_poption & n_PO_D_V)
+			if(!avcp->avc_ignerr || (n_poption & n_PO_D_V))
 				n_err(_("Cannot use $*/$@/$# in this context: %s\n"), n_shexp_quote_cp(avcp->avc_name, FAL0));
 			goto jleave;
 		}
@@ -2363,7 +2365,7 @@ jeavmp:
 				if((n_pstate & n_PS_ROOT) || (!(n_psonce & n_PSO_STARTED_GETOPT) &&
 						 (n_poption & n_PO_S_FLAG_TEMPORARY)))
 					goto joval_and_go;
-				if(n_poption & n_PO_D_VV)
+				if(n_poption & n_PO_D_V)
 					n_err(_("Temporarily frozen by -S, not `set'ing: %s\n"), avcp->avc_name);
 				goto jleave;
 			}
@@ -2591,11 +2593,9 @@ jforce_env:
 			if(!(rv = a_amv_var__clearenv(avcp->avc_name, NIL)))
 				goto jerr_env_unset;
 		}else{
-			/* TODO "cannot unset undefined variable" not echoed in "ROBOT" state,
-			 * TODO should only be like that with "ignerr"! */
 jerr_env_unset:
-			if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
-				n_err(_("Cannot unset undefined variable: %s\n"), avcp->avc_name);
+			if(!avcp->avc_ignerr && !(n_pstate & n_PS_ROOT) && !su_state_has(su_STATE_REPRODUCIBLE))
+				n_err(_("`unset' variable undefined: %s\n"), avcp->avc_name);
 		}
 
 		goto jleave;
@@ -2640,7 +2640,7 @@ jerr_env_unset:
 				goto jleave;
 			}
 
-			if(n_poption & n_PO_D_VV)
+			if(n_poption & n_PO_D_V)
 				n_err(_("Temporarily frozen by -S, not `unset'ting: %s\n"), avcp->avc_name);
 			goto jleave;
 		}
@@ -2814,6 +2814,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 	i = 0;
 
 	a_amv_var_revlookup(&avc, name, TRU1);
+	avc.avc_ignerr = TRU1;/* xxx */
 
 	avp = NIL;
 	flags = 0;
@@ -3008,6 +3009,7 @@ a_amv_var_c_set(struct mx_cmd_arg_ctx *cacp, struct mx_cmd_arg *cap, boole isenv
 
 			a_amv_var_revlookup(&avc, varbuf, TRU1);
 			avc.avc_scope = cacp->cac_scope;
+			avc.avc_ignerr = !cacp->cac_nignerr;
 
 			if(isunset)
 				cp = NIL;
@@ -4018,6 +4020,7 @@ n_var_is_user_writable(char const *name){
 	NYD_IN;
 
 	a_amv_var_revlookup(&avc, name, TRU1);
+	avc.avc_ignerr = TRU1;/* xxx */
 	if((avmp = avc.avc_map) == NIL)
 		rv = TRU1;
 	else
@@ -4094,6 +4097,7 @@ mx_var_vlook(char const *vokey, boole try_getenv){
 	NYD_IN;
 
 	a_amv_var_revlookup(&avc, vokey, FAL0);
+	avc.avc_ignerr = TRU1;/* xxx */
 
 	switch(S(enum a_amv_var_special_category,avc.avc_special_cat)){
 	default: /* silence CC */
@@ -4172,6 +4176,7 @@ mx_var_vset(char const *vokey, up val, enum mx_scope scope){
 		a_amv_var_revlookup(&avc, vokey, TRU1);
 		avc.avc_scope = S(u8,scope);
 		avscf = (scope == mx_SCOPE_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE;
+		avc.avc_ignerr = TRU1;/* xxx */
 
 		ok = a_amv_var_set(&avc, (val == 0x1 ? su_empty : R(char const*,val)), avscf);
 	}
@@ -4276,6 +4281,7 @@ c_unset(void *vp){
 		if(a_amv_var_check_name(cap->ca_arg.ca_str.s, FAL0)){
 			a_amv_var_revlookup(&avc, cap->ca_arg.ca_str.s, FAL0);
 			avc.avc_scope = cacp->cac_scope;
+			avc.avc_ignerr = !cacp->cac_nignerr;
 			if(a_amv_var_clear(&avc, avscf))
 				continue;
 		}
@@ -4387,6 +4393,7 @@ c_environ(void *vp){ /* {{{ */
 
 			a_amv_var_revlookup(&avc, cap->ca_arg.ca_str.s, TRU1);
 			avc.avc_scope = cacp->cac_scope;
+			avc.avc_ignerr = !cacp->cac_nignerr;
 
 			/* We may know about it */
 			if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_NONE | a_AMV_VLOOK_LOG_OBSOLETE)) &&
@@ -4461,6 +4468,7 @@ jlopts_check:
 
 			a_amv_var_revlookup(&avc, cap->ca_arg.ca_str.s, FAL0);
 			avc.avc_scope = cacp->cac_scope;
+			avc.avc_ignerr = !cacp->cac_nignerr;
 
 			if(!a_amv_var_clear(&avc, avscf))
 				rv = su_EX_ERR;
@@ -4580,6 +4588,7 @@ c_vpospar(void *vp){ /* {{{ */
 				f = a_ERR;
 				goto jleave;
 			}
+			cac.cac_nignerr = cacp->cac_nignerr;
 
 			cacp = &cac;
 			cap = cacp->cac_arg;

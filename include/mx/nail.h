@@ -481,7 +481,6 @@ enum n_program_state_once{
    n_PSO_SEND_ERROR = 1u<<6,
 
    /* Pre _STARTED */
-   /* 1u<<5, */
    n_PSO_UNICODE = 1u<<7,
    n_PSO_ENC_MBSTATE = 1u<<8,
 
