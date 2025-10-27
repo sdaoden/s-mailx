@@ -321,7 +321,7 @@ _CFLAGS= _LDFLAGS=  _CFLAGS_NOT4TESTS= _LDFLAGS_NOT4TESTS=
 OPT_ANYEVAL= VAL_ANYEVAL=
 
 os_early_setup() {
-	# We do not "have any utility" (see make.rc)
+	# We do not "have any utility".  See make.rc: change comment there on change!!
 	if [ -z "${OS}" ] || [ -z "${OSFULLSPEC}" ]; then
 		thecmd_testandset_fail uname uname
 	fi

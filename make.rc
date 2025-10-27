@@ -22,22 +22,19 @@
 #@
 #@   Some values offer "multiple choice" values, for example the
 #@   standalone VAL_RANDOM, and VAL_IDNA (with and if OPT_IDNA only).
-#@   They address the case of different implementations, and can then
-#@   be used to choose the desired one(s).  Expected is
-#@   a comma-separated list, for example "idn2,idn,idnkit", case is
-#@   ignored, but order is important.  The special strings "all" and
-#@   "any" as well as the empty value are wildcard matches; if any
-#@   entry in the list is a wildcard match, the entire list is ignored.
+#@   Expected is a comma-separated list, for example "idn2,idn,idnkit".
+#@   Case is ignored, but order is important.
+#@   The special strings "all" and "any", as well as the empty value
+#@   are wildcard matches: any wildcard causes the list to be ignored.
 #@   The special string "error" will abort configuration once its list
-#@   position is reached; this is only supported if documented, and not
-#@   with an accompanying OPT_, which then offers "require", as above.
+#@   position is reached (only supported if documented).
 #@
 #@ - This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
 #@   line overwrites take effect.  To use multiline values, escape the
 #@   newlines on all lines but the last with a reverse solidus (back-
 #@   slash), as in "LINE \".
-#@   To embed a shell variable unexpanded, use two: "XY=\\${HOME}".
+#@   To embed a shell variable unexpanded, use two: "XY=\\$HOME".
 #@   The parsing is sequential top-to-bottom (nonetheless), so that
 #@   shell snippets in a value can refer only to stuff yet defined.
 #@
@@ -78,18 +75,18 @@ VAL_PREFIX=/usr/local
 
 	# Fine tune directory locations, normally under $VAL_PREFIX:
 	# . of normal binaries.
-	VAL_BINDIR=${VAL_PREFIX}/bin
+	VAL_BINDIR=$VAL_PREFIX/bin
 	# . of privilege-separated binaries (if any), names of which are
-	#   ${VAL_SID}${VAL_MAILX}-foo.
-	VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
+	#   $VAL_SID$VAL_MAILX-foo.
+	VAL_LIBEXECDIR=$VAL_PREFIX/libexec
 	# . of the manual.
-	VAL_MANDIR=${VAL_PREFIX}/share/man
+	VAL_MANDIR=$VAL_PREFIX/share/man
 	# . of the system wide resource file.
-	VAL_SYSCONFDIR=${VAL_PREFIX}/etc
+	VAL_SYSCONFDIR=$VAL_PREFIX/etc
 
 		# The system wide resource file (within $VAL_SYSCONFDIR).
 		# Note 1: not overwritten by "make install" if yet exists!
-		VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
+		VAL_SYSCONFRC=$VAL_SID$VAL_MAILX.rc
 
 # The variable $DESTDIR is prepended to all the paths from above at
 # installation time; this feature can be used for package building,
@@ -120,24 +117,24 @@ VAL_MTA=$(\
 		echo /usr/sbin/sendmail;\
 	fi)
 
-# Today a lot of systems no longer use sendmail(1), but a different MTA.
-# To ensure compatibility with sendmail(1), a system called
-# mailwrapper(8) is often used, which selects the required service by
-# looking at the name by which the program actually has been invoked.
-# This variable can be used to adjust this name as necessary.
-VAL_MTA_ARGV0=sendmail
+	# Today a lot of systems no longer use sendmail(1).
+	# To ensure compatibility with sendmail(1), a system called
+	# mailwrapper(8) is often used, which selects the service by
+	# looking at the argv[0] argument vector entry being used.
+	# This variable can be used to adjust this entry as necessary.
+	VAL_MTA_ARGV0=sendmail
 
 # Default (path to) POSIX compatible $SHELL aka sh(1).
 # (Sometimes however we simply invoke a command directly via execlp(3)
 # instead of indirectly through $SHELL -- in these cases execlp(3) may
-# fallback to itss own built-in sh(1) path.)
+# fallback to its own built-in sh(1) path.)
 VAL_SHELL=/bin/sh
 
 # Some more default fallback values, some of which are standardized
 # and (thus)/or documented in the manual (changes not reflected there!).
 # Note that default paths are often not (shell) quoted when displayed.
 VAL_DEAD_BASENAME=dead.letter
-VAL_DEAD=~/${VAL_DEAD_BASENAME}
+VAL_DEAD=~/$VAL_DEAD_BASENAME
 VAL_EDITOR=ed
 VAL_LISTER=ls
 VAL_MAILRC=~/.mailrc
@@ -152,8 +149,8 @@ VAL_MIME_TYPES_USR=~/.mime.types
 VAL_MIME_TYPES_SYS=/etc/mime.types
 
 # Default screen width.  The width is reduced by 1 for compatibility
-# with some old terminals; if termcap/terminfo support is available then
-# we will use the full width if possible.
+# with some old terminals; if termcap/terminfo support is available
+# the full width will be used if possible.
 # Values must be decimal numbers, SHOULD > 10, MUST < 1000.
 VAL_HEIGHT=24
 VAL_WIDTH=80
@@ -191,7 +188,9 @@ VAL_WIDTH=80
 # features which would otherwise not be available.
 # Note: $OS is available as normalized all-lowercase upon evaluation.
 OPT_ALWAYS_UNICODE_LOCALE=$(\
-	if [ "${OS}" = openbsd ] || [ -f /lib/ld-musl-x86_64.so.1 ]; then \
+	if [ "$OS" = openbsd ]; then \
+		echo yes;\
+	elif [ -f /lib/ld-musl-x86_64.so.1 ]; then \
 		echo yes;\
 	else \
 		echo no;\
@@ -200,9 +199,8 @@ OPT_ALWAYS_UNICODE_LOCALE=$(\
 # It is possible to compile as "single-source", meaning that all source
 # files are injected into a single compilation unit.
 # This allows the compiler to perform more optimizations, and also
-# reduces the management overhead of the runtime linker.  In theory.
-# (Note this meant as a pure optimization, the make(1)file system will
-# offer no source dependency tracking in this mode.)
+# reduces the management overhead of the runtime linker.  *In theory*.
+# (Pure optimization: no make(1) source dependency tracking.)
 OPT_AMALGAMATION=no
 
 # Shall we detect a compiler and detect and provide a set of known-good
@@ -230,7 +228,7 @@ OPT_AMALGAMATION=no
 OPT_AUTOCC=yes
 	VAL_AUTOCC=bind_now,pie,stackprot,fortify,cfprot
 
-# Whether commands `csop', `vexpr' .. shall be included (requireable).
+# Whether commands `csop', .. `vexpr' .. shall be added (requireable).
 OPT_CMD_CSOP=yes
 OPT_CMD_FOP=yes
 OPT_CMD_VEXPR=yes
@@ -257,7 +255,7 @@ OPT_DEBUG=no
 # synchronization: set $OPT_DOTLOCK to support this traditional mail
 # spool file locking.
 # $VAL_MAIL(s) where normal system mailboxes reside are usually not
-# writable by normal users, except theyr may read/write their own boxes.
+# writable by normal users, except they may read/write their own boxes.
 # This means that a program run by the user cannot create a .lock file!
 # The solution is a privilege-separated mini-program that has the sole
 # purpose and functionality of managing the dotlock file -- and only
@@ -271,7 +269,7 @@ OPT_DOTLOCK=yes
 # Enable the `errors' command; as a console-based application errors
 # may fly by pretty fast as other operations are in progress;
 # or $PAGERs are started and clear errors off the screen.
-# If enabled errors will be duplicated to an error queue as they happen
+# If enabled errors will be duplicated to an error queue as they happen,
 # and the `errors' command will show them when asked to.
 # VAL_ERRORS_LIMIT will be the default value of *errors-limit*.
 OPT_ERRORS=yes
@@ -288,7 +286,6 @@ OPT_FILTER_HTML_TAGSOUP=yes
 # *quote-fold* mechanism.  This will be turned off automatically if the
 # required character classification is not available on the host.
 # Can be "require"d.
-# TODO should not wrap lines when only WS or a NL-escaping \ follows
 OPT_FILTER_QUOTE_FOLD=yes
 
 # Character set conversion enables reading and sending of mails in
@@ -423,10 +420,8 @@ OPT_NET=yes
 
 # Several different P(seudo) R(andom number) G(enerator) possibilities.
 # No need for somewhat strong random is necessary.
-# The following will be used as sole PRG implementations.
 # . arc4 - we search for arc4random(3).
 # . tls - if OPT_TLS is available that libraries' PRNG can be used.
-# The following will only be used to seed our builtin ARC4 PRNG.
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
 # . getentropy - getentropy(3) (a la POSIX: with GETENTROPY_MAX).
@@ -457,7 +452,7 @@ OPT_SPAM_SPAMC=no
 OPT_USE_PKGSYS=yes
 
 ##  --  >8  --  8<  --  ##
-## Normal users should not need to read any further
+## Normally packagers etc. should not need to read any further
 
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google
