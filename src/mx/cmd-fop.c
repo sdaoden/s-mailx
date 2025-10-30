@@ -74,7 +74,7 @@ enum a_fop_flags{
 	a_FOP_MOD_NOFOLLOW = 1u<<2,
 	a_FOP_MOD_FLOCK = 1u<<3, /* Only fop_subcmd.fs_flags: indeed flock lock */
 	a_FOP_MOD_GLOB = 1u<<4, /* Only fop_subcmd.fs_flags: indeed glob(7) */
-	a_FOP_MOD_LARGER_ARGV = 1u<<5,
+	a_FOP_MOD_LARGER_ARGV = 1u<<5, /* .fc_argv[] excessed, .fc_cap instead */
 	a_FOP_MOD_MASK = a_FOP_MOD_NOFOLLOW | a_FOP_MOD_FLOCK | a_FOP_MOD_GLOB |
 			a_FOP_MOD_LARGER_ARGV
 };
@@ -310,7 +310,12 @@ a_fop__ftruncate(struct a_fop_ctx *fcp){
 		if(off != -1)
 			fcp->fc_varres = fofdp->fof_silence ? NIL : fcp->fc_arg;
 		else{
-			n_pstate_err_no = su_err_by_errno();
+			s32 e;
+
+			e = su_err_by_errno();
+			if(e == su_ERR_BADF)
+				e = su_ERR_INVAL;
+			n_pstate_err_no = e;
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 		}
@@ -477,17 +482,35 @@ jleave:
 
 static void
 a_fop__mkdir(struct a_fop_ctx *fcp){
-	char const *a1;
+	char const *cp;
+	boole recur;
+	u32 mode;
 	NYD2_IN;
 
-	if(fcp->fc_argv[0] == NIL || ((a1 = fcp->fc_argv[1]) != NIL && fcp->fc_argv[2] != NIL)){
-		fcp->fc_flags |= a_FOP_ERR;
-		fcp->fc_cmderr = a_FOP_ERR_SYNOPSIS;
-		goto jleave;
+	mode = 0777;
+	recur = FAL0;
+
+	if((fcp->fc_arg = fcp->fc_argv[0]) == NIL)
+		goto jesyno;
+
+	if((cp = fcp->fc_argv[1]) != NIL){
+		BITENUM(u32,su_idec_state) is;
+
+		is = su_idec_u32_cp(&mode, cp, 0, NIL);
+		if(is & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS))
+			goto jeinval;
+		if(mode & ~(su_IOPF_PERM_MASK | su_IOPF_PROT_MASK))
+			goto jeinval;
+
+		if((cp = fcp->fc_argv[2]) != NIL){
+			recur = n_boolify(cp, UZ_MAX, FAL0);
+			if(recur == TRUM1)
+				goto jeinval;
+
+			if(fcp->fc_argv[3] != NIL)
+				goto jesyno;
+		}
 	}
-	fcp->fc_arg = fcp->fc_argv[0];
-	if(a1 == NIL)
-		a1 = su_empty;
 
 	if((fcp->fc_varres = mx_fexpand(fcp->fc_arg, mx_FEXP_DEF_LOCAL_FILE)) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
@@ -495,7 +518,7 @@ a_fop__mkdir(struct a_fop_ctx *fcp){
 		goto jleave;
 	}
 
-	if(!su_path_mkdir(fcp->fc_varres, 0777, n_boolify(a1, UZ_MAX, FAL0), su_STATE_ERR_NOPASS)){
+	if(!su_path_mkdir(fcp->fc_varres, mode, recur, su_STATE_ERR_NOPASS)){
 		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
@@ -503,6 +526,16 @@ a_fop__mkdir(struct a_fop_ctx *fcp){
 
 jleave:
 	NYD2_OU;
+	return;
+jeinval:
+	n_pstate_err_no = su_ERR_INVAL;
+	fcp->fc_flags |= a_FOP_ERR;
+	fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
+	goto jleave;
+jesyno:
+	fcp->fc_flags |= a_FOP_ERR;
+	fcp->fc_cmderr = a_FOP_ERR_SYNOPSIS;
+	goto jleave;
 }
 
 static void

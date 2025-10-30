@@ -7279,16 +7279,16 @@ __EOT
 } #}}}
 
 t_fop() { # XXX improve writes when we have redirection {{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	if have_feat cmd-fop; then :; else
 		t_echoskip '[!CMD_FOP]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
 	# touch,stat,rm,lock,create,rewind,pass,close,remove <-> reading {{{
-	<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
+	<< '__EOT' $MAILX $ARGS -SCAT=$cat > ./t1 2>$E0
 commandalias x ec '"$?/$^ERRNAME :$res:"'
 ec ===T1
 >res fop touch ./t1.1;x
@@ -7315,13 +7315,13 @@ read res;x
 ec ===rewind 2.1.2
 >xres fop rewind "$fd";x
 if $xres -ne $fd;ec ERR;en
->res fop pass "$fd" @ "${CAT} && exit 11";x
->res fop pass "$fd" - "${CAT} && exit 12";x
+>res fop pass "$fd" @ "$CAT && exit 11";x
+>res fop pass "$fd" - "$CAT && exit 12";x
 ec ===rewind 2.1.3
 >xres fop rewind "$fd";x
 if $xres -ne $fd;ec ERR;en
->res fop pass "$fd" - "${CAT} && exit 13";x
->res fop pass "$fd" - "${CAT} && exit 14";x
+>res fop pass "$fd" - "$CAT && exit 13";x
+>res fop pass "$fd" - "$CAT && exit 14";x
 ec ===dtors 2.1
 >xres fop close "$fd";x
 if $xres -ne "$fd";ec ERR;end
@@ -7333,41 +7333,40 @@ __EOT
 
 	if have_feat flock; then
 		#{{{
-		<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>${E0}
+		<< '__EOT' $MAILX $ARGS -SCAT=$cat > ./t2 2>$E0
 commandalias x ec '"$?/$^ERRNAME :$res:"'
 ec ===T1
 >res fop flock ./t2.1 a 'echo x1;echo x2;echo x3';x
->res fop flock ./t2.1 r;x
-set fd=$res
+>fd fop flock ./t2.1 r;x
 ec ===readctl create 1.1
 readctl create "$fd";x
 ec ===rewind 1.1.1
->res fop rewind "$fd";x
+>fd fop rewind "$fd";x
 read res;x
 read res;x
 read res;x
 read res;x
 ec ===rewind 1.1.2
->res fop rewind "$fd";x
->res fop pass "$fd" @ "${CAT} && exit 21";x
->res fop pass "$fd" - "${CAT} && exit 22";x
+uns res; >fd fop rewind "$fd";x
+>res fop pass "$fd" @ "$CAT && exit 21";x
+>res fop pass "$fd" - "$CAT && exit 22";x
 ec ===rewind 1.1.3
->res fop rewind "$fd";x
->res fop pass "$fd" - "${CAT} && exit 23";x
->res fop pass "$fd" - "${CAT} && exit 24";x
+uns res; >fd fop rewind "$fd";x
+>res fop pass "$fd" - "$CAT && exit 23";x
+>res fop pass "$fd" - "$CAT && exit 24";x
 ec ===dtors 1.1
->res fop close "$fd";x
+uns res; >fd fop close "$fd";x
 >res fop close "$fd";x
 readctl remove "$fd";x
 __EOT
 		#}}}
-		cke0 2 0 ./t2 '1544976144 297'
+		cke0 2 0 ./t2 '2765344548 294'
 	else
 		t_echoskip '2:[!FLOCK]'
 	fi
 
 	# open,rewind,create,close,remove,pass <-> reading {{{
-	<< '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
+	<< '__EOT' $MAILX $ARGS -SCAT=$cat > ./t3 2>$E0
 commandalias x ec '"$?/$^ERRNAME :$res:"'
 ec ===T1
 >fd fop open ./t3.x w;x 1
@@ -7419,29 +7418,39 @@ __EOT
 	cke0 3 0 ./t3 '3318177702 649'
 
 	# mktemp,mkdir,rename,rmdir {{{
-	<< '__EOT' TMPDIR=$(${pwd}) ${MAILX} ${ARGS} > ./t4 2>${E0}
+	# (<< redirect suffix for Solaris xpg4/bin/sh)
+	TMPDIR=$($pwd) $MAILX $ARGS > ./t4 2>$E0 << '__EOT'
 commandalias x ec '"$?/$^ERRNAME:$res:"'
 >f1 fop mktemp;x
 >f2 fop mktemp .xy;x
 \if $features =% ,regex,;\if "$f2" =~ '(\.xy)$';\ec "y=$^1";\en;\el;\ec y=.xy;\en
+>res fop mkdir;x
 >res fop mkdir .ttt;x
+>res fop mkdir .ttt/t1/t2 0700 true AU;x
+>res fop mkdir .ttt/t1/t2 0700 X;x
+>res fop mkdir .ttt/t1/t2 010000 false;x
+>res fop mkdir .ttt/t1/t2 0700 no;x
+>res fop mkdir .ttt/t1/t2 0700 yes;x
 >f3 fop mktemp .yz .ttt;x
 \if $features =% ,regex,;\if "$f3" =~ '(\.xy)$';\ec "y=$^1";\en;\el;\ec y=.xy;\en
 eval ! echo 1 > "$f1"\; echo 2 > "$f2"\; echo 3 > "$f3" # XXX w/out sh!
 >res fop rename ./t4.1 "$f1";x
 >res fop rename ./t4.2 "$f2";x
 >res fop rename ./t4.3 "$f3";x
+>res fop rmdir;x
+>res fop rmdir .ttt/t1/t2;x
+>res fop rmdir .ttt/t1;x
 >res fop rmdir .ttt;x
 __EOT
 	#}}}
-	cke0 4 0 ./t4 '2168300126 114'
+	cke0 4 0 ./t4 '21689569 234'
 	ck 4.1 - ./t4.1 '4219530715 2'
 	ck 4.2 - ./t4.2 '4192802898 2'
 	ck 4.3 - ./t4.3 '4164007125 2'
 
 	# ftruncate,rewind ## position write<-read+truncate {{{
 	printf 'ab\ncd\nef\n' > ./t5-in
-	<< '__EOT' ${MAILX} ${ARGS} > ./t5 2>${E0}
+	<< '__EOT' $MAILX $ARGS > ./t5 2>$E0
 commandalias x ec '"$?/$^ERRNAME:"'
 commandalias y \if '$res -eq $fd;\ec ok;\el;\ec err;\en'
 ec r,bad
@@ -7470,7 +7479,7 @@ __EOT
 
 	# glob {{{
 	touch .tz1 .tz2 .tz4 '.tx 3' .tx5
-	<< '__EOT' ${MAILX} ${ARGS} > ./tglob 2>${E0}
+	<< '__EOT' $MAILX $ARGS > ./tglob 2>$E0
 commandali x 'ec "?=$? !=$^ERRNAME ^?=$^? ^#=$^#/x=$x ^*<$^*> ^@<"$^@"> ^0<$^0> ^1=$^1 ^2=$^2 ^3=$^3"; ec -----;'
 >x fop glob .
 if $? -ne 0 && $^ERR -eq $^ERR-NOSYS
@@ -7498,7 +7507,7 @@ __EOT
 		cke0 glob - ./tglob '3802555029 695'
 	fi
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_msg_number_list() { #{{{
@@ -12603,7 +12612,8 @@ __EOT
 
 	# Modifiers and whitespace indulgence; first matches t_eval():1
 	#{{{
-	<< '__EOT' $MAILX $ARGS -Smta=test://t7 -Sescape=! -Spwd="$($pwd)" -s testsub one@to.invalid >./t6 2>$EX
+	# (<< redirect suffix for Solaris xpg4/bin/sh)
+	$MAILX $ARGS -Smta=test://t7 -Sescape=! -Spwd="$($pwd)" -s testsub one@to.invalid >./t6 2>$EX << '__EOT'
 
 body
 !:set i=du

@@ -3521,7 +3521,7 @@ Variables linked to the
 .Sx ENVIRONMENT
 may not use extensions.
 .Sx "INTERNAL VARIABLES"
-other than writable (non-boolean) value variables may not be used;
+other than writable (non-\*(BO) value variables may not be used;
 a failure may occur nonetheless for unsatisfied content constraints.
 Any test or storage error causes failure, with
 .Va \&!
@@ -6377,9 +6377,12 @@ support in the operating system environment the error is
 .Va ^ERR Ns -NOSYS .
 .
 .It Cm mkdir
-Create a new directory.
-The optional second argument is a boolean that denotes whether parent
-directories shall be created as necessary.
+Create the given directory.
+An optional second argument defines the mode (default 0777),
+an optional third is a
+.Mx -sx
+.Sx boolean
+that denotes whether parent directories shall be created as necessary.
 .
 .It Cm mktemp
 Create a temporary file and output its name.
@@ -6766,8 +6769,9 @@ command line options
 .Fl H
 and
 .Fl L
-were used), as well as any boolean (see
-.Sx "INTERNAL VARIABLES" ) .
+were used), as well as any
+.Mx -sx
+.Sx boolean .
 Non-argument operators are detected as a last ressort.
 .
 .Pp
@@ -9423,6 +9427,7 @@ Boolean variables have no value, they are either
 or
 .Dq unset ,
 but there exists a special
+.Mx -ix "boolean"
 .Dq boolean string :
 either a decimal integer (with
 .Ql 0
