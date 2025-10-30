@@ -797,7 +797,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, boole do_delay
 
 	rv = FAL0;
 
-	if((nf = mx_fs_tmp_open(NIL, "colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+	if((nf = mx_fs_tmp_open(NIL, "colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK | mx_FS_O_NOCLOFORK), NIL)) == NIL){
 		n_perr(_("mail draft"), 0);
 		goto jleave;
 	}
@@ -952,7 +952,7 @@ a_coll_pipe(char const *cmd){
 	rv = su_ERR_NONE;
 	sigint = safe_signal(SIGINT, SIG_IGN);
 
-	if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+	if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK | mx_FS_O_NOCLOFORK), NIL)) == NIL){
 		rv = su_err();
 jperr:
 		n_perr(_("pipe mail draft"), rv);
@@ -1199,7 +1199,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 	cc.cc_checkaddr_err = checkaddr_err;
 	mx_DIG_MSG_COMPOSE_CREATE(&cc.cc_dmc, hp);
 
-	if((cc.cc_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+	if((cc.cc_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR | mx_FS_O_UNLINK | mx_FS_O_NOCLOFORK), NIL)) == NIL){
 		n_perr(_("collect: temporary mail file"), 0);
 		goto j_leave;
 	}
@@ -1478,7 +1478,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 		coap->coa_oint = safe_signal(SIGINT, SIG_IGN);
 		mx_sigs_all_rele();
 
-		if(mx_fs_pipe_cloexec(coap->coa_pipe) &&
+		if(mx_fs_pipe_cloxy(coap->coa_pipe, mx_FS_CLOXY_EXEC) &&
 				(coap->coa_stdin = mx_fs_fd_open(coap->coa_pipe[0], mx_FS_O_RDONLY)) != NIL &&
 				(coap->coa_stdout = mx_fs_pipe_open(cmd, mx_FS_PIPE_WRITE, u.sh, NIL, coap->coa_pipe[1])
 					) != NIL){

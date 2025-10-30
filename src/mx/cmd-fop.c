@@ -351,7 +351,7 @@ jflesyn:
 			goto jflesyn;
 	}else
 #endif
-	if(fcp->fc_argv[2] != NIL)
+	      if(fcp->fc_argv[2] != NIL)
 		goto jflesyn;
 
 	fcp->fc_arg = fcp->fc_argv[0];
@@ -362,7 +362,7 @@ jflesyn:
 	}
 
 	mode = fcp->fc_arg = fcp->fc_argv[1];
-	oflags = mx_FS_O_NONE;
+	oflags = mx_FS_O_NOCLOFORK; /* Descriptor could be "pass"ed etc */
 	silence = FAL0;
 
 	for(; *mode != '\0'; ++mode){
@@ -396,11 +396,11 @@ jflesyn:
 		goto jflesyn;
 
 	if(mx_FILE_LOCK_MODE_IS_TSHARE(flm)){
-		if(oflags != mx_FS_O_NONE)
+		if(oflags != mx_FS_O_NOCLOFORK)
 			goto jflesyn;
-		oflags = mx_FS_O_RDONLY;
+		oflags = mx_FS_O_RDONLY | mx_FS_O_NOCLOFORK;
 	}else
-		oflags |= mx_FS_O_RDWR | mx_FS_O_CREATE;
+		oflags |= mx_FS_O_RDWR | mx_FS_O_CREATE | mx_FS_O_NOCLOFORK;
 
 #ifdef mx_HAVE_FLOCK
 	if(fcp->fc_argv[2] == NIL)
@@ -558,7 +558,7 @@ jesyn:
 	}
 
 	mode = fcp->fc_arg = fcp->fc_argv[1];
-	oflags = mx_FS_O_NOREGISTER | mx_FS_O_NOCLOEXEC;
+	oflags = mx_FS_O_NOREGISTER | mx_FS_O_NOCLOEXEC | mx_FS_O_NOCLOFORK;
 	silence = FAL0;
 
 	for(; *mode != '\0'; ++mode){

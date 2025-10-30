@@ -399,9 +399,27 @@ mx_child_fork(struct mx_child_ctx *ccp){
 			(ccp->cc_args[2] != NIL ? n_shexp_quote_cp(ccp->cc_args[2], FAL0)
 				: su_empty));
 
-	if((ccp->cc_flags & mx_CHILD_SPAWN_CONTROL) && !mx_fs_pipe_cloexec(&ccp->cc__cpipe[0])){
+	if((ccp->cc_flags & mx_CHILD_SPAWN_CONTROL) && !mx_fs_pipe_cloxy(&ccp->cc__cpipe[0], mx_FS_CLOXY_EXEC)){
 		ccp->cc_error = su_err();
 		goto jleave;
+	}
+
+	/* C99 */{
+		uz i;
+
+		for(i = 0; i < 2; ++i)
+			/* Ensure descriptors survive fork(2) but not execve(2); standard FDs must survive both */
+			if(ccp->cc_fds[i] >= 0){
+				BITENUM(u8,mx_fs_cloxy) add, rem;
+
+				add = mx_FS_CLOXY_EXEC;
+				rem = mx_FS_CLOXY_FORK;
+				if(ccp->cc_fds[i] < 2){
+					add ^= mx_FS_CLOXY_EXEC;
+					rem ^= mx_FS_CLOXY_EXEC;
+				}
+				mx_fs_cloxy_ensure(NIL, ccp->cc_fds[i], add, rem);
+			}
 	}
 
 	/* TODO It is actually very bad to block all the signals for such a long
@@ -528,25 +546,35 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
 
 	/* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
 	/* TODO WHAT IS WITH STDERR_FILENO DAMMIT? */
-	if((i = ((fd = S(s32,ccp->cc_fds[0])) == mx_CHILD_FD_NULL)))
-		ccp->cc_fds[0] = fd = open(su_path_null, O_RDONLY);
-	if(fd >= 0){
-		dup2(fd, STDIN_FILENO);
-		if(i)
-			close(fd);
+	fd = S(s32,ccp->cc_fds[0]);
+	i = (fd == mx_CHILD_FD_NULL);
+	if(i){
+		ccp->cc_fds[0] = fd = mx_fs_open_fd(su_path_null, mx_FS_O_RDONLY | mx_FS_O_NOCLOFORK, 0);
+		if(fd == -1)
+			goto jerr;
+	}
+	if(fd >= 0 && fd != STDIN_FILENO){ /* XXX what if fd==0/1?? */
+		if(dup2(fd, STDIN_FILENO) == -1)
+			goto jerr;
 	}
 
-	if((i = ((fd = S(s32,ccp->cc_fds[1])) == mx_CHILD_FD_NULL)))
-		ccp->cc_fds[1] = fd = open(su_path_null, O_WRONLY);
-	if(fd >= 0){
-		dup2(fd, STDOUT_FILENO);
-		if(i)
-			close(fd);
+	fd = S(s32,ccp->cc_fds[1]);
+	i = (fd == mx_CHILD_FD_NULL);
+	if(i){
+		ccp->cc_fds[1] = fd = mx_fs_open_fd(su_path_null, mx_FS_O_WRONLY | mx_FS_O_NOCLOFORK, 0);
+		if(fd == -1)
+			goto jerr;
+	}
+	if(fd >= 0 && fd != STDOUT_FILENO){ /* XXX what if fd==0/1? */
+		if(dup2(fd, STDOUT_FILENO) == -1)
+			goto jerr;
 	}
 
 	/* Close our side of the control pipe, unless we should wait for cloexec to do that for us */
 	if((ccp->cc_flags & (mx_CHILD_SPAWN_CONTROL | mx_CHILD_SPAWN_CONTROL_LINGER)) == mx_CHILD_SPAWN_CONTROL)
-		close(S(int,ccp->cc__cpipe[1]));
+		while(close(S(int,ccp->cc__cpipe[1])) == -1)
+			if(su_err_by_errno() != su_ERR_INTR)
+				goto jerr;
 
 	if(n_pstate & n_PS_SIGALARM)
 		alarm(0);
@@ -564,17 +592,26 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
 
 	sigemptyset(&fset);
 	sigprocmask(SIG_SETMASK, &fset, NIL);
+
+	return;
+jerr:
+	mx_child_in_child_notify_error(ccp, su_err_by_errno(), TRU1);
 }
 
 void
-mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err){
+mx_child_in_child_notify_error(struct mx_child_ctx *ccp, s32 err, boole doexit){
 	ASSERT(ccp);
 	ASSERT(ccp->cc_pid == 0);
-	ASSERT(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL_LINGER);
 
-	ccp->cc_error = err;
-	(void)write(S(int,ccp->cc__cpipe[1]), &ccp->cc_error, sizeof(ccp->cc_error));
-	close(S(int,ccp->cc__cpipe[1]));
+	if(LIKELY(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL_LINGER)){
+		ccp->cc_error = err;
+		(void)write(S(int,ccp->cc__cpipe[1]), &ccp->cc_error, sizeof(ccp->cc_error));
+		close(S(int,ccp->cc__cpipe[1]));
+	}
+
+	if(doexit)
+		for(;;)
+			_exit(su_EX_ERR);
 }
 
 s32

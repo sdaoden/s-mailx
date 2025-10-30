@@ -1053,7 +1053,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp, boole cnt_l
 
 	rv = TRU1;
 
-	if((fp = mx_fs_tmp_open(NIL, cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
+	if((fp = mx_fs_tmp_open(NIL, cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK | mx_FS_O_NOCLOFORK), NIL)) == NIL)
 		fp = n_stdout;
 
 	/* Create visual result */

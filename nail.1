@@ -6333,7 +6333,7 @@ descriptor can be suppressed by adding a circumflex
 .Ql fop lock ./a-file.txt A0^ ) .
 On success the descriptor number is printed, and must be
 .Cm close Ns
-d again explicitly.
+d again explicitly; the descriptor is not inherited by child processes.
 .Cm llock
 differs by not following symbolic links.
 .Pp
@@ -6403,7 +6403,7 @@ descriptor can be suppressed by adding a circumflex
 .Ql fop open ./a-file.txt A0^ ) .
 On success the descriptor number is printed, and must be
 .Cm close Ns
-d again explicitly.
+d again explicitly; the descriptor is inherited by child processes.
 .
 .It Cm pass
 Takes two file descriptor arguments to be passed as standard I/O to the

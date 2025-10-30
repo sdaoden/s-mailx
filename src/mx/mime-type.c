@@ -1472,7 +1472,8 @@ c_mimetype(void *vp){ /* {{{ */
 			goto jleave;
 		}
 
-		if((fp = mx_fs_tmp_open(NIL, "mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+		if((fp = mx_fs_tmp_open(NIL, "mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
+				) == NIL){
 			n_perr(_("tmpfile"), 0);
 			fp = n_stdout;
 		}

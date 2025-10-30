@@ -431,7 +431,8 @@ jedraft:
    }
 
    sic.sic_encfp_input = mx_fs_open(fstcp->fstc_filename,
-         n_real_good_or_bad(mx_FS_O_RDONLY, mx_FS_O_RDWR));
+         (n_real_good_or_bad(mx_FS_O_RDONLY, mx_FS_O_RDWR) |
+          mx_FS_O_NOCLOFORK));
    if(sic.sic_encfp_input == NIL)
       sic.sic_eno = su_err();
 
@@ -1311,8 +1312,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
          }
 
          for(i = 0; i < pipecnt; ++i)
-            if((fppa[i] = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)
-                  ) == NIL){
+            if((fppa[i] = mx_fs_open(fstcp->fstc_filename,
+                  mx_FS_O_RDONLY | mx_FS_O_NOCLOFORK)) == NIL){
                n_perr(_("Creation of pipe image descriptor"), 0);
                break;
             }
@@ -1925,14 +1926,14 @@ jkid:
       mx_dead_save(scp->sc_input, TRU1);
       if(!dowait)
          n_err(_("... message not sent\n"));
+      su_err_set(su_ERR_CANCELED);
    }else
 #endif
-        {
-      execv(mta, n_UNCONST(args));
-      mx_child_in_child_exec_failed(&cc, su_err());
-   }
-   for(;;)
-      _exit(su_EX_ERR);
+      execv(mta, UNCONST(char*const*,args));
+   mx_child_in_child_notify_error(&cc, su_err(), TRU1);
+   /* unreached */
+   rv = FAL0;
+   goto jleave;
 } /* }}} */
 
 /* a_sendout_mta_file* {{{ */
@@ -3327,7 +3328,8 @@ n_resend_msg(enum mx_scope scope, struct message *mp, struct mx_url *urlp,
       goto jleave;
    }
 
-   if((nfi = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL){
+   if((nfi = mx_fs_open(fstcp->fstc_filename,
+         mx_FS_O_RDONLY | mx_FS_O_NOCLOFORK)) == NIL){
       n_perr(fstcp->fstc_filename, 0);
       n_pstate_err_no = su_ERR_IO;
    }

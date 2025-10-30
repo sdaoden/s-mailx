@@ -304,8 +304,8 @@ jemailname:
 #else
       s32 fd;
 
-      if((fd = mx_fs_open_fd(mailname, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
-               mx_FS_O_TRUNC | mx_FS_O_NOCLOEXEC), 0600)) != -1)
+      if((fd = mx_fs_open_fd(mailname,
+            (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_TRUNC), 0600)) != -1)
          close(fd);
 #endif
 
@@ -507,8 +507,8 @@ jcream:
 #else
       s32 fd;
 
-      if((fd = mx_fs_open_fd(mailname, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
-               mx_FS_O_TRUNC | mx_FS_O_NOCLOEXEC), 0600)) != -1)
+      if((fd = mx_fs_open_fd(mailname,
+            (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_TRUNC), 0600)) != -1)
          close(fd);
 #endif
       if(!ok_blook(keep))
@@ -535,7 +535,7 @@ jleave:
 FL boole
 mx_quit_automove_mbox(boole need_stat_verify){
    FILE *obuf;
-   enum mx_fs_open_state fs;
+   BITENUM(u32,mx_fs_open_state) fs;
    uz mcount;
    char *mbox;
    struct message *mp;

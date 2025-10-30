@@ -197,14 +197,27 @@ main(int argc, char **argv){
 #ifdef SOCK_CLOEXEC
 			| SOCK_CLOEXEC
 #endif
+#ifdef SOCK_CLOFORK
+			| SOCK_CLOFORK
+#endif
+
 			, 0)) == -1){
 		if(errno == EINTR)
 			continue;
 		goto jex1;
 	}
-#ifndef SOCK_CLOEXEC
-	fcntl(sofd, F_SETFD, FD_CLOEXEC);
+
+#if !defined SOCK_CLOEXEC && defined FD_CLOEXEC
+	i = fcntl(sofd, F_GETFD);
+	if(i != -1){
+		i |= FD_CLOEXEC;
+# if !defined SOCK_CLOFORK && defined FD_CLOFORK
+		i |= FD_CLOFORK;
+# endif
+		fcntl(sofd, F_SETFD, i);
+	}
 #endif
+
 	i = 1;
 	while(setsockopt(sofd, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i)) == -1)
 		if(errno != EINTR)

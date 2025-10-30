@@ -96,19 +96,20 @@ EXPORT boole mx_child_run(struct mx_child_ctx *ccp);
 /* Fork a child process, "enable" the below functions upon success.
  * With SPAWN_CONTROL the parent will linger until the child has called in_child_setup() or even (with
  * SPAWN_CONTROL_LINGER) until it execve's.
- * If any of ::cc_fds[01] is _FD_PASS, and if n_psonce&n_PSO_INTERACTIVE, then we deal with sh(1)ell job control
+ * If any of .cc_fds[01] is _FD_PASS, and if n_psonce&n_PSO_INTERACTIVE, then we deal with sh(1)ell job control
  * and/aka create a mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_HANDS_OFF) environment for the child!
+ * "Real" .cc_fds[01] are FS_O_NOCLOFORK adjusted as necessary so that I/O creation in the child is possible.
  * Children can start children themselves, but we do not care about termios.
  * XXX or child handling no more in recursive levels */
 EXPORT boole mx_child_fork(struct mx_child_ctx *ccp);
 
-/* Setup an image in the child; signals are still blocked before that! */
+/* Setup an image in the child; signals are still blocked before that!
+ * Calls _notify_error() if I/O redirections fail (O_CLOFORK?) */
 EXPORT void mx_child_in_child_setup(struct mx_child_ctx *ccp);
 
-/* This can only be used if SPAWN_CONTROL_LINGER had been used.
- * It will pass err up to the parent, and close the control pipe.
- * It does not exit the forked process! */
-EXPORT void mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err);
+/* Pass err up to the parent, and close the control pipe, doexit forked process.
+ * This can only be used if SPAWN_CONTROL_LINGER had been used (otherwise only doexit is honoured) */
+EXPORT void mx_child_in_child_notify_error(struct mx_child_ctx *ccp, s32 err, boole doexit);
 
 /* Send a signal to a managed process.
  * Return 0 on success, a negative value if the process does no(t) (longer) exist, or an error constant */

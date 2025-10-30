@@ -2863,7 +2863,7 @@ jfound:
 			goto jeinval_quote;
 		}else{
 			/* xxx Avoid */
-			if(!mx_fs_fd_cloexec_set(fd)){
+			if(!mx_fs_fd_cloxy_ensure(fd, mx_FS_CLOXY_EXEC, mx_FS_CLOXY_NONE)){
 				emsg = N_("readctl: create: cannot set close-on-exec flag for: %s\n");
 				goto jeinval_quote;
 			}

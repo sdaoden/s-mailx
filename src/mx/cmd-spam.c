@@ -631,14 +631,14 @@ a_spam_cf_interact(struct a_spam_vc *vcp){
 	scfp->cf_oquit = safe_signal(SIGQUIT, &a_spam__cf_onsig);
 	/* Keep sigs blocked */
 
-	if(!mx_fs_pipe_cloexec(p2c)){
+	if(!mx_fs_pipe_cloxy(p2c, mx_FS_CLOXY_EXEC)){
 		n_err(_("%s`%s': cannot create parent communication pipe: %s\n"),
 			vcp->vc_esep, a_spam_cmds[vcp->vc_action], su_err_doc(-1));
 		goto jtail;
 	}
 	state |= a_P2C;
 
-	if(!mx_fs_pipe_cloexec(c2p)){
+	if(!mx_fs_pipe_cloxy(c2p, mx_FS_CLOXY_EXEC)){
 		n_err(_("%s`%s': cannot create child pipe: %s\n"),
 			vcp->vc_esep, a_spam_cmds[vcp->vc_action], su_err_doc(-1));
 		goto jtail;

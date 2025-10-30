@@ -213,7 +213,7 @@ jlogname:
 
    if(flags & a_STDIN){
       ibuf = mx_fs_fd_open(fileno(n_stdin), (mx_FS_O_RDONLY |
-            mx_FS_O_NOCLOEXEC | mx_FS_O_NOCLOSEFD));
+            mx_FS_O_NOCLOEXEC | mx_FS_O_NOCLOFORK | mx_FS_O_NOCLOSEFD));
       if(ibuf == NIL){
          err = su_err();
          n_perr(n_hy, err);

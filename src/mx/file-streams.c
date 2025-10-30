@@ -47,12 +47,6 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-#ifdef O_CLOEXEC
-# define a_FS_O_CLOEXEC O_CLOEXEC
-#else
-# define a_FS_O_CLOEXEC 0
-#endif
-
 #ifdef O_NOCTTY
 # define a_FS_O_NOCTTY O_NOCTTY
 #else
@@ -66,6 +60,32 @@
 #endif
 
 #define a_FS_O_NOXY_BITS (a_FS_O_NOCTTY | a_FS_O_NOFOLLOW)
+
+#ifdef O_CLOEXEC
+# if !defined FD_CLOEXEC
+#  error Operating system/library: O_CLOEXEC but no FD_CLOEXEC, this is not supported
+# endif
+# define a_FS_O_CLOEXEC O_CLOEXEC
+# define a_FS_CLOXY_EXEC mx_FS_CLOXY_EXEC
+# define a_FS_FD_CLOEXEC FD_CLOEXEC
+#else
+# define a_FS_O_CLOEXEC 0
+# define a_FS_CLOXY_EXEC mx_FS_CLOXY_NONE
+# define a_FS_FD_CLOEXEC 0
+#endif
+
+#ifdef O_CLOFORK
+# if !defined FD_CLOFORK
+#  error Operating system/library: O_CLOFORK but no FD_CLOFORK, this is not supported
+# endif
+# define a_FS_O_CLOFORK O_CLOFORK
+# define a_FS_CLOXY_FORK mx_FS_CLOXY_FORK
+# define a_FS_FD_CLOFORK FD_CLOFORK
+#else
+# define a_FS_O_CLOFORK 0
+# define a_FS_CLOXY_FORK mx_FS_CLOXY_NONE
+# define a_FS_FD_CLOFORK 0
+#endif
 
 enum{
 	a_FS_PIPE_READ,
@@ -114,7 +134,7 @@ struct a_fs_lpool_ent *a_fs_lpool_used;
  * r[,r+],w,w+,a,a+ for fdopen(3) */
 static int a_fs_mx_to_os(BITENUM(u32,mx_fs_oflags) oflags, char const **os_or_nil);
 
-/* Of oflags only mx__FS_O_RWMASK|mx_FS_O_APPEND is used */
+/**/
 static struct a_fs_ent *a_fs_register_file(FILE *fp, BITENUM(u32,mx_fs_oflags) oflags,
 		BITENUM(u32,a_fs_ent_flags) flags, struct mx_child_ctx *ccp, char const *realfile,
 		s64 offset, char const *save_cmd);
@@ -123,6 +143,9 @@ static s32 a_fs_unregister_file(FILE *fp);
 /* */
 static boole a_fs_file_load(uz flags, int infd, int outfd, char const *load_cmd);
 static boole a_fs_file_save(struct a_fs_ent *fpp);
+
+/* */
+static boole a_fs_fd_cloxy_ensure(s32 fd, s32 df, BITENUM(u8,mx_fs_cloxy) add, BITENUM(u8,mx_fs_cloxy) rem);
 
 static int
 a_fs_mx_to_os(BITENUM(u32,mx_fs_oflags) oflags, char const **os_or_nil){
@@ -157,15 +180,18 @@ a_fs_mx_to_os(BITENUM(u32,mx_fs_oflags) oflags, char const **os_or_nil){
 		rv |= O_TRUNC;
 	if(oflags & mx_FS_O_EXCL)
 		rv |= O_EXCL;
+#ifdef O_NOFOLLOW
+	if(oflags & mx_FS_O_NOFOLLOW)
+		rv |= O_NOFOLLOW;
+#endif
 
 #if a_FS_O_CLOEXEC != 0
 	if(!(oflags & mx_FS_O_NOCLOEXEC))
 		rv |= a_FS_O_CLOEXEC;
 #endif
-
-#ifdef O_NOFOLLOW
-	if(oflags & mx_FS_O_NOFOLLOW)
-		rv |= O_NOFOLLOW;
+#if a_FS_O_CLOFORK != 0
+	if(!(oflags & mx_FS_O_NOCLOFORK))
+		rv |= a_FS_O_CLOFORK;
 #endif
 
 	rv |= a_FS_O_NOXY_BITS;
@@ -182,7 +208,6 @@ a_fs_register_file(FILE *fp, BITENUM(u32,mx_fs_oflags) oflags, BITENUM(u32,a_fs_
 		struct mx_child_ctx *ccp, char const *realfile, s64 offset, char const *save_cmd){
 	struct a_fs_ent *fsep;
 	NYD2_IN;
-
 	ASSERT(!(flags & a_FS_EF_UNLINK) || realfile != NIL);
 
 	fsep = su_TCALLOC(struct a_fs_ent, 1);
@@ -190,7 +215,7 @@ a_fs_register_file(FILE *fp, BITENUM(u32,mx_fs_oflags) oflags, BITENUM(u32,a_fs_
 		fsep->fse_realfile = su_cs_dup(realfile, 0);
 	fsep->fse_link = a_fs_fp_head;
 	fsep->fse_flags = flags;
-	fsep->fse_oflags = oflags/* & (mx__FS_O_RWMASK | mx_FS_O_APPEND)*/;
+	fsep->fse_oflags = oflags;
 	fsep->fse_offset = offset;
 	fsep->fse_fp = fp;
 	if(save_cmd != NIL)
@@ -321,7 +346,8 @@ a_fs_file_save(struct a_fs_ent *fsep){
 	mx_child_ctx_setup(&cc);
 	cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
 	cc.cc_fds[mx_CHILD_FD_IN] = fileno(fsep->fse_fp);
-	osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | a_FS_O_NOXY_BITS;
+
+	osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | a_FS_O_CLOEXEC | a_FS_O_NOXY_BITS;
 	if(!(fsep->fse_oflags & mx_FS_O_APPEND))
 		osiflags |= O_TRUNC;
 	if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags,
@@ -353,6 +379,44 @@ jleave:
 	return rv;
 }
 
+static boole
+a_fs_fd_cloxy_ensure(s32 fd, s32 df, BITENUM(u8,mx_fs_cloxy) add, BITENUM(u8,mx_fs_cloxy) rem){
+#if !defined FD_CLOEXEC && !defined FD_CLOFORK
+	su_err_set(su_ERR_NOSYS);
+	return FAL0;
+#else
+	s32 odf;
+	NYD2_IN;
+
+	odf = df;
+
+# if a_FS_FD_CLOEXEC != 0
+	if(df & a_FS_FD_CLOEXEC){
+		if(rem & mx_FS_CLOXY_EXEC)
+			df ^= a_FS_FD_CLOEXEC;
+	}else if(add & mx_FS_CLOXY_EXEC)
+		df ^= a_FS_FD_CLOEXEC;
+# endif
+# if a_FS_FD_CLOFORK != 0
+	if(df & a_FS_FD_CLOFORK){
+		if(rem & mx_FS_CLOXY_FORK)
+			df ^= a_FS_FD_CLOFORK;
+	}else if(add & mx_FS_CLOXY_FORK)
+		df ^= a_FS_FD_CLOFORK;
+# endif
+
+	if(odf != df){
+		if(fcntl(fd, F_SETFD, df) != -1)
+			odf = df;
+		else
+			su_err_by_errno();
+	}
+
+	NYD2_OU;
+	return (odf == df);
+#endif /* !defined FD_CLOEXEC && !defined FD_CLOFORK */
+}
+
 s32
 mx_fs_open_fd(char const *file, BITENUM(u32,mx_fs_oflags) oflags, s32 mode){
 	s32 fd;
@@ -364,13 +428,6 @@ mx_fs_open_fd(char const *file, BITENUM(u32,mx_fs_oflags) oflags, s32 mode){
 
 	if((fd = open(file, osiflags, mode)) == -1)
 		su_err_by_errno();
-#if a_FS_O_CLOEXEC == 0
-	else if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
-		su_err_by_errno();
-		close(fd);
-		fd = -1;
-	}
-#endif
 
 	NYD_OU;
 	return fd;
@@ -393,13 +450,6 @@ mx_fs_open(char const *file, BITENUM(u32,mx_fs_oflags) oflags){
 		su_err_by_errno();
 		goto jleave;
 	}
-#if a_FS_O_CLOEXEC == 0
-	if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
-		su_err_by_errno();
-		close(fd);
-		goto jleave;
-	}
-#endif
 
 	if((fp = fdopen(fd, osflags)) != NIL){
 		if(!(oflags & mx_FS_O_NOREGISTER))
@@ -415,7 +465,7 @@ jleave:
 }
 
 FILE *
-mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_open_state *fs_or_nil){ /* TODO as bits, return state */
+mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, BITENUM(u32,mx_fs_open_state) *fs_or_nil){
 	/* TODO Support file locking upon open time */
 	s64 offset;
 	enum protocol p;
@@ -423,7 +473,7 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 	BITENUM(u32,mx_fs_oflags) tmpoflags;
 	int /*osiflags,*/ omode, infd;
 	char const *cload, *csave;
-	BITENUM(u32, mx_fs_open_state) fs;
+	BITENUM(u32,mx_fs_open_state) fs;
 	s32 err;
 	FILE *rv;
 	NYD_IN;
@@ -443,7 +493,7 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 
 	/*osiflags =*/ a_fs_mx_to_os(oflags, NIL);
 	omode = ((oflags & mx__FS_O_RWMASK) == mx_FS_O_RDONLY) ? R_OK : R_OK | W_OK;
-	tmpoflags = (mx_FS_O_RDWR | mx_FS_O_UNLINK | (oflags & mx_FS_O_APPEND) | mx_FS_O_NOREGISTER);
+	tmpoflags = mx_FS_O_RDWR | mx_FS_O_UNLINK | (oflags & mx_FS_O_APPEND) | mx_FS_O_NOREGISTER;
 	flags = 0;
 
 	/* v15-compat: NEVER!  We do not want to find mbox.bz2 when doing "copy
@@ -500,10 +550,12 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 			flags |= a_FS_EF_HOOK;
 			cload = ft.ft_load_dat;
 			csave = ft.ft_save_dat;
+			/*osiflags &= ~O_APPEND;*/
 			/* Cause truncation for compressor/hook output files */
 			oflags &= ~mx_FS_O_APPEND;
-			/*osiflags &= ~O_APPEND;*/
+			oflags |= mx_FS_O_NOCLOFORK;
 			tmpoflags &= ~mx_FS_O_APPEND;
+			tmpoflags |= mx_FS_O_NOCLOFORK;
 			if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) != -1){
 				fs |= mx_FS_OPEN_STATE_EXISTS;
 				if(n_poption & n_PO_D_V)
@@ -547,7 +599,10 @@ jerr:
 			goto jleave;
 		}
 	}else{
-		if((infd = creat(file, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
+		/* Only for creation, directly closed again */
+		infd = open(file, (O_WRONLY | O_CREAT | O_TRUNC /*| a_FS_O_CLOEXEC | a_FS_O_CLOFORK*/),
+				(oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666));
+		if(infd == -1){
 			err = su_err_by_errno();
 			fclose(rv);
 			rv = NIL;
@@ -597,7 +652,6 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM(u32
 	boole relesigs;
 	FILE *fp;
 	NYD_IN;
-
 	ASSERT((oflags & mx_FS_O_WRONLY) || (oflags & mx_FS_O_RDWR));
 	ASSERT(!(oflags & mx_FS_O_RDONLY));
 	ASSERT(!(oflags & mx_FS_O_REGISTER_UNLINK) || !(oflags & mx_FS_O_NOREGISTER));
@@ -679,6 +733,8 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM(u32
 	osiflags |= (oflags & mx_FS_O_WRONLY) ? O_WRONLY : O_RDWR;
 	if(oflags & mx_FS_O_APPEND)
 		osiflags |= O_APPEND;
+	if(!(oflags & mx_FS_O_NOCLOFORK))
+		osiflags |= a_FS_O_CLOFORK;
 
 	for(i = 0;; ++i){
 		su_mem_copy(cp, mx_random_create_cp(a_RANDCHARS, NIL), a_RANDCHARS);
@@ -686,14 +742,8 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM(u32
 		mx_sigs_all_holdx();
 		relesigs = TRU1;
 
-		if((fd = open(cp_base, osiflags, 0600)) != -1){
-#if a_FS_O_CLOEXEC == 0
-			if(!mx_fs_fd_cloexec_set(fd))
-				close(fd);
-			else
-#endif
-				break;
-		}
+		if((fd = open(cp_base, osiflags, 0600)) != -1)
+			break;
 		e = su_err_by_errno();
 
 		relesigs = FAL0;
@@ -767,7 +817,6 @@ void
 mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
 	union {void *vp; struct a_fs_ent *fsep;} u;
 	NYD_IN;
-
 	ASSERT(fstcp != NIL);
 
 	u.vp = fstcp;
@@ -792,26 +841,45 @@ mx_fs_fd_open(sz fd, BITENUM(u32,mx_fs_oflags) oflags){
 
 	(void)a_fs_mx_to_os(oflags, &osflags);
 
+	fp = NIL;
+
 	if(oflags & mx_FS_O_NOCLOSEFD){
+		BITENUM(u8,mx_fs_cloxy) a, r;
 		int m, nfd;
 
 		m = F_DUPFD;
+		r = a = mx_FS_CLOXY_NONE;
+
+		if(!(oflags & mx_FS_O_NOCLOEXEC)){
 #ifdef F_DUPFD_CLOEXEC
-		if(!(oflags & mx_FS_O_NOCLOEXEC))
 			m = F_DUPFD_CLOEXEC;
+#else
+			a |= a_FS_CLOXY_EXEC;
 #endif
+		}else
+			r |= a_FS_CLOXY_EXEC;
+
+		if(!(oflags & mx_FS_O_NOCLOFORK)){
+#ifdef F_DUPFD_CLOFORK
+			m = F_DUPFD_CLOFORK;
+#else
+			a |= a_FS_CLOXY_FORK;
+#endif
+		}else
+			r |= a_FS_CLOXY_FORK;
 
 		nfd = fcntl(fd, m, 0);
 		if(nfd == -1){
 			su_err_by_errno();
-			fp = NIL;
 			goto jleave;
 		}
 
-#ifndef F_DUPFD_CLOEXEC
-		if(!(oflags & mx_FS_O_NOCLOEXEC))
-			mx_fs_fd_cloexec_set(nfd);
-#endif
+		if(a != mx_FS_CLOXY_NONE || r != mx_FS_CLOXY_NONE){
+			if(!mx_fs_fd_cloxy_ensure(nfd, a, r)){
+				close(nfd);
+				goto jleave;
+			}
+		}
 
 		fd = nfd;
 	}
@@ -831,16 +899,56 @@ jleave:
 }
 
 boole
-mx_fs_fd_cloexec_set(sz fd){
-	s32 ifd, ifl;
+mx_fs_fd_cloxy_ensure(sz fd, BITENUM(u8,mx_fs_cloxy) add, BITENUM(u8,mx_fs_cloxy) rem){
 	boole rv;
+	s32 ifd, idf;
 	NYD2_IN;
 
 	ifd = S(s32,fd);
-	if((rv = ((ifl = fcntl(ifd, F_GETFD)) != -1)) && !(ifl & FD_CLOEXEC))
-		rv = (fcntl(ifd, F_SETFD, ifl | FD_CLOEXEC) != -1);
+	idf = fcntl(ifd, F_GETFD);
+	rv = (idf != -1);
+	if(rv)
+		rv = a_fs_fd_cloxy_ensure(ifd, idf, add, rem);
+	else
+		su_err_by_errno();
 
-	if(!rv)
+	NYD2_OU;
+	return rv;
+}
+
+boole
+mx_fs_cloxy_ensure(FILE *fp_or_nil, sz fd, BITENUM(u8,mx_fs_cloxy) add, BITENUM(u8,mx_fs_cloxy) rem){
+	boole rv;
+	struct a_fs_ent *fsep;
+	s32 idf, ifd;
+	NYD2_IN;
+
+	idf = -1;
+	ifd = (fp_or_nil != NIL) ? fileno(fp_or_nil) : S(s32,fd);
+
+	for(fsep = a_fs_fp_head; fsep != NIL; fsep = fsep->fse_link){
+		if(fp_or_nil != NIL){
+			if(fsep->fse_fp == fp_or_nil)
+				goto jfnd;
+		}else if(fileno(fsep->fse_fp) == ifd){
+jfnd:
+			idf = 0;
+			if(!(fsep->fse_oflags & mx_FS_O_NOCLOFORK))
+				idf |= a_FS_FD_CLOFORK;
+			if(!(fsep->fse_oflags & mx_FS_O_NOCLOEXEC))
+				idf |= a_FS_FD_CLOEXEC;
+			break;
+		}
+	}
+
+	if(idf == -1)
+		idf = fcntl(ifd, F_GETFD);
+	rv = (idf != -1);
+
+	if(LIKELY(rv)){
+		rv = a_fs_fd_cloxy_ensure(ifd, idf, add, rem);
+		/* XXX if that succeeds, should we adjust fsep->fse_oflags?? */
+	}else
 		su_err_by_errno();
 
 	NYD2_OU;
@@ -863,36 +971,69 @@ mx_fs_close(FILE *fp){
 }
 
 boole
-mx_fs_pipe_cloexec(sz fd[2]){
-	int xfd[2];
-	boole rv;
+mx_fs_pipe_cloxy(sz fd[2], BITENUM(u8,mx_fs_cloxy) what){
+	int m
+#undef a_X
+#undef a_Y
+#if SZ_MAX != S32_MAX
+		, xfd[2]
+# define a_X xfd
+# define a_Y
+#else
+# define a_X fd
+#endif
+		;
 	NYD_IN;
 
-	rv = FAL0;
-
-#if defined mx_HAVE_PIPE2 && a_FS_O_CLOEXEC != 0
-	if(pipe2(xfd, a_FS_O_CLOEXEC) != -1){
-		fd[0] = xfd[0];
-		fd[1] = xfd[1];
-		rv = TRU1;
-	}else
-		su_err_by_errno();
-
-#else
-	if(pipe(xfd) != -1){
-		fd[0] = xfd[0];
-		fd[1] = xfd[1];
-		if(!(rv = (mx_fs_fd_cloexec_set(fd[0]) && mx_fs_fd_cloexec_set(fd[1])))){
-			su_err_by_errno();
-			close(xfd[0]);
-			close(xfd[1]);
-		}
-	}else
-		su_err_by_errno();
+#if defined mx_HAVE_PIPE2
+	m = 0;
+# if a_FS_O_CLOEXEC != 0
+	if(what & mx_FS_CLOXY_EXEC)
+		m |= a_FS_O_CLOEXEC;
+# else
+#  error configuration failure
+# endif
+# if a_FS_O_CLOFORK != 0
+	if(what & mx_FS_CLOXY_FORK)
+		m |= a_FS_O_CLOFORK;
+# endif
 #endif
 
+	m =
+#if defined mx_HAVE_PIPE2
+		pipe2(a_X, m)
+#else
+		pipe(a_X)
+#endif
+		;
+	if(m == -1)
+		goto jerr;
+
+#ifdef a_Y
+	fd[0] = a_X[0];
+	fd[1] = a_X[1];
+#endif
+
+#if !defined mx_HAVE_PIPE2
+	if((what != mx_FS_CLOXY_NONE) && (!mx_fs_fd_cloxy_ensure(fd[0], what, mx_FS_CLOXY_NONE) ||
+			!mx_fs_cloxy_ensure(fd[1], what, mx_FS_CLOXY_NONE)))
+		goto jerr;
+#endif
+
+jleave:
 	NYD_OU;
-	return rv;
+	return (m == 0);
+jerr:
+	su_err_by_errno();
+	if(m != -1){
+		close(fd[0]);
+		close(fd[1]);
+	}
+	m = 1;
+	goto jleave;
+
+#undef a_Y
+#undef a_X
 }
 
 FILE *
@@ -907,7 +1048,7 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char
 	rv = NIL;
 	mod[0] = mod[1] = '\0';
 
-	if(!mx_fs_pipe_cloexec(p))
+	if(!mx_fs_pipe_cloxy(p, mx_FS_CLOXY_EXEC))
 		goto jleave;
 
 	switch(fspt){
@@ -987,7 +1128,9 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char
 	}
 
 	close(S(int,hisside));
-	if((rv = fdopen(myside, mod)) != NIL)
+
+	rv = fdopen(myside, mod);
+	if(rv != NIL)
 		a_fs_register_file(rv, 0, ((fd0 != mx_CHILD_FD_PASS && fd1 != mx_CHILD_FD_PASS)
 				? a_FS_EF_PIPE : a_FS_EF_PIPE | a_FS_EF_FD_PASS_NEEDS_WAIT), &cc, NIL, 0L, NIL);
 	else{

@@ -27,9 +27,9 @@
 struct mx_fs_tmp_ctx;
 
 /* MX open flags; always implied are some to avoid takeovers, like O_NOCTTY.
- * Normally implied (except stated otherwise) are O_CLOEXEC and "registration" for auto closing upon signal jump (sic)
+ * Normally implied (except stated otherwise) are O_CLO{EXEC,FORK} and "registration" for auto closing upon signal jump
  * or regular main loop tick (shall no regular close have been issued by then, of course), they have to be disabled
- * explicitly (via FS_O_NOCLOEXEC, FS_O_NOREGISTER) */
+ * explicitly (via FS_O_NOCLOEXEC, FS_O_NOCLOFORK, FS_O_NOREGISTER) */
 enum mx_fs_oflags{
 	mx_FS_O_NONE,
 	mx_FS_O_RDONLY = 1u<<0,
@@ -45,8 +45,10 @@ enum mx_fs_oflags{
 
 	/* Do NOT open O_CLOEXEC (that if supported, see below) */
 	mx_FS_O_NOCLOEXEC = 1u<<9,
+	/* Do NOT open O_CLOFORK (that if supported, see below) */
+	mx_FS_O_NOCLOFORK = 1u<<10,
 	/* Do NOT register file for auto close and -deletion */
-	mx_FS_O_NOREGISTER = 1u<<10,
+	mx_FS_O_NOREGISTER = 1u<<11,
 
 	/* fd_open() only: do not close the descriptor (dup() it first) */
 	mx_FS_O_NOCLOSEFD = 1u << 13,
@@ -68,6 +70,14 @@ enum mx_fs_oflags{
 	mx_FS_O_SUFFIX = 1u<<19
 };
 
+enum mx_fs_cloxy{
+	mx_FS_CLOXY_NONE = 0,
+	mx_FS_CLOXY_EXEC = 1u<<0,
+	mx_FS_CLOXY_FORK = 1u<<1, /* On "best effort" base (no error if ENOSYS) */
+	mx_FS_CLOXY_ALL = mx_FS_CLOXY_EXEC | mx_FS_CLOXY_FORK
+};
+
+/* ORd to enum protocol! */
 enum mx_fs_open_state{ /* TODO add mx_fs_open_mode, too */
 	/* NOTE: lower bits are in fact enum protocol! */
 	mx_FS_OPEN_STATE_NONE = 0,
@@ -90,7 +100,10 @@ struct mx_fs_tmp_ctx{
 	char const *fstc_filename;
 };
 
-/* Open according to oflags (see there); mx_FS_O_NOREGISTER is implied! */
+/* Open according to oflags (see there).
+ * Notes:
+ * - mx_FS_O_NOREGISTER is implied!
+ * - NOCLOEXEC and NOCLOFORK will be warped, but the FD is *NOT* adjusted shall the corresponding O_ flag not exist! */
 EXPORT s32 mx_fs_open_fd(char const *file, BITENUM(u32,mx_fs_oflags) oflags, s32 mode);
 
 /* Open according to oflags (see there) */
@@ -98,9 +111,9 @@ EXPORT FILE *mx_fs_open(char const *file, BITENUM(u32,mx_fs_oflags) oflags);
 
 /* TODO: Should be Mailbox::create_from_url(URL::from_string(DATA))!
  * Open file according to oflags and register it -- NOREGISTER is NOT allowed.
- * Handles compressed files, maildir etc.
- * If fs_or_nil is given it will be filled accordingly */
-EXPORT FILE *mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_open_state *fs_or_nil);
+ * Handles compressed files, maildir etc; If fs_or_nil is given it will be filled accordingly */
+EXPORT FILE *mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags,
+		BITENUM(u32,mx_fs_open_state) *fs_or_nil);
 
 /* Create a temporary file in tdir_or_nil, use namehint_or_nil for its name (prefix unless O_SUFFIX is set in the
  * fs_oflags oflags and *namehint_or_nil!=NUL), and return a stdio FILE pointer with access oflags.
@@ -125,13 +138,16 @@ EXPORT void mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp);
 EXPORT FILE *mx_fs_fd_open(sz fd, BITENUM(u32,mx_fs_oflags) oflags);
 
 /* */
-EXPORT boole mx_fs_fd_cloexec_set(sz fd);
+EXPORT boole mx_fs_fd_cloxy_ensure(sz fd, BITENUM(u8,mx_fs_cloxy) add, BITENUM(u8,mx_fs_cloxy) rem);
+
+/* Note: if fp_or_nil is registered (fd is fp_or_nil is NIL), and mode as cached fits, no adjustment is performed */
+EXPORT boole mx_fs_cloxy_ensure(FILE *fp_or_nil, sz fd, BITENUM(u8,mx_fs_cloxy) add, BITENUM(u8,mx_fs_cloxy) rem);
 
 /* Close a FILE* that was opened without O_NOREGISTER */
 EXPORT boole mx_fs_close(FILE *fp);
 
-/* Create a connected pipe descriptor pair, and ensure the CLOEXEC bit is set in both; no registration is performed */
-EXPORT boole mx_fs_pipe_cloexec(sz fd[2]);
+/* Create a connected no-inheritance pipe descriptor pair; no registration is performed */
+EXPORT boole mx_fs_pipe_cloxy(sz fd[2], BITENUM(u8,mx_fs_cloxy) what);
 
 /* Create a process to be communicated with via a pipe.
  * With PIPE_WRITE newfd1 must be set (maybe to CHILD_FD_PASS or CHILD_FD_NULL), with PIPE_WRITE_CHILD_PASS it is

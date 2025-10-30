@@ -397,7 +397,7 @@ jleave:
 
 	/* Create control-pipe for our dot file locker process, which will remove the lock and terminate once the pipe
 	 * is closed, for whatever reason */
-	if(!mx_fs_pipe_cloexec(cpipe)){
+	if(!mx_fs_pipe_cloxy(cpipe, mx_FS_CLOXY_EXEC)){
 		serr = su_err();
 		emsg = N_("  Cannot create dotlock file control pipe\n");
 		goto jemsg;
