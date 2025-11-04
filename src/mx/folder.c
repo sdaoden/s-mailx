@@ -58,6 +58,11 @@ a_folder_update_mailname(char const *name, boole rdonly){ /* TODO 2MUCH work */
 		char const *adjname;
 		enum protocol p;
 
+		/* Avoid calling realpath for /dev/null, OpenIndiana returns "[/devices/pseudo/]mm@0:null" */
+		if(su_cs_len(name) == sizeof(su_PATH_NULL) -1 &&
+				!su_mem_cmp(name, su_path_null, sizeof(su_PATH_NULL) -1))
+			goto jdocopy;
+
 		/* v15-compat: which_protocol(): no auto-completion */
 		p = which_protocol(name, TRU1, TRU1, &adjname);
 
