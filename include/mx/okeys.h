@@ -152,6 +152,7 @@ ok_v_encoding, /* {obsolete=1} */
 	ok_v_expandaddr,
 	ok_v_expandaddr_domaincheck, /* {notempty=1} */
 	ok_v_expandargv,
+	ok_b_expert,
 
 	ok_v_features, /* {virt=VAL_FEATURES} */
 	ok_b_flipr,

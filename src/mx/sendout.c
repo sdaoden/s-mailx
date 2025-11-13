@@ -155,9 +155,10 @@ static int a_sendout__infix_ct(FILE *ofp,
 static int a_sendout__infix_cte(FILE *ofp,
       struct mx_mime_type_classify_fp_ctx *mtcfcp);
 
-/* Check whether Disposition-Notification-To: is desired */
-static boole        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
-                        FILE *fo);
+/* Check whether Disposition-Notification-To: is desired.
+ * FAL0 on error, TRU1 if written, TRUM1 if not */
+static boole a_check_dispo_notif(struct mx_name *mdn, struct header *hp,
+      FILE *fo);
 
 /* Send mail to a bunch of user names.  The interface is through mail() */
 static int a_sendout_sendmail(void *vp, enum n_mailsend_flags msf);
@@ -1189,30 +1190,34 @@ jleave:
 } /* }}} */
 
 static boole
-_check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo)
-{
+a_check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo){
    char const *from;
-   boole rv = TRU1;
-   NYD_IN;
+   boole rv;
+   NYD2_IN;
+
+   rv = TRUM1;
 
    /* TODO smtp_disposition_notification (RFC 3798): relation to return-path
     * TODO not yet checked */
-   if (!ok_blook(disposition_notification_send))
+   if(!ok_blook(disposition_notification_send))
       goto jleave;
 
-   if (mdn != NULL && mdn != (struct mx_name*)0x1)
+   if(mdn != NIL && mdn != R(struct mx_name*,0x1))
       from = mdn->n_name;
-   else if ((from = myorigin(hp)) == NULL) {
-      if (n_poption & n_PO_D_V)
+   else if((from = myorigin(hp)) == NIL){
+      if(n_poption & n_PO_D_V)
          n_err(_("*disposition-notification-send*: *from* not set\n"));
       goto jleave;
    }
 
-   if (!a_sendout_put_addrline("Disposition-Notification-To:",
+   if(a_sendout_put_addrline("Disposition-Notification-To:",
          mx_name_parse(UNCONST(char*,from), GIDENT), fo, 0))
+      rv = TRU1;
+   else
       rv = FAL0;
+
 jleave:
-   NYD_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -2445,7 +2450,7 @@ a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
 
    if((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NIL)
       goto jleave;
-   if (!_check_dispo_notif(mdn, NULL, fo))
+   if(!a_check_dispo_notif(mdn, NIL, fo))
       goto jleave;
 
    /* Write the original headers */
@@ -2876,12 +2881,12 @@ n_puthead(enum sendaction action, boole nosend_msg, FILE *fo, /*{{{*/
       struct header *hp, enum gfield w){
 #define a_SENDOUT_PUT_CC_BCC_FCC() \
 do{\
-   if((w & GCC) && (hp->h_cc != NIL || nosend_msg == TRUM1)){\
+   if((w & GCC) && (hp->h_cc != NIL || nosend_msg > FAL0)){\
       if(!a_sendout_put_addrline("Cc:", hp->h_cc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
-   if((w & GBCC) && (hp->h_bcc != NIL || nosend_msg == TRUM1)){\
+   if((w & GBCC) && (hp->h_bcc != NIL || nosend_msg > FAL0)){\
       if(!a_sendout_put_addrline("Bcc:", hp->h_bcc, fo, saf))\
          goto jleave;\
       ++gotcha;\
@@ -2907,11 +2912,13 @@ do{\
    ASSERT(!nosend_msg || iconvd == R(iconv_t,-1));
 #endif
 
+   if(nosend_msg)
+      nosend_msg = (ok_blook(quiet) || ok_blook(expert)) ? TRUM1 : TRU1;
    mftp = NIL;
    fromasender = mft = NIL;
    rv = FAL0;
 
-   if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
+   if(nosend_msg > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
          !(hp->h_flags & HF_USER_EDITED)){
       if(fputs(_("# Message will be discarded unless file is saved\n"),
             fo) == EOF)
@@ -3094,7 +3101,7 @@ j_mft_add:
       }
    }
 
-   if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
+   if(nosend_msg > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
          !(hp->h_flags & HF_USER_EDITED)){
       if(fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
@@ -3139,7 +3146,7 @@ j_mft_add:
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL){
-         if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
+         if(nosend_msg > FAL0 && (hp->h_flags & HF_COMPOSE_MODE) &&
                !(hp->h_flags & HF_USER_EDITED)){
             if(fputs(_("# Removing or modifying In-Reply-To: "
                      "breaks the old, and starts a new thread.\n"
@@ -3187,8 +3194,11 @@ j_mft_add:
          ++gotcha;
       }
 
-      if(!_check_dispo_notif(fromasender, hp, fo))
-         goto jleave;
+      switch(a_check_dispo_notif(fromasender, hp, fo)){
+      case FAL0: goto jleave;
+      case TRU1: ++gotcha; break;
+      default: break;
+      }
    }
 
    if ((w & GUA) && stealthmua == 0) {

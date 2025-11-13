@@ -10277,7 +10277,7 @@ The latter is used only with the value
 .
 .Mx
 .It Va editheaders
-\*(BO Include message header fields when editing in
+\*(BO Include message header fields when editing message drafts in
 .Sx "Compose mode" .
 .
 .Mx
@@ -10436,6 +10436,14 @@ or
 (like
 .Va expandaddr ) .
 The empty value unconditionally allows MTA arguments.
+.
+.Mx
+.It Va expert
+\*(BO Towards a
+.Va quiet ,
+unchatty user interface:
+for power users and old hands.
+(To be extended on request.)
 .
 .Mx
 .It Va features
@@ -12387,12 +12395,27 @@ The default is
 .
 .Mx
 .It Va quiet
-\*(BO Suppresses the printing of
+\*(BO Reduce user interface chattiness (for
+.Va expert Ns
+s):
+.Bl -bullet -compact
+.It
+do not show
 .Ic version
-upon startup,
-and modifies the technical message part information display of
+upon startup.
+.It
+minimize / hide technical MIME information of
 .Ic type
 etc.
+.It
+do no include informational comments when editing the message draft
+.Pf ( Ic ~e , ~v , Ns \0etc )
+in
+.Sx "Compose mode"
+with
+.Va editheaders
+set.
+.El
 .
 .Mx
 .It Va quote
@@ -12822,8 +12845,8 @@ and
 .
 .Mx
 .It Va showname
-\*(BO Causes \*(Xx to use the sender's real name instead of the plain
-address in the header field summary and in message specifications.
+\*(BO Show the sender's real name instead of the email address
+in the header field summary and in message specifications.
 .
 .Mx
 .It Va showto
