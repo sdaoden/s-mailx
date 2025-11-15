@@ -111,13 +111,11 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip, char const *
 
 	/* We try to create the unique filename */
 	for(tries = 0;; ++tries){
-		fd = open(lname,
+		fd = open(lname, (O_WRONLY | O_CREAT | O_EXCL
 #ifdef O_SYNC
-					(O_WRONLY | O_CREAT | O_EXCL | O_SYNC),
-#else
-					(O_WRONLY | O_CREAT | O_EXCL),
+				| O_SYNC
 #endif
-				S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+				), S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
 		if(fd != -1){
 #ifdef mx_SOURCE_PS_DOTLOCK_MAIN
 			if(fchown(fd, fdip->fdi_uid, fdip->fdi_gid)){
@@ -145,8 +143,8 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip, char const *
 		goto jbados;
 	}
 
-	/* Note that we stat our own exclusively created name, not the
-	 * destination, since the destination can be affected by others */
+	/* Note that we stat our own exclusively created name, not the destination,
+	 * because the destination can be affected by others */
 	if(!su_pathinfo_stat(&pi, lname)){
 		e = su_err();
 		goto jbados;
