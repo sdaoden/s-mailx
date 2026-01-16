@@ -177,7 +177,8 @@ EXPORT_DATA char const su_path_root[sizeof su_PATH_ROOT];
 /*! Scan \a{path} to describe the last component of a pathname.
  * \pb{For pathnames containing at least one filename: the final, or only, filename in the pathname.
  * For pathnames consisting only of \r{su_PATH_SEP_C} characters: \r{su_PATH_ROOT}
- * (on \r{su_OS_POSIX}: or \c{//} if the pathname consists of exactly two \c{//} characters).}
+ * (on \r{su_OS_POSIX}: or \c{//} if the pathname consists of exactly two \c{//} characters).
+ * For empty strings \r{su_path_current}.}
  * \remarks{May modify \a{path}, or return a pointer to internal constant storage.} */
 EXPORT char const *su_path_basename(char *path);
 
