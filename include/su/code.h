@@ -1333,7 +1333,8 @@ enum su_state_err_flags{
 	 * set, an actual error causes a hard program abortion (via \r{su_LOG_EMERG}). */
 	su_STATE_ERR_NOPASS = 1u<<12,
 	/*! If this flag is set and no abortion is about to happen, a corresponding
-	 * \r{su_err_number} will not be assigned to \r{su_err()}. */
+	 * \r{su_err_number} will not be assigned to \r{su_err()}.
+	 * \remarks{Effectively results in an undefined error number state (changes are possible along code path).} */
 	su_STATE_ERR_NOERROR = 1u<<13,
 	/*! Special as it plays no role in the global state machine.
 	 * Yet many types or functions that use \a{estate} arguments and use (NOT) \r{su_STATE_ERR_MASK} to overload
@@ -1711,16 +1712,15 @@ INLINE boole su_log_would_write(enum su_log_level lvl){
 }
 
 /*! Log functions of various sort.
- * The global log "domain" protects itself with \r{su_log_lock()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
  * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}.
- * If \r{su_program} is set it will be included in the per-line prefix that prepended to messages, optionally
- * supplemented by \r{su_STATE_LOG_SHOW_PID}.
+ * If \r{su_program} is set it will be included in the per-line prefix that prepended to messages,
+ * optionally supplemented by \r{su_STATE_LOG_SHOW_PID}.
  * The log level will be part of the prefix with \r{su_STATE_LOG_SHOW_LEVEL}.
  *
- * Control characters within \a{fmt} (but horizontal tabulator HT) will be normalized to space (SPACE), and a line feed
- * (LF) will be appended automatically; if \a{fmt} consists of multiple lines, each line will be logged by itself
- * separately.
+ * Control characters within \a{fmt} (but horizontal tabulator HT) will be normalized to space (SPACE),
+ * and a line feed (LF) will be appended automatically;
+ * if \a{fmt} consists of multiple lines, each line will be logged by itself separately.
  *
  * Printing of the initial prefix (if any) can be cancelled by placing the ECMA-48 control character CAN(cel,
  * octal 030 aka hexadecimal 0x18) as the first byte in \a{fmt}.
@@ -1732,7 +1732,10 @@ INLINE boole su_log_would_write(enum su_log_level lvl){
  *	su_log_write(su_LOG_WARN, "\030No prefix.\nSecond line,\030");
  *	su_log_write(su_LOG_WARN, "\030 to be continued");
  *	su_log_unlock();
- * } */
+ * }
+ * \remarks{The \r{su_err_number} of the calling thread is saved.}
+ * \remarks{The global log "domain" protects itself with \r{su_log_lock()}.}
+ */
 EXPORT void su_log_write(u32 lvl_a_flags, char const *fmt, ...);
 
 /*! See \r{su_log_write()}.
