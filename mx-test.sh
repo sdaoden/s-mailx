@@ -9607,36 +9607,30 @@ t_mime_if_not_ascii() { #{{{
 } #}}}
 
 t_mime_encoding() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
-	# 8B
-	printf 'Hey, you.\nFrom me to you\nCiao\n' |
-		${MAILX} ${ARGS} -s Subject -Smime-encoding=8b ./t.mbox > ./t.mbox 2>${E0}
-	cke0 1 0 ./t.mbox '3835153597 136'
+	echo 'From ' | $MAILX $ARGS -s Subject -Smime-encoding=8b ./t.mbox > ./t.mbox 2>$E0
+	cke0 8b-1 0 ./t.mbox '1438667850 113'
+	echo ' From ' | $MAILX $ARGS -s Subject -Smime-encoding=8bit ./t.mbox >> ./t.mbox 2>$E0
+	cke0 8b-2 0 ./t.mbox '1362130606 226'
+	{ echo; echo 'From '; } | $MAILX $ARGS -s Subject -Smime-encoding=8b ./t.mbox >> ./t.mbox 2>$E0
+	cke0 8b-3 0 ./t.mbox '1005743668 340'
 
-	printf 'Hey, you.\n\nFrom me to you\nCiao.\n' |
-		${MAILX} ${ARGS} -s Subject -Smime-encoding=8b ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 2 0 ./t.mbox '63875210 275'
+	echo 'From ' | $MAILX $ARGS -s Subject -Smime-encoding=qp ./t.mbox > ./t.mbox 2>$E0
+	cke0 qp-1 0 ./t.mbox '375766945 223'
+	echo ' From ' | $MAILX $ARGS -s Subject -Smime-encoding=quoted-printable ./t.mbox >> ./t.mbox 2>$E0
+	cke0 qp-2 0 ./t.mbox '2990002415 336'
+	{ echo; echo 'From '; } | $MAILX $ARGS -s Subject -Smime-encoding=qp ./t.mbox >> ./t.mbox 2>$E0
+	cke0 qp-3 0 ./t.mbox '106324493 560'
 
-	# QP
-	printf 'Hey, you.\n From me to you\nCiao\n' |
-		${MAILX} ${ARGS} -s Subject -Smime-encoding=qp ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 3 0 ./t.mbox '465798521 412'
+	echo 'From ' | $MAILX $ARGS -s Subject -Smime-encoding=b64 ./t.mbox > ./t.mbox 2>$E0
+	cke0 b64-1 0 ./t.mbox '3415668873 212'
+	echo ' From ' | $MAILX $ARGS -s Subject -Smime-encoding=base64 ./t.mbox >> ./t.mbox 2>$E0
+	cke0 b64-2 0 ./t.mbox '3680643905 325'
+	{ echo; echo 'From '; } | $MAILX $ARGS -s Subject -Smime-encoding=b64 ./t.mbox >> ./t.mbox 2>$E0
+	cke0 b64-3 0 ./t.mbox '3097843053 541'
 
-	printf 'Hey, you.\nFrom me to you\nCiao\n' |
-		${MAILX} ${ARGS} -s Subject -Smime-encoding=qp ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 4 0 ./t.mbox '3094236996 657'
-
-	# B64
-	printf 'Hey, you.\n From me to you\nCiao\n' |
-		${MAILX} ${ARGS} -s Subject -Smime-encoding=b64 ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 5 0 ./t.mbox '2116656810 794'
-
-	printf 'Hey, you.\nFrom me to you\nCiao\n' |
-		${MAILX} ${ARGS} -s Subject -Smime-encoding=b64 ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 6 0 ./t.mbox '1859178313 1038'
-
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_xxxheads_rfc2047() { #{{{

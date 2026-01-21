@@ -1007,7 +1007,8 @@ a_sendout__infix_file(enum conversion conv, FILE *ofp, FILE *ifp){ /* {{{ */
    if(!easy)
       cnt = fsize(ifp);
 
-   seenempty = iseof = FAL0;
+   seenempty = TRU1; /* header/body separation */
+   iseof = FAL0;
    while(!iseof){
       if(!easy){
          if(fgetline(&buf, &bufsize, &cnt, &size, ifp, FAL0) == NIL)
@@ -1595,7 +1596,7 @@ jeappend:
    rv = TRU1;
 
    fflush_rewind(fp);
-   for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);
+   for(emptyline = TRU1, buflen = 0, cnt = fsize(fp);
          fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) != NIL;){
       /* Only if we are resending it can happen that we have to quote From_
        * lines here; we don't generate messages which are ambiguous ourselves.
