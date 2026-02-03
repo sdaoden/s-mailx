@@ -2141,6 +2141,111 @@ a_icodec(void){
 		a_ERR();
 	else if(ccp[0] != ' ' || ccp[1] != '\0')
 		a_ERR();
+
+	//// WSP_DISABLE
+
+	ccp = " 10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_wsp_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != (idec::state_einval | idec::state_remains))
+		a_ERR();
+	else if(s64 != max::s64)
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != '1')
+		a_ERR();
+	ccp = " 10 ";
+	if(((m = idec::convert(&u64, ccp, max::uz, 0, (idec::mode_wsp_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != (idec::state_einval | idec::state_remains))
+		a_ERR();
+	else if(u64 != max::u64)
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != '1')
+		a_ERR();
+
+	ccp = "10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_wsp_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != (idec::state_ebase | idec::state_remains))
+		a_ERR();
+	else if(s64 != 10)
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != '\0')
+		a_ERR();
+	ccp = "-10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_wsp_disable), &ccp)
+			) & (idec::state_emask | idec::state_seen_minus | idec::state_remains)
+				) != (idec::state_ebase | idec::state_seen_minus | idec::state_remains))
+		a_ERR();
+	else if(s64 != -10)
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != '\0')
+		a_ERR();
+	ccp = "10 ";
+	if(((m = idec::convert(&u64, ccp, max::uz, 0, (idec::mode_wsp_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != (idec::state_ebase | idec::state_remains))
+		a_ERR();
+	else if(u64 != 10)
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != '\0')
+		a_ERR();
+
+	//// SIGN_DISABLE (+WSP_DISABLE)
+
+	ccp = "-10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_sign_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != (idec::state_einval | idec::state_remains))
+		a_ERR();
+	else if(s64 != max::s64)
+		a_ERR();
+	else if(ccp[0] != '-' || ccp[1] != '1')
+		a_ERR();
+	ccp = "+10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_sign_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != (idec::state_einval | idec::state_remains))
+		a_ERR();
+	else if(s64 != max::s64)
+		a_ERR();
+	else if(ccp[0] != '+' || ccp[1] != '1')
+		a_ERR();
+
+	//
+
+	ccp = " -10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_wsp_disable |
+				idec::mode_sign_disable), &ccp)) & (idec::state_emask | idec::state_remains)
+			) != (idec::state_einval | idec::state_remains))
+		a_ERR();
+	else if(s64 != max::s64)
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != '-')
+		a_ERR();
+	ccp = "-10 ";
+	if(((m = idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_wsp_disable |
+				idec::mode_sign_disable), &ccp)) & (idec::state_emask | idec::state_remains)
+			) != (idec::state_einval | idec::state_remains))
+		a_ERR();
+	else if(s64 != max::s64)
+		a_ERR();
+	else if(ccp[0] != '-' || ccp[1] != '1')
+		a_ERR();
+
+
+	//
+	ccp = "199342";
+	if(((idec::convert(&s64, ccp, max::uz, 0, (idec::mode_signed_type | idec::mode_wsp_disable |
+				idec::mode_sign_disable), &ccp)) & (idec::state_emask | idec::state_remains)
+			) != 0)
+		a_ERR();
+	else if(s64 != 199342)
+		a_ERR();
+	else if(ccp[0] != '\0')
+		a_ERR();
+	ccp = "199342";
+	if(((idec::convert(&u64, ccp, max::uz, 0, (idec::mode_wsp_disable | idec::mode_sign_disable), &ccp)
+			) & (idec::state_emask | idec::state_remains)) != 0)
+		a_ERR();
+	else if(u64 != 199342)
+		a_ERR();
+	else if(ccp[0] != '\0')
+		a_ERR();
 }
 // }}}
 
