@@ -1,6 +1,6 @@
 /*@ Internal: opposite of code-in.h.
  *
- * Copyright (c) 2003 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2003 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

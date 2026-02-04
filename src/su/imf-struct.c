@@ -1,6 +1,6 @@
 /*@ Implementation of imf.h, parse_struct_header().
  *
- * Copyright (c) 2024 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2024 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

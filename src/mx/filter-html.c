@@ -16,7 +16,7 @@
  *@ . Does not care for charset=""; we have the content-transfer-encoding,
  *@   and otherwise assume HTML/XHTML/XML to be UTF-8.
  *
- * Copyright (c) 2015 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

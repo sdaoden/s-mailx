@@ -7,7 +7,7 @@
  *@ TODO Ideally it would take a protocol indicating argument and an I/O
  *@ TODO stream, and would be a generic implementation instead.
  *
- * Copyright (c) 2014 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -2,7 +2,7 @@
  *@ Implementation of cmd-ali-alt.h.
  *@ XXX Use a su_cs_set for alternates stuff?
  *
- * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

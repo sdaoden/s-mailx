@@ -5,7 +5,7 @@
  *@ TODO when arguments are parsed the a_main_ctx instance should be dropped
  */
 #define a_COPYRIGHT \
-	"Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.\n" \
+	"Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.\n" \
 	"\tSPDX-License-Identifier: ISC\n" \
 	"Copyright (c) 2000 Gunnar Ritter.\n" \
 	"\tSPDX-License-Identifier: BSD-4-Clause\n" \
@@ -14,7 +14,7 @@
 	"Copyright (c) 1980, 1993 The Regents of the University of California.\n" \
 	"\tSPDX-License-Identifier: BSD-3-Clause\n"
 /*
- * Copyright (c) 2012 - 2025 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
