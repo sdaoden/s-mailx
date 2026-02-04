@@ -1033,7 +1033,7 @@ jgetopt_done:
 	if((cp = argv[i = 0]) == NIL || avo.avo_current_opt == su_AVOPT_STATE_STOP){
 	}else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
 		++i;
-	/* n_PO_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
+	/* n_PO_BATCH_FLAG sets to su_path_null, but -f can still be used and sets & */
 	else if(n_poption & n_PO_f_FLAG){
 		mc.mc_folder = cp;
 		if((cp = argv[++i]) != NIL){
@@ -1067,7 +1067,7 @@ jgetopt_done:
 
 	/* Check for inconsistent arguments, fix some temporaries */
 	if(n_psonce & n_PSO_SENDMODE){
-		/* XXX This is only because BATCH_FLAG sets *folder*=/dev/null
+		/* XXX This is only because BATCH_FLAG sets *folder*=su_path_null
 		 * XXX in order to function.  Ideally that would not be needed */
 		if(mc.mc_folder != NIL && !(n_poption & n_PO_BATCH_FLAG)){
 			emsg = N_("Cannot give -f and people to send to.");

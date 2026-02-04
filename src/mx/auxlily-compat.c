@@ -1,36 +1,20 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Auxiliary functions that don't fit anywhere else.
+ *@ Auxiliary functions that do not fit anywhere else.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause
- */
-/*
- * Copyright (c) 1980, 1993 The Regents of the University of California.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #define su_FILE auxlily_compat
 #define mx_SOURCE
@@ -44,7 +28,7 @@
 
 #ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
-#	include <sys/socket.h>
+#  include <sys/socket.h>
 # endif
 #endif
 
@@ -62,7 +46,6 @@
 #include "mx/cmd-filetype.h"
 #include "mx/okeys.h"
 
-/* TODO fake */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
@@ -71,7 +54,7 @@
 FL enum protocol
 which_protocol(char const *name, boole check_stat, boole try_hooks, char const **adjusted_or_nil){
 	/* TODO This which_protocol() sickness should be URL::new()->protocol() */
-	char const *cp, *orig_name;
+	char const *cp, *orig_name, *real_name, *emsg;
 	enum protocol rv, fixrv;
 	NYD2_IN;
 
@@ -79,9 +62,9 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 
 	if(name[0] == '%' && name[1] == ':')
 		name += 2;
-	orig_name = name;
+	orig_name = real_name = name;
 
-	for(cp = name; *cp && *cp != ':'; cp++)
+	for(cp = name; *cp && *cp != ':'; ++cp)
 		if(!su_cs_is_alnum(*cp))
 			goto jfile;
 
@@ -113,16 +96,16 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 				rv = n_PROTO_FILE;
 				yeshooks = TRU1;
 			}else if(a_X("imap")){
-#ifdef mx_HAVE_IMAP
 				rv = n_PROTO_IMAP;
-#else
-				n_err(_("No IMAP support compiled in\n"));
+#ifndef mx_HAVE_IMAP
+				emsg = N_("No IMAP support compiled in");
+				goto jerr;
 #endif
 			}else if(a_X("pop3")){
-#ifdef mx_HAVE_POP3
 				rv = n_PROTO_POP3;
-#else
-				n_err(_("No POP3 support compiled in\n"));
+#ifndef mx_HAVE_POP3
+				emsg = N_("No POP3 support compiled in");
+				goto jerr;
 #endif
 			}
 			break;
@@ -137,25 +120,25 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 				rv = n_PROTO_XMBOX;
 				yeshooks = TRU1;
 			}else if(a_X("imaps")){
-#if defined mx_HAVE_IMAP && defined mx_HAVE_TLS
 				rv = n_PROTO_IMAP;
-#else
-				n_err(_("No IMAPS support compiled in\n"));
+#if !defined mx_HAVE_IMAP || !defined mx_HAVE_TLS
+				emsg = N_("No IMAPS support compiled in");
+				goto jerr;
 #endif
 			}else if(a_X("pop3s")){
-#if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
 				rv = n_PROTO_POP3;
-#else
-				n_err(_("No POP3S support compiled in\n"));
+#if !defined mx_HAVE_POP3 || !defined mx_HAVE_TLS
+				emsg = N_("No POP3S support compiled in");
+				goto jerr;
 #endif
 			}
 			break;
 		case a_Y("maildir"):
 			if(a_X("maildir")){
-#ifdef mx_HAVE_MAILDIR
 				rv = n_PROTO_MAILDIR;
-#else
-				n_err(_("No Maildir directory support compiled in\n"));
+#ifndef mx_HAVE_MAILDIR
+				emsg = N_("No Maildir support compiled in");
+				goto jerr;
 #endif
 			}
 			break;
@@ -163,7 +146,7 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 #undef a_X
 #undef a_Y
 
-		orig_name = name = &cp[3];
+		real_name = name = &cp[3];
 
 		if(yeshooks){
 			fixrv = rv;
@@ -176,61 +159,86 @@ jcheck:
 		if(check_stat || try_hooks){
 			struct su_pathinfo pi;
 			struct mx_filetype ft;
-			char *np;
-			uz i;
-
-			np = su_LOFI_ALLOC((i = su_cs_len(name)) + 4 +1);
-			su_mem_copy(np, name, i +1);
 
 			if(su_pathinfo_stat(&pi, name)){
-				if(su_pathinfo_is_dir(&pi)
-#ifdef mx_HAVE_MAILDIR
-						&& (su_mem_copy(&np[i], "/tmp", 5),
-							su_pathinfo_stat(&pi, np) && su_pathinfo_is_dir(&pi)) &&
-						(su_mem_copy(&np[i], "/new", 5),
-							su_pathinfo_stat(&pi, np) && su_pathinfo_is_dir(&pi)) &&
-						(su_mem_copy(&np[i], "/cur", 5),
-							su_pathinfo_stat(&pi, np) && su_pathinfo_is_dir(&pi))
+				ASSERT(rv == n_PROTO_FILE);
+
+				if(su_pathinfo_is_reg(&pi)){
+				}else{
+					static char const pp[3][3 +1] = {"cur", "new", "tmp"};
+					char const (*ccpp)[3 +1];
+					char *np;
+					uz i;
+
+					if(!su_pathinfo_is_dir(&pi)){
+						/* But treat su_path_null in a special way! <> n_PO_BATCH_FLAG */
+						if(!su_cs_cmp(name, su_path_null))
+							goto jleave;
+						emsg = N_("Unknown mailbox type");
+						goto jerr;
+					}
+					rv = n_PROTO_MAILDIR;
+
+					i = su_cs_len(name);
+					np = su_LOFI_ALLOC(i + 1 + 3 +1);
+					su_mem_copy(np, name, i);
+					np[i++] = '/';
+					np[i + 3] = '\0';
+
+					for(ccpp = &pp[0];; ++ccpp){
+						np[i + 0] = (*ccpp)[0];
+						np[i + 1] = (*ccpp)[1];
+						np[i + 2] = (*ccpp)[2];
+						if(!su_pathinfo_stat(&pi, np) || !su_pathinfo_is_dir(&pi)){
+							ccpp = NIL;
+							break;
+						}
+						if(ccpp == &pp[NELEM(pp) - 1])
+							break;
+					}
+
+					su_LOFI_FREE(np);
+
+					if(ccpp == NIL){
+						emsg = N_("Not a Maildir (needs cur/, new/ and tmp/ subdirectories)");
+						goto jerr;
+					}
+#ifndef mx_HAVE_MAILDIR
+					emsg = N_("No Maildir support compiled in");
+					goto jerr;
 #endif
-				){
-					rv =
-#ifdef mx_HAVE_MAILDIR
-							n_PROTO_MAILDIR
-#else
-							n_PROTO_UNKNOWN
-#endif
-					;
 				}
 			}else if(try_hooks && mx_filetype_trial(&ft, name)){
-				orig_name = savecatsep(name, '.', ft.ft_ext_dat);
+				real_name = savecatsep(name, '.', ft.ft_ext_dat);
 				if(fixrv != n_PROTO_UNKNOWN)
 					rv = fixrv;
 			}else if(fixrv == n_PROTO_UNKNOWN &&
 					(cp = ok_vlook(newfolders)) != NIL && !su_cs_cmp_case(cp, "maildir")){
-				rv =
-#ifdef mx_HAVE_MAILDIR
-						n_PROTO_MAILDIR
-#else
-						n_PROTO_UNKNOWN
-#endif
-				;
+				rv = n_PROTO_MAILDIR;
 #ifndef mx_HAVE_MAILDIR
-				n_err(_("*newfolders*: no Maildir support compiled in\n"));
+				emsg = N_("*newfolders*: no Maildir support compiled in");
+				goto jerr;
 #endif
 			}
 
-			su_LOFI_FREE(np);
-
-			if(fixrv != n_PROTO_UNKNOWN && fixrv != rv)
-				rv = n_PROTO_UNKNOWN;
+			if(fixrv != n_PROTO_UNKNOWN && fixrv != rv){
+				emsg = N_("Given protocol mismatches reality");
+				goto jerr;
+			}
 		}
 	}
 
+jleave:
 	if(adjusted_or_nil != NIL)
-		*adjusted_or_nil = orig_name;
+		*adjusted_or_nil = real_name;
 
 	NYD2_OU;
 	return rv;
+
+jerr:
+	n_err("%s: %s\n", V_(emsg), n_shexp_quote_cp(orig_name, FAL0));
+	rv = n_PROTO_UNKNOWN;
+	goto jleave;
 }
 
 FL char *
@@ -260,7 +268,7 @@ n_nodename(boole mayoverride){
 
 #ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
-		su_mem_set(&hints, 0, sizeof hints);
+		STRUCT_ZERO(struct addrinfo, &hints);
 		hints.ai_family = AF_UNSPEC;
 		hints.ai_flags = AI_CANONNAME;
 		if(getaddrinfo(hn, NIL, &hints, &res) == 0){
@@ -279,7 +287,7 @@ n_nodename(boole mayoverride){
 		if(hent != NIL)
 			hn = hent->h_name;
 # endif
-#endif /* mx_HAVE_NET */
+#endif
 
 		/* Ensure it is non-empty! */
 		if(hn[0] == '\0')

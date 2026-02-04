@@ -1443,7 +1443,7 @@ jmulti:
                      np->m_partstring[0] == '1' && np->m_partstring[1] == '\0')
                   break;
                stats = NULL;
-               /* TODO Always open multipart on /dev/null, it's a hack to be
+               /* TODO Always open multipart on su_path_null, it's a hack to be
                 * TODO able to dive into that structure, and still better
                 * TODO than asking the user for something stupid.
                 * TODO oh, wait, we did ask for a filename for this MIME mail,

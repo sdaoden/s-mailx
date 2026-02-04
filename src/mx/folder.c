@@ -58,7 +58,7 @@ a_folder_update_mailname(char const *name, boole rdonly){ /* TODO 2MUCH work */
 		char const *adjname;
 		enum protocol p;
 
-		/* Avoid calling realpath for /dev/null, OpenIndiana returns "[/devices/pseudo/]mm@0:null" */
+		/* Avoid calling realpath for su_path_null, OpenIndiana returns "[/devices/pseudo/]mm@0:null" */
 		if(su_cs_len(name) == sizeof(su_PATH_NULL) -1 &&
 				!su_mem_cmp(name, su_path_null, sizeof(su_PATH_NULL) -1))
 			goto jdocopy;

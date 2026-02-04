@@ -492,7 +492,7 @@ jangleme:
 					acp->ac_display_name[++acp->ac_.display_name] = '"';
 					++acp->ac_.display_name;
 				}
-				cp = acp->ac_domain; /* = /dev/null */
+				cp = acp->ac_domain; /* = su_path_null */
 				cpalter = acp->ac_locpar;
 				l = 0;
 				f &= ~(a_STAGE_MASK | a_MASK);
