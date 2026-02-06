@@ -183,7 +183,7 @@
 # define su_HAVE_STATE_GUT_FORK /*!< \r{su_STATE_GUT_ACT_FORK} code path. */
 
  /* Values */
-# define su_PAGE_SIZE /*!< \_ */
+# define su_PAGE_SIZE /*!< Compile-time detected fixed-size page size. */
 #endif
 
 /*! @} *//* CONFIG }}} */
