@@ -1529,13 +1529,13 @@ __EOT
 } #}}}
 
 t_more_source_go_stack() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	# (in-account, in-folder-hook impossible in past, but now!)
 	gm sub s1 to 1 from 1 body b1 > ./tx.mbox
 	gm sub s2 to 1 from 1 body b2 > ./ty.mbox
 
-	${cat} >> ./tx.rc <<'_EOT'; ${cat} >> ./ty.rc <<'_EOT'
+	$cat >> ./tx.rc <<'_EOT'; $cat >> ./ty.rc <<'_EOT'
 define ad {
 	ec ">ad $#: $*"
 	source 'echo ec ecsrc|'
@@ -1559,55 +1559,55 @@ _EOT
 ec ty.rc
 _EOT
 
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Yx > ./t1-1 2>${E0}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -A ad -Yx > ./t1-1 2>$E0
 	cke0 1-1 0 ./t1-1 '1161791901 211'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad > ./t1-2 2>${E0}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -A ad > ./t1-2 2>$E0
 	cke0 1-2 0 ./t1-2 '693531161 276'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Yx > ./t1-3 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -A ad -Yx > ./t1-3 2>$EX
 	cke0 1-3 0 ./t1-3 '1908918706 214'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad > ./t1-4 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -A ad > ./t1-4 2>$EX
 	cke0 1-4 0 ./t1-4 '422974811 279'
 
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx > ./t2-1 2>${E0}
-	cke0 2-1 0 ./t2-1 '1988817349 258'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'acc ad' > ./t2-2 2>${E0}
-	cke0 2-2 0 ./t2-2 '172969318 323'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'acc ad' -Yx -f ty.mbox > ./t2-3 2>${E0}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -Y 'account ad' -Yx > ./t2-1 2>$E0
+	cke0 2-1 0 ./t2-1 '1705617363 244'
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -Y 'acc ad' > ./t2-2 2>$E0
+	cke0 2-2 0 ./t2-2 '1264454551 309'
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -Y 'acc ad' -Yx -f ty.mbox > ./t2-3 2>$E0
 	cke0 2-3 0 ./t2-3 '1095948700 447'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'acc ad' -f ty.mbox > ./t2-4 2>${E0}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -Y 'acc ad' -f ty.mbox > ./t2-4 2>$E0
 	cke0 2-4 0 ./t2-4 '2435929601 498'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'acc ad' -Yx > ./t2-5 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -Y 'acc ad' -Yx > ./t2-5 2>$EX
 	ck 2-5 0 ./t2-5 '1908918706 214' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'acc ad' > ./t2-6 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -Y 'acc ad' > ./t2-6 2>$EX
 	ck 2-6 0 ./t2-6 '422974811 279' '849946118 56'
 
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'acc ad' -Yx > ./t3-1 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -A ad -Y 'acc ad' -Yx > ./t3-1 2>$EX
 	ck 3-1 0 ./t3-1 '1908918706 214' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'acc ad' > ./t3-2 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -A ad -Y 'acc ad' > ./t3-2 2>$EX
 	ck 3-2 0 ./t3-2 '422974811 279' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'acc ad' -Yx > ./t3-3 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -A ad -Y 'acc ad' -Yx > ./t3-3 2>$EX
 	ck 3-3 0 ./t3-3 '1908918706 214' '849946118 56'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'acc ad' > ./t3-4 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -A ad -Y 'acc ad' > ./t3-4 2>$EX
 	ck 3-4 0 ./t3-2 '422974811 279' '849946118 56'
 
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'acc ad' -Yx > ./t4-1 2>${E0}
-	cke0 4-1 0 ./t4-1 '1988817349 258'
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'acc ad' > ./t4-2 2>${E0}
-	cke0 4-2 0 ./t4-2 '172969318 323'
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'acc ad' -Yx > ./t4-3 2>${EX}
-	ck 4-3 0 ./t4-3 '1988817349 258' '849946118 56'
-	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'acc ad' > ./t4-4 2>${EX}
-	ck 4-4 0 ./t4-4 '172969318 323' '849946118 56'
+	</dev/null $MAILX $ARGS -:/ -Sheader -Y 'source ./tx.rc' -Y 'acc ad' -Yx > ./t4-1 2>$E0
+	cke0 4-1 0 ./t4-1 '1705617363 244'
+	</dev/null $MAILX $ARGS -:/ -Sheader -Y 'source ./tx.rc' -Y 'acc ad' > ./t4-2 2>$E0
+	cke0 4-2 0 ./t4-2 '1264454551 309'
+	</dev/null $MAILX $ARGS -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'acc ad' -Yx > ./t4-3 2>$EX
+	ck 4-3 0 ./t4-3 '1705617363 244' '849946118 56'
+	</dev/null $MAILX $ARGS -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'acc ad' > ./t4-4 2>$EX
+	ck 4-4 0 ./t4-4 '1264454551 309' '849946118 56'
 
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Xx > ./t5-1 2>${E0}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -A ad -Xx > ./t5-1 2>$E0
 	cke0 5-1 0 ./t5-1 '2921315483 34'
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Xx > ./t5-2 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -:u -Sheader -S x=ad -A ad -Xx > ./t5-2 2>$EX
 	cke0 5-2 0 ./t5-2 '2921315483 34'
 
-	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -R -:u -Sheader -S x=ad -A ad -f ty.mbox > ./t6-1 2>${EX}
+	</dev/null MAILRC=./tx.rc $MAILX $ARGS -R -:u -Sheader -S x=ad -A ad -f ty.mbox > ./t6-1 2>$EX
 	cke0 6-1 0 ./t6-1 '3771120403 267'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_X_errexit() { #{{{

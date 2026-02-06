@@ -47,6 +47,7 @@
 #include "mx/child.h"
 #include "mx/fexpand.h"
 #include "mx/net-pop3.h"
+#include "mx/maildir.h"
 #include "mx/okeys.h"
 #include "mx/tty.h"
 
@@ -135,8 +136,10 @@ c_newmail(void *vp){
 	}else
 #endif
 	if((val = setfile(mailname, FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))) == 0){
-		mdot = getmdot(1);
-		setdot(&message[mdot - 1], FAL0);
+		if((mdot = n_folder_getmdot(TRU1)) != 0)
+			setdot(&message[mdot - 1], FAL0);
+		else
+			val = su_EX_ERR;
 	}
 
 	NYD_OU;
@@ -232,7 +235,7 @@ c_remove(void *vp){
 		case n_PROTO_MAILDIR:
 			if(TRU1
 #ifdef mx_HAVE_MAILDIR
-					&& maildir_remove(name) != OKAY
+					&& !maildir_remove(name)
 #endif
 			){
 				emsg =

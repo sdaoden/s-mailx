@@ -47,6 +47,7 @@
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
+#include "mx/maildir.h"
 #include "mx/mime.h"
 #include "mx/names.h"
 #include "mx/net-pop3.h"
@@ -208,9 +209,13 @@ a_msg_get_header(struct message *mp){
 
    switch(mb.mb_type){
    case MB_FILE:
-   case MB_MAILDIR:
       rv = OKAY;
       break;
+#ifdef mx_HAVE_MAILDIR
+   case MB_MAILDIR:
+      rv = mx_maildir_msg_lazy_load(&mb, mp, NEED_HEADER) ? OKAY : STOP;
+      break;
+#endif
 #ifdef mx_HAVE_POP3
    case MB_POP3:
       rv = mx_pop3_header(mp);
@@ -227,6 +232,7 @@ a_msg_get_header(struct message *mp){
       rv = STOP;
       break;
    }
+
    NYD2_OU;
    return rv;
 }
@@ -274,9 +280,7 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
       a_ASTER = 1u<<8,
       a_TOPEN = 1u<<9,     /* ( used (and did not match) */
       a_TBACK = 1u<<10,    /* ` used (and did not match) */
-#ifdef mx_HAVE_IMAP
-      a_HAVE_IMAP_HEADERS = 1u<<14,
-#endif
+      a_HAVE_HEADERS = 1u<<14,
       a_LOG = 1u<<29,      /* Log errors */
       a_TMP = 1u<<30
    } flags;
@@ -544,12 +548,11 @@ jevalcol_err:
          if(flags & a_RANGE)
             goto jebadrange;
 
-#ifdef mx_HAVE_IMAP
-         if(!(flags & a_HAVE_IMAP_HEADERS) && mb.mb_type == MB_IMAP){
-            flags |= a_HAVE_IMAP_HEADERS;
-            imap_getheaders(1, msgCount);
+         if(!(flags & a_HAVE_HEADERS)){
+            flags |= a_HAVE_HEADERS;
+            if(!n_folder_lazy_load_header(1, n_msgno))
+               goto jeheadload;
          }
-#endif
 
          if(id == NIL){
             np_id = NIL;
@@ -721,12 +724,15 @@ jat_where_default:
       }
 
       /* Iterate the entire message array */
-#ifdef mx_HAVE_IMAP
-         if(!(flags & a_HAVE_IMAP_HEADERS) && mb.mb_type == MB_IMAP){
-            flags |= a_HAVE_IMAP_HEADERS;
-            imap_getheaders(1, msgCount);
+      if(!(flags & a_HAVE_HEADERS)){
+         flags |= a_HAVE_HEADERS;
+         if(!n_folder_lazy_load_header(1, n_msgno)){
+jeheadload:
+               id = N_("Loading of message header data failed\n");
+               i = su_ERR_CANCELED;
+               goto jerrmsg;
          }
-#endif
+      }
 
       if(ok_blook(allnet))
          flags |= a_ALLNET;
@@ -1345,9 +1351,13 @@ get_body(struct message *mp){
 
    switch(mb.mb_type){
    case MB_FILE:
-   case MB_MAILDIR:
       rv = OKAY;
       break;
+#ifdef mx_HAVE_MAILDIR
+   case MB_MAILDIR:
+      rv = mx_maildir_msg_lazy_load(&mb, mp, NEED_BODY) ? OKAY : STOP;
+      break;
+#endif
 #ifdef mx_HAVE_POP3
    case MB_POP3:
       rv = mx_pop3_body(mp);

@@ -494,27 +494,30 @@ _colpm(struct message *m, int cl, int *cc, int *uncc)
 }
 
 FL int
-c_thread(void *vp)
-{
+c_thread(void *vp){
    int rv;
    NYD_IN;
 
-   if (mb.mb_threaded != 1 || vp == NULL || vp == (void*)-1) {
-#ifdef mx_HAVE_IMAP
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(1, msgCount);
-#endif
-      _makethreads(message, msgCount, (vp == (void*)-1));
-      if (mb.mb_sorted != NULL)
-         n_free(mb.mb_sorted);
+   if(mb.mb_threaded != 1 || vp == NIL || vp == R(void*,-1)){
+      if(!n_folder_lazy_load_header(1, n_msgno)){
+         rv = su_EX_ERR;
+         goto jleave;
+      }
+
+      _makethreads(message, msgCount, (vp == R(void*,-1)));
+
+      if(mb.mb_sorted != NIL)
+         su_FREE(mb.mb_sorted);
       mb.mb_sorted = su_cs_dup("thread", 0);
    }
 
-   if (vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
+   if(vp != NIL && vp != R(void*,-1) && !(n_pstate & n_PS_HOOK_MASK) &&
          ok_blook(header))
       rv = print_header_group(vp);
    else
-      rv = 0;
+      rv = su_EX_OK;
+
+jleave:
    NYD_OU;
    return rv;
 }
@@ -671,19 +674,20 @@ c_sort(void *vp)
 
    showname = ok_blook(showname);
    ms = n_lofi_alloc(sizeof *ms * msgCount);
-#ifdef mx_HAVE_IMAP
-   switch (method) {
+
+   switch(method){
    case SORT_SUBJECT:
    case SORT_DATE:
    case SORT_FROM:
    case SORT_TO:
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(1, msgCount);
+      if(!n_folder_lazy_load_header(1, n_msgno)){
+         i = su_EX_ERR;
+         goto jleave;
+      }
       break;
    default:
       break;
    }
-#endif
 
    srelax_hold();
    for (n = 0, i = 0; i < msgCount; ++i) {

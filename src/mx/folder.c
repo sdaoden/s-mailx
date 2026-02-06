@@ -30,6 +30,7 @@
 
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
+#include "mx/maildir.h"
 #include "mx/okeys.h"
 #include "mx/ui-str.h"
 
@@ -104,7 +105,7 @@ jdocopy:
 	mailbp = &mailp[maillen];
 	/*if(maillen > 0)*/
 		while(--mailbp > mailp)
-			if(*mailbp == '/'){ /* DIRSEP */
+			if(*mailbp == su_PATH_SEP_C){
 				if(mailbp[1] != '\0')
 					++mailbp;
 				break;
@@ -126,7 +127,7 @@ jdocopy:
 		i = su_cs_len(mailbp);
 		j = mx_field_detect_clip(sizeof(displayname) - 3 - 2 - 1 - n_mb_cur_max -1, mailbp, i);
 		if(j == i){
-			*dispp++ = '/';
+			*dispp++ = su_PATH_SEP_C;
 			su_mem_copy(dispp, mailbp, i);
 			dispp += i;
 		}
@@ -157,11 +158,7 @@ a_folder_info(void){
 	struct message *mp;
 	int u, n, d, s, hidden, moved;
 	NYD2_IN;
-
-	if(mb.mb_type == MB_VOID){
-		fprintf(n_stdout, _("(Currently no active mailbox)"));
-		goto jleave;
-	}
+	ASSERT(mb.mb_type != MB_VOID);
 
 	s = d = hidden = moved = 0;
 	for(mp = message, n = 0, u = 0; PCMP(mp, <, &message[msgCount]); ++mp){
@@ -195,7 +192,7 @@ a_folder_info(void){
 		fprintf(n_stdout, _("%d messages"), msgCount);
 	if(n > 0)
 		fprintf(n_stdout, _(" %d new"), n);
-	if(u-n > 0)
+	if(UCMP(32,u - n, >, 0))
 		fprintf(n_stdout, _(" %d unread"), u);
 	if(d > 0)
 		fprintf(n_stdout, _(" %d deleted"), d);
@@ -212,41 +209,51 @@ a_folder_info(void){
 		fprintf(n_stdout, _(" [Disconnected]"));
 #endif
 
-jleave:
 	putc('\n', n_stdout);
 	NYD2_OU;
 }
 
 FL int
-newmailinfo(int omsgCount){
+n_folder_newmailinfo(int omsgno){
 	int mdot, i;
 	NYD_IN;
 
-	for(i = 0; i < omsgCount; ++i)
+	for(i = 0; i < omsgno; ++i)
 		message[i].m_flag &= ~MNEWEST;
 
-	if(msgCount > omsgCount){
-		for(i = omsgCount; i < msgCount; ++i)
+	if(n_msgno > omsgno){
+		for(i = omsgno; i < n_msgno; ++i)
 			message[i].m_flag |= MNEWEST;
+		i = n_msgno - omsgno;
 		fprintf(n_stdout, _("New mail has arrived.\n"));
-		if((i = msgCount - omsgCount) == 1)
+#if 1
+		if(i == 1)
 			fprintf(n_stdout, _("Loaded 1 new message.\n"));
 		else
-			fprintf(n_stdout, _("Loaded %d new messages.\n"), i);
-	}else
-		fprintf(n_stdout, _("Loaded %d messages.\n"), msgCount);
-
-	mdot = getmdot(1);
-
-	if(ok_blook(header) && (i = omsgCount + 1) <= msgCount){
-#ifdef mx_HAVE_IMAP
-		if(mb.mb_type == MB_IMAP)
-			imap_getheaders(i, msgCount); /* TODO not here */
+			fprintf(n_stdout, _("Loaded %d messages.\n"), i);
 #endif
-		for(omsgCount = 0; i <= msgCount; ++omsgCount, ++i)
-			n_msgvec[omsgCount] = i;
-		n_msgvec[omsgCount] = 0;
-		print_headers(n_msgvec, FAL0, FAL0);
+	}else{
+		i = n_msgno;
+#if 1
+		fprintf(n_stdout, _("Loaded %d messages.\n"), i);
+#endif
+	}
+#if 0
+	fprintf(n_stdout, _("Loaded %d (new) message(s).\n"), i);
+#endif
+
+	mdot = n_folder_getmdot(TRU1);
+
+	if(ok_blook(header) && ++omsgno <= n_msgno){
+		int j;
+
+		for(j = 0, i = omsgno; i <= n_msgno; ++j, ++i)
+			n_msgvec[j] = i;
+		n_msgvec[j] = 0;
+		if(n_folder_lazy_load_header(omsgno, n_msgno))
+			print_headers(n_msgvec, FAL0, FAL0);
+		else
+			mdot = 0;
 	}
 
 	mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_NEWMAIL);
@@ -256,14 +263,48 @@ newmailinfo(int omsgCount){
 }
 
 FL void
-setmsize(int size){
+n_folder_setmsize(u32 size){
 	NYD_IN;
 
 	if(n_msgvec != NIL)
 		su_FREE(n_msgvec);
+
 	n_msgvec = su_TCALLOC(int, S(uz,size) + 1);
 
 	NYD_OU;
+}
+
+FL boole
+n_folder_lazy_load_header(u32 lo, u32 hi){
+	boole rv;
+	NYD_IN;
+
+	if(lo < 1)
+		lo = 1;
+	if(UCMP(32,hi, >, n_msgno))
+		hi = n_msgno;
+
+	if(n_msgno == 0 || lo > hi)
+		rv = TRU1;
+	else switch(mb.mb_type){
+#ifdef mx_HAVE_IMAP
+	case MB_IMAP:
+		imap_getheaders(lo, hi);
+		rv = TRU1;
+		break;
+#endif
+#ifdef mx_HAVE_MAILDIR
+	case MB_MAILDIR:
+		rv = mx_maildir_lazy_load_header(&mb, lo, hi);
+		break;
+#endif
+	default:
+		rv = TRU1;
+		break;
+	}
+
+	NYD_OU;
+	return rv;
 }
 
 FL void
@@ -271,11 +312,12 @@ print_header_summary(char const *Larg){
 	uz i;
 	NYD_IN;
 
-	getmdot(0);
-#ifdef mx_HAVE_IMAP
-	if(mb.mb_type == MB_IMAP)
-		imap_getheaders(0, msgCount); /* TODO not here */
-#endif
+	n_folder_getmdot(FAL0);
+	if(!n_folder_lazy_load_header(1, n_msgno)){
+		n_err(_("Message data cannot be loaded\n"));
+		n_exit_status = su_EX_IOERR;
+		goto jleave;
+	}
 	ASSERT(n_msgvec != NIL);
 
 	if(Larg != NIL){
@@ -292,7 +334,7 @@ print_header_summary(char const *Larg){
 	}else{
 		i = 0;
 		if(!mb.mb_threaded){
-			for(; UCMP(z, i, <, msgCount); ++i)
+			for(; UCMP(z, i, <, n_msgno); ++i)
 				n_msgvec[i] = i + 1;
 		}else{
 			struct message *mp;
@@ -303,6 +345,7 @@ print_header_summary(char const *Larg){
 		print_headers(n_msgvec, FAL0, TRU1); /* TODO should be iterator! */
 	}
 
+jleave:
 	NYD_OU;
 }
 
@@ -311,12 +354,20 @@ n_folder_announce(enum n_announce_flags af){
 	int vec[2], mdot;
 	NYD_IN;
 
-	mdot = (mb.mb_type == MB_VOID) ? 1 : getmdot(0);
-	dot = &message[mdot - 1];
-
 	if(af != n_ANNOUNCE_NONE && ok_blook(header) &&
 			((af & n_ANNOUNCE_MAIN_CALL) || ((af & n_ANNOUNCE_CHANGE) && !ok_blook(posix))))
 		af |= n_ANNOUNCE_STATUS | n__ANNOUNCE_HEADER;
+
+	if(mb.mb_type == MB_VOID){
+		if(af & n_ANNOUNCE_STATUS)
+			fprintf(n_stdout, _("(Currently no active mailbox)\n"));
+		goto jleave;
+	}
+
+	if((mdot = n_folder_getmdot(FAL0)) == 0)
+		goto jleave;
+
+	dot = &message[mdot - 1];
 
 	if(af & n_ANNOUNCE_STATUS){
 		a_folder_info();
@@ -335,11 +386,12 @@ n_folder_announce(enum n_announce_flags af){
 	if(af & n__ANNOUNCE_ANY)
 		fflush(n_stdout);
 
+jleave:
 	NYD_OU;
 }
 
 FL int
-getmdot(int nmail){
+n_folder_getmdot(boole newmail){ /* TODO */
 	struct message *mp;
 	char *cp;
 	int mdot;
@@ -348,7 +400,7 @@ getmdot(int nmail){
 
 	avoid = MHIDDEN | MDELETED;
 
-	if(!nmail){
+	if(!newmail){
 		if(ok_blook(autothread)){
 			n_OBSOLETE(_("please use *autosort=thread* instead of *autothread*"));
 			c_thread(NIL);
@@ -365,12 +417,12 @@ getmdot(int nmail){
 		goto jleave;
 	}
 
-	if(nmail)
+	if(newmail)
 		for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp)
 			if((mp->m_flag & (MNEWEST | avoid)) == MNEWEST)
 				break;
 
-	if(!nmail || PCMP(mp, >=, &message[msgCount])){
+	if(!newmail || PCMP(mp, >=, &message[msgCount])){
 		if(mb.mb_threaded){
 			for(mp = threadroot; mp != NIL; mp = next_in_thread(mp))
 				if((mp->m_flag & (MNEW | avoid)) == MNEW)
@@ -404,7 +456,7 @@ getmdot(int nmail){
 		}
 	}
 
-	if(nmail && (mb.mb_threaded ? (mp != NIL) : PCMP(mp, <, &message[msgCount])))
+	if(newmail && (mb.mb_threaded ? (mp != NIL) : PCMP(mp, <, &message[msgCount])))
 		mdot = S(int,P2UZ(mp - message + 1));
 	else if(ok_blook(showlast)){
 		if(mb.mb_threaded){
@@ -418,7 +470,7 @@ getmdot(int nmail){
 					break;
 			mdot = (mp >= message) ? S(int,P2UZ(mp - message + 1)) : msgCount;
 		}
-	}else if(!nmail && (mb.mb_threaded ? (mp != NIL) : PCMP(mp, <, &message[msgCount])))
+	}else if(!newmail && (mb.mb_threaded ? (mp != NIL) : PCMP(mp, <, &message[msgCount])))
 		mdot = S(int,P2UZ(mp - message + 1));
 	else if(mb.mb_threaded){
 		for(mp = threadroot; mp; mp = next_in_thread(mp))
@@ -522,7 +574,7 @@ n_folder_query(void){
 			for(i = su_cs_len(cp);;){
 				if(--i == 0)
 					goto jset;
-				if(cp[i] != '/'){
+				if(cp[i] != su_PATH_SEP_C){
 					cp[++i] = '\0';
 					break;
 				}
@@ -550,7 +602,7 @@ n_folder_query(void){
 		}
 
 		/* Prefix HOME as necessary */
-		if(*adjcp != '/'){ /* XXX path_is_absolute() */
+		if(!su_path_is_absolute(adjcp)){
 			uz l1, l2;
 			char const *home;
 
@@ -571,7 +623,7 @@ n_folder_query(void){
 
 			s = n_string_push_buf(s, home, l1);
 			if(l2 > 0){
-				s = n_string_push_c(s, '/');
+				s = n_string_push_c(s, su_PATH_SEP_C);
 				s = n_string_push_buf(s, cp, l2);
 			}
 			cp = n_string_cp(s);
@@ -604,10 +656,10 @@ n_folder_query(void){
 			uz i;
 
 			i = su_cs_len(rv);
-			if(rv[i - 1] != '/'){
+			if(rv[i - 1] != su_PATH_SEP_C){
 				s = n_string_reserve(s, i + 1 +1);
 				s = n_string_push_buf(s, rv, i);
-				s = n_string_push_c(s, '/');
+				s = n_string_push_c(s, su_PATH_SEP_C);
 				rv = n_string_cp(s);
 				s = n_string_drop_ownership(s);
 			}

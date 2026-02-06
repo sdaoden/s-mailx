@@ -2268,7 +2268,7 @@ jnmail:
    imap_setptr(&mb, ((fm & FEDIT_NEWMAIL) != 0), transparent,
       UNVOLATILE(int*,&prevcount));
 jdone:
-   setmsize(msgCount);
+   n_folder_setmsize(n_msgno);
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
@@ -2306,9 +2306,11 @@ jdone:
       goto jleave;
    }
 
-   if (fm & FEDIT_NEWMAIL)
-      newmailinfo(prevcount);
    rv = 0;
+
+   if((fm & FEDIT_NEWMAIL) && n_folder_newmailinfo(prevcount) == 0)
+      rv = -1;
+
 jleave:
    NYD_OU;
    return rv;
@@ -4166,9 +4168,7 @@ imap_search1(const char * volatile spec, int f)
    n_sighdl_t saveint, savepipe;
    sz volatile rv = -1;
    NYD_IN;
-
-   if (mb.mb_type != MB_IMAP)
-      goto jleave;
+   ASSERT(mb.mb_type == MB_IMAP);
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -4183,10 +4183,11 @@ imap_search1(const char * volatile spec, int f)
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    imaplock = 0;
-jleave:
+
    NYD_OU;
-   if (interrupts)
+   if(interrupts)
       mx_go_onintr_for_imap();
+
    return rv;
 }
 #endif /* mx_HAVE_IMAP_SEARCH */
@@ -4512,17 +4513,19 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 
    if(mb.mb_type == MB_IMAP && mb.mb_sock != NIL && mb.mb_sock->s_fd > 0){
       n_err(_("Already connected\n"));
-      rv = 1;
+      rv = su_EX_ERR;
       goto jleave;
    }
 
    if(!mx_url_parse(&url, CPROTO_IMAP, mailname)){
-      rv = 1;
+      rv = su_EX_ERR;
       goto jleave;
    }
    ok_bclear(disconnected);
    mx_var_vset(savecat("disconnected-", url.url_u_h_p.s), R(up,NIL),
       mx_SCOPE_NONE);
+
+   rv = su_EX_OK;
 
    if (mb.mb_type == MB_CACHE) {
       enum fedit_mode fm = FEDIT_NONE;
@@ -4531,10 +4534,11 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       if (!(n_pstate & n_PS_EDIT))
          fm |= FEDIT_SYSBOX;
       _imap_setfile1(NULL, &url, fm, 1);
-      if (msgCount > omsgCount)
-         newmailinfo(omsgCount);
+
+      if(n_msgno > omsgCount && n_folder_newmailinfo(omsgCount) == 0)
+         rv = su_EX_ERR;
    }
-   rv = 0;
+
 jleave:
    NYD_OU;
    return rv;

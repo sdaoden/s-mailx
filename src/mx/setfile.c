@@ -51,6 +51,7 @@
 #include "mx/fexpand.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/maildir.h"
 #include "mx/net-pop3.h"
 #include "mx/net-socket.h"
 #include "mx/okeys.h"
@@ -385,7 +386,7 @@ jlogname:
    }
    n_folder_mbox_setptr(ibuf, offset, proto,
       ((flags & a_SPECIALS_MASK/* xxx pipe thing only though */) != 0));
-   setmsize(msgCount);
+   n_folder_setmsize(n_msgno);
    if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted) {
       mb.mb_threaded = 0;
       c_sort((void*)-1);
@@ -418,8 +419,10 @@ jlogname:
       goto jxleave;
    }
 
-   if(fm & FEDIT_NEWMAIL)
-      newmailinfo(omsgCount);
+   if((fm & FEDIT_NEWMAIL) && n_folder_newmailinfo(omsgCount) == 0){
+      err = su_ERR_CANCELED;
+      goto jeno;
+   }
 
 jxleave:
    if(rv)

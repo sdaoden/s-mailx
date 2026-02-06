@@ -820,12 +820,13 @@ a_chead_headers(int msgspec) /* TODO rework v15 */
    enum mflag fl;
    NYD_IN;
 
-   mx_time_current_update(NIL, FAL0);
-
    fl = MNEW | MFLAGGED;
    flag = 0;
    lastg = 1;
    lastmq = NULL;
+
+   if(msgCount == 0)
+      goto jleave;
 
    size = (int)/*TODO*/n_screensize();
    if(a_chead_screen < 0)
@@ -843,6 +844,7 @@ a_chead_headers(int msgspec) /* TODO rework v15 */
    if (k < 0)
       k = 0;
 
+   mx_time_current_update(NIL, FAL0);
    needdot = (msgspec <= 0) ? TRU1 : (dot != &message[msgspec - 1]);
    showlast = ok_blook(showlast);
 
@@ -872,11 +874,13 @@ a_chead_headers(int msgspec) /* TODO rework v15 */
       a_chead_screen = g / size;
       mp = mq;
 
-      mesg = (int)P2UZ(mp - message);
-#ifdef mx_HAVE_IMAP
-      if (mb.mb_type == MB_IMAP)
-         imap_getheaders(mesg + 1, mesg + size);
-#endif
+      mesg = S(int,P2UZ(mp - n_msgdb));
+      if(!n_folder_lazy_load_header(mesg + 1, mesg + size)){
+         n_err(_("Message data cannot be loaded\n"));
+         flag = 1;
+         goto jleave;
+      }
+
 #ifdef mx_HAVE_COLOUR
       mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout);
 #endif
@@ -976,6 +980,8 @@ jdot_sort:
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
+
+jleave:
    NYD_OU;
    return !flag;
 }

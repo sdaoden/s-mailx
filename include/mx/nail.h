@@ -569,10 +569,17 @@ MB_CACHE, /* IMAP cache */
    char *mb_cache_directory; /* name of cache directory */
    char mb_imap_delim[8]; /* Directory separator(s), [0] += replacer */
 #endif
-   /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
+   /* XXX mailbox.mb_digmsg is a hack: the mailbox object should
     * XXX have an on_close event to which that machinery should connect */
    struct mx_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
+   /* XXX mailbox.mb_maildir_data is a hack: the mailbox object should
+    * XXX have an on_close event to which that machinery should connect */
+#ifdef mx_HAVE_MAILDIR
+   void *mb_maildir_data;
+#endif
+#ifdef mx_HAVE_NET
    struct mx_socket *mb_sock; /* socket structure */
+#endif
 };
 
 enum needspec{
@@ -915,6 +922,7 @@ VL s32 n_pstate_ex_no; /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 
 /* XXX stylish sorting */
 VL int msgCount; /* Count of messages read in */
+#define n_msgno msgCount
 VL struct mailbox mb; /* Current mailbox */
 VL char mailname[PATH_MAX]; /* Name of current file TODO URL/object*/
 VL char displayname[80]; /* Prettyfied for display TODO URL/obj*/
@@ -922,11 +930,12 @@ VL char prevfile[PATH_MAX]; /* Name of previous file TODO URL/obj */
 VL s64 mailsize; /* Size of system mailbox */
 VL struct message *dot; /* Pointer to current message */
 VL struct message *prevdot; /* Previous current message */
-VL struct message *message; /* The actual message structure */
+VL struct message *message; /* Actual mailbox content FIXME rename msgdb */
+#define n_msgdb message
 VL struct message *threadroot; /* first threaded message */
 /* getmsglist() 1st marked (for e.g. `Reply') HACK TODO (should be in a ctx) */
 VL struct message *n_msgmark1;
-VL int *n_msgvec; /* Folder setmsize(), list.c res. store */
+VL int *n_msgvec; /* `sort'ed indices into message[] <> setmsize() */
 #ifdef mx_HAVE_IMAP
 VL int imap_created_mailbox; /* hack to get feedback from imap */
 #endif

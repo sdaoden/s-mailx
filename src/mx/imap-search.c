@@ -55,7 +55,6 @@ su_EMPTY_FILE()
 #include <su/mem-bag.h>
 #include <su/time.h>
 
-#include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/names.h"
@@ -241,14 +240,14 @@ itparse(char const *spec, char const **xp, int sub)
 
       _it_tree = ittree;
       if (_it_tree == NULL) {
-         _it_tree = n_autorec_alloc(sizeof *_it_tree);
+         _it_tree = su_AUTO_ALLOC(sizeof *_it_tree);
          *_it_tree = n;
       } else {
          z = _it_tree;
-         _it_tree = n_autorec_alloc(sizeof *_it_tree);
+         _it_tree = su_AUTO_ALLOC(sizeof *_it_tree);
          _it_tree->n_token = ITAND;
          _it_tree->n_x = z;
-         _it_tree->n_y = n_autorec_alloc(sizeof *_it_tree->n_y);
+         _it_tree->n_y = su_AUTO_ALLOC(sizeof *_it_tree->n_y);
          *_it_tree->n_y = n;
       }
       if (sub && level == 0)
@@ -431,7 +430,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
          around(&(*xp)[spec - *xp]));
       goto jleave;
    }
-   ap = *tp = n_autorec_alloc(su_cs_len(spec) +1);
+   ap = *tp = su_AUTO_ALLOC(su_cs_len(spec) +1);
    *xp = spec;
     do {
       if (inquote && **xp == '\\')
@@ -670,7 +669,7 @@ _imap_quotestr(char const *s)
    char *n, *np;
    NYD2_IN;
 
-   np = n = n_autorec_alloc(2 * su_cs_len(s) + 3);
+   np = n = su_AUTO_ALLOC(2 * su_cs_len(s) + 3);
    *np++ = '"';
    while (*s) {
       if (*s == '"' || *s == '\\')
@@ -694,7 +693,7 @@ _imap_unquotestr(char const *s)
       goto jleave;
    }
 
-   np = n = n_autorec_alloc(su_cs_len(s) + 1);
+   np = n = su_AUTO_ALLOC(su_cs_len(s) + 1);
    while (*++s) {
       if (*s == '\\')
          s++;
@@ -703,6 +702,7 @@ _imap_unquotestr(char const *s)
       *np++ = *s;
    }
    *np = '\0';
+
 jleave:
    NYD2_OU;
    return n;
@@ -861,8 +861,7 @@ around(char const *cp)
 }
 
 FL sz
-imap_search(char const *spec, int f)
-{
+imap_search(char const *spec, int f){
    static char *lastspec;
 
    char const *xp;
@@ -870,52 +869,61 @@ imap_search(char const *spec, int f)
    sz rv;
    NYD_IN;
 
-   if (su_cs_cmp(spec, "()")) {
-      if (lastspec != NULL)
-         n_free(lastspec);
+   if(su_cs_cmp(spec, "()")){
+      if(lastspec != NIL)
+         su_FREE(lastspec);
+
       i = su_cs_len(spec);
       lastspec = su_cs_dup_cbuf(spec, i, 0);
-   } else if (lastspec == NULL) {
+   }else if(lastspec == NIL){
       n_err(_("No last SEARCH criteria available\n"));
       rv = -1;
       goto jleave;
    }
-   spec =
-   _it_begin = lastspec;
 
+   spec = _it_begin = lastspec;
    _it_need_headers = FAL0;
+
 #ifdef mx_HAVE_IMAP
-   if ((rv = imap_search1(spec, f) == OKAY))
+   if(mb.mb_type == MB_IMAP && (rv = imap_search1(spec, f) == OKAY))
       goto jleave;
 #endif
-   if (itparse(spec, &xp, 0) == STOP){
+
+   xp = NIL;
+   if(itparse(spec, &xp, 0) == STOP){
       rv = -1;
       goto jleave;
    }
 
    rv = 0;
 
-   if (_it_tree == NULL)
+   if(_it_tree == NIL)
       goto jleave;
 
-#ifdef mx_HAVE_IMAP
-   if (mb.mb_type == MB_IMAP && _it_need_headers)
-      imap_getheaders(1, msgCount);
-#endif
-   srelax_hold();
-   for (i = 0; UCMP(z, i, <, msgCount); ++i) {
-      if (message[i].m_flag & MHIDDEN)
+   if(_it_need_headers && !n_folder_lazy_load_header(1, n_msgno))
+      goto jleave;
+
+	su_mem_bag_auto_snap_create(su_MEM_BAG_SELF);
+   for(i = 0; UCMP(z, i, <, n_msgno); ++i){
+      if(message[i].m_flag & MHIDDEN)
          continue;
-      if (f == MDELETED || !(message[i].m_flag & MDELETED)) {
-         uz j = (int)(i + 1);
-         if (itexecute(&mb, message + i, j, _it_tree)){
-            mark((int)j, f);
+
+      if(f == MDELETED || !(message[i].m_flag & MDELETED)){
+         u32 j;
+
+         if(spec == NIL)
+            su_mem_bag_auto_snap_unroll(su_MEM_BAG_SELF);
+         spec = NIL;
+
+         j = i + 1;
+         if(itexecute(&mb, message + i, j, _it_tree)){
+            mark(S(int,j), f);
             ++rv;
          }
-         srelax();
       }
    }
-   srelax_rele();
+	su_mem_bag_auto_snap_gut(su_MEM_BAG_SELF);
+
 jleave:
    NYD_OU;
    return rv;

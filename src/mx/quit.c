@@ -49,6 +49,7 @@
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
+#include "mx/maildir.h"
 #include "mx/net-pop3.h"
 #include "mx/okeys.h"
 #include "mx/sigs.h"

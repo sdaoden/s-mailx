@@ -36,6 +36,7 @@
 
 #include "mx/child.h"
 #include "mx/cmd-filetype.h"
+#include "mx/maildir.h"
 #include "mx/okeys.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
@@ -331,7 +332,8 @@ a_fs_file_save(struct a_fs_ent *fsep){
 #ifdef mx_HAVE_MAILDIR
 	if((fsep->fse_flags & a_FS_EF_MASK) == a_FS_EF_MAILDIR){
 		rv = maildir_append(fsep->fse_realfile, fsep->fse_fp, fsep->fse_offset,
-				((fsep->fse_oflags & mx_FS_O_EXACT_MESSAGE_STATE_REFLECTION) != 0));
+					((fsep->fse_oflags & mx_FS_O_EXACT_MESSAGE_STATE_REFLECTION) != 0)
+				) ? OKAY : STOP;
 		goto jleave;
 	}
 #endif

@@ -547,11 +547,17 @@ FL boole mx_collect_input_loop(void);
  * folder.c
  */
 
-FL int         newmailinfo(int omsgCount);
+/* Return folder_getmdot() or 0 */
+FL int n_folder_newmailinfo(int omsgCount);
 
 /* Set the size of the message vector used to construct argument lists to
  * message list functions */
-FL void        setmsize(int sz);
+FL void n_folder_setmsize(u32 sz);
+
+/* ..of all msgdb[] messages in between and including (postel) lo and hi.
+ * Calls actual DB type routine with normalized parameters (hi may be a
+ * screensize() away from lo despite DB reality) */
+FL boole n_folder_lazy_load_header(u32 lo, u32 hi);
 
 /* Logic behind -H / -L invocations */
 FL void        print_header_summary(char const *Larg);
@@ -560,7 +566,8 @@ FL void        print_header_summary(char const *Larg);
  * Is responsible for updating "dot" (after a folder change). */
 FL void n_folder_announce(enum n_announce_flags af);
 
-FL int         getmdot(int nmail);
+/* Return "dot" number or 0 */
+FL int n_folder_getmdot(boole newmail);
 
 FL void n_initbox(char const *name, boole rdonly);
 
@@ -744,21 +751,6 @@ FL boole n_header_add_custom(struct n_header_field **hflp, char const *dat,
 #ifdef mx_HAVE_IMAP_SEARCH
 FL sz     imap_search(char const *spec, int f);
 #endif
-
-/*
- * maildir.c
- */
-
-#ifdef mx_HAVE_MAILDIR
-FL int maildir_setfile(char const *who, char const *name, enum fedit_mode fm);
-
-FL boole maildir_quit(boole hold_sigs_on);
-
-FL enum okay maildir_append(char const *name, FILE *fp, s64 offset,
-      boole realstat);
-
-FL enum okay maildir_remove(char const *name);
-#endif /* mx_HAVE_MAILDIR */
 
 /*
  * message.c
