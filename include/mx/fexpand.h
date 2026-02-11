@@ -53,8 +53,10 @@ enum mx_fexp_mode{
  * . &     invoker's mbox file
  * . +file file in folder directory
  * . any shell meta character (except for FEXP_NSHELL)
- * XXX ->name_expand */
-EXPORT char *mx_fexpand(char const *name, BITENUM(u32,mx_fexp_mode) fexpm);
+ * The _protop() variant stores the detected mailbox type in *protop_or_nil, if given; note that dependent on fexpm
+ * the result may vary.  XXX ->name_expand */
+EXPORT char *mx_fexpand(char const *name, BITENUM(u32,mx_fexp_mode) fexpm); /* TODO v15 drop */
+EXPORT char *mx_fexpand_protop(char const *name, BITENUM(u32,mx_fexp_mode) fexpm, enum protocol *protop_or_nil);
 
 /* Like fexpand(), but may instead return an array of strings in the auto-reclaimed result storage; might have
  * expanded the first member before fnmatch, but no further: these come directly via fnmatch! */

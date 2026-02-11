@@ -52,9 +52,12 @@ struct a_fexpand_ctx{
 	char const *fc_name;
 	BITENUM(u32,mx_fexp_mode) fc_fexpm;
 	boole fc_multi_ok;
-	u8 fc__pad[3];
+	boole fc_have_proto;
+	ZIPENUM(u8,protocol) fc_proto;
+	u8 fc__pad[1];
 	char **fc_res;
 };
+CTA(n_PROTO_MASK <= U8_MAX, "Insufficient type size");
 
 #ifdef mx_HAVE_FNMATCH
 struct a_fexpand_glob_ctx{
@@ -162,7 +165,8 @@ jnext:
 	}
 
 #ifdef mx_HAVE_IMAP
-	if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NIL) == n_PROTO_IMAP){
+	if(res[0] == '@' && (fcp->fc_have_proto = TRU1,
+				fcp->fc_proto = which_protocol(mailname, FAL0, FAL0, NIL)) == n_PROTO_IMAP){
 		res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
 		if(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE))
 			goto jlocal_err;
@@ -179,7 +183,8 @@ jnext:
 		/* Do some meta expansions? */
 		if(!(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE))){
 			cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
-			switch(which_protocol(cp, TRU1, FAL0, NIL)){
+			fcp->fc_have_proto = TRU1;
+			switch((fcp->fc_proto = which_protocol(cp, TRU1, FAL0, NIL))){
 			case n_PROTO_EML:
 			case n_PROTO_FILE:
 			case n_PROTO_SMBOX:
@@ -241,7 +246,8 @@ jleave_local_test:
 		res = savecat(savestrbuf(proto.s, proto.l), res);
 
 	if(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE)){
-		switch(which_protocol(res, FAL0, FAL0, &cp)){
+		fcp->fc_have_proto = TRU1;
+		switch((fcp->fc_proto = which_protocol(res, FAL0, FAL0, &cp))){
 		case n_PROTO_MAILDIR:
 			if(!(fcp->fc_fexpm & mx_FEXP_LOCAL_FILE)){
 				FALLTHRU
@@ -727,7 +733,7 @@ a_fexpand_glob__sort(void const *cvpa, void const *cvpb){
 #endif /* mx_HAVE_FNMATCH }}} */
 
 char *
-mx_fexpand(char const *name, BITENUM(u32,mx_fexp_mode) fexpm){
+mx_fexpand(char const *name, BITENUM(u32,mx_fexp_mode) fexpm){ /* TODO v15 -> _protop() */
 	struct a_fexpand_ctx fc;
 	NYD_IN;
 
@@ -735,6 +741,26 @@ mx_fexpand(char const *name, BITENUM(u32,mx_fexp_mode) fexpm){
 	fc.fc_fexpm = fexpm;
 	fc.fc_multi_ok = FAL0;
 	a_fexpand(&fc);
+
+	NYD_OU;
+	return (fc.fc_res != NIL ? fc.fc_res[0] : NIL);
+}
+
+char *
+mx_fexpand_protop(char const *name, BITENUM(u32,mx_fexp_mode) fexpm, enum protocol *protop_or_nil){
+	struct a_fexpand_ctx fc;
+	NYD_IN;
+
+	fc.fc_name = name;
+	fc.fc_fexpm = fexpm;
+	fc.fc_multi_ok = FAL0;
+	fc.fc_have_proto = FAL0;
+	fc.fc_proto = n_PROTO_UNKNOWN;
+	a_fexpand(&fc);
+
+	if(protop_or_nil != NIL)
+		*protop_or_nil = (fc.fc_have_proto ? S(enum protocol,fc.fc_proto)
+				: (fc.fc_res != NIL ? which_protocol(fc.fc_res[0], FAL0, FAL0, NIL) : n_PROTO_UNKNOWN));
 
 	NYD_OU;
 	return (fc.fc_res != NIL ? fc.fc_res[0] : NIL);
