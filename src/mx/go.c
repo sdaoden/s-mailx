@@ -2083,7 +2083,7 @@ jforce_stdin:
 				break;
 		}
 		(*linebuf)[nold = --n] = '\0';
-		gif |= mx_GO_INPUT_NL_FOLLOW;
+		gif |= mx_GO_INPUT_PROMPT2;
 	}
 	if(n < 0)
 		goto jleave;

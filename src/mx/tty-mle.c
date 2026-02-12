@@ -1623,7 +1623,7 @@ a_tty_vinuni(struct a_tty_line *tlp){ /* {{{ */
 		if(mx_COLOUR_IS_ACTIVE()){
 			struct mx_colour_pen *cpen;
 
-			cpen = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPT, NIL);
+			cpen = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPTX, NIL);
 			if((cpre = mx_colour_pen_to_str(cpen)) != NIL)
 				csuf = mx_colour_reset_to_str();
 		}

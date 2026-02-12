@@ -65,7 +65,8 @@ mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
 		prompt = savecatsep(prompt, ' ', quest);
 
 		mx_fs_linepool_aquire(&ldat, &lsize);
-		while(mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC, prompt, &ldat, &lsize, NIL,NIL) >= 0){
+		while(mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC | mx_GO_INPUT_PROMPTX, prompt,
+				&ldat, &lsize, NIL,NIL) >= 0){
 			boole x;
 
 			x = n_boolify(ldat, UZ_MAX, noninteract_default);
@@ -127,6 +128,9 @@ mx_tty_getfilename(struct n_string *store, BITENUM(u32,mx_go_input_flags) gif, c
 		fprintf(n_stdout, _("# All filenames need to be sh(1)ell-style quoted, everywhere\n"));
 	}
 
+	gif &= ~mx_GO_INPUT_PROMPT_EVAL;
+	gif |= mx_GO_INPUT_PROMPTX;
+
 	store = n_string_trunc(store, 0);
 	if((cp = mx_go_input_cp(gif, prompt_or_nil, init_content_or_nil)) != NIL)
 		rv = n_shexp_unquote_one(store, cp);
@@ -162,7 +166,7 @@ jredo:
 	}
 
 	/* Possible additional info to be displayed in mle-position colour? */
-	if(!(gif & mx_GO_INPUT_NL_FOLLOW)){
+	if(!(gif & (mx_GO_INPUT_PROMPT2 | mx_GO_INPUT_PROMPTX))){
 		boole x;
 
 		if((x = mx_cnd_if_exists(NIL))){
@@ -175,15 +179,16 @@ jredo:
 	}
 
 	if((poff = store->s_len) != 0){
-		++poff;
 		store = n_string_push_c(store, '#');
 		store = n_string_push_c(store, ' ');
+		poff += 2;
 	}
 
 	/* */
-	cp = (gif & mx_GO_INPUT_PROMPT_EVAL) ? (gif & mx_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
-			: xprompt;
-	if(cp != NIL && *cp != '\0'){
+	if(!(gif & mx_GO_INPUT_PROMPT_EVAL)){
+		if(xprompt != NIL && *xprompt != '\0')
+			store = n_string_push_cp(store, xprompt);
+	}else if((cp = (gif & mx_GO_INPUT_PROMPT2 ? ok_vlook(prompt2) : ok_vlook(prompt))) != NIL && *cp != '\0'){
 		BITENUM(u32,n_shexp_state) shs;
 
 		store = n_string_push_cp(store, cp);
@@ -200,7 +205,7 @@ jredo:
 			store = n_string_take_ownership(store, out.s, out.l +1, out.l);
 jeeval:
 			n_err(_("*prompt2?* evaluation failed, actively unsetting it\n"));
-			if(gif & mx_GO_INPUT_NL_FOLLOW)
+			if(gif & mx_GO_INPUT_PROMPT2)
 				ok_vclear(prompt2);
 			else
 				ok_vclear(prompt);
@@ -260,10 +265,17 @@ jeeval:
 	if(mx_COLOUR_IS_ACTIVE()){
 		struct mx_colour_pen *ccp;
 		struct str const *rsp, *psp, *esp;
+		enum mx_colour_id cid;
+
+		if(gif & mx_GO_INPUT_PROMPTX)
+			cid = mx_COLOUR_ID_MLE_PROMPTX;
+		else if(gif & mx_GO_INPUT_PROMPT2)
+			cid = mx_COLOUR_ID_MLE_PROMPT2;
+		else
+			cid = mx_COLOUR_ID_MLE_PROMPT;
 
 		psp = NIL;
-		if((rsp = mx_colour_reset_to_str()) != NIL &&
-				(ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPT, NIL)) != NIL &&
+		if((rsp = mx_colour_reset_to_str()) != NIL && (ccp = mx_colour_pen_create(cid, NIL)) != NIL &&
 				(psp = mx_colour_pen_to_str(ccp)) != NIL){
 			store = n_string_insert_buf(store, poff, psp->s, psp->l);
 			store = n_string_push_buf(store, rsp->s, rsp->l);

@@ -149,6 +149,8 @@ static struct a_colour_map_id const a_colour_map_ids[mx__COLOUR_CTX_MAX1][mx__CO
 	}, {
 	{mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_POSITION, a_COLOUR_TT_NONE, "position"},
 	{mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_PROMPT, a_COLOUR_TT_NONE, "prompt"},
+	{mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_PROMPT2, a_COLOUR_TT_NONE, "prompt2"},
+	{mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_PROMPTX, a_COLOUR_TT_NONE, "promptx"},
 	{mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_ERROR, a_COLOUR_TT_NONE, "error"},
 }};
 #define a_COLOUR_MAP_SHOW_FIELDWIDTH S(int,sizeof("view-")-1 + sizeof("partinfo")-1)

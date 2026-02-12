@@ -53,20 +53,22 @@ enum mx_go_input_flags{
 	mx_GO_INPUT_FORCE_STDIN = 1u<<10, /* Even in macro, use stdin (`read')! */
 	mx_GO_INPUT_DELAY_INJECTIONS = 1u<<11, /* Skip go_input_inject()ions */
 	mx_GO_INPUT_NL_ESC = 1u<<12, /* Support "\\$" line continuation */
-	mx_GO_INPUT_NL_FOLLOW = 1u<<13, /* ..on such a follow line */
-	mx_GO_INPUT_PROMPT_NONE = 1u<<14, /* Do not print prompt */
-	mx_GO_INPUT_PROMPT_EVAL = 1u<<15, /* Instead, evaluate *prompt* */
+	/* PROMPT2 and PROMPTX (and NONE) are mutually exclusive */
+	mx_GO_INPUT_PROMPT2 = 1u<<13, /* (..on such a follow line) <> *prompt2* */
+	mx_GO_INPUT_PROMPTX = 1u<<14, /* For example certain interactive prompts */
+	mx_GO_INPUT_PROMPT_NONE = 1u<<15, /* Do not print prompt */
+	mx_GO_INPUT_PROMPT_EVAL = 1u<<16, /* Instead, evaluate *prompt* */
 
 	/* XXX The remains are mostly hacks */
 
-	mx_GO_INPUT_HIST_ADD = 1u<<16, /* Add the result to history list */
-	mx_GO_INPUT_HIST_GABBY = 1u<<17, /* Consider history entry as gabby */
-	mx_GO_INPUT_HIST_GABBY_FUZZ = 1u<<18, /* ..even fuzzy */
+	mx_GO_INPUT_HIST_ADD = 1u<<17, /* Add the result to history list */
+	mx_GO_INPUT_HIST_GABBY = 1u<<18, /* Consider history entry as gabby */
+	mx_GO_INPUT_HIST_GABBY_FUZZ = 1u<<19, /* ..even fuzzy */
 	/* Command was erroneous; only in combination with _HIST_GABBY! */
-	mx_GO_INPUT_HIST_ERROR = 1u<<19,
+	mx_GO_INPUT_HIST_ERROR = 1u<<20,
 
-	mx_GO_INPUT_IGNERR = 1u<<20, /* Imply `ignerr' command modifier */
-	mx_GO_INPUT_COMPOSE_REDIRECT = 1u<<21, /* *on-compose-embed*: use different onlinecompletedevent target TODO */
+	mx_GO_INPUT_IGNERR = 1u<<21, /* Imply `ignerr' command modifier */
+	mx_GO_INPUT_COMPOSE_REDIRECT = 1u<<22, /* *on-compose-embed*: use different onlinecompletedevent target TODO */
 
 	mx__GO_FREEBIT = 24u
 };
