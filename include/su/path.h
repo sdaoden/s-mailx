@@ -141,7 +141,9 @@ INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *pip){
 # define su_PATH_IS_DEV_STYLE 1 /*!< Does the operating system use paths with device parts like \c{c:\\}? */
 
 # define su_PATH_SEP_C '\\' /*!< Directory separator byte (character). */
+# define su_PATH_SEP_CP "\\"
 # define su_PATH_LIST_SEP_C ';' /*!< Path separator byte (character) in lists (\c{$PATH} etc). */
+# define su_PATH_LIST_SEP_CP ";"
 
 # define su_PATH_CURRENT "." /*!< "Some notion" of a the current directory. */
 # define su_PATH_NULL "NUL" /*!< Literal \c{/dev/null} / \c{null} etc. */
@@ -149,7 +151,9 @@ INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *pip){
 #else
 # define su_PATH_IS_DEV_STYLE 0
 # define su_PATH_SEP_C '/'
+# define su_PATH_SEP_CP "/"
 # define su_PATH_LIST_SEP_C ':'
+# define su_PATH_LIST_SEP_CP ":"
 # define su_PATH_CURRENT "."
 # define su_PATH_NULL "/dev/null"
 # define su_PATH_ROOT "/"
@@ -157,11 +161,11 @@ INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *pip){
 
 #define su_PATH_AT_FDCWD -2l /*!< Pseudo file-descriptor referring to "current directory". */
 
-/*! Compiled-in \r{CS} version of \r{su_PATH_SEP_C}. */
-EXPORT_DATA char const su_path_sep[2];
+/*! Compiled-in \r{CS} version of \r{su_PATH_SEP_CP}. */
+EXPORT_DATA char const su_path_sep[sizeof su_PATH_SEP_CP];
 
-/*! Compiled-in \r{CS} version of \r{su_PATH_LIST_SEP_C}. */
-EXPORT_DATA char const su_path_list_sep[2];
+/*! Compiled-in \r{CS} version of \r{su_PATH_LIST_SEP_CP}. */
+EXPORT_DATA char const su_path_list_sep[sizeof su_PATH_LIST_SEP_CP];
 
 /*! Compiled-in version of \r{su_PATH_CURRENT}. */
 EXPORT_DATA char const su_path_current[sizeof su_PATH_CURRENT];
