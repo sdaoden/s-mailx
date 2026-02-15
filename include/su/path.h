@@ -210,7 +210,12 @@ EXPORT boole su_path_access(char const *path, BITENUM(u32,su_iopf_access) mode);
 /*! Change current working directory. */
 EXPORT boole su_path_chdir(char const *path);
 
-/*! Change mode.
+/*! Change mode of a filename.
+ * \a{permprot} is a bitmix of \r{su_iopf_permission}, \r{su_iopf_protection}.
+ * The \ERR{INTR} error is handled internally! */
+EXPORT boole su_path_chmod(char const *path, u32 permprot);
+
+/*! Change mode of file
  * \a{permprot} is a bitmix of \r{su_iopf_permission}, \r{su_iopf_protection}.
  * The \ERR{INTR} error is handled internally! */
 EXPORT boole su_path_fchmod(sz fd, u32 permprot);
@@ -398,6 +403,18 @@ public:
 	static boole access(char const *path, BITENUM(u32,iopf_access) mode){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_access(path, mode);
+	}
+
+	/*! \cd{su_path_chdir()} */
+	static boole chdir(char const *path){
+		ASSERT_RET(path != NIL, FAL0);
+		return su_path_chdir(path);
+	}
+
+	/*! \cd{su_path_chmod()} */
+	static boole chmod(char const *path, u32 permprot){
+		ASSERT_RET(path != NIL, FAL0);
+		return su_path_chmod(path, permprot);
 	}
 
 	/*! \cd{su_path_fchmod()} */

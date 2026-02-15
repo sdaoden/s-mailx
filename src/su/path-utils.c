@@ -129,6 +129,21 @@ su_path_chdir(char const *path){
 }
 
 boole
+su_path_chmod(char const *path, u32 permprot){
+	boole rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
+
+	permprot &= su_IOPF_PERM_MASK | su_IOPF_PROT_MASK;
+
+	while(!(rv = (chmod(path, S(mode_t,permprot)) == 0)) && su_err_by_errno() == su_ERR_INTR){
+	}
+
+	NYD_OU;
+	return rv;
+}
+
+boole
 su_path_fchmod(sz fd, u32 permprot){
 	boole rv;
 	NYD_IN;
