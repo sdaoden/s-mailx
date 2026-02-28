@@ -385,7 +385,7 @@ jeeqaaster:
 					* XXX goto jerr;	<-> without PO_D_V, then *
 				 *}*/
 				 np->rj_is_enc = FAL0; /* Silently ignore */
-				/* FALLTHRU */
+				 FALLTHRU
 			case 1:
 				if(xval.l >= U32_MAX){
 					emsg = N_("parameter value too long");

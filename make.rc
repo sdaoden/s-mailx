@@ -216,15 +216,17 @@ OPT_AMALGAMATION=no
 # . option_care: if set no optimization (-O*) nor debugger things (-g)
 #   are looked for: for packagers who want to pass default $CFLAGS
 #   via $EXTRA_CFLAGS.
-#   Note: we rely on inlining, so ensure -DNDEBUG / -Oxx fits!
-#   Note X: actively stripped by OPT_DEVEL and OPT_DEBUG!
+#   + Note: we rely on inlining, so ensure -DNDEBUG / -Oxx fits!
+#   + Note: actively stripped by OPT_DEVEL and OPT_DEBUG!
+#   + Note: with OPT_DEVEL many -W flags are tried.
 # . bind_now: -Wl,-z,now if supported (see ld(1)).
 # . pie: shall address randomization be used if supported.
 # . stackprot: shall stack protectors be used if supported.
 # . fortify: onto stackprot, enable _FORTIFY_SOURCE=3.
 #   (This requires an optimized (-O) build.)
 # . cfprot: try -fcf-protection=full for control‐flow transfer checks.
-# $OPT_AUTOCC reacts upon $OPT_DEBUG.
+# + OPT_AUTOCC reacts upon OPT_DEBUG and OPT_DEVEL.
+# + If with OPT_DEVEL $EXTRA_CFLAGS contains std=c we do not search -std=c??.
 OPT_AUTOCC=yes
 	VAL_AUTOCC=bind_now,pie,stackprot,fortify,cfprot
 

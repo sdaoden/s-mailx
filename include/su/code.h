@@ -488,7 +488,7 @@ do{\
 
   /* Dunno; unused due to gcc 11.2.0: "a label can only be part of a statement and a declaration is not a statement" */
 # if su_CC_VCHECK_GCC(7,0)
-#  define su_CC_FALLTHRU UNUSED(0); __attribute__ ((fallthrough));
+#  define su_CC_FALLTHRU UNUSED(0); __attribute__((fallthrough));
 # endif
 
 #elif !defined su_CC_IGNORE_UNKNOWN
@@ -497,9 +497,18 @@ do{\
 # error SU: It may be necessary to define su_CC_PACKED to a statement that enables structure packing
 #endif
 
-#if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l
-# undef su_CC_ALIGNED
-# define su_CC_ALIGNED(X) _Alignas(X)
+#if defined __STDC_VERSION__
+# if __STDC_VERSION__ +0 >= 201112l
+#  undef su_CC_ALIGNED
+#  define su_CC_ALIGNED(X) _Alignas(X)
+
+#  if __STDC_VERSION__ +0 >= 202311l
+#   if __has_c_attribute(fallthrough)
+#    undef su_CC_FALLTHRU
+#    define su_CC_FALLTHRU [[fallthrough]];
+#   endif
+#  endif
+# endif
 #endif
 
 #ifndef su_CC_ALIGNED

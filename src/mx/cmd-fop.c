@@ -377,19 +377,20 @@ jflesyn:
 		case '^': silence = TRU1; break;
 		case 'R':
 			flm |= mx_FILE_LOCK_MODE_LOG;
-			/* FALLTHRU */
+			FALLTHRU
 		case 'r':
 			if(flm & mx_FILE_LOCK_MODE_TMASK)
 				goto jflesyn;
 			flm |= mx_FILE_LOCK_MODE_TSHARE;
 			break;
-		case 'A': /* FALLTHRU */
+		case 'A':
+			FALLTHRU
 		case 'W':
 			flm |= mx_FILE_LOCK_MODE_LOG;
-			/* FALLTHRU */
+			FALLTHRU
 		case 'a':
 			oflags |= mx_FS_O_APPEND;
-			/* FALLTHRU */
+			FALLTHRU
 		case 'w':
 			if(flm & mx_FILE_LOCK_MODE_TMASK)
 				goto jflesyn;
@@ -606,7 +607,7 @@ jesyn:
 			break;
 		case 'A':
 			oflags |= mx_FS_O_EXCL;
-			/* FALLTHRU */
+			FALLTHRU
 		case 'a':
 			if(oflags & mx__FS_O_RWMASK)
 				goto jesyn;
@@ -614,7 +615,7 @@ jesyn:
 			break;
 		case 'W':
 			oflags |= mx_FS_O_EXCL;
-			/* FALLTHRU */
+			FALLTHRU
 		case 'w':
 			if(oflags & mx__FS_O_RWMASK)
 				goto jesyn;
@@ -999,7 +1000,7 @@ jesyno:
 		goto jestr;
 	case a_FOP_ERR_STR_NODATA:
 		n_pstate_err_no = su_ERR_NODATA;
-		/* FALLTHRU*/
+		FALLTHRU
 	case a_FOP_ERR_STR_GENERIC:
 jestr:
 		fc.fc_varres = su_empty;

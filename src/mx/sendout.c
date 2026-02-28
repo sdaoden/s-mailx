@@ -956,7 +956,7 @@ a_sendout__infix_dump(struct mx_send_ctx *sctxp, /* {{{ */
             mp = &message[ap->a_msgno - 1]; /* TODO early init to tmpfile! */
             touch(mp);
 
-            if(sendmp(mp, sicp->sic_encfp, 0, NIL, SEND_RFC822, NIL, NIL) < 0){
+            if(sendmp(mp, sicp->sic_encfp, NIL, NIL, SEND_RFC822, NIL, NIL) < 0){
                if((sicp->sic_eno = su_err()) == su_ERR_NONE)
                   sicp->sic_eno = su_ERR_IO;
                goto jenono;
@@ -3034,7 +3034,7 @@ do{\
             switch(ml){
             case mx_MLIST_KNOWN:
                f |= HF_MFT_SENDER;
-               /* FALLTHRU */
+               FALLTHRU
             case mx_MLIST_SUBSCRIBED:
                f |= a_ANYLIST;
                goto j_mft_add;

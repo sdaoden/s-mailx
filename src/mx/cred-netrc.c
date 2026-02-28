@@ -148,7 +148,7 @@ jdef:
 		/* We ignore the default entry (require an exact host match), and we also ignore anything after such
 		 * an entry (faulty syntax) */
 		f |= a_SEEN_DEFAULT;
-		/* FALLTHRU */
+		FALLTHRU
 	case a_NETRC_MACHINE:
 jm_h:
 		/* Normalize HOST to lowercase */

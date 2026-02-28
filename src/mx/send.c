@@ -1210,7 +1210,7 @@ jheaders_skip:
          case mx_MIME_TYPE_HDL_NIL:
             if(action != SEND_TODISP_PARTS)
                break;
-            /* FALLTHRU */
+            FALLTHRU
          case mx_MIME_TYPE_HDL_MSG:/* TODO these should be part of partinfo! */
             if(mthp->mth_msg.l > 0)
                _out(mthp->mth_msg.s, mthp->mth_msg.l, obuf, CONV_NONE,
@@ -1237,7 +1237,7 @@ jheaders_skip:
          default:
             break;
          }
-         /* FALLTRHU */
+         FALLTHRU
       default:
          break;
       }
@@ -1250,7 +1250,7 @@ jheaders_skip:
       if(action != SEND_RFC822 && action != SEND_SHOW &&
             ip->m_multipart != NIL)
          goto jmulti;
-      /* FALLTHRU */
+      FALLTHRU
    default:
       switch (action) {
       case SEND_TODISP:
@@ -1270,7 +1270,7 @@ jheaders_skip:
             if(action != SEND_TODISP && action != SEND_TODISP_ALL &&
                   (level != 0 || cnt))
                goto jleave;
-            /* FALLTHRU */
+            FALLTHRU
          case mx_MIME_TYPE_HDL_MSG:/* TODO these should be part of partinfo! */
             if(action == SEND_TOFILE){
                mthp->mth_flags = (
@@ -1402,7 +1402,7 @@ jalter_leave:
          n_sigman_leave(&smalter, n_SIGMAN_VIPSIGS_NTTYOUT);
          goto jleave;
       }
-      /* FALLTHRU */
+      FALLTHRU
    case mx_MIME_TYPE_RELATED:
    case mx_MIME_TYPE_DIGEST:
    case mx_MIME_TYPE_SIGNED:
@@ -1627,7 +1627,7 @@ jpipe_close:
          if(convert != CONV_FROMB64_T)
             action = SEND_TOPIPE;
       }
-      /* FALLTHRU */
+      FALLTHRU
    case mx_MIME_TYPE_HDL_HTML:
       tmpname = NULL;
       qbuf = obuf;

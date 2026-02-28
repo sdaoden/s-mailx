@@ -625,33 +625,37 @@ _cc_flags_generic() {
 	__cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
 	_CFLAGS= _LDFLAGS=
 	# Prefer C99+ due to native 64-bit types etc
-	_i=c89
-	if feat_yes ASAN_ADDRESS || feat_yes USAN; then
-		msg ' ! Disabling ISO C89 due to desire to use sanitizers'
-		_i=
-	fi
-	__x='c99 c11 c18 c2x '${_i}
-	if feat_yes DEVEL && [ -n "${date}" ]; then
-		__y=$(${date} +%M) # not too often
-		if [ ${?} -eq 0 ]; then
-			if [ -n "${good_shell}" ]; then
-				__y=${__y##*0}
-			else
-				__y=$(echo ${__y} | ${sed} -e 's/^0*//')
-			fi
-			case "$((__y % 5))" in
-			0) __x=${_i}' c99 c11 c18 c2x';;
-			1) ;;
-			2) __x='c11 c18 c2x c99 '${_i};;
-			3) __x='c18 c2x c99 c11 '${_i};;
-			4) __x='c2x c99 c11 c18 '${_i};;
-			esac
+	if [ -n "$EXTRA_CFLAGS" ] && { echo "$EXTRA_CFLAGS" | $grep -q std=c; }; then
+		msg ' ! $EXTRA_CFLAGS contains std=c, not looking for ISO C variants'
+	else
+		_i=c89
+		if feat_yes ASAN_ADDRESS || feat_yes USAN; then
+			msg ' ! Disabling ISO C89 due to desire to use sanitizers'
+			_i=
 		fi
-		unset __y
+		__x='c99 c11 c18 c2x '${_i}
+		if feat_yes DEVEL && [ -n "$date" ]; then
+			__y=$($date +%M) # not too often
+			if [ $? -eq 0 ]; then
+				if [ -n "$good_shell" ]; then
+					__y=${__y##*0}
+				else
+					__y=$(echo ${__y} | $sed -e 's/^0*//')
+				fi
+				case "$((__y % 5))" in
+				0) __x=$_i' c99 c11 c18 c2x';;
+				1) ;;
+				2) __x='c11 c18 c2x c99 '$_i;;
+				3) __x='c18 c2x c99 c11 '$_i;;
+				4) __x='c2x c99 c11 c18 '$_i;;
+				esac
+			fi
+			unset __y
+		fi
+		for __x in $__x; do
+			cc_check -std=$__x && break
+		done
 	fi
-	for __x in ${__x}; do
-		cc_check -std=${__x} && break
-	done
 
 	# E.g., valgrind does not work well with high optimization
 	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS; then
@@ -662,6 +666,7 @@ _cc_flags_generic() {
 	if feat_yes DEBUG; then
 		cc_check -O
 		cc_check -g
+	# option_care was yet stripped for DEBUG/DEVEL
 	elif val_has VAL_AUTOCC option_care; then
 		:
 	elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
@@ -685,17 +690,24 @@ _cc_flags_generic() {
 		cc_check -Wall
 		cc_check -Wextra
 		if feat_yes DEVEL; then
+			cc_check -Warray-bounds=2
 			cc_check -Wbad-function-cast
-			cc_check -Wcast-align
-			cc_check -Wcast-qual
+			cc_check -Wbidi-chars=any,ucn
+			if cc_check -Wcast-align; then
+				cc_check -Wcast-align=strict
+			fi
+				cc_check -Wcast-qual
 			cc_check -Wformat-security # -Wformat via -Wall
 				cc_check -Wformat-signedness
+			cc_check -Wimplicit-fallthrough=5
 			cc_check -Winit-self
 			cc_check -Wmissing-prototypes
 			cc_check -Wshadow
+			cc_check -Wshift-overflow=2
 			cc_check -Wunused
 			cc_check -Wwrite-strings
 			cc_check -Wno-long-long
+			cc_check -Wzero-as-null-pointer-constant
 		fi
 	#fi
 	cc_check -pedantic

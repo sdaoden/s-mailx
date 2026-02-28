@@ -1144,7 +1144,7 @@ jagain:
       case RESPONSE_PREAUTH:
          response_status = RESPONSE_OK;
          mp->mb_active &= ~MB_PREAUTH;
-         /*FALLTHRU*/
+         FALLTHRU
       case RESPONSE_OK:
 jokay:
          rv = OKAY;
@@ -2001,7 +2001,7 @@ imap_init(struct mailbox *mp, int n)
 static void
 imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
 {
-   struct message *omessage = 0;
+   struct message *omessage = NIL;
    int i, omsgCount = 0;
    enum okay dequeued = STOP;
    NYD_IN;
@@ -2680,7 +2680,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          break;
       if (response_other != MESSAGE_DATA_FETCH)
          continue;
-      if (ok == STOP || (cp=su_cs_rfind_c(responded_other_text, '{')) == 0) {
+      if (ok == STOP || (cp=su_cs_rfind_c(responded_other_text, '{')) == NIL) {
          srelax_rele();
          return STOP;
       }

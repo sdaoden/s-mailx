@@ -646,7 +646,7 @@ jwhite:
 				if((v15compat = ok_vlook(v15_compat)) == NIL || *v15compat == '\0')
 					break;
 			}
-			/* FALLTHRU */
+			FALLTHRU
 		case mx_CMD_ARG_TYPE_MSGLIST:
 		case mx_CMD_ARG_TYPE_NDMLIST:
 		case mx_CMD_ARG_TYPE_WYSH:

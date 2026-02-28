@@ -1324,9 +1324,9 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			/* Initially a boolean variable, we want to keep compat forever :> */
 			i = 0;
 			switch(**val){
-			default: i |= n_PO_VVV; /* FALLTHRU */
-			case '2': i |= n_PO_VV; /* FALLTHRU */
-			case '1': i |= n_PO_V; /* FALLTHRU */
+			default: i |= n_PO_VVV; FALLTHRU
+			case '2': i |= n_PO_VV; FALLTHRU
+			case '1': i |= n_PO_V; FALLTHRU
 			case '\0': break;
 			}
 

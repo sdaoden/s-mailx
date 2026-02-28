@@ -587,7 +587,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
 			rv = TRU1;
 			break;
 		}
-		/* FALLTHRU */
+		FALLTHRU
 	case mx_TERMIOS_CMD_NORMAL:
 		rv = (tcsetattr(fileno(mx_stdout), TCSADRAIN, &tiosep->tiose_state) == 0);
 		break;

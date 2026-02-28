@@ -342,7 +342,7 @@ itsplit(char const *spec, char const **xp)
    case ITSENTON:
    case ITSENTSINCE:
       ++_it_need_headers;
-      /*FALLTHRU*/
+      FALLTHRU
    case ITBEFORE:
    case ITON:
    case ITSINCE:

@@ -130,13 +130,13 @@ a_uis_bidi_info_create(struct a_uis_bidi_info *bip){
       switch(*hb){
       case '3':
          bip->bi_pad = 2;
-         /* FALLTHRU */
+         FALLTHRU
       case '2':
          bip->bi_start.s = bip->bi_end.s = UNCONST(char*,"\xE2\x80\x8E");
          break;
       case '1':
          bip->bi_pad = 2;
-         /* FALLTHRU */
+         FALLTHRU
       default:
          bip->bi_start.s = UNCONST(char*,"\xE2\x81\xA8");
          bip->bi_end.s = UNCONST(char*,"\xE2\x81\xA9");

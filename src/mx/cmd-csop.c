@@ -170,7 +170,7 @@ a_csop_cmd(struct a_csop_ctx *cscp){
 	case a_CSOP_CMD_IFIND:
 		n_OBSOLETE(_("csop: ifind: simply use find?[case] instead, please"));
 		cscp->csc_flags |= a_CSOP_MOD_CASE;
-		/* FALLTHRU */
+		FALLTHRU
 	case a_CSOP_CMD_FIND:
 		cscp->csc_flags |= a_CSOP_ISNUM | a_CSOP_ISDECIMAL;
 		if(cscp->csc_argv[0] == NIL || cscp->csc_argv[1] == NIL || cscp->csc_argv[2] != NIL){
@@ -404,7 +404,7 @@ jenum:
 		goto jestr;
 	case a_CSOP_ERR_STR_NODATA:
 		n_pstate_err_no = su_ERR_NODATA;
-		/* FALLTHRU*/
+		FALLTHRU
 	case a_CSOP_ERR_STR_GENERIC:
 jestr:
 		csc.csc_varres = su_empty;

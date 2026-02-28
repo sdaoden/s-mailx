@@ -1063,7 +1063,7 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char
 		break;
 	case mx_FS_PIPE_WRITE_CHILD_PASS:
 		newfd1 = mx_CHILD_FD_PASS;
-		/* FALLTHRU */
+		FALLTHRU
 	case mx_FS_PIPE_WRITE:
 		myside = p[a_FS_PIPE_WRITE];
 		hisside = fd0 = p[a_FS_PIPE_READ];

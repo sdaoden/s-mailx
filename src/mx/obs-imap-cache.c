@@ -260,7 +260,7 @@ jflags:
             m->m_xlines = m->m_lines;
          break;
       }
-      /*FALLTHRU*/
+      FALLTHRU
    case 'H':
       m->m_content_info |= CI_HAVE_HEADER;
       break;

@@ -444,7 +444,7 @@ jmlist: /* v15compat */
          break;
       case 'S':
          flags |= a_SFMT;
-         /*FALLTHRU*/
+         FALLTHRU
       case 's':
          if (n == 0)
             n = subjlen - 2;

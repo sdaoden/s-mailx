@@ -1144,7 +1144,7 @@ mx_colour_pen_get_cseq(struct mx_colour_pen const *self){
 	struct str const *rv;
 	NYD2_IN;
 
-	rv = (self != NIL) ? &self->cp_dat : 0;
+	rv = (self != NIL) ? &self->cp_dat : NIL;
 
 	NYD2_OU;
 	return rv;

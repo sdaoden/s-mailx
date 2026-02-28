@@ -776,7 +776,7 @@ jshexp_restart_inner:
 
 		case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
 			target_argpp = &target_argp;
-			/* FALLTHRU */
+			FALLTHRU
 		case mx_CMD_ARG_DESC_MSGLIST:
 		case mx_CMD_ARG_DESC_NDMSGLIST:
 			/* TODO _MSGLIST yet at end and greedy only (fast hack).

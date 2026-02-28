@@ -591,8 +591,8 @@ jfmt:{
 					}
 					goto jquote;
 				}
-				/* FALLTHRU */
 				if(0){
+				FALLTHRU
 			case 's':
 					if(sfield == a_MAILCAP_SF_TEST){ /* XXX only view/quote */
 						n_err(_("$MAILCAPS: %s: %s: %%s format cannot be used in the \"test\" field\n"),
@@ -607,14 +607,14 @@ jfmt:{
 
 					mclsp->mcls_hdl.mch_flags |= a_MAILCAP_F_HAS_S_FORMAT;
 				}
-				/* FALLTHRU */
+				FALLTHRU
 			case 't':
 				mclsp->mcls_hdl.mch_sfield_has_format |= 1u << sfield;
 				*cp3++ = '\0';
 				break;
 
 			case 'n':
-				/* FALLTHRU */
+				FALLTHRU
 			case 'F':
 				n_err(_("$MAILCAPS: %s: %s: unsupported format %%%c\n"),
 					mclsp->mcls_name_quoted, mclsp->mcls_type_subtype, c);

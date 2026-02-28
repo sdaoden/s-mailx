@@ -1167,7 +1167,7 @@ jshow:
 	a_X(Mailx-Orig-Bcc, mailx_orig_bcc);
 #undef a_X
 
-	x = 0;
+	x = NIL;
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
 		if((i = hp->h_flags & HF_CMD_MASK) == HF_NONE)
 			goto j501cp;
@@ -2014,7 +2014,7 @@ c_digmsg(void * volatile vp){
 		default:
 			if(!(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE) || (dmcp->dmc_flags & mx__DIG_MSG_COMPOSE_DIGGED))
 				break;
-			/* FALLTHRU */
+			FALLTHRU
 		case su_ERR_NOENT:
 			emsg = N_("digmsg: remove: no such message object: %s\n");
 			goto jeinval_quote;

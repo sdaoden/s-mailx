@@ -621,7 +621,7 @@ jredo_uri:
 				}
 				break;
 			}
-			/* FALLTHRU */
+			FALLTHRU
 		default:
 			if(flags & a_LASTSP){
 				flags &= ~a_LASTSP;

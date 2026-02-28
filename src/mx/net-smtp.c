@@ -422,7 +422,7 @@ jerr_cred:
 
 	case mx_CRED_AUTHTYPE_OAUTHBEARER:
 		f |= a_IS_OAUTHBEARER;
-		/* FALLTHRU */
+		FALLTHRU
 	case mx_CRED_AUTHTYPE_XOAUTH2:{
 		char const *mech, oa[] = "AUTH OAUTHBEARER ", xoa[] = "AUTH XOAUTH2 ";
 

@@ -237,7 +237,7 @@ jlhv_redo:
 	switch((cmd = S(u8,vcp->vc_cmderr))){ /* break==goto jleave */
 	case a_VEXPR_CMD_NUM_NOT:
 		lhv = ~lhv;
-		/* FALLTHRU */
+		FALLTHRU
 
 	default:
 	case a_VEXPR_CMD_NUM_EQUAL:
@@ -664,7 +664,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
 	case a_VEXPR_CMD_STR_IREGEX:
 		n_OBSOLETE(_("vexpr: iregex: simply use regex?[case] instead, please"));
 		vcp->vc_flags |= a_VEXPR_MOD_CASE;
-		/* FALLTHRU */
+		FALLTHRU
 	case a_VEXPR_CMD_STR_REGEX:{
 		struct su_re re;
 
@@ -907,7 +907,7 @@ jenum:
 		goto jestr;
 	case a_VEXPR_ERR_STR_NODATA:
 		n_pstate_err_no = su_ERR_NODATA;
-		/* FALLTHRU*/
+		FALLTHRU
 	case a_VEXPR_ERR_STR_GENERIC:
 jestr:
 		vc.vc_varres = su_empty;

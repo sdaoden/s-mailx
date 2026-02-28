@@ -1649,7 +1649,7 @@ mx_header_rfctime(char const *date) /* TODO su_idec_ return tests */
       switch (*cp) {
       case '+':
          sign = -1;
-         /* FALLTHRU */
+         FALLTHRU
       case '-':
          ++cp;
          break;

@@ -343,7 +343,7 @@ a_ignore_addcmd_mux(struct mx_ignore *ip, char const **list, boole retain){
 			a_ignore__show(ip, retain);
 		rv = TRU1;
 	}else{
-		for(ap = list; *ap != 0; ++ap)
+		for(ap = list; *ap != NIL; ++ap)
 			switch(mx_ignore_insert(ip, retain, *ap)){
 			case FAL0:
 				n_err(_("Invalid field name cannot be %s: %s\n"),
