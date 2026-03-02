@@ -143,12 +143,12 @@ jlogname:
    /* For at least substdate() users TODO -> eventloop tick */
    mx_time_current_update(NIL, FAL0);
 
-   /* v15-compat: which_protocol(): no auto-completion */
+   /* v15-compat: which_protocol(): no auto-hook-completion */
    /* C99 */{
       char const *orig_name;
 
       orig_name = name;
-      proto = which_protocol(name, TRU1, TRU1, &name);
+      proto = n_which_protocol(name, (n_WHIPRO_STAT | n_WHIPRO_HOOKS), &name);
 
       switch(proto){
       case n_PROTO_EML:

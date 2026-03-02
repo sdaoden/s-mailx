@@ -347,9 +347,23 @@ FL boole mx_page_or_print_strlist(char const *cmdname,
  * If adjusted_or_null is not NULL it will be set to the final version of name
  * this function knew about: a %: FEDIT_SYSBOX prefix is forgotten, in case
  * a hook is needed the "real" filename will be placed.
- * TODO This c..p should be URL::from_string()->protocol() or something! */
-FL enum protocol  which_protocol(char const *name, boole check_stat,
-                     boole try_hooks, char const **adjusted_or_null);
+ * TODO Should be URL::from_string()->protocol() or whatever, not this mess.
+ * TODO This should be queried only once per name/"mainloop tick" */
+/* TODO enum n_whipro_flags does not belong here */
+enum n_whipro_flags{
+   n_WHIPRO_NONE,
+   /* If set stat(2) will be called to inspect a path;
+    * TODO hack so with *newfolders*=maildir Maildir support works */
+   n_WHIPRO_STAT = 1u<<0,
+   /* Implies _STAT: if a stat(2) fails all installed `filetype's are tried in
+    * order to find an according file */
+   n_WHIPRO_HOOKS = 1u<<1,
+   /* Quickshot: only check name for prototype, or deduce one.
+    * Is mutual exclusive with _STAT (and _HOOKS). */
+   n_WHIPRO_PROTO_ONLY = 1u<<2
+};
+FL enum protocol n_which_protocol(char const *name,
+      BITENUM(u8,n_whipro_flags) wpf, char const **adjusted_or_nil);
 
 /* Detect and query the hostname to use */
 FL char *n_nodename(boole mayoverride);

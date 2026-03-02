@@ -498,9 +498,9 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, BITENUM(u32,m
 	tmpoflags = mx_FS_O_RDWR | mx_FS_O_UNLINK | (oflags & mx_FS_O_APPEND) | mx_FS_O_NOREGISTER;
 	flags = 0;
 
-	/* v15-compat: NEVER!  We do not want to find mbox.bz2 when doing "copy
-	 *  mbox", but only for "file mbox", so do not try hooks when writing */
-	p = which_protocol(csave = file, TRU1, ((omode & W_OK) == 0), &file);
+	/* v15-compat: NEVER! Do not find mbox.bz2 for "copy mbox", only for "file mbox": no _HOOKS when writing! */
+	csave = file;
+	p = n_which_protocol(csave, (n_WHIPRO_STAT | ((omode & W_OK) ? n_WHIPRO_NONE : n_WHIPRO_HOOKS)), &file);
 	fs = S(enum mx_fs_open_state,p);
 	switch(p){
 	default:

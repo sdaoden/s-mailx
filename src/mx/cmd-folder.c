@@ -196,7 +196,7 @@ c_remove(void *vp){
 			emsg = N_("file expansion failed");
 			goto jerr;
 		}
-		ASSERT_EXEC(p == which_protocol(name, TRU1, FAL0, NIL), (void)0);
+		ASSERT_EXEC(p == n_which_protocol(name, n_WHIPRO_STAT, NIL), (void)0);
 
 		if(p != n_PROTO_UNKNOWN){
 			if(sp != NIL){
@@ -288,11 +288,11 @@ c_rename(void *vp){
 
 	if((oldn = mx_fexpand(argv[0], mx_FEXP_DEF_FOLDER)) == NIL)
 		goto jerr;
-	oldp = which_protocol(oldn, TRU1, FAL0, NIL);
+	oldp = n_which_protocol(oldn, n_WHIPRO_STAT, NIL);
 
 	if((newn = mx_fexpand(argv[1], mx_FEXP_DEF_FOLDER)) == NIL)
 		goto jerr;
-	if(oldp != which_protocol(newn, TRU1, FAL0, NIL)){
+	if(oldp != n_which_protocol(newn, n_WHIPRO_STAT, NIL)){
 		emsg = N_("can only rename folders of same type\n");
 		goto jerr;
 	}
@@ -389,7 +389,7 @@ c_folders(void *v){
 	}
 
 #ifdef mx_HAVE_IMAP
-	if(which_protocol(cp, FAL0, FAL0, NIL) == n_PROTO_IMAP)
+	if(n_which_protocol(cp, n_WHIPRO_PROTO_ONLY, NIL) == n_PROTO_IMAP)
 		rv = imap_folders(cp, *argv == NIL);
 	else
 #endif

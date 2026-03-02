@@ -52,11 +52,15 @@
 #include "su/code-in.h"
 
 FL enum protocol
-which_protocol(char const *name, boole check_stat, boole try_hooks, char const **adjusted_or_nil){
+n_which_protocol(char const *name, BITENUM(u8,n_whipro_flags) wpf, char const **adjusted_or_nil){
 	/* TODO This which_protocol() sickness should be URL::new()->protocol() */
 	char const *cp, *orig_name, *real_name, *emsg;
 	enum protocol rv, fixrv;
 	NYD2_IN;
+	ASSERT(!(wpf & n_WHIPRO_PROTO_ONLY) || !(wpf & (n_WHIPRO_STAT | n_WHIPRO_HOOKS)));
+
+	if(wpf & n_WHIPRO_HOOKS)
+		wpf |= n_WHIPRO_STAT;
 
 	rv = fixrv = n_PROTO_UNKNOWN;
 
@@ -156,12 +160,14 @@ which_protocol(char const *name, boole check_stat, boole try_hooks, char const *
 jfile:
 		rv = n_PROTO_FILE;
 jcheck:
-		if(check_stat || try_hooks){
+		if(wpf & n_WHIPRO_STAT){
 			struct su_pathinfo pi;
 			struct mx_filetype ft;
 
 			if(su_pathinfo_stat(&pi, name)){
-				ASSERT(rv == n_PROTO_FILE);
+				ASSERT(rv == n_PROTO_FILE ||
+					rv == n_PROTO_XMBOX || rv == n_PROTO_SMBOX ||
+					rv == n_PROTO_EML);
 
 				if(su_pathinfo_is_reg(&pi)){
 				}else{
@@ -208,7 +214,7 @@ jcheck:
 					goto jerr;
 #endif
 				}
-			}else if(try_hooks && mx_filetype_trial(&ft, name)){
+			}else if((wpf & n_WHIPRO_HOOKS) && mx_filetype_trial(&ft, name)){
 				real_name = savecatsep(name, '.', ft.ft_ext_dat);
 				if(fixrv != n_PROTO_UNKNOWN)
 					rv = fixrv;

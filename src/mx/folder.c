@@ -64,8 +64,8 @@ a_folder_update_mailname(char const *name, boole rdonly){ /* TODO 2MUCH work */
 				!su_mem_cmp(name, su_path_null, sizeof(su_PATH_NULL) -1))
 			goto jdocopy;
 
-		/* v15-compat: which_protocol(): no auto-completion */
-		p = which_protocol(name, TRU1, TRU1, &adjname);
+		/* v15-compat: which_protocol(): no auto-hook-completion */
+		p = n_which_protocol(name, (n_WHIPRO_STAT | n_WHIPRO_HOOKS), &adjname);
 
 		if(p == n_PROTO_FILE || p == n_PROTO_MAILDIR || p == n_PROTO_EML ||
 				p == n_PROTO_SMBOX || p == n_PROTO_XMBOX){
@@ -581,7 +581,7 @@ n_folder_query(void){
 			}
 		}
 
-		switch((proto = which_protocol(cp, FAL0, FAL0, &adjcp))){
+		switch((proto = n_which_protocol(cp, n_WHIPRO_PROTO_ONLY, &adjcp))){
 		case n_PROTO_POP3:
 			n_err(_("*folder*: cannot use the POP3 protocol\n"));
 			err = TRU1;

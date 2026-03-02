@@ -346,11 +346,11 @@ a_main_rcv_mode(struct a_main_ctx *mcp){ /* {{{ */
 	}
 #ifdef mx_HAVE_IMAP
 	else if(*mcp->mc_folder == '@'){
-		/* This must be treated specially to make possible invocation like -A imap -f @mailbox */
+		/* TODO This must be treated specially to make possible invocation like -A imap -f @mailbox */
 		char const *cp;
 
 		cp = n_folder_query();
-		if(which_protocol(cp, FAL0, FAL0, NIL) == n_PROTO_IMAP)
+		if(n_which_protocol(cp, n_WHIPRO_PROTO_ONLY, NIL) == n_PROTO_IMAP)
 			su_cs_pcopy_n(mailname, cp, sizeof mailname);
 	}
 #endif

@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/path.h>
 #include <su/time.h>
 
 #include "mx/attachments.h"
@@ -1497,7 +1498,7 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
    if((cp = mx_fexpand(ccp, mx_FEXP_DEF_FOLDER_VAR)) == NIL)
       goto jbail;
 
-   switch(which_protocol(ccp, FAL0, FAL0, NIL)){
+   switch(n_which_protocol(ccp, n_WHIPRO_PROTO_ONLY, NIL)){
    case n_PROTO_EML:
    case n_PROTO_POP3:
    case n_PROTO_UNKNOWN:
@@ -1507,10 +1508,10 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
    }
 
    switch(*(ccp = cp)){
-   case '/': /* xxx DIRSEP? */
+   case su_PATH_SEP_C:
       break;
    case '.':
-      if(cp[1] == '/') /* DIRSEP */
+      if(cp[1] == su_PATH_SEP_C)
          break;
       FALLTHRU
    default:
@@ -1520,7 +1521,7 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
          struct str s;
          char const *nccp, *folder;
 
-         switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
+         switch(n_which_protocol(ccp, n_WHIPRO_STAT, &nccp)){
          case n_PROTO_IMAP:
             break;
          case n_PROTO_SMBOX: /* TODO *record*=SMBOX is a NO-NO */
@@ -1543,8 +1544,8 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
 
             folder = n_folder_query();
 #ifdef mx_HAVE_IMAP
-            if(which_protocol(folder, FAL0, FAL0, NIL) == n_PROTO_IMAP){
-               n_err(_("*record*: *outfolder* set, *folder* is IMAP "
+            if(n_which_protocol(folder, n_WHIPRO_NONE, NIL) == n_PROTO_IMAP){
+               n_err(_("*record*: *outfolder* set, *folder* is IMAP " /*TODO*/
                   "based: only one protocol per file is possible\n"));
                goto jbail;
             }

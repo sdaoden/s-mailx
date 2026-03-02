@@ -165,8 +165,8 @@ jnext:
 	}
 
 #ifdef mx_HAVE_IMAP
-	if(res[0] == '@' && (fcp->fc_have_proto = TRU1,
-				fcp->fc_proto = which_protocol(mailname, FAL0, FAL0, NIL)) == n_PROTO_IMAP){
+	if(res[0] == '@' && (fcp->fc_have_proto = TRUM1,
+				fcp->fc_proto = n_which_protocol(mailname, n_WHIPRO_PROTO_ONLY, NIL)) == n_PROTO_IMAP){
 		res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
 		if(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE))
 			goto jlocal_err;
@@ -184,7 +184,7 @@ jnext:
 		if(!(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE))){
 			cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
 			fcp->fc_have_proto = TRU1;
-			switch((fcp->fc_proto = which_protocol(cp, TRU1, FAL0, NIL))){
+			switch((fcp->fc_proto = n_which_protocol(cp, n_WHIPRO_PROTO_ONLY, NIL))){
 			case n_PROTO_EML:
 			case n_PROTO_FILE:
 			case n_PROTO_SMBOX:
@@ -246,8 +246,8 @@ jleave_local_test:
 		res = savecat(savestrbuf(proto.s, proto.l), res);
 
 	if(fcp->fc_fexpm & (mx_FEXP_LOCAL | mx_FEXP_LOCAL_FILE)){
-		fcp->fc_have_proto = TRU1;
-		switch((fcp->fc_proto = which_protocol(res, FAL0, FAL0, &cp))){
+		fcp->fc_have_proto = TRUM1;
+		switch((fcp->fc_proto = n_which_protocol(res, n_WHIPRO_PROTO_ONLY, &cp))){
 		case n_PROTO_MAILDIR:
 			if(!(fcp->fc_fexpm & mx_FEXP_LOCAL_FILE)){
 				FALLTHRU
@@ -310,7 +310,7 @@ a_fexpand_findmail(char const *user, boole force){
 		/* Heirloom compatibility: an IMAP *folder* becomes "%" */
 #ifdef mx_HAVE_IMAP
 		else if(cp == NIL && !su_cs_cmp(user, ok_vlook(LOGNAME)) &&
-				which_protocol(cp = n_folder_query(), FAL0, FAL0, NIL) == n_PROTO_IMAP){
+				n_which_protocol(cp = n_folder_query(), n_WHIPRO_PROTO_ONLY, NIL) == n_PROTO_IMAP){
 			/* TODO v15 Compat handling of *folder* with IMAP! */
 			n_OBSOLETE("no more expansion of *folder* in \"%\": please set *inbox*");
 			rv = savestr(cp);
@@ -760,7 +760,8 @@ mx_fexpand_protop(char const *name, BITENUM(u32,mx_fexp_mode) fexpm, enum protoc
 
 	if(protop_or_nil != NIL)
 		*protop_or_nil = (fc.fc_have_proto ? S(enum protocol,fc.fc_proto)
-				: (fc.fc_res != NIL ? which_protocol(fc.fc_res[0], FAL0, FAL0, NIL) : n_PROTO_UNKNOWN));
+				: (fc.fc_res != NIL ? n_which_protocol(fc.fc_res[0], n_WHIPRO_PROTO_ONLY, NIL)
+					: n_PROTO_UNKNOWN));
 
 	NYD_OU;
 	return (fc.fc_res != NIL ? fc.fc_res[0] : NIL);

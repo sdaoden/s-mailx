@@ -8848,8 +8848,8 @@ t_save() { #{{{
 	ck 5-5 - ./ex '2153575326 149'
 	${rm} -f ./.tlst ./.tall ./from1 ./ex
 
-	${mkdir} .tfolder
-	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
+	$mkdir .tfolder
+	t_it 6 '#' 'set outfolder folder='"$($pwd)"'/.tfolder'
 	ck_ex0 6-1
 	echo * .tfolder/* > ./.tlst
 	cke0 6-2 - ./.tlst '1865898363 29'
@@ -11244,19 +11244,19 @@ __EOT
 } #}}}
 
 t_filetype() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
-		"${TOPDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=test://t.mbox > ${E0} 2>&1
+		"${TOPDIR}snailmail.jpg" | $MAILX $ARGS -Smta=test://t.mbox > $E0 2>&1
 	cke0 1 0 ./t.mbox '970408791 13538'
 
 	if (echo | gzip -c) >/dev/null 2>&1; then
 		{
 			printf 'File "%s"\ncopy 1 ./t2.mbox.gz\ncopy 2 ./t2.mbox.gz' \
-				./t.mbox | ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
+				./t.mbox | $MAILX $ARGS -X'filetype gz gzip\ -dc gzip\ -c'
 			printf 'File ./t2.mbox.gz\ncopy * ./t2.mbox\n' |
-				${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
-		} > ./t3 2>${E0}
+				$MAILX $ARGS -X'filetype gz gzip\ -dc gzip\ -c'
+		} > ./t3 2>$E0
 		cke0 2 - ./t2.mbox '970408791 13538'
 		ck 3 - ./t3 '4165397337 97'
 	else
@@ -11269,19 +11269,19 @@ t_filetype() { #{{{
 				copy 1 ./t4.mbox.gz
 				copy 2 ./t4.mbox.gz
 				' ./t.mbox |
-			${MAILX} ${ARGS} \
+			$MAILX $ARGS \
 				-X'filetype gz gzip\ -dc gzip\ -c' \
-				-X'filetype mbox.gz "${sed} 1,3d|${cat}" \
-				"echo eins;echo zwei;echo und mit ${sed} bist Du dabei;${cat}"'
+				-X'filetype mbox.gz "$sed 1,3d|$cat" \
+				"echo eins;echo zwei;echo und mit $sed bist Du dabei;$cat"'
 		printf 'File ./t4.mbox.gz\ncopy * ./t4.mbox\n' |
-			${MAILX} ${ARGS} \
+			$MAILX $ARGS \
 				-X'filetype gz gzip\ -dc gzip\ -c' \
-				-X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
-	} > ./t5 2>${E0}
+				-X'filetype mbox.gz "$sed 1,3d|$cat" kill\ 0'
+	} > ./t5 2>$E0
 	cke0 4 - ./t4.mbox '2964866653 27096'
 	ck 5 - ./t5 '2735232731 163'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_e_H_L_opts() { #{{{
