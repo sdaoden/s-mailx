@@ -1130,6 +1130,10 @@ jleave:
 		if(mpccp->mpcc_iconv_disable)
 			mtcfcp->mtcfc_do_iconv = FAL0;
 
+/*
+FIXME
+fprintf(stderr, "RFC822: %d %s\n",rfc822,mtcfcp->mtcfc_content_type);
+*/
 		if(rfc822){
 			if(mpf & mx_MIME_PROBE_FROM_1STLINE){
 				n_err(
@@ -1137,7 +1141,17 @@ _("Pre-v15 %s cannot handle message/rfc822 that indeed is a RFC 4155 MBOX!\n  Fo
 					n_uagent);
 				mtcfcp->mtcfc_content_type = "application/mbox";
 				goto jnorfc822;
+			}else if(mpf & (mx_MIME_PROBE_LONGLINES | mx_MIME_PROBE_CRLF | mx_MIME_PROBE_CTRLCHAR |
+					mx_MIME_PROBE_NOTERMNL | mx_MIME_PROBE_FROM_)){
+				n_err(
+_("Pre-v15 %s cannot create message/rfc822 if data requires MIME encoding (RFC 2046, 5.2.1)!\n  Forcing a content-type of text/plain!\n"),
+					n_uagent);
+				mtcfcp->mtcfc_content_type = "text/plain";
+				goto jnorfc822;
 			}
+				mtcfcp->mtcfc_content_type = "text/plain";
+				goto jnorfc822;
+
 			mtcfcp->mtcfc_conversion = (menc == mx_MIME_ENC_7B ? CONV_7BIT
 					: (menc == mx_MIME_ENC_8B ? CONV_8BIT
 					/* May have only 7-bit, 8-bit and binary.  Try to avoid latter */
