@@ -11704,10 +11704,10 @@ __EOT
 
 t_attachments() { #{{{
 	# TODO More should be in compose mode stuff aka digmsg
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	# input {{{
-	${cat} <<'_EOT' > ./tx.box
+	$cat <<'_EOT' > ./tx.box
 From steffen Sun Feb 18 02:48:40 2018
 Date: Sun, 18 Feb 2018 02:48:40 +0100
 To:
@@ -11723,6 +11723,22 @@ User-Agent: s-nail v14.9.7
 
 
 _EOT
+	$cat <<'_EOT' > ./tx2.box
+From steffen Mon Nov 24 21:55:14 2025
+Date: Mon, 24 Nov 2025 21:55:14 +0100
+To:
+Subject: m3
+
+From a
+
+From steffen Mon Nov 24 21:55:16 2025
+Date: Mon, 24 Nov 2025 21:55:16 +0100
+To:
+Subject: m4
+
+From steffen Mon Nov 24 21:55:16 2025.
+
+_EOT
 	echo att1 > ./tx.a1
 	printf 'att2-1\natt2-2\natt2-4\n' > ./'tx a2'
 	printf 'att3-1\natt3-2\natt3-4\n' > ./txa3
@@ -11730,10 +11746,10 @@ _EOT
 	#}}}
 
 	#{{{
-	<<'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 \
+	<<'_EOT' $MAILX $ARGS -Sescape=! -Smta=test://t1 \
 		-a ./tx.a1 -a './tx a2' \
 		-s attachment-test \
-		ex@am.ple > ./t2 2>${E0}
+		ex@am.ple > ./t2 2>$E0
 !@  ./txa3			 		 "./tx a4"		 		  ""
 !p
 !@
@@ -11748,7 +11764,7 @@ _EOT
 	ck 2 - ./t2 '3897935448 734'
 
 	#{{{
-	cat <<'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://t3 -Rf ./tx.box > ./t4 2>${E0}
+	$cat <<'_EOT' | $MAILX $ARGS -Sescape=! -Smta=test://t3 -Rf ./tx.box > ./t4 2>$E0
 mail ex@amp.ple
 !s This the subject is
 !@  ./txa3	 	 	"#2"	 	 "./tx a4"	 	 	  "#1"	""
@@ -11798,7 +11814,7 @@ _EOT
 	ck 4 - ./t4 '2071033724 1930'
 
 	#{{{
-	<<'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t5 -Rf ./tx.box > ./t6 2>${E0}
+	<<'_EOT' $MAILX $ARGS -Sescape=! -Smta=test://t5 -Rf ./tx.box > ./t6 2>$E0
 mail ex@amp.ple
 !s Subject One
 !@ "#."
@@ -11831,39 +11847,39 @@ _EOT
 	##
 
 	# Content-ID:
-	</dev/null ${MAILX} ${ARGS} -Smta=test \
+	</dev/null $MAILX $ARGS -Smta=test \
 		-Sstealthmua=noagent -Shostname \
 		-a ./tx.a1 -a './tx a2' \
 		-a ./txa3 -a './tx a4' \
 		-s Y \
-		ex@am.ple > ./t7 2>${E0}
+		ex@am.ple > ./t7 2>$E0
 	cke0 7 0 ./t7 '1809232322 1416'
 
 	# input charset
-	</dev/null ${MAILX} ${ARGS} -Smta=test -Sttycharset=utf8 \
+	</dev/null $MAILX $ARGS -Smta=test -Sttycharset=utf8 \
 		-a ./tx.a1=ascii -a './tx a2'=LATin1 \
 		-a ./txa3=UTF-8 -a './tx a4'=- \
 		-s Y \
-		ex@am.ple > ./t8 2>${E0}
+		ex@am.ple > ./t8 2>$E0
 	cke0 8 0 ./t8 '1413564432 945'
 
 	# input+output charset, no iconv
-	</dev/null ${MAILX} ${ARGS} -Smta=test \
+	</dev/null $MAILX $ARGS -Smta=test \
 		-a ./tx.a1=ascii#- -a './tx a2'=LATin1#- \
 		-a ./txa3=UTF-8#- -a './tx a4'=utf8#- \
 		-s Y \
-		ex@am.ple > ./t9 2>${E0}
+		ex@am.ple > ./t9 2>$E0
 	cke0 9 0 ./t9 '1328722137 946'
 
 	if have_feat iconv; then
 		printf 'ein \303\244ffchen und ein pferd\n' > ./txa10
 		if (< ./tx.a1 iconv -f iso-8859-1 -t utf8) >/dev/null 2>&1; then
-			</dev/null ${MAILX} ${ARGS} --set mta=test \
+			</dev/null $MAILX $ARGS --set mta=test \
 				--set stealthmua=noagent --set hostname \
 				--attach ./tx.a1=-#utf8 \
 				--attach ./txa10=utf8#iso-8859-1 \
 				--subject Y \
-				ex@am.ple > ./t10 2>${E0}
+				ex@am.ple > ./t10 2>$E0
 			cke0 10 0 ./t10 '3571320489 989'
 		else
 			t_echoskip '[!10:ICONV/iconv(1):missing conversion(1)]'
@@ -11873,75 +11889,100 @@ _EOT
 	fi
 
 	# `mimetype' "handler-only" type-marker not matched for types
-	</dev/null ${MAILX} ${ARGS} -Smta=test \
+	</dev/null $MAILX $ARGS -Smta=test \
 		-s Y \
 		-Y '~:unmimetype *' \
 		-Y '~:mimetype ? application/yeye txa3' \
 		-Y '~:mimetype ?only-handler application/nono txa3' \
 		-Y '~@ ./txa3' \
-		ex@am.ple > ./t11 2>${E0}
+		ex@am.ple > ./t11 2>$E0
 	cke0 11 0 ./t11 '334854921 459'
 
 	# default conv with ! base64 enforcement, too
 	printf 'one line\012' > ./tcnv
 	ck cnv-1.0 - ./tcnv '665489461 9'
 
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv t@t > ./tcnv-1.1 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv t@t > ./tcnv-1.1 2>$E0
 	cke0 cnv-1.1 0 ./tcnv-1.1 '3049784352 573'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=# t@t > ./tcnv-1.2 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=# t@t > ./tcnv-1.2 2>$E0
 	cke0 cnv-1.2 0 ./tcnv-1.2 '3049784352 573'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-# t@t > ./tcnv-1.3 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=-# t@t > ./tcnv-1.3 2>$E0
 	cke0 cnv-1.3 0 ./tcnv-1.3 '3049784352 573'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#- t@t > ./tcnv-1.4 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=#- t@t > ./tcnv-1.4 2>$E0
 	cke0 cnv-1.4 0 ./tcnv-1.3 '3049784352 573'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#- t@t > ./tcnv-1.5 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=-#- t@t > ./tcnv-1.5 2>$E0
 	cke0 cnv-1.5 0 ./tcnv-1.5 '3049784352 573'
-	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-1.5 > ./tcnv-1.5.verify 2>${E0}
+	</dev/null $MAILX $ARGS -Y 'write;xit' -Rf ./tcnv-1.5 > ./tcnv-1.5.verify 2>$E0
 	cke0 cnv-1.5.verify 0 ./tcnv-1.5.verify '3289363155 36'
 	ck cnv-1.5.write - ./tcnv#1.2 '665489461 9'
 
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!# t@t > ./tcnv-1.6 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=!# t@t > ./tcnv-1.6 2>$E0
 	cke0 cnv-1.6 0 ./tcnv-1.6 '1770868129 611'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!-# t@t > ./tcnv-1.7 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=!-# t@t > ./tcnv-1.7 2>$E0
 	cke0 cnv-1.7 0 ./tcnv-1.7 '1770868129 611'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#!- t@t > ./tcnv-1.8 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=#!- t@t > ./tcnv-1.8 2>$E0
 	cke0 cnv-1.8 0 ./tcnv-1.8 '1770868129 611'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-1.9 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-1.9 2>$E0
 	cke0 cnv-1.9 0 ./tcnv-1.9 '1770868129 611'
-	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-1.9 > ./tcnv-1.9.verify 2>${E0}
+	</dev/null $MAILX $ARGS -Y 'write;xit' -Rf ./tcnv-1.9 > ./tcnv-1.9.verify 2>$E0
 	cke0 cnv-1.9.verify 0 ./tcnv-1.9.verify '3289363155 36'
 	ck cnv-1.9.write - ./tcnv#1.2#1.2 '665489461 9'
 
 	printf 'one line\015\012' > ./tcnv
 	ck cnv-2.0 - ./tcnv '3312016702 10'
 
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv t@t > ./tcnv-2.1 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv t@t > ./tcnv-2.1 2>$E0
 	cke0 cnv-2.1 0 ./tcnv-2.1 '963951735 675'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=# t@t > ./tcnv-2.2 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=# t@t > ./tcnv-2.2 2>$E0
 	cke0 cnv-2.2 0 ./tcnv-2.2 '963951735 675'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-# t@t > ./tcnv-2.3 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=-# t@t > ./tcnv-2.3 2>$E0
 	cke0 cnv-2.3 0 ./tcnv-2.3 '963951735 675'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#- t@t > ./tcnv-2.4 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=#- t@t > ./tcnv-2.4 2>$E0
 	cke0 cnv-2.4 0 ./tcnv-2.3 '963951735 675'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#- t@t > ./tcnv-2.5 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=-#- t@t > ./tcnv-2.5 2>$E0
 	cke0 cnv-2.5 0 ./tcnv-2.5 '963951735 675'
-	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-2.5 > ./tcnv-2.5.verify 2>${E0}
+	</dev/null $MAILX $ARGS -Y 'write;xit' -Rf ./tcnv-2.5 > ./tcnv-2.5.verify 2>$E0
 	cke0 cnv-2.5.verify 0 ./tcnv-2.5.verify '3289363155 36'
 	ck cnv-2.5.write - ./tcnv#1.2#1.2#1.2 '3312016702 10'
 
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!# t@t > ./tcnv-2.6 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=!# t@t > ./tcnv-2.6 2>$E0
 	cke0 cnv-2.6 0 ./tcnv-2.6 '3458846618 666'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!-# t@t > ./tcnv-2.7 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=!-# t@t > ./tcnv-2.7 2>$E0
 	cke0 cnv-2.7 0 ./tcnv-2.7 '3458846618 666'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#!- t@t > ./tcnv-2.8 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=#!- t@t > ./tcnv-2.8 2>$E0
 	cke0 cnv-2.8 0 ./tcnv-2.8 '3458846618 666'
-	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-2.9 2>${E0}
+	< ./tcnv $MAILX $ARGS -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-2.9 2>$E0
 	cke0 cnv-2.9 0 ./tcnv-2.9 '3458846618 666'
-	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-2.9 > ./tcnv-2.9.verify 2>${E0}
+	</dev/null $MAILX $ARGS -Y 'write;xit' -Rf ./tcnv-2.9 > ./tcnv-2.9.verify 2>$E0
 	cke0 cnv-2.9.verify 0 ./tcnv-2.9.verify '3289363155 36'
 	ck cnv-2.9.write - ./tcnv#1.2#1.2#1.2#1.2 '3312016702 10'
 
-	t_epilog "${@}"
+	# From_ quoting <> *mime-encoding* {{{
+	$cat <<'_EOT' | $MAILX $ARGS -Sescape=! -Smta=test://tenc-1-out -Rf ./tx2.box > ./tenc-1 2>$E0
+se mime-encoding=qp
+mail e@x.y
+!s S1
+From steffen Mon Nov 24 22:10:35 2025
+!@ '#1' '#2'
+!.
+se mime-encoding=8b
+mail e@x.y
+!s S2
+From steffen Mon Nov 24 22:21:23 2025
+!@\#1 \#2
+!.
+se mime-encoding=b64
+mail e@x.y
+!s S2
+From steffen Mon Nov 24 22:21:49 2025
+!@\#1 \#2
+!.
+_EOT
+	#}}}
+	cke0 enc-1 0 ./tenc-1 '45059832 2341'
+	ck enc-1-out - ./tenc-1-out '2071033724 1930'
+
+	t_epilog "$@"
 } #}}}
 
 t_rfc2231() { #{{{
