@@ -134,7 +134,10 @@ static u8 const a_credauth_select[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT] = {
 #ifdef mx_HAVE_TLS_MD5
 		mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
-		mx_CRED_AUTHTYPE_NONE
+		mx_CRED_AUTHTYPE_PLAIN
+#if !defined mx_HAVE_TLS || !defined mx_HAVE_GSSAPI || !defined mx_HAVE_TLS_MD5
+		,mx_CRED_AUTHTYPE_NONE
+#endif
 	},
 	{ /* POP3 */
 #ifdef mx_HAVE_TLS
@@ -178,6 +181,7 @@ static u8 const a_credauth_select_notls[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT
 #ifdef mx_HAVE_TLS_MD5
 		mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
+		mx_CRED_AUTHTYPE_PLAIN,
 		mx_CRED_AUTHTYPE_LOGIN,
 		mx_CRED_AUTHTYPE_NONE,
 	},

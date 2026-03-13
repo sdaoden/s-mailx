@@ -242,6 +242,7 @@ static enum okay  imap_cram_md5(struct mailbox *mp,
 static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
 static enum okay a_imap_oauthbearer(struct mailbox *mp, struct mx_url *urlp,
       struct mx_cred_ctx *ccp, boole is_xoauth2);
+static enum okay a_imap_plain(struct mailbox *mp, struct mx_cred_ctx *ccp);
 static enum okay a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp);
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
@@ -1647,6 +1648,9 @@ a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
          rv = a_imap_oauthbearer(mp, urlp, ccredp,
                (ccredp->cc_authtype != mx_CRED_AUTHTYPE_OAUTHBEARER));
          break;
+      case mx_CRED_AUTHTYPE_PLAIN:
+         rv = a_imap_plain(mp, ccredp);
+         break;
       case mx_CRED_AUTHTYPE_EXTERNAL:
       case mx_CRED_AUTHTYPE_EXTERNANON:
          rv = a_imap_external(mp, ccredp);
@@ -1769,6 +1773,63 @@ jleave:
    if(s.s != NIL)
       n_lofi_free(s.s);
 
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_imap_plain(struct mailbox *mp, struct mx_cred_ctx *ccp){
+   char o[mx_LINESIZE];
+   struct str sb;
+   boole nsaslir;
+   FILE *queuefp;
+   enum okay rv;
+   NYD_IN;
+
+   rv = STOP;
+   queuefp = NIL;
+   nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   /* Calculate required storage */
+#undef a_MAX
+#define a_MAX (2 + sizeof("9999999999 AUTHENTICATE PLAIN " NETNL))
+   /* C99 */{
+      int s;
+      uz i, j;
+
+      i = ccp->cc_user.l;
+      j = UZ_MAX - a_MAX;
+      if(ccp->cc_pass.l >= j || i >= (j -= ccp->cc_pass.l)){
+jerr_cred:
+         n_err(_("Credentials overflow buffer sizes\n"));
+         goto jleave;
+      }
+      i += ccp->cc_pass.l;
+      i += a_MAX;
+
+      i = mx_b64_enc_calc_size(i);
+      if(/*i == UZ_MAX ||*/ i >= sizeof(o))
+         goto jerr_cred;
+
+      s = snprintf(o, sizeof o, "%c%s%c%s",
+            '\0', ccp->cc_user.s, '\0', ccp->cc_pass.s);
+      if(s < 0)
+         goto jerr_cred;
+
+      if(mx_b64_enc_buf(&sb, o, s, mx_B64_AUTO_ALLOC) == NIL)
+         goto jerr_cred;
+
+      if(snprintf(o, sizeof o, NETLINE("%s AUTHENTICATE PLAIN %s"),
+            tag(TRU1), sb.s/*imap_quotestr(sb.s)*/) < 0)
+         goto jerr_cred;
+   }
+#undef a_MAX
+
+   IMAP_XOUT(o, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
+   while(mp->mb_active & MB_COMD)
+      rv = imap_answer(mp, 1);
+
+jleave:
    NYD_OU;
    return rv;
 }

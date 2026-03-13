@@ -15929,13 +15929,27 @@ T%s LOGOUT
 		"${__xno6__}"
 	} #}}}
 
+# cksum
+# 4233548649 160
+# is
+
+# O  1 steffen@kdc.locald 2019-08-16           /258   The GSSAPI dance is done! 
+#>U  2 steffen@kdc.locald 2019-08-17           /248   Hi from FreeBSD           
+
+	t__net_script t.sh imap -Simap-auth=plain -Snoimap-use-starttls
+	{ imap_hello && printf '\001
+T2 AUTHENTICATE PLAIN AHN0ZWZmZW4AU3dheQ==
+' &&
+		imap_logged_in; } | ../net-test t.sh > ./t0 2>$E0
+	cke0 0 0 ./t0 '4233548649 160'
+
 	t__net_script .t.sh imap \
 		-Simap-auth=login -Snoimap-use-starttls
 	{ imap_hello && printf '\001
 T2 LOGIN "steffen" "Sway"
 ' &&
-		imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-	check 1 0 "${MBOX}" '4233548649 160'
+		imap_logged_in; } | ../net-test .t.sh > "$MBOX" 2>&1
+	cke0 1 0 "$MBOX" '4233548649 160'
 
 	if false && have_feat tls; then # TODO TLS-NET-SERV
 		t__net_script .t.sh imap \
