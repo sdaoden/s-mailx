@@ -14,20 +14,20 @@ LC_ALL=C
 export LC_ALL
 
 # For heaven's sake auto-redirect on SunOS/Solaris
-if [ -z "${__MAKE_CONFIG_UP}" ] && [ -d /usr/xpg4 ]; then
+if [ -z "$__MAKE_CONFIG_UP" ] && [ -d /usr/xpg4 ]; then
 	__MAKE_CONFIG_UP=y
-	PATH=/usr/xpg4/bin:${PATH}
+	PATH=/usr/xpg4/bin:"$PATH"
 	export __MAKE_CONFIG_UP PATH
 
-	if [ "x${SHELL}" = x ] || [ "x${SHELL}" = x/bin/sh ]; then
+	if [ "x$SHELL" = x ] || [ "x$SHELL" = x/bin/sh ]; then
 		SHELL=/usr/xpg4/bin/sh
 		export SHELL
 		echo >&2 'SunOS/Solaris, redirecting through $SHELL=/usr/xpg4/bin/sh'
-		exec /usr/xpg4/bin/sh "${0}" "${@}"
+		exec /usr/xpg4/bin/sh "$0" "$@"
 	fi
 fi
 
-if [ -z "${SHELL}" ]; then
+if [ -z "$SHELL" ]; then
 	SHELL=/bin/sh
 	export SHELL
 fi
@@ -103,49 +103,49 @@ H_VAL_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
 # encapsulate stuff in functions which get called in right order later on
 
 option_reset() {
-	set -- ${OPTIONS}
+	set -- $OPTIONS
 	for i
 	do
-		eval j=\$OPT_${i}
-		[ -n "${j}" ] && eval SAVE_OPT_${i}=${j}
-		eval OPT_${i}=0
+		eval j=\$OPT_$i
+		[ -n "$j" ] && eval SAVE_OPT_$i=$j
+		eval OPT_$i=0
 	done
 }
 
 option_maximal() {
-	set -- ${OPTIONS}
+	set -- $OPTIONS
 	for i
 	do
-		eval OPT_${i}=1
+		eval OPT_$i=1
 	done
 	OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
 }
 
 option_restore() {
 	any=
-	set -- ${OPTIONS}
+	set -- $OPTIONS
 	for i
 	do
-		eval j=\$SAVE_OPT_${i}
-		if [ -n "${j}" ]; then
-			msg_nonl "${any}${i}=${j}"
+		eval j=\$SAVE_OPT_$i
+		if [ -n "$j" ]; then
+			msg_nonl "$any$i=$j"
 			any=', '
-			eval OPT_${i}=${j}
+			eval OPT_$i=$j
 		fi
 	done
-	[ -n "${any}" ] && msg_nonl ' ... '
+	[ -n "$any" ] && msg_nonl ' ... '
 }
 
 option_setup() {
-	option_parse OPTIONS_DETECT "${XOPTIONS_DETECT}"
-	option_parse OPTIONS "${XOPTIONS}"
-	option_parse OPTIONS_XTRA "${XOPTIONS_XTRA}"
+	option_parse OPTIONS_DETECT "$XOPTIONS_DETECT"
+	option_parse OPTIONS "$XOPTIONS"
+	option_parse OPTIONS_XTRA "$XOPTIONS_XTRA"
 	OPT_MIME=1
 
 	# Predefined CONFIG= urations take precedence over anything else
-	if [ -n "${CONFIG}" ]; then
+	if [ -n "$CONFIG" ]; then
 		option_reset
-		case "${CONFIG}" in
+		case "$CONFIG" in
 		[nN][uU][lL][lL])
 			;;
 		[nN][uU][lL][lL][iI])
@@ -197,12 +197,12 @@ option_setup() {
 			;;
 		*)
 			msg 'failed'
-			msg 'ERROR: unknown CONFIG= setting: '${CONFIG}
+			msg 'ERROR: unknown CONFIG= setting: '$CONFIG
 			msg '  Available are NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
 			exit 1
 			;;
 		esac
-		msg_nonl "CONFIG=${CONFIG} ... "
+		msg_nonl "CONFIG=$CONFIG ... "
 		option_restore
 	fi
 }
@@ -210,7 +210,7 @@ option_setup() {
 # Inter-relationships XXX sort this!
 option_update() {
 	# 0=pre option evaluate, 1=post, 2=final call, before summary
-	case ${1} in
+	case $1 in
 	0)
 		;;
 	1)
@@ -297,18 +297,18 @@ option_update() {
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
-COMMLINE="${*}"
+COMMLINE="$*"
 
 # which(1) not standardized, command(1) -v may return non-executable: unroll!
-SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
+SU_FIND_COMMAND_INCLUSION=1 . "$TOPDIR"mk/su-find-command.sh
 # Also not standardized: a way to round-trip quote
-. "${TOPDIR}"mk/su-quote-rndtrip.sh
+. "$TOPDIR"mk/su-quote-rndtrip.sh
 
 ## - >8 - << EARLY | OS/CC >> - 8< - ##
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
-[ -n "${cc_maxopt}" ] || cc_maxopt=100
+[ -n "$cc_maxopt" ] || cc_maxopt=100
 cc_os_search=
 cc_no_stackprot=
 cc_no_fortify=
@@ -322,15 +322,15 @@ OPT_ANYEVAL= VAL_ANYEVAL=
 
 os_early_setup() {
 	# We do not "have any utility".  See make.rc: change comment there on change!!
-	if [ -z "${OS}" ] || [ -z "${OSFULLSPEC}" ]; then
+	if [ -z "$OS" ] || [ -z "$OSFULLSPEC" ]; then
 		thecmd_testandset_fail uname uname
 	fi
 
-	[ -n "${OS}" ] || OS=$(${uname} -s)
+	[ -n "$OS" ] || OS=$($uname -s)
 	export OS
-	msg 'Operating system is %s' "${OS}"
+	msg 'Operating system is %s' "$OS"
 
-	if [ ${OS} = SunOS ]; then
+	if [ $OS = SunOS ]; then
 		# According to standards(5), this is what we need to do
 		if [ -d /usr/xpg4 ]; then :; else
 			msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
@@ -338,8 +338,8 @@ os_early_setup() {
 		fi
 		# xpg4/bin was already added at top, but we need it first and it will be
 		# cleaned up via path_check along the way
-		PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
-		[ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
+		PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:$PATH"
+		[ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:$PATH"
 		export PATH
 	fi
 }
@@ -347,68 +347,68 @@ os_early_setup() {
 os_setup() {
 	# OSFULLSPEC is used to recognize changes (i.e., machine type, updates
 	# etc.), it is not baked into the binary
-	[ -n "${OSFULLSPEC}" ] || OSFULLSPEC=$(${uname} -a)
+	[ -n "$OSFULLSPEC" ] || OSFULLSPEC=$($uname -a)
 
-	if [ ${OS} = darwin ]; then
+	if [ "$OS" = darwin ]; then
 		msg ' . have special Darwin environmental addons...'
-		LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${DYLD_LIBRARY_PATH}
-	elif [ ${OS} = sunos ]; then
+		LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DYLD_LIBRARY_PATH
+	elif [ "$OS" = sunos ]; then
 		msg ' . have special SunOS / Solaris "setup" rules ...'
 		cc_os_search=_cc_os_sunos
 		_os_setup_sunos
-	elif [ ${OS} = unixware ]; then
+	elif [ "$OS" = unixware ]; then
 		cc_os_search=_cc_os_unixware
-	elif [ -n "${VERBOSE}" ]; then
+	elif [ -n "$VERBOSE" ]; then
 		msg ' . no special treatment for this system necessary or known'
 	fi
 
 	# Sledgehammer: better set _GNU_SOURCE
 	# And in general: oh, boy!
-	OS_DEFINES="${OS_DEFINES}#define _GNU_SOURCE\n"
-	#OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200809L\n"
-	#OS_DEFINES="${OS_DEFINES}#define _XOPEN_SOURCE 700\n"
-	#[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
+	OS_DEFINES="$OS_DEFINES#define _GNU_SOURCE\n"
+	#OS_DEFINES="$OS_DEFINES#define _POSIX_C_SOURCE 200809L\n"
+	#OS_DEFINES="$OS_DEFINES#define _XOPEN_SOURCE 700\n"
+	#[ "$OS" = darwin ] && OS_DEFINES="$OS_DEFINES#define _DARWIN_C_SOURCE\n"
 
 	# On pkgsrc(7) systems automatically add /usr/pkg/*
 	if feat_yes USE_PKGSYS; then
 		if [ -d /usr/pkg ]; then
 			msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
-			C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
-			LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
+			C_INCLUDE_PATH=/usr/pkg/include:"$C_INCLUDE_PATH"
+			LD_LIBRARY_PATH=/usr/pkg/lib:"$LD_LIBRARY_PATH"
 			ld_rpath_not_runpath=1
 		fi
 	fi
 }
 
 _os_setup_sunos() {
-	C_INCLUDE_PATH=/usr/xpg4/include:${C_INCLUDE_PATH}
-	LD_LIBRARY_PATH=/usr/xpg4/lib:${LD_LIBRARY_PATH}
+	C_INCLUDE_PATH=/usr/xpg4/include:"$C_INCLUDE_PATH"
+	LD_LIBRARY_PATH=/usr/xpg4/lib:"$LD_LIBRARY_PATH"
 
 	# Include packages
 	if feat_yes USE_PKGSYS; then
 		if [ -d /opt/csw ]; then
 			msg ' . found OpenCSW PKGSYS'
-			C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
-			LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
+			C_INCLUDE_PATH=/opt/csw/include:"$C_INCLUDE_PATH"
+			LD_LIBRARY_PATH=/opt/csw/lib:"$LD_LIBRARY_PATH"
 			ld_no_bind_now=1 ld_rpath_not_runpath=1
 		fi
 		if [ -d /opt/schily ]; then
 			msg ' . found Schily PKGSYS'
-			C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
-			LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
+			C_INCLUDE_PATH=/opt/schily/include:"$C_INCLUDE_PATH"
+			LD_LIBRARY_PATH=/opt/schily/lib:"$LD_LIBRARY_PATH"
 			ld_no_bind_now=1 ld_rpath_not_runpath=1
 		fi
 	fi
 
-	OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
-	#OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
+	OS_DEFINES="$OS_DEFINES#define __EXTENSIONS__\n"
+	#OS_DEFINES="$OS_DEFINES#define _POSIX_C_SOURCE 200112L\n"
 
 	msg 'Whatever $CC, turning off stack protection (see INSTALL)!'
 	cc_maxopt=2 cc_no_stackprot=1
 
-	if [ "${VAL_SHELL}" = /bin/sh ]; then
+	if [ "$VAL_SHELL" = /bin/sh ]; then
 		VAL_SHELL=/usr/xpg4/bin/sh
-		msg ' ! VAL_SHELL=/bin/sh will not do on SunOS, using '${VAL_SHELL}
+		msg ' ! VAL_SHELL=/bin/sh will not do on SunOS, using '"$VAL_SHELL"
 	fi
 
 	return 1
@@ -430,20 +430,20 @@ cc_setup() {
 		export CFLAGS LDFLAGS
 	fi
 
-	if [ -n "${CC}" ]; then
+	if [ -n "$CC" ]; then
 		_cc_default
 		export CC
 		return
 	fi
 
-	if [ -n "${cc_os_search}" ] && ${cc_os_search}; then
+	if [ -n "$cc_os_search" ] && $cc_os_search; then
 		cc_no_flagtest=1
 	else
 		msg_nonl 'Searching for a usable C compiler .. $CC='
 		if acmd_set CC gcc || acmd_set CC clang ||
 				acmd_set CC tcc || acmd_set CC pcc ||
 				acmd_set CC c99 || acmd_set CC c89; then
-			case "${CC}" in
+			case "$CC" in
 			*pcc*) cc_no_fortify=1;;
 			*) ;;
 			esac
@@ -451,10 +451,10 @@ cc_setup() {
 			msg 'boing booom tschak'
 			msg 'ERROR: I cannot find a compiler!'
 			msg ' Neither of gcc(1), clang(1), tcc(1), pcc(1), c99(1) and c89(1).'
-			msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
+			msg ' Please set $CC environment variable, maybe $CFLAGS, rerun.'
 			config_exit 1
 		fi
-		msg '%s' "${CC}"
+		msg '%s' "$CC"
 	fi
 	export CC
 }
@@ -464,11 +464,11 @@ _cc_os_unixware() {
 		msg_nonl ' . have special UnixWare rules for $CC ...'
 		feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-		CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-		LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+		CFLAGS="$_CFLAGS $EXTRA_CFLAGS"
+		LDFLAGS="$_LDFLAGS $EXTRA_LDFLAGS"
 		export CC CFLAGS LDFLAGS
 		OPT_AUTOCC=0 ld_need_R_flags=-R
-		msg '%s' "${CC}"
+		msg '%s' "$CC"
 		msg '   WARNING: UnixWare not tested since ~2015!'
 		return 0
 	fi
@@ -476,15 +476,15 @@ _cc_os_unixware() {
 }
 
 _cc_os_sunos() {
-	if feat_yes AUTOCC && acmd_set CC cc && "${CC}" -flags >/dev/null 2>&1; then
+	if feat_yes AUTOCC && acmd_set CC cc && "$CC" -flags >/dev/null 2>&1; then
 		msg_nonl ' . have special SunOS rules for $CC ...'
 		feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
-		CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-		LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+		CFLAGS="$_CFLAGS $EXTRA_CFLAGS"
+		LDFLAGS="$_LDFLAGS $EXTRA_LDFLAGS"
 		export CC CFLAGS LDFLAGS
 		OPT_AUTOCC=0 ld_need_R_flags=-R
-		msg '%s' "${CC}"
+		msg '%s' "$CC"
 		return 0
 	else
 		CC=
@@ -494,25 +494,25 @@ _cc_os_sunos() {
 }
 
 _cc_default() {
-	if [ -z "${CC}" ]; then
+	if [ -z "$CC" ]; then
 		msg 'To go on as you desire, please set $CC environment, rerun.'
 		config_exit 1
 	fi
 
-	if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
+	if [ -z "$VERBOSE" ] && [ -f "$env" ] && feat_no DEBUG; then
 		:
 	else
-		msg ' . C compiler ${CC}=%s' "${CC}"
+		msg ' . C compiler $CC=%s' "$CC"
 	fi
 
-	case "${CC}" in
+	case "$CC" in
 	*pcc*) cc_no_fortify=1;;
 	*) ;;
 	esac
 }
 
 cc_create_testfile() {
-	${cat} > ${tmp}.c <<\!
+	$cat > $tmp.c <<\!
 #include <stdio.h>
 #include <string.h>
 static void doit(char const *s);
@@ -533,60 +533,60 @@ doit(char const *s){
 }
 
 cc_build_tmp_as_tmp2() {
-	${CC} ${INCS} ${EXTRA_CFLAGS} ${EXTRA_LDFLAGS} -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null
+	$CC $INCS $EXTRA_CFLAGS $EXTRA_LDFLAGS -o $tmp2 $tmp.c $LIBS >/dev/null
 }
 
 cc_hello() {
-	[ -n "${cc_check_silent}" ] || msg_nonl ' . Compiles "Hello world" .. '
+	[ -n "$cc_check_silent" ] || msg_nonl ' . Compiles "Hello world" .. '
 	if cc_build_tmp_as_tmp2; then
-		[ -n "${cc_check_silent}" ] || msg 'yes'
+		[ -n "$cc_check_silent" ] || msg 'yes'
 		feat_yes CROSS_BUILD && return 0
-		[ -n "${cc_check_silent}" ] || msg_nonl ' . Compiled program works .. '
-		if ( [ "$(eval \"${tmp2}\")" = 'Hello world' ] ) >/dev/null; then
-			[ -n "${cc_check_silent}" ] || msg 'yes'
+		[ -n "$cc_check_silent" ] || msg_nonl ' . Compiled program works .. '
+		if ( [ "$(eval \"$tmp2\")" = 'Hello world' ] ) >/dev/null; then
+			[ -n "$cc_check_silent" ] || msg 'yes'
 			return 0
 		fi
 	fi
-	[ -n "${cc_check_silent}" ] || msg 'no'
+	[ -n "$cc_check_silent" ] || msg 'no'
 	msg 'ERROR: I cannot compile or run a "Hello world"!'
-	msg 'ERROR:   The error may have manifested in '${log}
+	msg 'ERROR:   The error may have manifested in '"$log"
 	msg 'ERROR:   Please read INSTALL, rerun'
 	config_exit 1
 }
 
 cc_flags() {
-	if [ -n "${cc_no_flagtest}" ]; then
+	if [ -n "$cc_no_flagtest" ]; then
 		ld_runtime_flags # update!
 	elif feat_yes AUTOCC; then
-		if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+		if [ -f "$env" ] && feat_no DEBUG && [ -z "$VERBOSE" ]; then
 			cc_check_silent=1
-			if [ -f ${env} ]; then :; else
-				msg 'Checking ${CFLAGS}/${LDFLAGS} for ${CC}=%s ..' "${CC}"
+			if [ -f "$env" ]; then :; else
+				msg 'Checking $CFLAGS/$LDFLAGS for $CC=%s ..' "$CC"
 			fi
 		else
 			cc_check_silent=
-			msg 'Checking ${CFLAGS}/${LDFLAGS} for ${CC}=%s' "${CC}"
+			msg 'Checking $CFLAGS/$LDFLAGS for $CC=%s' "$CC"
 		fi
 
-		i=$(echo "${CC}" | ${awk} 'BEGIN{FS="/"}{print $NF}')
-		if { echo "${i}" | ${grep} tcc; } >/dev/null 2>&1; then
+		i=$(echo "$CC" | $awk 'BEGIN{FS="/"}{print $NF}')
+		if { echo "$i" | $grep tcc; } >/dev/null 2>&1; then
 			msg ' . have special tcc(1) environmental rules ...'
 			_cc_flags_tcc
 		else
 			# As of pcc CVS 2016-04-02, stack protection support is announced but
 			# will break if used on Linux
-			#if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
+			#if { echo "$i" | $grep pcc; } >/dev/null 2>&1; then
 			#	cc_no_stackprot=1
 			#fi
 			_cc_flags_generic
 		fi
 
-		feat_no DEBUG && feat_no DEVEL && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-		CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-		LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+		feat_no DEBUG && feat_no DEVEL && _CFLAGS="-DNDEBUG $_CFLAGS"
+		CFLAGS="$_CFLAGS $EXTRA_CFLAGS"
+		LDFLAGS="$_LDFLAGS $EXTRA_LDFLAGS"
 	else
 		if feat_no DEBUG && feat_no DEVEL; then
-			CFLAGS="-DNDEBUG ${CFLAGS}"
+			CFLAGS="-DNDEBUG $CFLAGS"
 		fi
 	fi
 
@@ -594,7 +594,7 @@ cc_flags() {
 }
 
 _cc_flags_tcc() {
-	__cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
+	__cflags=$_CFLAGS __ldflags=$_LDFLAGS
 	_CFLAGS= _LDFLAGS=
 
 	cc_check -W
@@ -609,7 +609,7 @@ _cc_flags_tcc() {
 
 	if ld_check -Wl,-rpath =./ no; then
 		ld_need_R_flags=-Wl,-rpath=
-		if [ -z "${ld_rpath_not_runpath}" ]; then
+		if [ -z "$ld_rpath_not_runpath" ]; then
 			ld_check -Wl,--enable-new-dtags
 		else
 			msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
@@ -617,12 +617,12 @@ _cc_flags_tcc() {
 		ld_runtime_flags # update!
 	fi
 
-	_CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
+	_CFLAGS="$_CFLAGS $__cflags" _LDFLAGS="$_LDFLAGS $__ldflags"
 	unset __cflags __ldflags
 }
 
 _cc_flags_generic() {
-	__cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
+	__cflags=$_CFLAGS __ldflags=$_LDFLAGS
 	_CFLAGS= _LDFLAGS=
 	# Prefer C99+ due to native 64-bit types etc
 	if [ -n "$EXTRA_CFLAGS" ] && { echo "$EXTRA_CFLAGS" | $grep -q std=c; }; then
@@ -633,14 +633,14 @@ _cc_flags_generic() {
 			msg ' ! Disabling ISO C89 due to desire to use sanitizers'
 			_i=
 		fi
-		__x='c99 c11 c18 c2x '${_i}
+		__x='c99 c11 c18 c2x '"$_i"
 		if feat_yes DEVEL && [ -n "$date" ]; then
 			__y=$($date +%M) # not too often
 			if [ $? -eq 0 ]; then
 				if [ -n "$good_shell" ]; then
 					__y=${__y##*0}
 				else
-					__y=$(echo ${__y} | $sed -e 's/^0*//')
+					__y=$(echo "$__y" | $sed -e 's/^0*//')
 				fi
 				case "$((__y % 5))" in
 				0) __x=$_i' c99 c11 c18 c2x';;
@@ -658,7 +658,7 @@ _cc_flags_generic() {
 	fi
 
 	# E.g., valgrind does not work well with high optimization
-	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS; then
+	if [ "$cc_maxopt" -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS; then
 		msg ' ! OPT_EXTERNAL_MEM_CHECK, setting cc_maxopt=1 (-O1)'
 		cc_maxopt=1
 	fi
@@ -669,11 +669,11 @@ _cc_flags_generic() {
 	# option_care was yet stripped for DEBUG/DEVEL
 	elif val_has VAL_AUTOCC option_care; then
 		:
-	elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
+	elif [ "$cc_maxopt" -gt 2 ] && cc_check -O3; then
 		:
-	elif [ ${cc_maxopt} -gt 1 ] && cc_check -O2; then
+	elif [ "$cc_maxopt" -gt 1 ] && cc_check -O2; then
 		:
-	elif [ ${cc_maxopt} -gt 0 ] && cc_check -O1; then
+	elif [ "$cc_maxopt" -gt 0 ] && cc_check -O1; then
 		:
 	else
 		cc_check -O
@@ -732,26 +732,26 @@ _cc_flags_generic() {
 	fi
 
 	if val_has VAL_AUTOCC stackprot; then
-		if [ -z "${cc_no_stackprot}" ]; then
-			_ocf=${_CFLAGS} _old=${_LDFLAGS} _i=
+		if [ -z "$cc_no_stackprot" ]; then
+			_ocf=$_CFLAGS _old=$_LDFLAGS _i=
 			if cc_check -fstack-protector-strong; then
 				_i=-fstack-protector-strong
 			elif cc_check -fstack-protector-all; then
 				_i=-fstack-protector-all
 			fi
-			if [ -n "${_i}" ]; then
-				_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
-				if [ -z "${cc_no_fortify}" ]; then
+			if [ -n "$_i" ]; then
+				_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS $_i"
+				if [ -z "$cc_no_fortify" ]; then
 					if val_has VAL_AUTOCC fortify && cc_check -D_FORTIFY_SOURCE=3; then
-						_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -D_FORTIFY_SOURCE=3"
+						_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -D_FORTIFY_SOURCE=3"
 					fi
 				else
-					msg ' ! No check for -D_FORTIFY_SOURCE=3 ${CC} option,'
+					msg ' ! No check for -D_FORTIFY_SOURCE=3 $CC option,'
 					msg ' ! it caused errors in a "similar" configuration.'
 					msg ' ! You may turn off OPT_AUTOCC, then rerun.'
 				fi
 			fi
-			_CFLAGS=${_ocf} _LDFLAGS=${_old}
+			_CFLAGS=$_ocf _LDFLAGS=$_old
 		else
 			msg ' ! No check for stack protection options,'
 			msg ' ! it caused errors in a "similar" configuration.'
@@ -761,62 +761,62 @@ _cc_flags_generic() {
 	fi
 
 	if val_has VAL_AUTOCC cfprot; then
-		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+		_ocf=$_CFLAGS _old=$_LDFLAGS
 		if cc_check -fcf-protection=full; then
-			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fcf-protection=full"
+			_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -fcf-protection=full"
 #XXX		elif cc_check -mretpoline; then
 #			-mretpoline-external-thunk
 #			#if ld_check -Wl,-z,retpolineplt; then .. ignored in newer clang
-#				_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mretpoline"
-#			#	_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -Wl,-z,retpolineplt"
+#				_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -mretpoline"
+#			#	_LDFLAGS_NOT4TESTS="$_LDFLAGS_NOT4TESTS -Wl,-z,retpolineplt"
 #			#fi
 #XXX		elif cc_check -mfunction-return=thunk; then
 #			if cc_check -mindirect-branch=thunk; then
-#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mfunction-return=thunk -mindirect-branch=thunk"
+#			_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -mfunction-return=thunk -mindirect-branch=thunk"
 		fi
-		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+		_CFLAGS=$_ocf _LDFLAGS=$_old
 	fi
 
 	# LD (+ dependent CC)
 
 	_any_sani=
 	if feat_yes ASAN_ADDRESS; then
-		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+		_ocf=$_CFLAGS _old=$_LDFLAGS
 		if cc_check -fsanitize=address && ld_check -fsanitize=address; then
-			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize=address"
-			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize=address"
+			_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -fsanitize=address"
+			_LDFLAGS_NOT4TESTS="$_LDFLAGS_NOT4TESTS -fsanitize=address"
 			_any_sani=y
 		else
 			feat_bail_required ASAN_ADDRESS
 		fi
-		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+		_CFLAGS=$_ocf _LDFLAGS=$_old
 	fi
 
 	if feat_yes USAN; then
-		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+		_ocf=$_CFLAGS _old=$_LDFLAGS
 		if cc_check -fsanitize=undefined && ld_check -fsanitize=undefined; then
-			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize=undefined"
-			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize=undefined"
+			_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -fsanitize=undefined"
+			_LDFLAGS_NOT4TESTS="$_LDFLAGS_NOT4TESTS -fsanitize=undefined"
 			_any_sani=y
 		else
 			feat_bail_required USAN
 		fi
-		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+		_CFLAGS=$_ocf _LDFLAGS=$_old
 	fi
 
-	if [ -n "${_any_sani}" ]; then
-		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+	if [ -n "$_any_sani" ]; then
+		_ocf=$_CFLAGS _old=$_LDFLAGS
 		if cc_check -fsanitize-recover=all; then # && ld_check -fsanitize-recover=all; then
-			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize-recover=all"
-#			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize-recover=address"
+			_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS -fsanitize-recover=all"
+#			_LDFLAGS_NOT4TESTS="$_LDFLAGS_NOT4TESTS -fsanitize-recover=address"
 		fi
-		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+		_CFLAGS=$_ocf _LDFLAGS=$_old
 	fi
 
 	#
 	ld_check -Wl,-z,relro
 	if val_has VAL_AUTOCC bind_now; then
-		if [ -z "${ld_no_bind_now}" ]; then
+		if [ -z "$ld_no_bind_now" ]; then
 			ld_check -Wl,-z,now
 		else
 			msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
@@ -827,7 +827,7 @@ _cc_flags_generic() {
 	if ld_check -Wl,-rpath =./ no; then
 		ld_need_R_flags=-Wl,-rpath=
 		# Choose DT_RUNPATH (after $LD_LIBRARY_PATH) over DT_RPATH (before)
-		if [ -z "${ld_rpath_not_runpath}" ]; then
+		if [ -z "$ld_rpath_not_runpath" ]; then
 			ld_check -Wl,--enable-new-dtags
 		else
 			msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
@@ -835,7 +835,7 @@ _cc_flags_generic() {
 		ld_runtime_flags # update!
 	elif ld_check -Wl,-R ./ no; then
 		ld_need_R_flags=-Wl,-R
-		if [ -z "${ld_rpath_not_runpath}" ]; then
+		if [ -z "$ld_rpath_not_runpath" ]; then
 			ld_check -Wl,--enable-new-dtags
 		else
 			msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
@@ -850,20 +850,20 @@ _cc_flags_generic() {
 
 	# Address randomization
 	if val_has VAL_AUTOCC pie; then
-		_ocf=${_CFLAGS} _old=${_LDFLAGS} _i=
+		_ocf=$_CFLAGS _old=$_LDFLAGS _i=
 		if cc_check -fPIE; then
 			_i=-fPIE
 		elif cc_check -fpie; then
 			_i=-fpie
 		fi
-		if [ -n "${_i}" ] && ld_check -pie; then
-			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
-			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -pie ${_i}"
+		if [ -n "$_i" ] && ld_check -pie; then
+			_CFLAGS_NOT4TESTS="$_CFLAGS_NOT4TESTS $_i"
+			_LDFLAGS_NOT4TESTS="$_LDFLAGS_NOT4TESTS -pie $_i"
 		fi
-		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+		_CFLAGS=$_ocf _LDFLAGS=$_old
 	fi
 
-	_CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
+	_CFLAGS="$_CFLAGS $__cflags" _LDFLAGS="$_LDFLAGS $__ldflags"
 	unset __cflags __ldflags
 }
 
@@ -876,8 +876,8 @@ _cc_flags_generic() {
 ## And, since we have those functions, simply use them for whatever
 
 t1=ten10one1ten10one1
-if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
-		[ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
+if ( [ "${t1##*ten10}" = one1 ] && [ "${t1#*ten10}" = one1ten10one1 ] &&
+		[ "${t1%%one1*}" = ten10 ] && [ "${t1%one1*}" = ten10one1ten10 ]
 		) > /dev/null 2>&1; then
 	good_shell=1
 else
@@ -888,83 +888,84 @@ unset t1
 ( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
 
 config_exit() {
-	exit ${1}
+	exit "$1"
 }
 
 # Our feature check environment
 _feats_cleanup_done=0
 
 _feat_val_no() {
-	[ "x${1}" = x0 ] || [ "x${1}" = xn ] || [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
+	[ "x$1" = x0 ] || [ "x$1" = xn ] || [ "x$1" = xfalse ] || [ "x$1" = xno ] || [ "x$1" = xoff ]
 }
 
 _feat_val_yes() {
-	[ "x${1}" = x1 ] || [ "x${1}" = xy ] || [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
-		[ "x${1}" = xrequire ]
+	[ "x$1" = x1 ] || [ "x$1" = xy ] || [ "x$1" = xtrue ] || [ "x$1" = xyes ] || [ "x$1" = xon ] ||
+		[ "x$1" = xrequire ]
 }
 
 _feat_val_require() {
-	[ "x${1}" = xrequire ]
+	[ "x$1" = xrequire ]
 }
 
 _feat_check() {
-	eval _fc_i=\$OPT_${1}
+	eval _fc_i=\$OPT_"$1"
 	if [ "$_feats_cleanup_done" = 1 ]; then
-		[ "x${_fc_i}" = x0 ] && return 1
+		[ "x$_fc_i" = x0 ] && return 1
 		return 0
 	fi
-	_fc_i="$(echo ${_fc_i} | ${tr} '[A-Z]' '[a-z]')"
-	if _feat_val_no "${_fc_i}"; then
+	_fc_i="$(echo $_fc_i | $tr '[A-Z]' '[a-z]')"
+	if _feat_val_no "$_fc_i"; then
 		return 1
-	elif _feat_val_yes "${_fc_i}"; then
+	elif _feat_val_yes "$_fc_i"; then
 		return 0
 	else
-		msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" "${1}" "${_fc_i}"
+		msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" "$1" "$_fc_i"
 		config_exit 11
 	fi
 }
 
+#
 feat_yes() {
-	_feat_check ${1}
+	_feat_check "$1"
 }
 
 feat_no() {
-	_feat_check ${1} && return 1
+	_feat_check "$1" && return 1
 	return 0
 }
 
 feat_require() {
-	eval _fr_i=\$OPT_${1}
-	_fr_i="$(echo ${_fr_i} | ${tr} '[A-Z]' '[a-z]')"
-	[ "x${_fr_i}" = xrequire ] || [ "x${_fr_i}" = xrequired ]
+	eval _fr_i=\$OPT_"$1"
+	_fr_i="$(echo $_fr_i | $tr '[A-Z]' '[a-z]')"
+	[ "x$_fr_i" = xrequire ] || [ "x$_fr_i" = xrequired ]
 }
 
 feat_bail_required() {
-	if feat_require ${1}; then
-		msg 'ERROR: feature OPT_%s is required but not available' "${1}"
+	if feat_require "$1"; then
+		msg 'ERROR: feature OPT_%s is required but not available' "$1"
 		config_exit 13
 	fi
-	feat_is_unsupported "${1}"
+	feat_is_unsupported "$1"
 }
 
 feat_is_disabled() {
-	[ ${#} -eq 1 ] && msg ' . (disabled: OPT_%s)' "${1}"
-	echo "/* OPT_${1} -> mx_HAVE_${1} */" >> ${h}
+	[ "$#" -eq 1 ] && msg ' . (disabled: OPT_%s)' "$1"
+	echo "/* OPT_$1 -> mx_HAVE_$1 */" >> $h
 }
 
 feat_is_unsupported() {
-	msg ' ! NOTICE: unsupported: OPT_%s' "${1}"
-	echo "/* OPT_${1} -> mx_HAVE_${1} */" >> ${h}
-	eval OPT_${1}=0
+	msg ' ! NOTICE: unsupported: OPT_%s' "$1"
+	echo "/* OPT_$1 -> mx_HAVE_$1 */" >> $h
+	eval OPT_"$1"=0
 }
 
 feat_def() {
-	if feat_yes ${1}; then
-		[ -n "${VERBOSE}" ] && msg ' . %s ... yes' "${1}"
-		echo '#define mx_HAVE_'${1}'' >> ${h}
+	if feat_yes "$1"; then
+		[ -n "$VERBOSE" ] && msg ' . %s ... yes' "$1"
+		echo '#define mx_HAVE_'"$1" >> $h
 		return 0
 	else
-		feat_is_disabled "${@}"
+		feat_is_disabled "$@"
 		return 1
 	fi
 }
@@ -972,7 +973,7 @@ feat_def() {
 option_parse() {
 	# Parse one of our XOPTIONS* in $2 and assign the sh(1) compatible list of
 	# options, without documentation, to $1
-	i=$(${awk} -v input="${2}" "
+	i=$($awk -v input="$2" "
 		BEGIN{
 			for(i = 0;;){
 				voff = match(input, /[0-9a-zA-Z_]+(='[^']+)?/)
@@ -989,16 +990,16 @@ option_parse() {
 			}
 		}
 		")
-	eval ${1}=\"${i}\"
+	eval $1=\"$i\"
 }
 
 option_doc_of() {
 	# Return the "documentation string" for option $1, itself if none such
 	j=\'
-	${awk} -v want="${1}" -v input="${XOPTIONS_DETECT}${XOPTIONS}${XOPTIONS_XTRA}" '
+	$awk -v want="$1" -v input="$XOPTIONS_DETECT$XOPTIONS$XOPTIONS_XTRA" '
 	BEGIN{
 		for(;;){
-			voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
+			voff = match(input, /[0-9a-zA-Z_]+(='"$j"'[^'"$j"']+)?/)
 			if(voff == 0)
 				break
 			v = substr(input, voff, RLENGTH)
@@ -1021,11 +1022,11 @@ option_doc_of() {
 
 option_join_rc() {
 	# Join the values from make.rc into what currently is defined, not overwriting yet existing settings
-	${rm} -f ${tmp}
+	$rm -f "$tmp"
 	# We want read(1) to perform reverse solidus escaping in order to be able to
 	# use multiline values in make.rc; the resulting sh(1)/sed(1) code was very
 	# slow in VMs (see [fa2e248]), Aharon Robbins suggested the following
-	< ${rc} ${awk} 'BEGIN{line = ""}{
+	< $rc $awk 'BEGIN{line = ""}{
 		sub(/^[	 ]+/, "", $0)
 		sub(/[	 ]+$/, "", $0)
 		if(sub(/\\$/, "", $0)){
@@ -1041,24 +1042,24 @@ option_join_rc() {
 		}
 	}' |
 	while read line; do
-		if [ -n "${good_shell}" ]; then
+		if [ -n "$good_shell" ]; then
 			i=${line%%=*}
 		else
-			i=$(${awk} -v LINE="${line}" 'BEGIN{
+			i=$($awk -v LINE="$line" 'BEGIN{
 				sub(/=.*$/, "", LINE)
 				print LINE
 			}')
 		fi
-		if [ "${i}" = "${line}" ]; then
-			msg 'ERROR: invalid syntax in: %s' "${line}"
+		if [ "$i" = "$line" ]; then
+			msg 'ERROR: invalid syntax in: %s' "$line"
 			continue
 		fi
 
-		eval j="\$${i}" jx="\${${i}+x}"
-		if [ -n "${j}" ] || [ "${jx}" = x ]; then
+		eval j="\$$i" jx="\${$i+x}"
+		if [ -n "$j" ] || [ "$jx" = x ]; then
 			: # Yet present
 		else
-			j=$(${awk} -v LINE="${line}" 'BEGIN{
+			j=$($awk -v LINE="$line" 'BEGIN{
 				sub(/^[^=]*=/, "", LINE)
 				sub(/^"*/, "", LINE)
 				sub(/"*$/, "", LINE)
@@ -1073,56 +1074,56 @@ option_join_rc() {
 				print LINE
 			}')
 		fi
-		[ "${i}" = "DESTDIR" ] && continue
-		[ "${i}" = "OBJDIR" ] && continue
-		echo "${i}=\"${j}\""
-	done > ${tmp}
+		[ "$i" = "DESTDIR" ] && continue
+		[ "$i" = "OBJDIR" ] && continue
+		echo "$i=\"$j\""
+	done > "$tmp"
 
 	# Reread the mixed version right now - this evaluates shell snippets!
-	. ${tmp}
+	. "$tmp"
 }
 
 option_cleanup() { # xxx i think we could "merge this" .. away??
 	# Set booleans to 0 or 1, or require, set _feats_cleanup_done=1
-	${rm} -f ${newenv} ${newmk}
-	> ${newenv}
-	> ${newmk}
+	$rm -f $newenv $newmk
+	> $newenv
+	> $newmk
 
-	exec 7<&0 <${tmp}
+	exec 7<&0 <$tmp
 	while read line; do
 		z=
-		if [ -n "${good_shell}" ]; then
+		if [ -n "$good_shell" ]; then
 			i=${line%%=*}
-			[ "${i}" != "${i#OPT_}" ] && z=1
+			[ "$i" != "${i#OPT_}" ] && z=1
 		else
-			i=$(${awk} -v LINE="${line}" 'BEGIN{
+			i=$($awk -v LINE="$line" 'BEGIN{
 				gsub(/=.*$/, "", LINE);\
 				print LINE
 				}')
-			if echo "${i}" | ${grep} '^OPT_' >/dev/null 2>&1; then
+			if echo "$i" | $grep '^OPT_' >/dev/null 2>&1; then
 				z=1
 			fi
 		fi
 
-		eval j=\$${i}
-		if [ -n "${z}" ]; then
-			j="$(echo ${j} | ${tr} '[A-Z]' '[a-z]')"
-			if [ -z "${j}" ] || _feat_val_no "${j}"; then
+		eval j=\$$i
+		if [ -n "$z" ]; then
+			j="$(echo $j | $tr '[A-Z]' '[a-z]')"
+			if [ -z "$j" ] || _feat_val_no "$j"; then
 				j=0
-			elif _feat_val_yes "${j}"; then
-				if _feat_val_require "${j}"; then
+			elif _feat_val_yes "$j"; then
+				if _feat_val_require "$j"; then
 					j=require
 				else
 					j=1
 				fi
 			else
-				msg 'ERROR: cannot parse <%s> (<%s>=<%s>)' "${line}" "${i}" "${j}"
+				msg 'ERROR: cannot parse <%s> (<%s>=<%s>)' "$line" "$i" "$j"
 				config_exit 1
 			fi
-			eval "${i}=\"${j}\""
-			OPT_ANYEVAL="${OPT_ANYEVAL} ${i}"
+			eval "$i=\"$j\""
+			OPT_ANYEVAL="$OPT_ANYEVAL $i"
 		else
-			VAL_ANYEVAL="${VAL_ANYEVAL} ${i}"
+			VAL_ANYEVAL="$VAL_ANYEVAL $i"
 		fi
 	done
 	exec 0<&7 7<&-
@@ -1131,8 +1132,8 @@ option_cleanup() { # xxx i think we could "merge this" .. away??
 }
 
 val_allof() {
-	eval __expo__=\$${1}
-	${awk} -v HEAP="${2}" -v USER="${__expo__}" '
+	eval __expo__=\$$1
+	$awk -v HEAP="$2" -v USER="$__expo__" '
 	BEGIN{
 		i = split(HEAP, ha, /[, ]/)
 		if((j = split(USER, ua, /[, ]/)) == 0)
@@ -1152,10 +1153,10 @@ val_allof() {
 		}
 	}
 	'
-	__rv__=${?}
-	[ ${__rv__} -ne 0 ] && return ${__rv__}
+	__rv__=$?
+	[ "$__rv__" -ne 0 ] && return "$__rv__"
 
-	 if ${awk} -v USER="${__expo__}" '
+	 if $awk -v USER="$__expo__" '
 			BEGIN{
 				if((j = split(USER, ua, /[, ]/)) == 0)
 					exit
@@ -1167,62 +1168,62 @@ val_allof() {
 				exit 1
 			}
 			'; then
-		eval "${1}"=\"${2}\"
+		eval "$1"=\"$2\"
 	else
 		# Enforce lowercase also in otherwise unchanged user value..
-		eval "${1}"=\""$(echo ${__expo__} | ${tr} '[A-Z]_' '[a-z]-')"\"
+		eval "$1"=\""$(echo $__expo__ | $tr '[A-Z]_' '[a-z]-')"\"
 	fi
 	return 0
 }
 
 val_foreach_call() {
-	eval __expo__=\$${1} __mod__=${2}
-	__oifs__=${IFS}
+	eval __expo__=\$$1 __mod__=$2
+	__oifs__=$IFS
 	IFS=", "
-	set -- ${__expo__}
-	IFS=${__oifs__}
+	set -- $__expo__
+	IFS=$__oifs__
 	for __vfec__
 	do
-		eval ${__mod__}_${__vfec__} && break
+		eval ${__mod__}_$__vfec__ && break
 	done
 }
 
 val_has() {
-	eval __expo__=\$${1}
-	__expo__=$(echo ${__expo__} | ${tr} [[:upper:]] [[:lower:]])
-	__vhasx__=$(echo ${2} | ${tr} [[:upper:]] [[:lower:]])
-	__oifs__=${IFS}
+	eval __expo__=\$$1
+	__expo__=$(echo "$__expo__" | $tr [[:upper:]] [[:lower:]])
+	__vhasx__=$(echo "$2" | $tr [[:upper:]] [[:lower:]])
+	__oifs__=$IFS
 	IFS=", "
-	set -- ${__expo__}
-	IFS=${__oifs__}
+	set -- $__expo__
+	IFS=$__oifs__
 	for __vhasy__
 	do
-		[ "${__vhasx__}" = "${__vhasy__}" ] && return 0
+		[ "$__vhasx__" = "$__vhasy__" ] && return 0
 	done
 	return 1
 }
 
 val_strip() {
-	__name__=${1}
-	eval __expo__=\$${__name__}
-	__expo__=$(echo ${__expo__} | ${tr} [[:upper:]] [[:lower:]])
-	__vhasx__=$(echo ${2} | ${tr} [[:upper:]] [[:lower:]])
-	__oifs__=${IFS}
+	__name__=$1
+	eval __expo__=\$$__name__
+	__expo__=$(echo "$__expo__" | $tr [[:upper:]] [[:lower:]])
+	__vhasx__=$(echo "$2" | $tr [[:upper:]] [[:lower:]])
+	__oifs__=$IFS
 	IFS=", "
-	set -- ${__expo__}
-	IFS=${__oifs__}
+	set -- $__expo__
+	IFS=$__oifs__
 	__vnew__=
 	for __vhasy__
 	do
-		[ "${__vhasx__}" = "${__vhasy__}" ] && continue
-		[ -n "${__vnew__}" ] && __vnew__=${__vnew__},
-		__vnew__=${__vnew__}${__vhasy__}
+		[ "$__vhasx__" = "$__vhasy__" ] && continue
+		[ -n "$__vnew__" ] && __vnew__=$__vnew__,
+		__vnew__=$__vnew__$__vhasy__
 	done
-	eval ${__name__}=${__vnew__}
+	eval $__name__=$__vnew__
 }
 
 oneslash() {
-	</dev/null ${awk} -v X="${1}" '
+	</dev/null $awk -v X="$1" '
 		BEGIN{
 			i = match(X, "/+$")
 			if(RSTART != 0)
@@ -1234,62 +1235,62 @@ oneslash() {
 }
 
 path_is_absolute() {
-	{ echo "${*}" | ${grep} ^/; } >/dev/null 2>&1
+	{ echo "$*" | $grep ^/; } >/dev/null 2>&1
 	return $?
 }
 
 path_check() {
 	# "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
-	varname=${1} addflag=${2} flagvarname=${3}
-	j=${IFS}
+	varname=$1 addflag=$2 flagvarname=$3
+	j=$IFS
 	IFS=:
-	[ -n "${noglob_shell}" ] && set -o noglob
-	eval "set -- \$${1}"
-	[ -n "${noglob_shell}" ] && set +o noglob
-	IFS=${j}
+	[ -n "$noglob_shell" ] && set -o noglob
+	eval "set -- \$$1"
+	[ -n "$noglob_shell" ] && set +o noglob
+	IFS=$j
 	j= k= y= z=
 	for i
 	do
-		[ -z "${i}" ] && continue
-		[ -d "${i}" ] || continue
-		if [ -n "${j}" ]; then
-			if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
+		[ -z "$i" ] && continue
+		[ -d "$i" ] || continue
+		if [ -n "$j" ]; then
+			if { z=$y; echo "$z"; } | $grep ":$i:" >/dev/null 2>&1; then
 				:
 			else
-				y="${y} :${i}:"
-				j="${j}:${i}"
+				y="$y :$i:"
+				j="$j:$i"
 				# But do not link any fakeroot path into our binaries!
-				if [ -n "${addflag}" ]; then
-					case "${i}" in *fakeroot*) continue;; esac
-					k="${k} ${addflag}${i}"
+				if [ -n "$addflag" ]; then
+					case "$i" in *fakeroot*) continue;; esac
+					k="$k $addflag$i"
 				fi
 			fi
 		else
-			y=" :${i}:"
-			j="${i}"
+			y=" :$i:"
+			j="$i"
 			# But do not link any fakeroot injected path into our binaries!
-			if [ -n "${addflag}" ]; then
-				case "${i}" in *fakeroot*) continue;; esac
-				k="${k} ${addflag}${i}"
+			if [ -n "$addflag" ]; then
+				case "$i" in *fakeroot*) continue;; esac
+				k="$k $addflag$i"
 			fi
 		fi
 	done
-	eval "${varname}=\"${j}\""
-	[ -n "${addflag}" ] && eval "${flagvarname}=\"${k}\""
+	eval "$varname=\"$j\""
+	[ -n "$addflag" ] && eval "$flagvarname=\"$k\""
 	unset varname
 }
 
 ld_runtime_flags() {
-	if [ -n "${ld_need_R_flags}" ]; then
-		i=${IFS}
+	if [ -n "$ld_need_R_flags" ]; then
+		i=$IFS
 		IFS=:
-		set -- ${LD_LIBRARY_PATH}
-		IFS=${i}
+		set -- $LD_LIBRARY_PATH
+		IFS=$i
 		for i
 		do
 			# But do not link any fakeroot injected path into our binaries!
-			case "${i}" in *fakeroot*) continue;; esac
-			_LDFLAGS="${_LDFLAGS} ${ld_need_R_flags}${i}"
+			case "$i" in *fakeroot*) continue;; esac
+			_LDFLAGS="$_LDFLAGS $ld_need_R_flags$i"
 		done
 	fi
 	# Disable it for a possible second run.
@@ -1298,26 +1299,26 @@ ld_runtime_flags() {
 
 _cc_check_ever= _cc_check_testprog=
 cc_check_testprog() {
-	if [ -z "${_cc_check_ever}" ]; then
+	if [ -z "$_cc_check_ever" ]; then
 		_cc_check_ever=' '
-		__occ=${cc_check_silent}
-		__oCFLAGS=${_CFLAGS}
+		__occ=$cc_check_silent
+		__oCFLAGS=$_CFLAGS
 
 		cc_check_silent=y
 		if cc_check -Werror; then
 			_cc_check_ever=-Werror
-			_CFLAGS=${__oCFLAGS}
+			_CFLAGS=$__oCFLAGS
 			# Overcome a _GNU_SOURCE related glibc 2.32.3 bug (?!)
 			if cc_check -Werror=implicit-function-declaration; then
 				_cc_check_testprog=-Werror=implicit-function-declaration
 			fi
 		fi
-		if [ "${_cc_check_ever}" = ' ' ] || [ -z "${_cc_check_testprog}" ]; then
+		if [ "$_cc_check_ever" = ' ' ] || [ -z "$_cc_check_testprog" ]; then
 			msg 'WARN: $CC without -Werror[=implicit*]: inaccurate feature tests!'
 		fi
 
-		_CFLAGS=${__oCFLAGS}
-		cc_check_silent=${__occ}
+		_CFLAGS=$__oCFLAGS
+		cc_check_silent=$__occ
 		unset __occ __oCFLAGS
 	fi
 }
@@ -1325,22 +1326,22 @@ cc_check_testprog() {
 cc_check() {
 	cc_check_testprog
 
-	[ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
+	[ -n "$cc_check_silent" ] || msg_nonl ' . CC %s .. ' "$1"
 	(
 		trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
-		${CC} ${INCS} ${_cc_check_ever} \
-				${_CFLAGS} ${1} ${EXTRA_CFLAGS} \
-				${_LDFLAGS} ${EXTRA_LDFLAGS} \
-				-o ${tmp2} ${tmp}.c ${LIBS} || exit 1
+		$CC $INCS $_cc_check_ever \
+				$_CFLAGS $1 $EXTRA_CFLAGS \
+				$_LDFLAGS $EXTRA_LDFLAGS \
+				-o $tmp2 $tmp.c $LIBS || exit 1
 		feat_no CROSS_BUILD || exit 0
-		${tmp2}
+		$tmp2
 	) >/dev/null
 	if [ $? -eq 0 ]; then
-		_CFLAGS="${_CFLAGS} ${1}"
-		[ -n "${cc_check_silent}" ] || msg 'yes'
+		_CFLAGS="$_CFLAGS $1"
+		[ -n "$cc_check_silent" ] || msg 'yes'
 		return 0
 	fi
-	[ -n "${cc_check_silent}" ] || msg 'no'
+	[ -n "$cc_check_silent" ] || msg 'no'
 	return 1
 }
 
@@ -1348,22 +1349,22 @@ ld_check() {
 	# $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
 	cc_check_testprog
 
-	[ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
+	[ -n "$cc_check_silent" ] || msg_nonl ' . LD %s .. ' "$1"
 	(
 		trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
-		${CC} ${INCS} ${_cc_check_ever} \
-				${_CFLAGS} ${EXTRA_CFLAGS} \
-				${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
-				-o ${tmp2} ${tmp}.c ${LIBS} || exit 1
+		$CC $INCS $_cc_check_ever \
+				$_CFLAGS $EXTRA_CFLAGS \
+				$_LDFLAGS $1$2 $EXTRA_LDFLAGS \
+				-o $tmp2 $tmp.c $LIBS || exit 1
 		feat_no CROSS_BUILD || exit 0
-		${tmp2}
+		$tmp2
 	) >/dev/null
 	if [ $? -eq 0 ]; then
-		[ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
-		[ -n "${cc_check_silent}" ] || msg 'yes'
+		[ -n "$3" ] || _LDFLAGS="$_LDFLAGS $1"
+		[ -n "$cc_check_silent" ] || msg 'yes'
 		return 0
 	fi
-	[ -n "${cc_check_silent}" ] || msg 'no'
+	[ -n "$cc_check_silent" ] || msg 'no'
 	return 1
 }
 
@@ -1372,13 +1373,13 @@ _check_preface() {
 	variable=$1 topic=$2 define=$3
 
 	echo '@@@'
-	msg_nonl ' . %s ... ' "${topic}"
-	#echo "/* checked ${topic} */" >> ${h}
-	${rm} -f ${tmp} ${tmp}.o ${tmp}.c
-	if [ "${dump_test_program}" = 1 ]; then
-		{ echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
+	msg_nonl ' . %s ... ' "$topic"
+	#echo "/* checked $topic */" >> $h
+	$rm -f $tmp $tmp.o $tmp.c
+	if [ "$dump_test_program" = 1 ]; then
+		{ echo '#include <'"$h_name"'>'; $cat; } | $tee $tmp.c
 	else
-		{ echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
+		{ echo '#include <'"$h_name"'>'; $cat; } > $tmp.c
 	fi
 }
 
@@ -1387,25 +1388,25 @@ compile_check() {
 
 	cc_check_testprog
 
-	_check_preface "${variable}" "${topic}" "${define}"
+	_check_preface "$variable" "$topic" "$define"
 
 	__comp() (
-		cd "${OBJDIR}" || exit 1
-		echo "@CC ${@}"
-		eval MAKEFLAGS= "${@}" && [ -f ${tmp_basename}.o ]
+		cd "$OBJDIR" || exit 1
+		echo "@CC $@"
+		eval MAKEFLAGS= "$@" && [ -f "$tmp_basename".o ]
 	)
 
-	if __comp ${CC} -Dmx_SOURCE -I./ ${INCS} \
-				${CFLAGS} ${LDFLAGS} ${_cc_check_testprog} \
-				-c ${tmp}.c 2>&1; then
+	if __comp $CC -Dmx_SOURCE -I./ $INCS \
+				$CFLAGS $LDFLAGS $_cc_check_testprog \
+				-c "$tmp".c 2>&1; then
 		msg 'yes'
-		echo "${define}" >> ${h}
-		eval have_${variable}=yes
+		echo "$define" >> $h
+		eval have_$variable=yes
 		return 0
 	else
-		#echo "/* ${define} */" >> ${h}
+		#echo "/* $define */" >> $h
 		msg 'no'
-		eval unset have_${variable}
+		eval unset have_$variable
 		return 1
 	fi
 }
@@ -1415,53 +1416,53 @@ _link_mayrun() {
 
 	cc_check_testprog
 
-	_check_preface "${variable}" "${topic}" "${define}"
+	_check_preface "$variable" "$topic" "$define"
 
 	if feat_yes CROSS_BUILD; then
-		if [ ${run} = 1 ]; then
+		if [ "$run" = 1 ]; then
 			run=0
 		fi
 	fi
 
 	__comp() (
-		cd "${OBJDIR}" || exit 1
-		echo "@CC ${@}"
-		eval MAKEFLAGS= "${@}" && [ -f "${tmp}" ] && { [ ${run} -eq 0 ] || "${tmp}"; }
+		cd "$OBJDIR" || exit 1
+		echo "@CC $@"
+		eval MAKEFLAGS= "$@" && [ -f "$tmp" ] && { [ "$run" -eq 0 ] || "$tmp"; }
 	)
 
-	if __comp ${CC} -Dmx_SOURCE -I./ ${INCS} ${incs} \
-				${CFLAGS} ${LDFLAGS} ${_cc_check_testprog} \
-				-o ${tmp} ${tmp}.c \
-				${LIBS} ${libs}; then
-		echo "@ INCS<${incs}> LIBS<${libs}>; executed: ${run}"
+	if __comp $CC -Dmx_SOURCE -I./ $INCS $incs \
+				$CFLAGS $LDFLAGS $_cc_check_testprog \
+				-o "$tmp" "$tmp".c \
+				$LIBS $libs; then
+		echo "@ INCS<$incs> LIBS<$libs>; executed: $run"
 		msg 'yes'
-		echo "${define}" >> ${h}
-		LIBS="${LIBS} ${libs}"
-		INCS="${INCS} ${incs}"
-		eval have_${variable}=yes
+		echo "$define" >> "$h"
+		LIBS="$LIBS $libs"
+		INCS="$INCS $incs"
+		eval have_"$variable"=yes
 		return 0
 	else
 		msg 'no'
-		#echo "/* ${define} */" >> ${h}
-		eval unset have_${variable}
+		#echo "/* $define */" >> "$h"
+		eval unset have_"$variable"
 		return 1
 	fi
 }
 
 link_check() {
-	_link_mayrun 0 "${1}" "${2}" "${3}" "${4}" "${5}"
+	_link_mayrun 0 "$1" "$2" "$3" "$4" "$5"
 }
 
 run_check() {
-	_link_mayrun 1 "${1}" "${2}" "${3}" "${4}" "${5}"
+	_link_mayrun 1 "$1" "$2" "$3" "$4" "$5"
 }
 
 xrun_check() {
-	_link_mayrun 2 "${1}" "${2}" "${3}" "${4}" "${5}"
+	_link_mayrun 2 "$1" "$2" "$3" "$4" "$5"
 }
 
 string_to_char_array() {
-	${awk} -v xy="${@}" '
+	$awk -v xy="$@" '
 	BEGIN{
 		# POSIX: unspecified behavior.
 		# Does not work for SunOS /usr/xpg4/bin/awk!
@@ -1489,21 +1490,21 @@ string_to_char_array() {
 }
 
 squeeze_ws() {
-	echo "${*}" | ${sed} -e 's/^[	 ]\{1,\}//' -e 's/[	 ]\{1,\}$//' -e 's/[	 ]\{1,\}/ /g'
+	echo "$*" | $sed -e 's/^[	 ]\{1,\}//' -e 's/[	 ]\{1,\}$//' -e 's/[	 ]\{1,\}/ /g'
 }
 
 ## - >8 - <<SUPPORT FUNS | RUNNING>> - 8< - ##
 
 msg() {
-	fmt=${1}
+	fmt=$1
 	shift
-	printf -- "${fmt}\n" "${@}"
+	printf -- "$fmt\n" "$@"
 }
 
 msg_nonl() {
-	fmt=${1}
+	fmt=$1
 	shift
-	printf -- "${fmt}" "${@}"
+	printf -- "$fmt" "$@"
 }
 
 # Very easy checks for the operating system in order to be able to adjust paths
@@ -1518,59 +1519,59 @@ thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
 
 # Lowercase this now in order to isolate all the remains from case matters
-OS_ORIG_CASE=${OS}
-OS=$(echo ${OS} | ${tr} '[A-Z]' '[a-z]')
+OS_ORIG_CASE=$OS
+OS=$(echo "$OS" | $tr '[A-Z]' '[a-z]')
 export OS
 
 # But first of all, create new configuration and check whether it changed
-[ -z "${OBJDIR}" ] && OBJDIR=.obj
-OBJDIR=$(${awk} -v OD="${OBJDIR}" 'BEGIN{
+[ -z "$OBJDIR" ] && OBJDIR=.obj
+OBJDIR=$($awk -v OD="$OBJDIR" 'BEGIN{
 	if(index(OD, "/"))
 		sub("/+$", "", OD)
 	if(OD !~ /^\//){
-		"'"${pwd}"'" | getline i
-		close("'"${pwd}"'")
+		"'"$pwd"'" | getline i
+		close("'"$pwd"'")
 		OD = i "/" OD
 	}
 	print OD
 	}')
 
 rc=./make.rc
-env="${OBJDIR}"/mk-config.env
-h="${OBJDIR}"/mk-config.h h_name=mk-config.h
-mk="${OBJDIR}"/mk-config.mk
+env="$OBJDIR"/mk-config.env
+h="$OBJDIR"/mk-config.h h_name=mk-config.h
+mk="$OBJDIR"/mk-config.mk
 
-newmk="${OBJDIR}"/mk-nconfig.mk
-oldmk="${OBJDIR}"/mk-oconfig.mk
-newenv="${OBJDIR}"/mk-nconfig.env
-newh="${OBJDIR}"/mk-nconfig.h
-oldh="${OBJDIR}"/mk-oconfig.h
-tmp0="${OBJDIR}"/___tmp
-tmp=${tmp0}1_${$}
-tmp_basename=___tmp1_${$}
-tmp2=${tmp0}2_${$}
+newmk="$OBJDIR"/mk-nconfig.mk
+oldmk="$OBJDIR"/mk-oconfig.mk
+newenv="$OBJDIR"/mk-nconfig.env
+newh="$OBJDIR"/mk-nconfig.h
+oldh="$OBJDIR"/mk-oconfig.h
+tmp0="$OBJDIR"/___tmp
+tmp=${tmp0}1_$$
+tmp_basename=___tmp1_$$
+tmp2=${tmp0}2_$$
 
-if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
-	msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
+if [ -d "$OBJDIR" ] || mkdir -p "$OBJDIR"; then :; else
+	msg 'ERROR: cannot create '"$OBJDIR"' build directory'
 	exit 1
 fi
 
 # !!
-log="${OBJDIR}"/mk-config.log
-exec 5>&2 > ${log} 2>&1
+log="$OBJDIR"/mk-config.log
+exec 5>&2 > $log 2>&1
 
 msg() {
-	fmt=${1}
+	fmt=$1
 	shift
-	printf -- "${fmt}\n" "${@}"
-	printf -- "${fmt}\n" "${@}" >&5
+	printf -- "$fmt\n" "$@"
+	printf -- "$fmt\n" "$@" >&5
 }
 
 msg_nonl() {
-	fmt=${1}
+	fmt=$1
 	shift
-	printf -- "${fmt}" "${@}"
-	printf -- "${fmt}" "${@}" >&5
+	printf -- "$fmt" "$@"
+	printf -- "$fmt" "$@" >&5
 }
 
 # Initialize the option set
@@ -1582,9 +1583,9 @@ msg 'done'
 # within the command line or from a chosen fixed CONFIG=
 # Note we leave alone the values
 trap "exit 1" HUP INT TERM
-trap "${rm} -f ${tmp}" EXIT
+trap "$rm -f $tmp" EXIT
 
-msg_nonl 'Joining in %s ... ' ${rc}
+msg_nonl 'Joining in %s ... ' "$rc"
 option_join_rc
 msg 'done'
 
@@ -1617,14 +1618,14 @@ thecmd_testandset_fail tee tee
 # far above thecmd_testandset_fail tr tr
 
 thecmd_testandset_fail MAKE make
-make=${MAKE}
+make=$MAKE
 export MAKE
 
-__PATH=${PATH}
+__PATH=$PATH
 thecmd_testandset chown chown ||
-	PATH="/sbin:${PATH}" thecmd_set chown chown ||
-	PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
-PATH=${__PATH}
+	PATH="/sbin:$PATH" thecmd_set chown chown ||
+	PATH="/usr/sbin:$PATH" thecmd_set_fail chown chown
+PATH=$__PATH
 
 thecmd_testandset objcopy objcopy
 thecmd_testandset strip strip
@@ -1640,35 +1641,35 @@ option_update 0
 
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
-trap "trap \"\" HUP INT TERM EXIT; ${rm} -rf ${tmp0}.* ${tmp0}* ${newmk} ${oldmk} ${newenv} ${newh} ${oldh}" EXIT
+trap "trap \"\" HUP INT TERM EXIT; $rm -rf $tmp0.* $tmp0* $newmk $oldmk $newenv $newh $oldh" EXIT
 
 printf '#ifdef mx_SOURCE\n' > ${newh}
 
 # Now that we have pwd(1) and options at least permit some more actions, set
 # our build paths unless make-emerge.sh has been used; it would have created
 # a makefile with the full paths otherwise
-if [ -z "${CWDDIR}" ]; then
-	CWDDIR=$(${pwd})
-	CWDDIR=$(oneslash "${CWDDIR}")
+if [ -z "$CWDDIR" ]; then
+	CWDDIR=$($pwd)
+	CWDDIR=$(oneslash "$CWDDIR")
 fi
-if [ -z "${TOPDIR}" ]; then
-	TOPDIR=${CWDDIR}
+if [ -z "$TOPDIR" ]; then
+	TOPDIR=$CWDDIR
 fi
-	INCDIR="${TOPDIR}"include/
-	SRCDIR="${TOPDIR}"src/
+	INCDIR="$TOPDIR"include/
+	SRCDIR="$TOPDIR"src/
 
-MX_CWDDIR=${CWDDIR}
-	MX_INCDIR=${INCDIR}
-	MX_SRCDIR=${SRCDIR}
-PS_DOTLOCK_CWDDIR=${CWDDIR}
-	PS_DOTLOCK_INCDIR=${INCDIR}
-	PS_DOTLOCK_SRCDIR=${SRCDIR}
-NET_TEST_CWDDIR=${CWDDIR}
-	NET_TEST_INCDIR=${INCDIR}
-	NET_TEST_SRCDIR=${SRCDIR}
-SU_CWDDIR=${CWDDIR}
-	SU_INCDIR=${INCDIR}
-	SU_SRCDIR=${SRCDIR}
+MX_CWDDIR=$CWDDIR
+	MX_INCDIR=$INCDIR
+	MX_SRCDIR=$SRCDIR
+PS_DOTLOCK_CWDDIR=$CWDDIR
+	PS_DOTLOCK_INCDIR=$INCDIR
+	PS_DOTLOCK_SRCDIR=$SRCDIR
+NET_TEST_CWDDIR=$CWDDIR
+	NET_TEST_INCDIR=$INCDIR
+	NET_TEST_SRCDIR=$SRCDIR
+SU_CWDDIR=$CWDDIR
+	SU_INCDIR=$INCDIR
+	SU_SRCDIR=$SRCDIR
 
 msg_nonl 'Cleaning up configuration items ... '
 option_cleanup
@@ -1677,36 +1678,36 @@ msg 'done'
 option_update 1
 
 #
-printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
-printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
-printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT\n" >> ${newenv}
+printf "#define VAL_UAGENT \"$VAL_SID$VAL_MAILX\"\n" >> $newh
+printf "VAL_UAGENT = $VAL_SID$VAL_MAILX\n" >> $newmk
+printf "VAL_UAGENT=$VAL_SID$VAL_MAILX;export VAL_UAGENT\n" >> $newenv
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
 # injecting the relevant make variables.  Set up necessary environment
-if [ -z "${VERBOSE}" ]; then
-	printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${newmk}
-	printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${newmk}
-	printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
-	printf -- "ECHO_TEST = @\n" >> ${newmk}
-	printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
+if [ -z "$VERBOSE" ]; then
+	printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> $newmk
+	printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> $newmk
+	printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> $newmk
+	printf -- "ECHO_TEST = @\n" >> $newmk
+	printf -- "ECHO_CMD = @echo '  CMD';\n" >> $newmk
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh check %s\n' \
-	"${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
+	"$SHELL" "$TOPDIR" "./$VAL_SID$VAL_MAILX" >> $newmk
 printf \
 	'testnj: all\n\t$(ECHO_TEST)JOBNO=1 %s %smx-test.sh check %s\n' \
-	"${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
+	"$SHELL" "$TOPDIR" "./$VAL_SID$VAL_MAILX" >> $newmk
 
 # Add the known utility and some other variables
-printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
-printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
-printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK\n' "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
+printf "#define VAL_PS_DOTLOCK \"$VAL_SID$VAL_MAILX-dotlock\"\n" >> $newh
+printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> $newmk
+printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK\n' "$VAL_SID$VAL_MAILX-dotlock" >> $newenv
 if feat_yes DOTLOCK; then
-	printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
+	printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> $newmk
 fi
 
 if feat_yes NET_TEST; then
-	printf "#real below OPTIONAL_NET_TEST = net-test\n" >> ${newmk}
+	printf "#real below OPTIONAL_NET_TEST = net-test\n" >> $newmk
 fi
 
 for i in \
@@ -1722,25 +1723,25 @@ for i in \
 		MAKE MAKEFLAGS make objcopy SHELL strip \
 		\
 		cksum; do
-	eval j=\$${i}
-	printf -- "${i} = ${j}\n" >> ${newmk}
-	[ "${i}" = MAKEFLAGS ] && continue # GNU make 4.4 embeds volatile info
-	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+	eval j=\$$i
+	printf -- "$i = $j\n" >> $newmk
+	[ "$i" = MAKEFLAGS ] && continue # GNU make 4.4 embeds volatile info
+	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
-C_INCLUDE_PATH="${INCDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
-if path_is_absolute "${OBJDIR}"; then
-	C_INCLUDE_PATH="${OBJDIR}:${C_INCLUDE_PATH}"
+C_INCLUDE_PATH="$INCDIR:$SRCDIR:$C_INCLUDE_PATH"
+if path_is_absolute "$OBJDIR"; then
+	C_INCLUDE_PATH="$OBJDIR:$C_INCLUDE_PATH"
 else
-	C_INCLUDE_PATH="${CWDDIR}${OBJDIR}:${C_INCLUDE_PATH}"
+	C_INCLUDE_PATH="$CWDDIR$OBJDIR:$C_INCLUDE_PATH"
 fi
-C_INCLUDE_PATH="${CWDDIR}include:${C_INCLUDE_PATH}"
+C_INCLUDE_PATH="${CWDDIR}include:$C_INCLUDE_PATH"
 
 path_check C_INCLUDE_PATH -I _INCS
-INCS="${INCS} ${_INCS}"
+INCS="$INCS $_INCS"
 path_check LD_LIBRARY_PATH -L _LIBS
-LIBS="${LIBS} ${_LIBS}"
+LIBS="$LIBS $_LIBS"
 unset _INCS _LIBS
 export C_INCLUDE_PATH LD_LIBRARY_PATH
 
@@ -1757,45 +1758,45 @@ cc_flags
 
 DEBUG_IN_EXTERNAL_FILE=
 if feat_yes DEBUG; then
-	[ -n "${cc_check_silent}" ] || msg_nonl ' . Can place debug symbols in external file .. '
+	[ -n "$cc_check_silent" ] || msg_nonl ' . Can place debug symbols in external file .. '
 	cc_create_testfile
-	if cc_build_tmp_as_tmp2 && [ -n "${objcopy}" ] && [ -n "${strip}" ] &&
-			${objcopy} --only-keep-debug ${tmp2} ${tmp2}.debug >/dev/null 2>&1 &&
-			${strip} -g ${tmp2} >/dev/null 2>&1 &&
-			${objcopy} --add-gnu-debuglink=${tmp2}.debug ${tmp2} >/dev/null 2>&1 &&
-			[ -s ${tmp2} ] && [ -s ${tmp2}.debug ]; then
-		[ -n "${cc_check_silent}" ] || msg 'yes'
+	if cc_build_tmp_as_tmp2 && [ -n "$objcopy" ] && [ -n "$strip" ] &&
+			$objcopy --only-keep-debug $tmp2 $tmp2.debug >/dev/null 2>&1 &&
+			$strip -g $tmp2 >/dev/null 2>&1 &&
+			$objcopy --add-gnu-debuglink=$tmp2.debug $tmp2 >/dev/null 2>&1 &&
+			[ -s $tmp2 ] && [ -s $tmp2.debug ]; then
+		[ -n "$cc_check_silent" ] || msg 'yes'
 		DEBUG_IN_EXTERNAL_FILE=y
 	else
-		[ -n "${cc_check_silent}" ] || msg 'no'
+		[ -n "$cc_check_silent" ] || msg 'no'
 	fi
 fi
 
 # Done with detection!  Write out our stuff!!
-for i in ${OPT_ANYEVAL}; do
-	eval j=\$${i}
-	if [ "${j}" = 0 ]; then
-		printf "\t/* #undef ${i} */\n" >> ${newh}
+for i in $OPT_ANYEVAL; do
+	eval j=\$$i
+	if [ "$j" = 0 ]; then
+		printf "\t/* #undef $i */\n" >> $newh
 	else
-		[ "${j}" = require ] && j=1 # lesser possibilities
-		printf "\t/* #define ${i} */\n" >> ${newh}
+		[ "$j" = require ] && j=1 # lesser possibilities
+		printf "\t/* #define $i */\n" >> $newh
 	fi
-	printf -- "${i} = ${j}\n" >> ${newmk}
-	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+	printf -- "$i = $j\n" >> $newmk
+	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
 done
-for i in ${VAL_ANYEVAL}; do
-	eval j=\$${i}
-	if { echo ${i} | ${grep} ${H_VAL_BLACKLIST} >/dev/null 2>&1; }; then
+for i in $VAL_ANYEVAL; do
+	eval j=\$$i
+	if { echo "$i" | $grep $H_VAL_BLACKLIST >/dev/null 2>&1; }; then
 		:
 	else
-		printf "#define ${i} \"${j}\"\n" >> ${newh}
+		printf "#define $i \"$j\"\n" >> $newh
 	fi
-	printf -- "${i} = ${j}\n" >> ${newmk}
-	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+	printf -- "$i = $j\n" >> $newmk
+	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
 done
 
-_ocf=${CFLAGS} _old=${LDFLAGS}
-CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}" LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
+_ocf=$CFLAGS _old=$LDFLAGS
+CFLAGS="$CFLAGS $_CFLAGS_NOT4TESTS" LDFLAGS="$LDFLAGS $_LDFLAGS_NOT4TESTS"
 for i in \
 		PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
 		CC CFLAGS LDFLAGS \
@@ -1803,18 +1804,18 @@ for i in \
 		OS OSFULLSPEC \
 		DEBUG_IN_EXTERNAL_FILE \
 		; do
-	eval j="\$${i}"
-	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+	eval j="\$$i"
+	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
 done
-CFLAGS=${_ocf} LDFLAGS=${_old}
+CFLAGS=$_ocf LDFLAGS=$_old
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
 config_updated=
-if [ -f ${env} ] && ${cmp} ${newenv} ${env} >/dev/null 2>&1; then
+if [ -f "$env" ] && $cmp "$newenv" "$env" >/dev/null 2>&1; then
 	msg 'Configuration is up-to-date'
 	exit 0
-elif [ -f ${env} ]; then
+elif [ -f "$env" ]; then
 	config_updated=1
 	msg 'Configuration has been updated..'
 else
@@ -1825,66 +1826,66 @@ fi
 
 # Time to redefine helper 1
 config_exit() {
-	${rm} -f ${h} ${mk}
-	exit ${1}
+	$rm -f "$h" "$mk"
+	exit "$1"
 }
 
-${mv} -f ${newenv} ${env}
-[ -f ${h} ] && ${mv} -f ${h} ${oldh}
-${mv} -f ${newh} ${h} # Note this has still #ifdef mx_SOURCE open
-[ -f ${mk} ] && ${mv} -f ${mk} ${oldmk}
-${mv} -f ${newmk} ${mk}
+$mv -f "$newenv" "$env"
+[ -f "$h" ] && $mv -f "$h" "$oldh"
+$mv -f "$newh" "$h" # Note this has still #ifdef mx_SOURCE open
+[ -f "$mk" ] && $mv -f "$mk" "$oldmk"
+$mv -f "$newmk" "$mk"
 
 ## Compile and link checking
 
 tmp3=${tmp0}3$$
 
 # (No function since some shells loose non-exported variables in traps)
-trap "trap \"\" HUP INT TERM; ${rm} -f ${oldh} ${h} ${oldmk} ${mk}; exit 1" HUP INT TERM
-trap "trap \"\" HUP INT TERM EXIT; ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
+trap "trap \"\" HUP INT TERM; $rm -f $oldh $h $oldmk $mk; exit 1" HUP INT TERM
+trap "trap \"\" HUP INT TERM EXIT; $rm -rf $oldh $oldmk $tmp0.* $tmp0*" EXIT
 
 # Time to redefine helper 2
 msg() {
-	fmt=${1}
+	fmt=$1
 	shift
-	printf "@ ${fmt}\n" "${@}"
-	printf -- "${fmt}\n" "${@}" >&5
+	printf "@ $fmt\n" "$@"
+	printf -- "$fmt\n" "$@" >&5
 }
 msg_nonl() {
-	fmt=${1}
+	fmt=$1
 	shift
-	printf "@ ${fmt}\n" "${@}"
-	printf -- "${fmt}" "${@}" >&5
+	printf "@ $fmt\n" "$@"
+	printf -- "$fmt" "$@" >&5
 }
 
 ## Generics
 
-echo '#define VAL_BUILD_OS "'"${OS_ORIG_CASE}"'"' >> ${h}
+echo '#define VAL_BUILD_OS "'"$OS_ORIG_CASE"'"' >> $h
 
-printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
+printf '#endif /* mx_SOURCE */\n\n' >> $h # Opened when it was $newh
 
-[ -n "${OS_DEFINES}" ] && printf \
+[ -n "$OS_DEFINES" ] && printf \
 '#if defined mx_SOURCE || defined mx_EXT_SOURCE || defined su_SOURCE
-'"${OS_DEFINES}"'
+'"$OS_DEFINES"'
 #endif /* mx_SOURCE || mx_EXT_SOURCE || su_SOURCE */
 
-' >> ${h}
+' >> $h
 
 ## SU
 
-i=$(${getconf} PAGESIZE 2>/dev/null)
-[ $? -eq 0 ] || i=$(${getconf} PAGE_SIZE 2>/dev/null)
+i=$($getconf PAGESIZE 2>/dev/null)
+[ $? -eq 0 ] || i=$($getconf PAGE_SIZE 2>/dev/null)
 if [ $? -ne 0 ]; then
 	msg 'Cannot query PAGESIZE via getconf(1), assuming 4096'
 	i=0x1000
 fi
-printf '#define su_PAGE_SIZE %su\n' "${i}" >> ${h}
+printf '#define su_PAGE_SIZE %su\n' "$i" >> $h
 
 # Generate SU <> OS error number mappings
 msg_nonl ' . OS error mapping table generated ... '
 feat_yes DEVEL && NV= || NV=noverbose
-SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" rm="${rm}" sort="${sort}" \
-		${SHELL} "${TOPDIR}"mk/su-make-errors.sh ${NV} compile_time || {
+SRCDIR="$SRCDIR" TARGET="$h" awk="$awk" rm="$rm" sort="$sort" \
+		$SHELL "$TOPDIR"mk/su-make-errors.sh $NV compile_time || {
 	msg 'no'
 	config_exit 1
 }
@@ -2220,14 +2221,14 @@ else
 	feat_bail_required ERRORS
 fi
 
-if [ "${have_vsnprintf}" = yes ]; then
+if [ "$have_vsnprintf" = yes ]; then
 	__va_copy() {
-		link_check va_copy "va_copy(3) (as ${2})" \
+		link_check va_copy "va_copy(3) (as $2)" \
 "#define mx_HAVE_N_VA_COPY
-#define n_va_copy ${2}" <<_EOT
+#define n_va_copy $2" <<_EOT
 #include <stdarg.h>
 #include <stdio.h>
-#if ${1}
+#if $1
 # if defined __va_copy && !defined va_copy
 #  define va_copy __va_copy
 # endif
@@ -2491,10 +2492,10 @@ fi
 
 ### FORK AWAY SHARED BASE SERIES ###
 
-BASE_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
-BASE_INCS=$(squeeze_ws "${INCS}")
-BASE_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
-BASE_LIBS=$(squeeze_ws "${LIBS}")
+BASE_CFLAGS="$CFLAGS $_CFLAGS_NOT4TESTS"
+BASE_INCS=$(squeeze_ws "$INCS")
+BASE_LDFLAGS="$LDFLAGS $_LDFLAGS_NOT4TESTS"
+BASE_LIBS=$(squeeze_ws "$LIBS")
 
 ## The remains are expected to be used only by the main MUA binary!
 ## (And possibly by test programs)
@@ -2507,12 +2508,12 @@ int main(void){
 	return 0;
 }
 !
-[ -n "${have_setlocale}" ] && OPT_LOCALES=1
+[ -n "$have_setlocale" ] && OPT_LOCALES=1
 
 OPT_MULTIBYTE_CHARSETS=0
 OPT_WIDE_GLYPHS=0
 OPT_TERMINAL_CHARSET=0
-if [ -n "${have_setlocale}" ]; then
+if [ -n "$have_setlocale" ]; then
 	link_check c90amend1 'ISO/IEC 9899:1990/Amendment 1:1995' '#define mx_HAVE_C90AMEND1' << \!
 #include <limits.h>
 #include <stdlib.h>
@@ -2530,9 +2531,9 @@ int main(void){
 	return (mblen("\0", 1) == 0);
 }
 !
-	[ -n "${have_c90amend1}" ] && OPT_MULTIBYTE_CHARSETS=1
+	[ -n "$have_c90amend1" ] && OPT_MULTIBYTE_CHARSETS=1
 
-	if [ -n "${have_c90amend1}" ]; then
+	if [ -n "$have_c90amend1" ]; then
 		link_check wcwidth 'wcwidth(3)' '#define mx_HAVE_WCWIDTH' << \!
 #include <wchar.h>
 int main(void){
@@ -2540,7 +2541,7 @@ int main(void){
 	return 0;
 }
 !
-		[ -n "${have_wcwidth}" ] && OPT_WIDE_GLYPHS=1
+		[ -n "$have_wcwidth" ] && OPT_WIDE_GLYPHS=1
 	fi
 
 	link_check nl_langinfo 'nl_langinfo(3)' '#define mx_HAVE_NL_LANGINFO' << \!
@@ -2551,7 +2552,7 @@ int main(void){
 	return (nl_langinfo(CODESET) == (void*)0);
 }
 !
-	[ -n "${have_nl_langinfo}" ] && OPT_TERMINAL_CHARSET=1
+	[ -n "$have_nl_langinfo" ] && OPT_TERMINAL_CHARSET=1
 fi # have_setlocale
 
 link_check fnmatch 'fnmatch(3)' '#define mx_HAVE_FNMATCH' << \!
@@ -2608,13 +2609,13 @@ if feat_yes ICONV; then
 	if val_allof VAL_ICONV libc,iconv; then
 		:
 	else
-		msg 'ERROR: VAL_ICONV with invalid entries: %s' "${VAL_ICONV}"
+		msg 'ERROR: VAL_ICONV with invalid entries: %s' "$VAL_ICONV"
 		config_exit 1
 	fi
 
 	# To be able to create tests we need to figure out which replacement
 	# sequence the iconv(3) implementation creates
-	${cat} > ${tmp2}.c << \!
+	$cat > $tmp2.c << \!
 #include <string.h>
 #include <iconv.h>
 int main(void){
@@ -2682,39 +2683,39 @@ jleave:
 !
 
 	val_iconv_libc() {
-		< ${tmp2}.c link_check iconv 'iconv(3)' '#define mx_HAVE_ICONV'
+		< $tmp2.c link_check iconv 'iconv(3)' '#define mx_HAVE_ICONV'
 		[ $? -eq 0 ] && return 0
-		< ${tmp2}.c link_check iconv 'iconv(3), GNU libiconv redirect aware' \
+		< $tmp2.c link_check iconv 'iconv(3), GNU libiconv redirect aware' \
 				'#define mx_HAVE_ICONV' '' '-DLIBICONV_PLUG'
 	}
 
 	val_iconv_iconv() {
-		< ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' '#define mx_HAVE_ICONV' '-liconv'
+		< $tmp2.c link_check iconv 'iconv(3) functionality (via -liconv)' '#define mx_HAVE_ICONV' '-liconv'
 	}
 
 	val_iconv_bye() {
 		feat_bail_required ICONV
 	}
 
-	VAL_ICONV="${VAL_ICONV},bye"
+	VAL_ICONV="$VAL_ICONV,bye"
 	val_foreach_call VAL_ICONV val_iconv
 
 	if feat_yes ICONV && feat_no CROSS_BUILD; then
-		{ ${tmp}; } >/dev/null 2>&1
-		i=${?} j=FAL0
-		[ ${i} -gt 31 ] && j=TRU1
-		case ${i} in
+		{ $tmp; } >/dev/null 2>&1
+		i=$? j=FAL0
+		[ "$i" -gt 31 ] && j=TRU1
+		case "$i" in
 		1|33)
 			msg 'WARN: disabling ICONV due to faulty conversion/restrictions'
 			feat_bail_required ICONV
 			;;
-		2|34) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
-		3|35) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
-		12|44) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
-		13|45) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
+		2|34) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> $env;;
+		3|35) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> $env;;
+		12|44) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> $env;;
+		13|45) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> $env;;
 		*) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
 		esac
-		echo '#define mx_ICONV_NEEDS_TRANSLIT '${j} >> ${h}
+		echo '#define mx_ICONV_NEEDS_TRANSLIT '"$j" >> $h
 	fi
 else
 	feat_is_disabled ICONV
@@ -2722,7 +2723,7 @@ fi
 # }}} OPT_ICONV, VAL_ICONV
 
 if feat_yes NET; then
-	${cat} > ${tmp2}.c << \!
+	$cat > $tmp2.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -2740,14 +2741,14 @@ int main(void){
 }
 !
 
-	< ${tmp2}.c run_check af_unix 'AF_UNIX sockets' '#define mx_HAVE_UNIX_SOCKETS' ||
-		< ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lnsl)' '#define mx_HAVE_UNIX_SOCKETS' '-lnsl' ||
-		< ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
+	< $tmp2.c run_check af_unix 'AF_UNIX sockets' '#define mx_HAVE_UNIX_SOCKETS' ||
+		< $tmp2.c run_check af_unix 'AF_UNIX sockets (via -lnsl)' '#define mx_HAVE_UNIX_SOCKETS' '-lnsl' ||
+		< $tmp2.c run_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
 			'#define mx_HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
 if feat_yes NET; then
-	${cat} > ${tmp2}.c << \!
+	$cat > $tmp2.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -2763,9 +2764,9 @@ int main(void){
 }
 !
 
-	< ${tmp2}.c run_check sockets 'sockets' '#define mx_HAVE_NET' ||
-		< ${tmp2}.c run_check sockets 'sockets (via -lnsl)' '#define mx_HAVE_NET' '-lnsl' ||
-		< ${tmp2}.c run_check sockets 'sockets (via -lsocket -lnsl)' '#define mx_HAVE_NET' '-lsocket -lnsl' ||
+	< $tmp2.c run_check sockets 'sockets' '#define mx_HAVE_NET' ||
+		< $tmp2.c run_check sockets 'sockets (via -lnsl)' '#define mx_HAVE_NET' '-lnsl' ||
+		< $tmp2.c run_check sockets 'sockets (via -lsocket -lnsl)' '#define mx_HAVE_NET' '-lsocket -lnsl' ||
 		feat_bail_required NET
 else
 	feat_is_disabled NET
@@ -2860,7 +2861,7 @@ int main(void){
 !
 fi
 
-if feat_yes NET && [ -z "${have_getaddrinfo}" ]; then
+if feat_yes NET && [ -z "$have_getaddrinfo" ]; then
 	compile_check arpa_inet_h '<arpa/inet.h>' '#define mx_HAVE_ARPA_INET_H' << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -2869,7 +2870,7 @@ if feat_yes NET && [ -z "${have_getaddrinfo}" ]; then
 #include <arpa/inet.h>
 !
 
-	${cat} > ${tmp2}.c << \!
+	$cat > $tmp2.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -2917,13 +2918,13 @@ int main(void){
 }
 !
 
-	< ${tmp2}.c link_check gethostbyname 'get(serv|host)byname(3)' ||
-		< ${tmp2}.c link_check gethostbyname 'get(serv|host)byname(3) (via -nsl)' '' '-lnsl' ||
-		< ${tmp2}.c link_check gethostbyname 'get(serv|host)byname(3) (via -lsocket -nsl)' '' '-lsocket -lnsl' ||
+	< $tmp2.c link_check gethostbyname 'get(serv|host)byname(3)' ||
+		< $tmp2.c link_check gethostbyname 'get(serv|host)byname(3) (via -nsl)' '' '-lnsl' ||
+		< $tmp2.c link_check gethostbyname 'get(serv|host)byname(3) (via -lsocket -nsl)' '' '-lsocket -lnsl' ||
 		feat_bail_required NET
 fi
 
-feat_yes NET && [ -n "${have_sockopt}" ] &&
+feat_yes NET && [ -n "$have_sockopt" ] &&
 	link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define mx_HAVE_SO_XTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2939,7 +2940,7 @@ int main(void){
 }
 !
 
-feat_yes NET && [ -n "${have_sockopt}" ] &&
+feat_yes NET && [ -n "$have_sockopt" ] &&
 	link_check so_linger 'SO_LINGER' '#define mx_HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -3104,9 +3105,9 @@ int main(void){
 }
 !
 		then
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,+modules-load-file"
 		else
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-modules-load-file"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,-modules-load-file"
 		fi
 
 		if link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
@@ -3129,12 +3130,12 @@ int main(void){
 }
 !
 		then
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,+conf-ctx"
 		else
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-conf-ctx"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,-conf-ctx"
 		fi
 
-		if [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
+		if [ -n "$have_xtls_conf" ] && [ -n "$have_xtls_conf_ctx" ] &&
 				link_check xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
 					'#define mx_XTLS_HAVE_CTX_CONFIG' << \!
 #include <openssl/ssl.h>
@@ -3144,9 +3145,9 @@ int main(void){
 }
 !
 		then
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,+ctx-config"
 		else
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-config"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,-ctx-config"
 		fi
 	fi # }}}
 
@@ -3161,9 +3162,9 @@ int main(void){
 }
 !
 		then
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,+ctx-set-maxmin-proto"
 		else
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-maxmin-proto"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,-ctx-set-maxmin-proto"
 		fi
 
 		if link_check xtls_set_ciphersuites 'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
@@ -3175,9 +3176,9 @@ int main(void){
 }
 !
 		then
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,+ctx-set-ciphersuites"
 		else
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-ciphersuites"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,-ctx-set-ciphersuites"
 		fi
 
 		if link_check xtls_ktls 'TLS: KTLS' \
@@ -3192,15 +3193,15 @@ int main(void){
 }
 !
 		then
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+option-ktls"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,+option-ktls"
 		else
-			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-option-ktls"
+			VAL_TLS_FEATURES="$VAL_TLS_FEATURES,-option-ktls"
 		fi
 	fi # feat_yes TLS }}}
 
 	if feat_yes TLS; then # digest etc algorithms {{{
-		if [ -n "${ossl_v1_1}" ]; then
-			echo '#define mx_HAVE_TLS_ALL_ALGORITHMS' >> ${h}
+		if [ -n "$ossl_v1_1" ]; then
+			echo '#define mx_HAVE_TLS_ALL_ALGORITHMS' >> $h
 		elif feat_yes TLS_ALL_ALGORITHMS; then
 			if link_check tls_all_algo 'TLS all-algorithms support' '#define mx_HAVE_TLS_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
@@ -3283,11 +3284,11 @@ else
 	feat_is_disabled TLS_ALL_ALGORITHMS
 	feat_is_disabled TLS_MD5
 fi # }}} feat_yes TLS
-printf '#ifdef mx_SOURCE\n' >> ${h}
-printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"',"\n' >> ${h}
-printf '#endif /* mx_SOURCE */\n' >> ${h}
+printf '#ifdef mx_SOURCE\n' >> $h
+printf '#define VAL_TLS_FEATURES ",'"$VAL_TLS_FEATURES"',"\n' >> $h
+printf '#endif /* mx_SOURCE */\n' >> $h
 
-if [ "${have_xtls}" = yes ]; then
+if [ "$have_xtls" = yes ]; then
 	OPT_SMIME=1
 else
 	OPT_SMIME=0
@@ -3297,7 +3298,7 @@ fi
 if val_allof VAL_RANDOM "arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin,error"; then
 	:
 else
-	msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
+	msg 'ERROR: VAL_RANDOM with invalid entries: %s' "$VAL_RANDOM"
 	config_exit 1
 fi
 
@@ -3339,7 +3340,7 @@ val_random_tls() {
 		msg ' . VAL_RANDOM: tls ... yes'
 		echo '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
 			#define su_RANDOM_HOOK_FUN mx_random_hook
-			#define mx_RANDOM_SEED_HOOK 3' >> ${h}
+			#define mx_RANDOM_SEED_HOOK 3' >> $h
 		# Avoid reseeding, all we need is a streamy random producer
 		link_check xtls_rand_drbg_set_reseed_defaults 'RAND_DRBG_set_reseed_defaults(3ssl)' \
 			'#define mx_XTLS_HAVE_SET_RESEED_DEFAULTS' << \!
@@ -3407,10 +3408,10 @@ val_random_urandom() {
 	msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
 	if feat_yes CROSS_BUILD; then
 		msg 'yes (unchecked)'
-		echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> ${h}
+		echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> $h
 	elif [ -f /dev/urandom ]; then
 		msg yes
-		echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> ${h}
+		echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> $h
 	else
 		msg no
 		return 1
@@ -3420,7 +3421,7 @@ val_random_urandom() {
 
 val_random_builtin() {
 	msg ' . VAL_RANDOM: using builtin seeder'
-	echo '#define su_RANDOM_SEED su_RANDOM_SEED_BUILTIN' >> ${h}
+	echo '#define su_RANDOM_SEED su_RANDOM_SEED_BUILTIN' >> $h
 }
 
 val_random_error() {
@@ -3428,12 +3429,12 @@ val_random_error() {
 	config_exit 42
 }
 
-VAL_RANDOM="${VAL_RANDOM},error"
+VAL_RANDOM="$VAL_RANDOM,error"
 val_foreach_call VAL_RANDOM val_random
 # }}} VAL_RANDOM
 
 if feat_yes GSSAPI; then # {{{
-	${cat} > ${tmp2}.c << \!
+	$cat > $tmp2.c << \!
 #include <gssapi/gssapi.h>
 int main(void){
 	gss_import_name(0, 0, GSS_C_NT_HOSTBASED_SERVICE, 0);
@@ -3441,29 +3442,29 @@ int main(void){
 	return 0;
 }
 !
-	${sed} -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
+	$sed -e '1s/gssapi\///' < $tmp2.c > $tmp3.c
 
 	if acmd_set i krb5-config; then
-		GSS_LIBS="$(CFLAGS= ${i} --libs gssapi)"
-		GSS_INCS="$(CFLAGS= ${i} --cflags)"
+		GSS_LIBS="$(CFLAGS= $i --libs gssapi)"
+		GSS_INCS="$(CFLAGS= $i --cflags)"
 		i='GSS-API via krb5-config(1)'
 	else
 		GSS_LIBS='-lgssapi'
 		GSS_INCS=
 		i='GSS-API in gssapi/gssapi.h, libgssapi'
 	fi
-	if < ${tmp2}.c link_check gss "${i}" '#define mx_HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||
-		< ${tmp3}.c link_check gss 'GSS-API in gssapi.h, libgssapi' \
+	if < $tmp2.c link_check gss "$i" '#define mx_HAVE_GSSAPI' "$GSS_LIBS" "$GSS_INCS" ||
+		< $tmp3.c link_check gss 'GSS-API in gssapi.h, libgssapi' \
 			'#define mx_HAVE_GSSAPI
 			#define GSSAPI_REG_INCLUDE' \
 			'-lgssapi' ||\
-		< ${tmp2}.c link_check gss 'GSS-API in libgssapi_krb5' '#define mx_HAVE_GSSAPI' '-lgssapi_krb5' ||
-		< ${tmp3}.c link_check gss 'GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
+		< $tmp2.c link_check gss 'GSS-API in libgssapi_krb5' '#define mx_HAVE_GSSAPI' '-lgssapi_krb5' ||
+		< $tmp3.c link_check gss 'GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
 			'#define mx_HAVE_GSSAPI
 			#define GSS_REG_INCLUDE' \
 			'-lgssapi -lkrb5 -lcrypto' \
 			'-I/usr/include/kerberosV' ||
-		< ${tmp2}.c link_check gss 'GSS-API in libgss' '#define mx_HAVE_GSSAPI' '-lgss' ||
+		< $tmp2.c link_check gss 'GSS-API in libgss' '#define mx_HAVE_GSSAPI' '-lgss' ||
 		link_check gss 'GSS-API in libgssapi_krb5, old-style' \
 			'#define mx_HAVE_GSSAPI
 			#define GSSAPI_OLD_STYLE' \
@@ -3489,7 +3490,7 @@ if feat_yes IDNA; then # {{{
 	if val_allof VAL_IDNA "idnkit,idn2,idn"; then
 		:
 	else
-		msg 'ERROR: VAL_IDNA with invalid entries: %s' "${VAL_IDNA}"
+		msg 'ERROR: VAL_IDNA with invalid entries: %s' "$VAL_IDNA"
 		config_exit 1
 	fi
 
@@ -3558,7 +3559,7 @@ int main(void){
 		feat_bail_required IDNA
 	}
 
-	VAL_IDNA="${VAL_IDNA},bye"
+	VAL_IDNA="$VAL_IDNA,bye"
 	val_foreach_call VAL_IDNA val_idna
 else
 	feat_is_disabled IDNA
@@ -3590,9 +3591,9 @@ else
 fi
 
 if feat_yes MLE; then
-	if [ -n "${have_c90amend1}" ]; then
+	if [ -n "$have_c90amend1" ]; then
 		have_mle=1
-		echo '#define mx_HAVE_MLE' >> ${h}
+		echo '#define mx_HAVE_MLE' >> $h
 	else
 		feat_bail_required MLE
 	fi
@@ -3601,8 +3602,8 @@ else
 fi
 
 if feat_yes HISTORY; then
-	if [ -n "${have_mle}" ]; then
-		echo '#define mx_HAVE_HISTORY' >> ${h}
+	if [ -n "$have_mle" ]; then
+		echo '#define mx_HAVE_HISTORY' >> $h
 	else
 		feat_is_unsupported HISTORY
 	fi
@@ -3611,8 +3612,8 @@ else
 fi
 
 if feat_yes KEY_BINDINGS; then
-	if [ -n "${have_mle}" ]; then
-		echo '#define mx_HAVE_KEY_BINDINGS' >> ${h}
+	if [ -n "$have_mle" ]; then
+		echo '#define mx_HAVE_KEY_BINDINGS' >> $h
 	else
 		feat_is_unsupported KEY_BINDINGS
 	fi
@@ -3620,14 +3621,14 @@ else
 	feat_is_disabled KEY_BINDINGS
 fi
 
-if feat_yes TERMCAP && [ -n "${have_mle}" ]; then # {{{
+if feat_yes TERMCAP && [ -n "$have_mle" ]; then # {{{
 	ADDINC=
 	__termcaplib() {
-		link_check termcap "termcap(5) (via ${4}${ADDINC})" \
-			"#define mx_HAVE_TERMCAP${3}" "${1}" "${ADDINC}" << _EOT
+		link_check termcap "termcap(5) (via $4$ADDINC)" \
+			"#define mx_HAVE_TERMCAP$3" "$1" "$ADDINC" << _EOT
 #include <stdio.h>
 #include <stdlib.h>
-${2}
+$2
 #include <term.h>
 #define UNCONST(P) ((void*)(unsigned long)(void const*)(P))
 static int my_putc(int c){return putchar(c);}
@@ -3648,10 +3649,10 @@ _EOT
 	}
 
 	__terminfolib() {
-		link_check terminfo "terminfo(5) (via ${2}${ADDINC})" \
+		link_check terminfo "terminfo(5) (via $2$ADDINC)" \
 			'#define mx_HAVE_TERMCAP
 			#define mx_HAVE_TERMCAP_CURSES
-			#define mx_HAVE_TERMINFO' "${1}" "${ADDINC}" << _EOT
+			#define mx_HAVE_TERMINFO' "$1" "$ADDINC" << _EOT
 #include <stdio.h>
 #include <curses.h>
 #include <term.h>
@@ -3684,18 +3685,18 @@ _EOT
 				xbail=y
 		}
 		do_me
-		if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
+		if [ -n "$xbail" ] && [ -d /usr/local/include/ncurses ]; then
 			ADDINC=' -I/usr/local/include/ncurses'
 			do_me
 		fi
-		if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+		if [ -n "$xbail" ] && [ -d /usr/include/ncurses ]; then
 			ADDINC=' -I/usr/include/ncurses'
 			do_me
 		fi
-		[ -n "${xbail}" ] && feat_bail_required TERMCAP_VIA_TERMINFO
+		[ -n "$xbail" ] && feat_bail_required TERMCAP_VIA_TERMINFO
 	fi
 
-	if [ -z "${have_terminfo}" ]; then
+	if [ -z "$have_terminfo" ]; then
 		ADDINC=
 		do_me() {
 			xbail=
@@ -3712,17 +3713,17 @@ _EOT
 				xbail=y
 		}
 		do_me
-		if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
+		if [ -n "$xbail" ] && [ -d /usr/local/include/ncurses ]; then
 			ADDINC=' -I/usr/local/include/ncurses'
 			do_me
 		fi
-		if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+		if [ -n "$xbail" ] && [ -d /usr/include/ncurses ]; then
 			ADDINC=' -I/usr/include/ncurses'
 			do_me
 		fi
-		[ -n "${xbail}" ] && feat_bail_required TERMCAP
+		[ -n "$xbail" ] && feat_bail_required TERMCAP
 
-		if [ -n "${have_termcap}" ]; then
+		if [ -n "$have_termcap" ]; then
 			run_check tgetent_null "tgetent(3) of termcap(5) takes NULL buffer" \
 				"#define mx_HAVE_TGETENT_NULL_BUF" << _EOT
 #include <stdlib.h>
@@ -3759,8 +3760,8 @@ feat_def FILTER_HTML_TAGSOUP
 feat_def DEBUG 0
 feat_def ERRORS
 if feat_yes FILTER_QUOTE_FOLD; then
-	if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
-		echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> ${h}
+	if [ -n "$have_c90amend1" ] && [ -n "$have_wcwidth" ]; then
+		echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> $h
 	else
 		feat_bail_required FILTER_QUOTE_FOLD
 	fi
@@ -3779,13 +3780,13 @@ feat_def SMTP
 feat_def SPAM_FILTER
 if feat_def SPAM_SPAMC; then
 	if acmd_set i spamc; then
-		echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
+		echo "#define SPAM_SPAMC_PATH \"$i\"" >> $h
 	fi
 fi
 if feat_yes SPAM_SPAMC || feat_yes SPAM_FILTER; then
-	echo '#define mx_HAVE_SPAM' >> ${h}
+	echo '#define mx_HAVE_SPAM' >> $h
 else
-	echo '/* mx_HAVE_SPAM */' >> ${h}
+	echo '/* mx_HAVE_SPAM */' >> $h
 fi
 feat_def USE_PKGSYS
 
@@ -3800,26 +3801,26 @@ feat_def EXTERNAL_MEM_CHECK 0
 
 option_update 2
 
-INCS=$(squeeze_ws "${INCS}")
-LIBS=$(squeeze_ws "${LIBS}")
+INCS=$(squeeze_ws "$INCS")
+LIBS=$(squeeze_ws "$LIBS")
 
-MX_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
-	MX_INCS=${INCS}
-	MX_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
-	MX_LIBS=${LIBS}
-SU_CFLAGS="${BASE_CFLAGS} -Dsu_USECASE_MX"
+MX_CFLAGS="$CFLAGS $_CFLAGS_NOT4TESTS"
+	MX_INCS=$INCS
+	MX_LDFLAGS="$LDFLAGS $_LDFLAGS_NOT4TESTS"
+	MX_LIBS=$LIBS
+SU_CFLAGS="$BASE_CFLAGS -Dsu_USECASE_MX"
 	SU_CXXFLAGS=
-	SU_INCS=${BASE_INCS}
-	SU_LDFLAGS=${BASE_LDFLAGS}
-	SU_LIBS=${BASE_LIBS}
-PS_DOTLOCK_CFLAGS=${BASE_CFLAGS}
-	PS_DOTLOCK_INCS=${BASE_INCS}
-	PS_DOTLOCK_LDFLAGS=${BASE_LDFLAGS}
-	PS_DOTLOCK_LIBS=${BASE_LIBS}
-NET_TEST_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
-	NET_TEST_INCS=${INCS}
-	NET_TEST_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
-	NET_TEST_LIBS=${LIBS}
+	SU_INCS=$BASE_INCS
+	SU_LDFLAGS=$BASE_LDFLAGS
+	SU_LIBS=$BASE_LIBS
+PS_DOTLOCK_CFLAGS=$BASE_CFLAGS
+	PS_DOTLOCK_INCS=$BASE_INCS
+	PS_DOTLOCK_LDFLAGS=$BASE_LDFLAGS
+	PS_DOTLOCK_LIBS=$BASE_LIBS
+NET_TEST_CFLAGS="$CFLAGS $_CFLAGS_NOT4TESTS"
+	NET_TEST_INCS=$INCS
+	NET_TEST_LDFLAGS="$LDFLAGS $_LDFLAGS_NOT4TESTS"
+	NET_TEST_LIBS=$LIBS
 
 for i in \
 		CC \
@@ -3828,95 +3829,95 @@ for i in \
 		NET_TEST_CFLAGS NET_TEST_INCS NET_TEST_LDFLAGS NET_TEST_LIBS \
 		SU_CFLAGS SU_CXXFLAGS SU_INCS SU_LDFLAGS SU_LIBS \
 		; do
-	eval j=\$${i}
-	printf -- "${i} = ${j}\n" >> ${mk}
+	eval j=\$$i
+	printf -- "$i = $j\n" >> $mk
 done
 
-echo >> ${mk}
+echo >> $mk
 
 # mk-config.h (which becomes mx/gen-config.h)
-${mv} ${h} ${tmp}
-printf '#ifndef mx_GEN_CONFIG_H\n#define mx_GEN_CONFIG_H\n' > ${h}
-${cat} ${tmp} >> ${h}
-printf '\n#ifdef mx_SOURCE\n' >> ${h}
+$mv "$h" "$tmp"
+printf '#ifndef mx_GEN_CONFIG_H\n#define mx_GEN_CONFIG_H\n' > "$h"
+$cat "$tmp" >> "$h"
+printf '\n#ifdef mx_SOURCE\n' >> "$h"
 
 # Also need these for correct "second stage configuration changed" detection */
 i=
-if (${CC} --version) >/dev/null 2>&1; then
-	i=$(${CC} --version 2>&1 | ${awk} '
+if ($CC --version) >/dev/null 2>&1; then
+	i=$($CC --version 2>&1 | $awk '
 		BEGIN{l=""}
 		{if(length($0)) {if(l) l = l "\\\\n"; l = l "@" $0}}
 		END{gsub(/"/, "", l); print "\\\\n" l}
 	')
-elif (${CC} -v) >/dev/null 2>&1; then
-	i=$(${CC} -v 2>&1 | ${awk} '
+elif ($CC -v) >/dev/null 2>&1; then
+	i=$($CC -v 2>&1 | $awk '
 		BEGIN{l=""}
 		{if(length($0)) {if(l) l = l "\\\\n"; l = l "@" $0}}
 		END{gsub(/"/, "", l); print "\\\\n" l}
 	')
 fi
 
-CC=$(squeeze_ws "${CC}")
-CFLAGS=$(squeeze_ws "${CFLAGS} ${_CFLAGS_NOT4TESTS}")
-LDFLAGS=$(squeeze_ws "${LDFLAGS} ${_LDFLAGS_NOT4TESTS}")
-LIBS=$(squeeze_ws "${LIBS}")
+CC=$(squeeze_ws "$CC")
+CFLAGS=$(squeeze_ws "$CFLAGS $_CFLAGS_NOT4TESTS")
+LDFLAGS=$(squeeze_ws "$LDFLAGS $_LDFLAGS_NOT4TESTS")
+LIBS=$(squeeze_ws "$LIBS")
 # $MAKEFLAGS often contain job-related things which hinders reproduceability.
 # For at least GNU make(1) we can separate those and our regular configuration
 # options by searching for the -- terminator
-COMMLINE=$(printf '%s\n' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/')
-COMMLINE=$(squeeze_ws "${COMMLINE}")
+COMMLINE=$(printf '%s\n' "$COMMLINE" | $sed -e 's/.*--\(.*\)/\1/')
+COMMLINE=$(squeeze_ws "$COMMLINE")
 
-i=$(printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}")
-	printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
-	if [ -z "${VAL_BUILD_INFO}" ]; then
-		i=$(string_to_char_array "${i}")
+i=$(printf '%s %s %s\n' "$CC" "$CFLAGS" "$i")
+	printf '#define VAL_BUILD_CC "%s"\n' "$i" >> $h
+	if [ -z "$VAL_BUILD_INFO" ]; then
+		i=$(string_to_char_array "$i")
 	else
 		i='""'
 	fi
-	printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
+	printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> $h
 
-i=$(printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "${LIBS}")
-	printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
-	if [ -z "${VAL_BUILD_INFO}" ]; then
-		i=$(string_to_char_array "${i}")
+i=$(printf '%s %s %s\n' "$CC" "$LDFLAGS" "$LIBS")
+	printf '#define VAL_BUILD_LD "%s"\n' "$i" >> $h
+	if [ -z "$VAL_BUILD_INFO" ]; then
+		i=$(string_to_char_array "$i")
 	else
 		i='""'
 	fi
-	printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
+	printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> $h
 
-i=${COMMLINE}
-	printf '#define VAL_BUILD_REST "%s"\n' "$i" >> ${h}
-	[ -z "${VAL_BUILD_INFO}" ] || i=${VAL_BUILD_INFO}
-	i=$(string_to_char_array "${i}")
-	printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> ${h}
+i=$COMMLINE
+	printf '#define VAL_BUILD_REST "%s"\n' "$i" >> $h
+	[ -z "$VAL_BUILD_INFO" ] || i="$VAL_BUILD_INFO"
+	i=$(string_to_char_array "$i")
+	printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> $h
 
 # Throw away all temporaries
-${rm} -rf ${tmp0}.* ${tmp0}*
+$rm -rf $tmp0.* $tmp0*
 
 # Create the string that is used by *features* and the version command.
 # Take this nice opportunity and generate a visual listing of included and
 # non-included features for the person who runs the configuration
-echo 'The following features are included (+) or not (-):' > ${tmp}
-set -- ${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}
-printf '/* The "feature string" */\n' >> ${h}
+echo 'The following features are included (+) or not (-):' > "$tmp"
+set -- $OPTIONS_DETECT $OPTIONS $OPTIONS_XTRA
+printf '/* The "feature string" */\n' >> "$h"
 # Prefix sth. to avoid that + is expanded by *folder* (echo $features)
-printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES ",' >> ${h}
+printf '#define VAL_FEATURES_CNT '"$#"'\n#define VAL_FEATURES ",' >> "$h"
 sep=
 for opt
 do
-	sdoc=$(option_doc_of ${opt})
-	[ -z "${sdoc}" ] && continue
-	sopt="$(echo ${opt} | ${tr} '[A-Z]_' '[a-z]-')"
-	feat_yes ${opt} && sign=+ || sign=-
-	printf -- "${sep}${sign}${sopt}" >> ${h}
+	sdoc=$(option_doc_of $opt)
+	[ -z "$sdoc" ] && continue
+	sopt="$(echo $opt | $tr '[A-Z]_' '[a-z]-')"
+	feat_yes "$opt" && sign=+ || sign=-
+	printf -- "$sep$sign$sopt" >> "$h"
 	sep=','
-	printf ' %s %s: %s\n' ${sign} ${sopt} "${sdoc}" >> ${tmp}
+	printf ' %s %s: %s\n' "$sign" "$sopt" "$sdoc" >> "$tmp"
 done
 # TODO instead of using sh+tr+awk+printf, use awk, drop option_doc_of, inc here
-#exec 5>&1 >>${h}
-#${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
-#	-v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
-printf ',"\n' >> ${h}
+#exec 5>&1 >>"$h"
+#$awk -v opts="$OPTIONS_DETECT $OPTIONS $OPTIONS_XTRA" \
+#	-v xopts="$XOPTIONS_DETECT $XOPTIONS $XOPTIONS_XTRA" \
+printf ',"\n' >> "$h"
 
 # Create the real mk-config.mk
 # Note we cannot use explicit ./ filename prefix for source and object
@@ -3924,25 +3925,25 @@ printf ',"\n' >> ${h}
 msg 'Creating object make rules'
 
 if feat_yes DOTLOCK; then
-	printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${mk}
-	(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
+	printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> "$mk"
+	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh ps-dotlock/*.c) >> "$mk"
 else
-	printf "OPTIONAL_PS_DOTLOCK =\n" >> ${mk}
+	printf "OPTIONAL_PS_DOTLOCK =\n" >> "$mk"
 fi
 
 if feat_yes NET_TEST; then
-	printf "OPTIONAL_NET_TEST = net-test\n" >> ${mk}
-	(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh net-test/*.c) >> ${mk}
+	printf "OPTIONAL_NET_TEST = net-test\n" >> "$mk"
+	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh net-test/*.c) >> "$mk"
 else
-	printf "OPTIONAL_NET_TEST =\n" >> ${mk}
+	printf "OPTIONAL_NET_TEST =\n" >> "$mk"
 fi
 
 # Not those SU sources with su_USECASE_MX_DISABLED
 su_sources=$(
-		cd "${SRCDIR}"
+		cd "$SRCDIR"
 		for f in su/*.c; do
-			${grep} su_USECASE_MX_DISABLED "${f}" >/dev/null >&1 && continue
-			echo ${f}
+			$grep su_USECASE_MX_DISABLED "$f" >/dev/null >&1 && continue
+			echo "$f"
 		done
 		)
 
@@ -3981,55 +3982,53 @@ $cat "$TOPDIR"mk/make-config.in >> $mk
 
 # We have completed the new configuration header.
 # Do the "second stage configuration changed" detection, exit if nothing to do
-if [ -f ${oldh} ]; then
-	if ${cmp} ${h} ${oldh} >/dev/null 2>&1; then
-		${mv} -f ${oldh} ${h}
+if [ -f "$oldh" ]; then
+	if $cmp "$h" "$oldh" >/dev/null 2>&1; then
+		$mv -f "${oldh}" "${h}"
 		msg 'Effective configuration is up-to-date'
 		exit 69 # EX_UNAVAILABLE
 	fi
 	config_updated=1
-	${rm} -f ${oldh}
+	$rm -f "$oldh"
 	msg 'Effective configuration has been updated..'
 fi
 
-if [ -n "${config_updated}" ]; then
+if [ -n "$config_updated" ]; then
 	msg 'Wiping away old objects and such..'
-	( cd "${OBJDIR}"; oldmk=$(${basename} ${oldmk}); ${MAKE} -f ${oldmk} clean )
+	( cd "$OBJDIR"; oldmk=$($basename "$oldmk"); $MAKE -f "$oldmk" clean )
 fi
 
 # Ensure user edits in mx-config.h are incorporated, and that our generated
 # mk-config.h becomes the new public mx/gen-config.h.
-${cp} -f "${CWDDIR}"mx-config.h "${CWDDIR}"include/mx/config.h
-${cp} -f ${h} "${CWDDIR}"include/mx/gen-config.h
+$cp -f "$CWDDIR"mx-config.h "$CWDDIR"include/mx/config.h
+$cp -f "$h" "$CWDDIR"include/mx/gen-config.h
 
 msg ''
-while read l; do msg "${l}"; done < ${tmp}
+while read l; do msg "$l"; done < "$tmp"
 
 msg 'Setup:'
-msg ' . System-wide resource file: %s/%s' \
-	"${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
-msg ' . bindir: %s' "${VAL_BINDIR}"
+msg ' . System-wide resource file: %s/%s' "$VAL_SYSCONFDIR" "$VAL_SYSCONFRC"
+msg ' . bindir: %s' "$VAL_BINDIR"
 if feat_yes DOTLOCK; then
-	msg ' . libexecdir: %s' "${VAL_LIBEXECDIR}"
+	msg ' . libexecdir: %s' "$VAL_LIBEXECDIR"
 fi
-msg ' . mandir: %s' "${VAL_MANDIR}"
-msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' \
-	"${VAL_MTA}" "${VAL_MTA_ARGV0}"
-msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
+msg ' . mandir: %s' "$VAL_MANDIR"
+msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "$VAL_MTA" "$VAL_MTA_ARGV0"
+msg ' . $MAIL spool directory: %s' "$VAL_MAIL"
 if feat_yes MAILCAP; then
-	msg ' . Built-in $MAILCAPS path search: %s' "${VAL_MAILCAPS}"
+	msg ' . Built-in $MAILCAPS path search: %s' "$VAL_MAILCAPS"
 fi
 
 msg ''
-if [ -n "${have_fnmatch}" ] && [ -n "${have_fchdir}" ]; then
+if [ -n "$have_fnmatch" ] && [ -n "$have_fchdir" ]; then
 	exit 0
 fi
 msg 'Remarks:'
-if [ -z "${have_fnmatch}" ]; then
+if [ -z "$have_fnmatch" ]; then
 	msg ' . The function fnmatch(3) could not be found.'
 	msg '   Filename patterns like wildcard are not supported on your system'
 fi
-if [ -z "${have_fchdir}" ]; then
+if [ -z "$have_fchdir" ]; then
 	msg ' . The function fchdir(2) could not be found.'
 	msg '   We will use chdir(2) instead.'
 	msg '   This is a problem only if the current working directory is changed'
