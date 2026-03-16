@@ -1,4 +1,8 @@
 /*@ Internet Message Format (RFC 733 / 822 -> 2822 -> 5322+6854) parser.
+
+FIXME - restartability - parse_one_only - link_(in|out)_node(head**,node*)
+
+
  *
  * Copyright (c) 2024 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
