@@ -1,4 +1,27 @@
 /*@ Internet Message Format (RFC 733 / 822 -> 2822 -> 5322+6854) parser.
+
+FIXME - restartability - parse_one_only - link_(in|out)_node(head**,node*)
+	- generate "sequence" (5322 token-type of what is parsed) as we go.
+	  add mode bit that says sequence should be tested
+	  if set, after parsing is done, check the sequence to whether it matches an exact path
+          as is allowed by RFC5322.
+	-- maybe add an state that THEN says that the result is not strictly conforming to the RFc,
+	  but requires a Postel parser
+	-- maybe add a state that denotes usage of OBSOLETE things
+	- document what the return value says: if we saw say three different minor RELAX-handled flaws as we went wiith
+	  a four result nodes result, does the return value include these three different flaws?
+	  what does it say, really?
+	- i want that each result states
+		- where parsing started, inc WSP
+		- where parsing MEAT started
+		- where parsing MEAT stopped
+		- where parsing stopped, after WSP
+
+- stop_early must not imply an address is parserd <> dkim-sign
+		if you parse a group start without address, still stop!
+
+
+
  *
  * Copyright (c) 2024 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -194,10 +217,10 @@ struct su_imf_shtok;
  * "When interpreting addresses, the route portion SHOULD be ignored".
  * }\li{
  * In order to accommodate that "3.2.2. Folding White Space and Comments" allows \c{CFWS} rather freely,
- * Postel'ize that and allow it practically everywhere.
+ * Postel'izes that and allows it practically everywhere.
  * (To note standards like DMARC etc allow it in all portions of K=V, different to MIME RFC 2025.
  * }\li{
- * \c{obs-qp} and \c{obs-utext} are supported only WITHOUT NUL.
+ * \c{obs-qp} and \c{obs-utext} are supported only \em{without} \NUL.
  * }}
  *
  * \head2{RFC 5322 Message-Id, RFC 2045 Content-ID}
@@ -361,9 +384,14 @@ enum su_imf_c_class BITENUM_SPEC(u32){
 	su_IMF_C_SP = 1u<<13
 };
 
-/*! Parsed \c{address-list} structure; all buffers are accessible and \NUL terminated. */
+/*! Parsed \c{address-list} structure; all result buffers are accessible and \NUL terminated.
+ * FIXME \c{address-list}, \c{group}s with \c{mailbox-list}, etc
+ */
 struct su_imf_addr{
-	struct su_imf_addr *imfa_next; /*!< In case of \c{address-list}, \c{group}s with \c{mailbox-list}, etc. */
+	struct su_imf_addr *imfa_last; /* Last node: ring for fast pushing */
+	struct su_imf_addr *imfa_next; /*!< Address/xy after this one or \NIL. */
+	u32 imfa_parse_start; /*!< Offset where parsing in data input started for this output. */
+	u32 imfa_parse_end; /*!< Offset where parsing in data input stopped for this output. */
 	char *imfa_group_display_name; /*!< Only with \r{su_IMF_STATE_GROUP_START}. */
 	char *imfa_display_name; /*!< Any display-name content, joined together. */
 	char *imfa_locpar; /*!< Local part of address. */
@@ -428,7 +456,13 @@ INLINE void su_imf_snap_gut(struct su_mem_bag *membp, void *snap){
 /*! Parse an (possibly multiline) \c{address-list} header field body.
  * (Since RFC 6854 updated RFC 5322 this covers all address-related fields of IMF.)
  *
- * Stores a result list in \a{*app}, or \NIL if nothing can be parsed.
+ * Stores/Appends a result list in/to \a{*app}, which must be \NIL on first invocation.
+ * (Internally managed as ring, so appending is fast.)
+
+FIXME
+F*
+
+ , or \NIL if nothing can be parsed.
  * A result without any data is not produced.
  * Results may contain \c{IMF_ERR_} entries with \r{su_IMF_MODE_RELAX}, or according to \c{IMF_MODE_*}.
  * If \a{endptr_or_nil} is set it will point to where parsing stopped (points to \NUL but in error cases).
@@ -568,8 +602,16 @@ public:
 	public:
 		~addr(void) {}
 
+		addr *last(void) const {return S(addr*,imfa_last);}
+
 		/*! \r{su_imf_addr::imfa_next} */
 		addr *next(void) const {return S(addr*,imfa_next);}
+
+		/*! \r{su_imf_addr::imfa_parse_start} */
+		u32 parse_start(void) const {return imfa_parse_start;}
+
+		/*! \r{su_imf_addr::imfa_parse_end} */
+		u32 parse_end(void) const {return imfa_parse_end;}
 
 		/*! \r{su_imf_addr::imfa_mse} */
 		u32 mse(void) const {return imfa_mse;}

@@ -36,10 +36,10 @@ NSPC_USE(su)
 #include <su/y-imf.h> /* 2. */
 
 /**/
-static void a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp);
+static void a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr **app, s32 relmv);
 
 static void
-a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr ***appp){ /* {{{ */
+a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_imf_addr **app, s32 relmv){ /* {{{ */
 	struct su_imf_addr *ap;
 	u32 i;
 	NYD2_IN;
@@ -49,10 +49,21 @@ a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_
 			acp->ac_.locpar +1 + acp->ac_.domain +1 + acp->ac_.comm +1;
 
 	ap = S(struct su_imf_addr*,su__IMF_ALLOC(membp, i));
-	**appp = ap;
-	*appp = &ap->imfa_next;
+	/* C99 */{
+		struct su_imf_addr *xap;
 
+		xap = *app;
+		ap->imfa_next = xap;
+		if(xap != NIL)
+			(ap->imfa_last = xap->imfa_last)->imfa_next = ap;
+		else
+			*app = xap = ap;
+		xap->imfa_last = ap;
+	}
 	ap->imfa_next = NIL;
+
+	ap->imfa_parse_start = S(u32,P2UZ(acp->ac_parse_start - acp->ac_.hd_base));
+	ap->imfa_parse_end = S(u32,P2UZ(acp->ac_.hd - acp->ac_.hd_base) + relmv);
 	ap->imfa_mse = acp->ac_.mse & ~su__IMF_MODE_ADDR_MASK;
 
 	ap->imfa_group_display_name = ap->imfa_dat;
@@ -111,17 +122,17 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 	u32 f, l;
 	struct su__imf_actx *acp;
 	s32 rv;
-	struct su_imf_addr **app_base;
 	NYD_IN;
 	ASSERT_NYD_EXEC(app != NIL, rv = -su_ERR_NODATA);
 	ASSERT_NYD_EXEC(header != NIL, rv = -su_ERR_NODATA);
 	ASSERT_NYD_EXEC(membp != NIL, rv = -su_ERR_NODATA);
 	ASSERT_EXEC((mode & ~su__IMF_MODE_ADDR_MASK) == 0, mode &= su__IMF_MODE_ADDR_MASK);
 
-	*(app_base = app) = NIL;
-
 	/* C99 */{
 		uz i;
+		char const *header_base;
+
+		header_base = header;
 
 		while(su_imf_c_ANY_WSP(*header))
 			++header;
@@ -131,6 +142,7 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 			goto j_leave;
 		}
 
+/* FIXME QUOTING MUST REBUILD THE ENTIRE DATA!! */
 		/* S32_MAX is mem-bag stuff, 6 is 5 strings of maximum size plus room for the structure as such.
 		 * We may re-quote some data, so reserve two bytes for quotes, and one for NUL */
 		if(i >= (S32_MAX - 5*2 - 5*1) / 6){
@@ -146,6 +158,7 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 			goto j_leave;
 		}
 
+		acp->ac_.hd_base = header_base;
 		acp->ac_.hd = header;
 		acp->ac_.mse = mode;
 		acp->ac_group_display_name = acp->ac_dat;
@@ -168,6 +181,7 @@ jlist_next:
 
 	STRUCT_ZERO_FROM(struct su__imf_x, &acp->ac_, group_display_name);
 	acp->ac_.mse &= su__IMF_MODE_ADDR_MASK | ((acp->ac_.mse & su_IMF_STATE_GROUP_END) ? 0 : su_IMF_STATE_GROUP);
+	acp->ac_parse_start = acp->ac_.hd;
 
 	for(rv = su_IMF_ERR_CONTENT;;){
 		char c;
@@ -199,7 +213,7 @@ jaddr_step_create:
 				f = a_NONE;
 jaddr_create:
 				++acp->ac_.hd;
-				a_imf_addr_create(acp, membp, &app);
+				a_imf_addr_create(acp, membp, app, -1);
 				if(mode & su_IMF_MODE_STOP_EARLY)
 					goto jlist_done;
 				goto jlist_next;
@@ -220,7 +234,7 @@ jaddr_create:
 						goto jleave;
 					}
 				}
-				a_imf_addr_create(acp, membp, &app);
+				a_imf_addr_create(acp, membp, app, 0);
 				goto jlist_done;
 			default:
 				goto jleave;
@@ -458,6 +472,7 @@ jlocpar_copy:
 				cpalter = NIL;
 				l = 0;
 				if(f & a_QUOTE){
+/* FIXME set some "needs requote" bit, quote correctly when building result */
 					*--acp->ac_locpar = '"';
 					acp->ac_locpar[++acp->ac_.locpar] = '"';
 					++acp->ac_.locpar;
@@ -488,6 +503,7 @@ jangleme:
 				ASSERT(cp == acp->ac_display_name);
 				acp->ac_.display_name = l;
 				if(f & (a_QUOTE | a_QUOTE_ANYHOW)){
+/* FIXME set some "needs requote" bit, quote correctly when building result */
 					*--acp->ac_display_name = '"';
 					acp->ac_display_name[++acp->ac_.display_name] = '"';
 					++acp->ac_.display_name;
@@ -515,6 +531,7 @@ jangleme:
 				if(f & a_ANY){
 					su_mem_copy(acp->ac_group_display_name, cp, l);
 					if(f & a_QUOTE){
+/* FIXME set some "needs requote" bit, quote correctly when building result */
 						*--acp->ac_group_display_name = '"';
 						acp->ac_group_display_name[++l] = '"';
 						++l;
@@ -541,33 +558,34 @@ jangleme:
 				acp->ac_.comm = 0;
 				if(acp->ac_.mse & su_IMF_STATE_GROUP_START){
 					acp->ac_.mse |= su_IMF_STATE_GROUP_END | su_IMF_STATE_GROUP_EMPTY;
-					a_imf_addr_create(acp, membp, &app);
+					a_imf_addr_create(acp, membp, app, -1);
 					goto jlist_next; /* No STOP_EARLY, there was no address */
 				}
-				acp->ac_.mse &= su__IMF_MODE_ADDR_MASK;
-				if(*app_base != NIL){
+				if(*app != NIL){ /* FIXME ALWAYS */
 					struct su_imf_addr *ap;
 
-					for(ap = *app_base; ap->imfa_next != NIL; ap = ap->imfa_next){
-					}
+					ap = (*app)->imfa_last;
 					ASSERT(ap->imfa_mse & su_IMF_STATE_GROUP);
 					ap->imfa_mse |= su_IMF_STATE_GROUP_END;
 				}
+				acp->ac_parse_start = acp->ac_.hd;
+				acp->ac_.mse &= su__IMF_MODE_ADDR_MASK;
 				continue;
 			case ',':
 				f &= ~(a_NEED_SEP | a_WS);
+				acp->ac_parse_start = acp->ac_.hd;
 				acp->ac_.comm = 0;
 				continue;
 			case '\0':
-				acp->ac_.comm = 0;
 				f &= ~a_WS;
+				acp->ac_.comm = 0;
 				if((acp->ac_.mse & (su_IMF_MODE_RELAX | su_IMF_STATE_GROUP_START)) ==
 						(su_IMF_MODE_RELAX | su_IMF_STATE_GROUP_START)){
 					acp->ac_.mse |= su_IMF_STATE_RELAX | su_IMF_STATE_GROUP_END |
 							su_IMF_STATE_GROUP_EMPTY | su_IMF_ERR_GROUP_OPEN;
-					a_imf_addr_create(acp, membp, &app);
+					a_imf_addr_create(acp, membp, app, 0);
 					/* No STOP_EARLY, there was no address */
-				}else if(*app_base == NIL)
+				}else if(*app == NIL)
 					goto jleave;
 				goto jlist_done;
 			default:

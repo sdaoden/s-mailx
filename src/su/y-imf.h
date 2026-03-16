@@ -34,9 +34,10 @@
 #  error Needs one of su_HAVE_MEM_BAG_LOFI and su_HAVE_MEM_BAG_AUTO
 # endif
 
-/* Address context: whenever an address was parsed su_imf_addr is created and this is reset */
+/* Address context: whenever an address was parsed su_imf_addr is created and this is (in parts) reset */
 struct su__imf_x{
-	char const *hd; /* Header field body content data rest */
+	char const *hd_base; /* Header field body content, original start .. */
+	char const *hd; /* .. remaining data rest */
 	BITENUM(u32,su_imf_mode) mse; /* imf_mode, plus current imf_state */
 	u32 group_display_name;
 	u32 display_name;
@@ -47,6 +48,7 @@ struct su__imf_x{
 
 struct su__imf_actx{
 	struct su__imf_x ac_;
+	char const *ac_parse_start;
 	char *ac_group_display_name;
 	char *ac_display_name;
 	char *ac_locpar;
