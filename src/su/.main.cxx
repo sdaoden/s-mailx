@@ -2621,6 +2621,9 @@ a_imf_addr(void){ // {{{
 			"\0\0JJV\0BBN2\0\0",
 			{0,}},
 
+/*
+FIXME
+*/
 		{0, imf::mode_none, 1,
 			"b\"a\"@by",
 			"\0\0\"ba\"\0by\0\0",
@@ -2645,6 +2648,9 @@ a_imf_addr(void){ // {{{
 			"bu\"d d\"y <t \" i (%;) \"\" @ \"\"\"@ g h  . t >",
 			"\0\"bud dy\"\0\"t i (%;)  @ \"\0gh.t\0\0"
 			, {0,}},
+/*
+FIXME
+*/
 
 		{0, imf::mode_none, 1,
 			"Undisclosed recipients:;",
@@ -2789,7 +2795,10 @@ a_imf_addr(void){ // {{{
 			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0",
 			{0,}},
 
-		// IETF RFC 5322 errata 3135 (why says invalid to latter three?)
+		// IETF RFC 5322 errata 3135 (latter three invalid it says: not: obs-local-part: word *("." word))
+/*
+FIXME
+*/
 		{imf::err_content, imf::mode_none, 0, "\"\"@by", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "foo.\"\"@by", "", {0,}},
 		{imf::err_content, imf::mode_none, 0, "\"\".bar@by", "", {0,}},
