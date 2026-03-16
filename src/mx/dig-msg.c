@@ -822,7 +822,8 @@ jlist:
 #undef a_X
 
 		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
-			np = ((hp->h_flags & HF_CMD_MASK) != HF_NONE) ? R(struct mx_name*,-1) : NIL;
+			np = R(struct mx_name*,-1);
+			ASSERT_EXEC((hp->h_flags & HF_CMD_MASK) != HF_NONE, (void)0);
 			goto jlist;
 		}
 
@@ -1169,13 +1170,11 @@ jshow:
 
 	x = NIL;
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
-		if((i = hp->h_flags & HF_CMD_MASK) == HF_NONE)
-			goto j501cp;
-
+		i = hp->h_flags & HF_CMD_MASK;
+		ASSERT_EXEC(i != HF_NONE, i = HF_CMD_mail);
 		dmslp->dmsl_status_or_new_ent = 212;
 		dmslp->dmsl_len = sizeof("Mailx-Command") -1;
 		dmslp->dmsl_dat = cp;
-
 		dmslp->dmsl_next = x = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
 		x->dmsl_status_or_new_ent = TRU1;
 		x->dmsl_dat = a_dmsg_hf_cmd[HF_CMD_TO_OFF(i)];
