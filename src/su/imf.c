@@ -343,6 +343,12 @@ su__imf_s_quoted_string(struct su__imf_actx *acp, char *buf){ /* {{{ */
 
 /* imf_table_dump {{{ */
 #ifdef a_IMF_TABLE_DUMP
+SINLINE boole a_imf_c_CR(char c) {return (c == 0x0D);}
+SINLINE boole a_imf_c_DQUOTE(char c) {return (c == 0x22);}
+SINLINE boole a_imf_c_HT(char c) {return (c == 0x09);}
+SINLINE boole a_imf_c_LF(char c) {return (c == 0x0A);}
+SINLINE boole a_imf_c_SP(char c) {return (c == 0x20);}
+
 SINLINE boole a_imf_c_ALPHA(char c) {return ((c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A));}
 SINLINE boole a_imf_c_DIGIT(char c) {return (c >= 0x30 && c <= 0x39);}
 SINLINE boole a_imf_c_VCHAR(char c) {return (c >= 0x21 && c <= 0x7E);}
@@ -357,17 +363,11 @@ SINLINE boole a_imf_c_dtext(char c) {return ((c >= 33 && c <= 90) || (c >= 94 &&
 SINLINE boole a_imf_c_qtext(char c) {return (c == 33 || (c >= 35 && c <= 91) || (c >= 93 && c <= 126));}
 SINLINE boole a_imf_c_special(char c){
 	return (c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']' || c == ':' || c == ';' ||
-			c == '@' || c == '\\' || c == ',' || c == '.' || su_imf_c_DQUOTE(c));
+			c == '@' || c == '\\' || c == ',' || c == '.' || a_imf_c_DQUOTE(c));
 }
 SINLINE boole a_imf_c_obs_NO_WS_CTL(char c){
-	return (c >= 1 && c <= 8) || (c == 11 || c == 12) || (c >= 14 && c <= 31) || (c == 127);
+	return ((c >= 1 && c <= 8) || c == 11 || c == 12 || (c >= 14 && c <= 31) || c == 127);
 }
-
-SINLINE boole a_imf_c_CR(char c) {return (c == 0x0D);}
-SINLINE boole a_imf_c_DQUOTE(char c) {return (c == 0x22);}
-SINLINE boole a_imf_c_HT(char c) {return (c == 0x09);}
-SINLINE boole a_imf_c_LF(char c) {return (c == 0x0A);}
-SINLINE boole a_imf_c_SP(char c) {return (c == 0x20);}
 
 void
 su_imf_table_dump(void){
