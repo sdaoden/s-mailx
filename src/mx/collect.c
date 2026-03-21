@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Collect input from standard input, handling ~ escapes.
  *@ TODO This needs yet _another_ rewrite. (OnLineCompletedEvent; SU I/O; MIME DOM)
+ *@ TODO Then a_coll should vanish and be passed as first arg.
  *
  * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -197,6 +198,9 @@ static void a_coll_onhup(int s);
 /* ~[AaIi], *message-inject-**: put value, expand \[nt] if *posix* */
 static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
 
+/**/
+static void a_coll_help(void);
+
 /* TODO v15-compat: SPLICE remove: *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
 static void a_coll_ocs__finalize(void *vp);
@@ -250,7 +254,7 @@ jleave:
 }
 
 static s32
-a_coll_include_file(char const *name, boole indent, boole writestat){
+a_coll_include_file(char const *name, boole indent, boole writestat){ /* {{{ */
 	enum{a_NONE = su_ERR_NONE, a_HERE = 1<<0, a_HERE_QUOTE = 1<<1, a_HERE_TAB = 1<<2};
 
 	struct str si;
@@ -447,7 +451,7 @@ jleave:
 
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 static s32
 a_coll_insert_cmd(FILE *fp, char const *cmd){
@@ -622,7 +626,7 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
 }
 
 static boole
-a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
+a_coll_quote_message(struct a_coll_quote_ctx *cqcp){ /* {{{ */
 	struct a_coll_fmt_ctx cfc;
 	char const *cp;
 	boole rv;
@@ -721,13 +725,13 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
 jleave:
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 static boole
-a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
+a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){ /* {{{ */
+	char c, cbuf[sizeof(su_UTF8_REPLACER)];
 	struct quoteflt qf;
 	struct n_string s_b, *s;
-	char c;
 	char const *fmt, *cp;
 	NYD_IN;
 
@@ -770,8 +774,9 @@ jwrite_cp:
 			c = '%';
 			goto jwrite_char;
 		default:
-			n_err(_("*{forward,quote}-inject-{head,tail}*: unknown format: %c (in: %s)\n"),
-				c, n_shexp_quote_cp(cfcp->cfc_fmt, FAL0));
+			mx_ui_makeprint_c(c, cbuf);
+			n_err(_("*{forward,quote}-inject-{head,tail}*: unknown format: %s (in: %s)\n"),
+				cbuf, n_shexp_quote_cp(cfcp->cfc_fmt, FAL0));
 			goto jwrite_char;
 		}
 	}
@@ -786,10 +791,10 @@ jwrite_cp:
 jleave:
 	NYD_OU;
 	return (cfcp != NIL);
-}
+} /* }}} */
 
 static boole
-a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, boole do_delayed_due_t){
+a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, boole do_delayed_due_t){ /* {{{ */
 	FILE *nf;
 	int c;
 	boole rv;
@@ -843,7 +848,7 @@ jleave:
 
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 static void
 a_coll_dead_save(void){
@@ -887,7 +892,7 @@ jerr:
 }
 
 static s32
-a_coll_edit(int c, struct header *hp, char const *pipecmd){ /* TODO errret */
+a_coll_edit(int c, struct header *hp, char const *pipecmd){ /* {{{ TODO errret */
 	struct n_sigman sm;
 	FILE *nf;
 	n_sighdl_t volatile sigint;
@@ -940,10 +945,10 @@ jleave:
 	NYD_OU;
 	n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 	return rv;
-}
+} /* }}} */
 
 static s32
-a_coll_pipe(char const *cmd){
+a_coll_pipe(char const *cmd){ /* {{{ */
 	FILE *nf;
 	n_sighdl_t sigint;
 	s32 rv;
@@ -996,10 +1001,10 @@ jout:
 	safe_signal(SIGINT, sigint);
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 static s32
-a_coll_forward(char const *ms, int f){
+a_coll_forward(char const *ms, int f){ /* {{{ */
 	struct a_coll_quote_ctx cqc;
 	struct su_mem_bag membag;
 	int rv, *msgvec;
@@ -1072,7 +1077,7 @@ a_coll_forward(char const *ms, int f){
 jleave:
 	NYD_OU;
 	return rv;
-}
+} /* }}} */
 
 static void
 a_coll_sigint(int s){ /* XXX uses non-async-safe things */
@@ -1118,6 +1123,65 @@ jleave:
 	NYD2_OU;
 	return (c1 == '\0');
 }
+
+static void
+a_coll_help(void){ /* {{{ */
+	/* (ISO C string size limits) */
+	char escbuf[sizeof(su_UTF8_REPLACER)];
+	NYD2_IN;
+
+	mx_ui_makeprint_c(a_coll->cc_escape, escbuf);
+	fputs(_(
+"COMMAND ESCAPES excerpt (recognized at beginning of line; *variable*, `cmd';\n"
+"<msglist> are message specifications, for example 1-5, :n, @f@xy@example.org,\n"
+"or . the current message, \"dot\", separated by *ifs*)\n"
+		), n_stdout);
+	fprintf(n_stdout, _(
+"%s: <cmd>      Execute COMMANDS\n"
+"%s< <file>     Insert <file> (also: %s<! <shellcmd>)\n"
+"%s@ [<files>]  Edit [or add] attachments (file[=in-charset[#out-charset]])\n"
+"%s| <cmd>      Pipe message through $SHELL filter <cmd> (%s||: with headers)\n"
+"%s^ help       Help for ^ (`digmsg') message control (^^: in-memory: $^*)\n"
+"%se, %sv        Edit message via $EDITOR / $VISUAL\n"),
+		escbuf,
+		escbuf, escbuf,
+		escbuf,
+		escbuf, escbuf,
+		escbuf,
+		escbuf, escbuf);
+	fprintf(n_stdout, _(
+"%sF <msglist>  Insert with (%sf: `headerpick' \"forward\") headers\n"
+"%sH            Edit From:, Reply-To: and Sender:\n"
+"%sh            Prompt for Subject:, To:, Cc: and Bcc:\n"
+"%si <variable> Insert value, (%sI: do not) append a newline\n"
+"%sM <msglist>  Insert with (%sm: `headerpick' \"type\") headers, use *indentprefix*\n"
+"%sp            Print message content\n"
+"%sQ <msglist>  Insert with *quote* algorithm\n"),
+		escbuf, escbuf,
+		escbuf,
+		escbuf,
+		escbuf, escbuf,
+		escbuf, escbuf,
+		escbuf,
+		escbuf);
+	fprintf(n_stdout, _(
+"%sr <file>     Insert <.> / <- [HERE-DELIM]> (%sR: use *indentprefix*)\n"
+"%ss <subject>  Set Subject:\n"
+"%st <addrs>    Add <.> to To: list (%sc: Cc:, %sb: Bcc:)\n"
+"%su <msglist>  Insert without headers (%sU: use *indentprefix*)\n"
+"%sw <file>     Write message onto <.>\n"
+"%sx, %sq, %s.    Discard, discard and *save* in $DEAD, send message\n"
+"Modifiers: - (ignerr), $ (evaluate), e.g: \"%s- $ @ $TMPDIR/file\"\n"),
+		escbuf, escbuf,
+		escbuf,
+		escbuf, escbuf, escbuf,
+		escbuf, escbuf,
+		escbuf,
+		escbuf, escbuf, escbuf,
+		escbuf);
+
+	NYD2_OU;
+} /* }}} */
 
 static int
 a_coll_ocs__mac(void){
@@ -1699,11 +1763,11 @@ jerr_nosig:
 		cc.cc_emsg = N_("Failed to prepare composed message\n");
 	}
 	goto jleave;
-}
-/* }}} */
+} /* }}} */
 
 FL boole
 mx_collect_input_loop(void){ /* The "interactive" collect loop {{{ */
+	char cbuf[sizeof(su_UTF8_REPLACER)], escbuf[sizeof(su_UTF8_REPLACER)];
 	uz i;
 	long cnt;
 	int c;
@@ -1791,12 +1855,10 @@ jtick:
 
 			if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
 					a_coll->cc_escape != '\0' && ok_blook(ignoreeof)){
-				c = a_coll->cc_escape;
-				if(!su_cs_is_print(c))
-					c = '?';
+				mx_ui_makeprint_c(a_coll->cc_escape, escbuf);
 				fprintf(n_stdout,
-					_("\a*ignoreeof* set, use `%c.', `%cq' or `%cx' to terminate letter\n"),
-					c, c, c);
+					_("\a*ignoreeof* set, use `%s.', `%sq' or `%sx' to terminate letter\n"),
+					escbuf, escbuf, escbuf);
 				mx_go_input_clearerr();
 				continue;
 			}
@@ -1916,15 +1978,9 @@ jputnl:
 		switch(c){
 		default:
 			if(1){
-				char buf[sizeof(su_UTF8_REPLACER)];
-
-				if(su_cs_is_ascii(c))
-					buf[0] = c, buf[1] = '\0';
-				else if(n_psonce & n_PSO_UNICODE)
-					su_mem_copy(buf, su_utf8_replacer, sizeof su_utf8_replacer);
-				else
-					buf[0] = '?', buf[1] = '\0';
-				n_err(_("Unknown command escape: `%c%s'\n"), a_coll->cc_escape, buf);
+				mx_ui_makeprint_c(c, cbuf);
+				mx_ui_makeprint_c(a_coll->cc_escape, escbuf);
+				n_err(_("Unknown command escape: `%s%s'\n"), escbuf, cbuf);
 			}else
 jearg:
 				n_err(_("Invalid command escape usage: %s\n"), n_shexp_quote_cp(a_coll->cc_lndata, FAL0));
@@ -1969,35 +2025,7 @@ jearg:
 			break;
 		/* case '<': <> 'd' */
 		case '?':
-			/* (ISO C string size limits) */
-			fputs(_(
-				"COMMAND ESCAPES (to be placed after a newline; excerpt).\n"
-				"~: <command>  Execute command\n"
-				"~< <file>     Insert <file> (also: ~<! <shellcmd>)\n"
-				"~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]], #no)\n"
-				"~| <shellcmd> Pipe message through shell filter (~||: with headers)\n"
-				"~^ help       Help for ^ (`digmsg') message control (^^: in-memory: $^*)\n"
-				"~c <users>    Add recipients to Cc: (~b: Bcc:) list\n"
-				"~e, ~v        Edit message via $EDITOR / $VISUAL\n"
-			), n_stdout);
-			fputs(_(
-				"~F <msglist>  Insert with (~f: `headerpick' \"forward\") headers\n"
-				"~H            Edit From:, Reply-To: and Sender:\n"
-				"~h            Prompt for Subject:, To:, Cc: and Bcc:\n"
-				"~i <variable> Insert value, (~I: do not) append a newline\n"
-				"~M <msglist>  Insert with (~m: `headerpick' \"type\") headers, use *indentprefix*\n"
-				"~p            Print message content\n"
-				"~Q <msglist>  Insert with *quote* algorithm\n"
-			), n_stdout);
-			fputs(_(
-				"~r <file>     Insert <file> / <- [HERE-DELIM]> (~R: use *indentprefix*)\n"
-				"~s <subject>  Set Subject:\n"
-				"~t <users>    Add recipient to To: list\n"
-				"~u <msglist>  Insert without headers (~U: use *indentprefix*)\n"
-				"~w <file>     Write message onto file\n"
-				"~x, ~q, ~.    Discard, discard and *save* in $DEAD, send message\n"
-				"Modifiers: - (ignerr), $ (evaluate), e.g: \"~- $ @ $TMPDIR/file\"\n"
-				), n_stdout);
+			a_coll_help();
 			if(cnt != 0)
 				goto jearg;
 			n_pstate_err_no = su_ERR_NONE;
@@ -2386,8 +2414,7 @@ jdot_stop:
 	}
 	rv = TRU2;
 	goto jleave;
-}
-/* }}} */
+} /* }}} */
 
 #undef a_COLL_HARDERR
 

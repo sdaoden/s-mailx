@@ -32,6 +32,7 @@
 #include <su/mem.h>
 #include <su/mem-bag.h>
 #include <su/sort.h>
+#include <su/utf.h>
 
 #include "mx/cmd-ali-alt.h"
 #include "mx/cmd-charsetalias.h"
@@ -56,10 +57,12 @@
 #include "mx/mime-type.h"
 #include "mx/mta-aliases.h"
 #include "mx/names.h"
+#include "mx/okeys.h"
 #include "mx/privacy.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
+#include "mx/ui-str.h"
 #include "mx/url.h"
 
 #include "mx/cmd.h"
@@ -346,40 +349,49 @@ a_cmd_c_help(void *vp){
 			rv = 1;
 		}
 	}else{
+		char escbuf[sizeof(su_UTF8_REPLACER)];
+
 		/* Very ugly, but take care for compiler supported string lengths :( */
 		fputs(_(
-			"Commands -- <msglist> denotes message specification tokens, e.g.,\n"
-			"1-5, :n, @f@Cow or . (current, the \"dot\"), separated by *ifs*:\n"),
-			fp);
-		fputs(_(
-"\n"
-"type <msglist>          type (`print') messages (honour `headerpick' etc.)\n"
-"Type <msglist>          like `type', but always show all headers\n"
-"next                    goto and `type' next message\n"
-"headers                 header summary ... for messages surrounding \"dot\"\n"
-"search <msglist>        ... for the given expression list (alias for `from')\n"
-"delete <msglist>        delete messages (can be `undelete'd)\n"),
-			fp);
+"COMMANDS excerpt (`cmd', *variable*; <msglist> are message specifications,\n"
+"for example 1-5, :n, @f@xy@example.org, or ., the current message, \"dot\",\n"
+"separated by *ifs*; compose mode "
+			), fp);
+		if(((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)) &&
+				*(arg = ok_vlook(escape)) != '\0'){
+			mx_ui_makeprint_c(*arg, escbuf);
+			fprintf(fp, _(
+"COMMAND ESCAPES *escape* is %s, help: `%sh'"
+				), escbuf, escbuf);
+		}else
+			fputs(_(
+"COMMAND ESCAPES are deactivated"
+				), fp);
 
 		fputs(_(
+")\n\n"
+"quit [status]          apply (`xit', `exit': discard) changes, exit program\n"
+"list                   show all commands (*verbose*ly)\n"
+"file [file]            open [.], or show current one (`File': readonly)\n"
+"headers                header summary ... for messages surrounding \"dot\"\n"
 "\n"
-"save <msglist> <folder> append messages to <folder>, mark them as saved\n"
-"copy <msglist> <folder> like `save', but do not mark (`move' moves)\n"
-"write <msglist> [file]  write message contents [to file] (prompts for parts)\n"
-"Reply <msglist>         reply to only message sender(s)\n"
-"reply <msglist>         like `Reply', but address all recipients\n"
-"Lreply <msglist>        forced mailing list `reply' (see `mlist')\n"),
-			fp);
-
+"search <msglist>       headers of messages matching <.> (same as `from')\n"
+			), fp);
 		fputs(_(
+"type <msglist>         display (`headerpick'ed..) <.>; compare `Type'\n"
+"next                   goto and `type' next message\n"
 "\n"
-"mail [<recipients>]     compose a mail [addressing list of <recipients>]\n"
-"file [folder]           open folder, or show current one (`File': readonly)\n"
-"quit [status]           apply (`xit', `exit': discard) changes, exit program\n"
-"! <shell command>       invoke $SHELL to evaluate <shell command>\n"
-"list                    show all commands (*verbose*ly)\n"),
-			fp);
-
+"save <msglist> <file>  copy <.> to <file>, mark <.> \"saved\"\n"
+"copy <msglist> <file>  `save' without marking (`move' moves)\n"
+"delete <msglist>       delete <.> (may be `undelete'd)\n"
+			), fp);
+		fputs(_(
+"write <msglist> [file] write <.> [to file] (prompts for MIME parts)\n"
+"\n"
+"mail [<addrs>]         compose a mail [addressing list of <.>]\n"
+"reply <msglist>        compose for all recipients (`Reply': only sender(s))\n"
+"Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"
+			), fp);
 		rv = (ferror(fp) != 0);
 	}
 
