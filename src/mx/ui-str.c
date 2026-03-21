@@ -687,6 +687,29 @@ mx_del_cntrl(char *cp, uz len){
    return y;
 }
 
+uz
+mx_ui_makeprint_c(int c, char *cbuf){
+   uz l;
+   NYD2_IN;
+
+   if(su_cs_is_print(c)){
+jc:
+      cbuf[0] = S(char,c);
+      cbuf[1] = '\0';
+      l = 1;
+   }else if(n_psonce & n_PSO_UNICODE){
+      CTAV(sizeof su_UTF8_REPLACER == sizeof su_utf8_replacer);
+      su_mem_copy(cbuf, su_utf8_replacer, sizeof su_utf8_replacer);
+      l = sizeof su_utf8_replacer -1;
+   }else{
+      c = '?';
+      goto jc;
+   }
+
+   NYD2_OU;
+   return l;
+}
+
 #include "su/code-ou.h"
 #undef su_FILE
 #undef mx_SOURCE

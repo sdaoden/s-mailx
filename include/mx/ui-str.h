@@ -119,6 +119,9 @@ EXPORT char *mx_substr(char const *str, char const *sub);
 /* Only remove (remaining) control characters, reterminate, return length */
 EXPORT uz mx_del_cntrl(char *cp, uz len);
 
+/* If byte c is ASCII printable, put it in cbuf[0], else put '?' or su_UTF8_REPLACER in PSO_UNICODE mode, terminate */
+EXPORT uz mx_ui_makeprint_c(int c, char *cbuf);
+
 #ifdef mx_HAVE_NATCH_CHAR
 INLINE boole mx_ui_ignore_wc(wchar_t wc){ /* TODO ctext */
 	boole rv;
