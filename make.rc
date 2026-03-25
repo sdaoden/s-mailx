@@ -364,6 +364,11 @@ OPT_NET=yes
 	# test the network code.  It is not installed, but only for testing.
 	OPT_NET_TEST=yes
 
+	# If enabled, installs a Python3 script that may be used to gain and
+	# manage OAuth credentials for OAUTHBEARER (+XOAUTH2) authentication.
+	# The $(VAL_SID)$(VAL_MAILX)-config.7 manual contains usage examples.
+	OPT_OAUTH_HELPER=yes
+
 	# Add support for POP3 protocol.
 	# Download of mails via POP protocol.  Can be "require"d.
 	OPT_POP3=yes

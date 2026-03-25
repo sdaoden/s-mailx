@@ -87,9 +87,16 @@ if [ "$OPT_DOTLOCK" != 0 ]; then
 		m=u=rxs,$m o=$VAL_PS_DOTLOCK_USER$o
 	else
 		m=u=rx,$m
-	fi;
+	fi
+
 	__copychownfile y "$m" "$o" "$OBJDIR"/"$VAL_PS_DOTLOCK" "$VAL_LIBEXECDIR/$VAL_PS_DOTLOCK"
 fi
+
+if [ "$OPT_OAUTH_HELPER" != 0 ]; then
+	__mkdir "$VAL_LIBEXECDIR"
+	__copyfile n 0755 "$TOPDIR"/src/oauth-helper.py "$VAL_LIBEXECDIR/$VAL_UAGENT"-oauth-helper.py
+fi
+
 
 if [ -z "$DESTDIR" ]; then
 	__copyfile n 0755 "$OBJDIR/$VAL_UAGENT"-uninstall.sh "$VAL_BINDIR/$VAL_UAGENT"-uninstall.sh

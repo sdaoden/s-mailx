@@ -106,6 +106,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
 	ok_b_bsdorder,
 	ok_v_build_cc, /* {virt=VAL_BUILD_CC_ARRAY} */
 	ok_v_build_ld, /* {virt=VAL_BUILD_LD_ARRAY} */
+	ok_v_build_oauth_helper, /* {virt=VAL_BUILD_OAUTH_HELPER_ARRAY} */
 	ok_v_build_os, /* {virt=VAL_BUILD_OS} */
 	ok_v_build_rest, /* {virt=VAL_BUILD_REST_ARRAY} */
 

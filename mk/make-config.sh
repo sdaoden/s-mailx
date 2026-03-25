@@ -62,6 +62,7 @@ XOPTIONS="\
 		IMAP='IMAP v4r1 client' \
 		NETRC='.netrc file support' \
 		NET_TEST='-' \
+		OAUTH_HELPER='Python3-based OAuth credential helper program' \
 		POP3='Post Office Protocol Version 3 client' \
 		SMTP='Simple Mail Transfer Protocol client' \
 		TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
@@ -180,6 +181,7 @@ option_setup() {
 				OPT_GSSAPI=1
 				OPT_NETRC=1
 				OPT_NET_TEST=1
+				OPT_OAUTH_HELPER=1
 				OPT_SMTP=require
 				OPT_TLS=require
 			OPT_SPAM_FILTER=1
@@ -246,6 +248,7 @@ option_update() {
 		OPT_IMAP=0
 		OPT_NETRC=0
 		OPT_NET_TEST=0
+		OPT_OAUTH_HELPER=0
 		OPT_POP3=0
 		OPT_SMTP=0
 		OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0 OPT_TLS_MD5=0
@@ -1678,9 +1681,10 @@ msg 'done'
 option_update 1
 
 #
-printf "#define VAL_UAGENT \"$VAL_SID$VAL_MAILX\"\n" >> $newh
-printf "VAL_UAGENT = $VAL_SID$VAL_MAILX\n" >> $newmk
-printf "VAL_UAGENT=$VAL_SID$VAL_MAILX;export VAL_UAGENT\n" >> $newenv
+VAL_UAGENT=$VAL_SID$VAL_MAILX
+printf "#define VAL_UAGENT \"$VAL_UAGENT\"\n" >> $newh
+printf "VAL_UAGENT = $VAL_UAGENT\n" >> $newmk
+printf "VAL_UAGENT=$VAL_UAGENT;export VAL_UAGENT\n" >> $newenv
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
@@ -3774,6 +3778,7 @@ feat_def MAILCAP
 feat_def MAILDIR
 feat_def MTA_ALIASES
 feat_def NETRC
+feat_def OAUTH_HELPER
 feat_def POP3
 feat_def SMIME
 feat_def SMTP
@@ -3890,6 +3895,14 @@ i=$COMMLINE
 	[ -z "$VAL_BUILD_INFO" ] || i="$VAL_BUILD_INFO"
 	i=$(string_to_char_array "$i")
 	printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> $h
+
+i="'\\0'"
+if feat_yes OAUTH_HELPER; then
+	i="$VAL_LIBEXECDIR/$VAL_UAGENT"-oauth-helper.py
+	printf '#define VAL_BUILD_OAUTH_HELPER "%s"\n' "$i" >> $h
+	i=$(string_to_char_array "$i")
+fi
+printf '#define VAL_BUILD_OAUTH_HELPER_ARRAY %s\n' "$i" >> $h
 
 # Throw away all temporaries
 $rm -rf $tmp0.* $tmp0*
@@ -4009,7 +4022,7 @@ while read l; do msg "$l"; done < "$tmp"
 msg 'Setup:'
 msg ' . System-wide resource file: %s/%s' "$VAL_SYSCONFDIR" "$VAL_SYSCONFRC"
 msg ' . bindir: %s' "$VAL_BINDIR"
-if feat_yes DOTLOCK; then
+if feat_yes DOTLOCK || feat_yes OAUTH_HELPER; then
 	msg ' . libexecdir: %s' "$VAL_LIBEXECDIR"
 fi
 msg ' . mandir: %s' "$VAL_MANDIR"

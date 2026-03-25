@@ -10009,6 +10009,20 @@ s
 output.
 .
 .Mx
+.It Va build-oauth-helper
+\*(OP If non-empty
+.Pf ( Ql +oauth-helper
+in
+.Va features ) ,
+the path to our OAuth helper script that may be
+capable to gain and manage OAuth credentials for
+.Ql oauthbearer
+and
+.Ql xoauth2
+authentication mechanisms (for more see according entries of
+.Va smtp-config ) .
+.
+.Mx
 .It Va charset-7bit
 7-bit character set; defaults to US-ASCII, and should be US-ASCII
 compatible (to comply to email standards); will appear as
@@ -12084,10 +12098,10 @@ pathname of the temporary file.
 Supported are the default
 .Ql plain ,
 .Ql oauthbearer
-(see
-.Sx FAQ
-entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
+and
+.Ql xoauth2
+(see the according entries of
+.Va smtp-config ) ,
 as well as
 .Ql external
 and
@@ -13181,12 +13195,11 @@ Needs
 .Va user
 and
 .Va password .
-The password is a temporary bearer token, not the real password,
-and therefore this mechanism is not automatic.
-Also see the
-.Sx FAQ
-entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?"
+The password is a temporary bearer token instead of the real password,
+and therefore this mechanism is not automatic;
+.Va build-oauth-helper ,
+if installed, may be capable to gain and manage the token, as shown in
+.Xr \*(xX-config 7 .
 .It Cd plain
 The PLAIN mechanism (RFC 4616).
 One packet roundtrip, needs
@@ -15564,140 +15577,6 @@ RFC 6762 standardized the link-local top-level domain
 try again after adding an (additional) entry with this extension.
 .\" }}}
 .
-.\" .Ss "I cannot login to Google mail (via OAuth)" {{{
-.Ss "I cannot login to Google mail \&(via OAuth\&)"
-.
-Since 2014 some free service providers classify programs as
-.Dq less secure
-unless they use a special authentication method (OAuth 2.0) which
-was not standardized for non-HTTP protocol authentication token query
-until August 2015 (RFC 7628).
-.
-.Pp
-Different to Kerberos / GSSAPI, which is developed since the mid of the
-1980s, where a user can easily create a local authentication ticket for
-her- and himself with the locally installed
-.Xr kinit 1
-program, that protocol has no such local part but instead requires
-a world-wide-web query to create or fetch a token; since there is no
-local cache this query would have to be performed whenever \*(Xx is
-invoked (in interactive sessions situation may differ).
-.
-.Pp
-\*(Xx does not directly support OAuth.
-It, however, supports XOAUTH2 / OAUTHBEARER, see
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?"
-If that is not used it is necessary to declare \*(Xx a
-.Dq less secure app
-(on the providers account web page) in order to read and send mail.
-However, it also seems possible to take the following steps instead:
-.
-.Pp
-.Bl -enum -compact
-.It
-give the provider the number of a mobile phone,
-.It
-enable
-.Dq 2-Step Verification ,
-.It
-create an application specific password (16 characters), and
-.It
-use that special password instead of the real Google account password in
-\*(Xx (for more on that see the section
-.Sx "URL syntax and credential lookup" ) .
-.El
-.\" }}}
-.
-.\" .Ss "But, how about XOAUTH2 / OAUTHBEARER?" {{{ FIXME
-.Ss "But, how about XOAUTH2 / OAUTHBEARER?"
-.
-Following up
-.Sx "I cannot login to Google mail \&(via OAuth\&)"
-one OAuth-based authentication method is available:
-the OAuth 2.0 bearer token usage as standardized in RFC 6750 (according
-SASL mechanism in RFC 7628), also known as XOAUTH2 and OAUTHBEARER,
-allows fetching a temporary access token via the web that can locally be
-used as a
-.Va password .
-The protocol is simple and extendable, token updates or even password
-changes via a simple TLS secured server login would be possible in
-theory, but today a web browser and an external support tool are
-prerequisites for using this authentication method.
-The token times out and must be refreshed periodically via web.
-.
-.Pp
-Some hurdles must be taken before being able to use this method.
-Using GMail as an example, an application (that is a name) must be
-registered, for which credentials, a
-.Dq client ID
-and a
-.Dq client secret ,
-need to be created and saved locally (in a secure way).
-These initial configuration steps can be performed at
-.Lk https://console.developers.google.com/apis/credentials .
-Thereafter a refresh token can be requested;
-a python program to do this for GMail accounts is
-.Lk https://github.com/google/\:gmail-oauth2-tools/\:raw/\:\
-master/\:python/\:oauth2.py :
-.
-.Bd -literal -offset indent
-$ python oauth2.py --user=EMAIL \e
-  --client-id=THE-ID --client-secret=THE-SECRET \e
-  --generate_oauth2_token
-To authorize token, visit this url and follow the directions:
-  https://accounts.google.com/o/oauth2/auth?client_id=...
-  Enter verification code: ...
-  Refresh Token: ...
-  Access Token: ...
-  Access Token Expiration Seconds: 3600
-$ # Of which the last three are actual token responses.
-$ # Thereafter access tokens can regularly be refreshed
-$ # via the created refresh token (read on)
-.Ed
-.
-.Pp
-The generated refresh token must also be saved locally (securely).
-The procedure as a whole can be read at
-.Lk https://github.com/google/\:gmail-oauth2-tools/\:wiki/\:\
-OAuth2DotPyRunThrough .
-Since periodic timers are not yet supported, keeping an access token
-up-to-date (from within \*(Xx) can only be performed via the hook
-.Va on-main-loop-tick ,
-or (for sending only)
-.Va on-compose-enter
-(for more on authentication see the section
-.Sx "URL syntax and credential lookup" ) :
-.
-.Bd -literal -offset indent
-set on-main-loop-tick=o-m-l-t on-compose-enter=o-c-e
-define o-m-l-t {
-  xcall update_access_token
-}
-define o-c-e {
-  xcall update_access_token
-}
-
-set access_token_=0
-define update_access_token {
-  local se i epoch_sec epoch_nsec
-  >i vexpr epoch
-  eval se $i # set epoch_sec/_nsec of vexpr epoch
-  >i vexpr + "$access_token_" 2100
-  if $epoch_sec -ge $i
-    >password ! python oauth2.py --user=EMAIL \e
-        --client-id=THE-ID --client-secret=THE-SECRET \e
-        --refresh-token=THE-REFRESH-TOKEN |\e
-      sed '1b PASS;d; :PASS s/^.\e{1,\e}:\e(.\e{1,\e}\e)$/\e1/'
-    >password csop trim "$password"
-    if -n $verbose
-      ec "password is <$password>"
-    end
-    se access_token_=$epoch_sec
-  end
-}
-.Ed
-.\" }}}
-.
 .\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{ review
 .Ss "Not \(dqdefunctional\(dq, but the editor key does not work"
 Maybe a sequence is shadowed; setting
@@ -16019,10 +15898,10 @@ Supported are the default
 .Ql login ,
 .Ql plain ,
 .Ql oauthbearer
-(see
-.Sx FAQ
-entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
+and
+.Ql xoauth2
+(see the according entries of
+.Va smtp-config ) ,
 .Ql external
 and
 .Ql externanon
