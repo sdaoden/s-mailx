@@ -1078,10 +1078,6 @@ jgetopt_done:
 			emsg = N_("The -u option cannot be used in send mode");
 			goto jusage;
 		}
-		if(!(n_poption & n_PO_t_FLAG) && mc.mc_to == NIL){
-			emsg = N_("Send options without primary recipient specified.");
-			goto jusage;
-		}
 		if((n_poption & n_PO_t_FLAG) && mc.mc_quote != NIL){
 			emsg = N_("The -q and -t options are mutual exclusive.");
 			goto jusage;

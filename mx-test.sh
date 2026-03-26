@@ -8050,6 +8050,8 @@ echo "$?/$^ERRNAME"
 	cke0 17 0 ./t17 '2647141096 124'
 	</dev/null ${MAILX} ${ARGS} -S mta=test://./t18 -S nomta-bcc-ok -s w -Y 'y' -b b@y -b c@z a@x > ${E0} 2>&1
 	cke0 18 0 ./t18 '250796110 124'
+	</dev/null $MAILX $ARGS -S mta=test://./t19 -S nomta-bcc-ok -s w -Y 'y' -b b@y -b c@z > $E0 2>&1
+	cke0 19 0 ./t19 '1221654526 116'
 
 	t_epilog "${@}"
 } #}}}

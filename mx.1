@@ -85,7 +85,7 @@
 .Op : Ns Fl X Ar cmd Ns \&:
 .Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl \&.
-.Pf : Ar to-addr Ns \&:
+.Pf ( Oo ) Ns : Ns Ar to-addr Ns : Ns ( Oc )
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Pp
@@ -744,7 +744,7 @@ attacks), and forcefully enter send mode.
 .El
 .
 .Pp
-In difference to
+Different to
 .Va mta-arguments
 the setting of
 .Va expandargv
@@ -868,13 +868,13 @@ wildcard argument that matches all covered settings.
 .\" .Ss "Sending mail, and non-interactive mode" {{{
 .Ss "Sending mail, and non-interactive mode"
 .
-To send a message to one or more people give their email addresses (and
-.Va fullnames )
-on the command line, the options
+To send a message to one or more people specify email addresses
+.Pf ( Va fullnames )
+and/or (blind) carbon copy recipients via
 .Fl b
 and
 .Fl c
-add (blind) carbon copy recipients.
+on the command line
 When delivered through a local
 .Va mta
 (Message-Transfer-Agent) plain system-local user names can be addressed.
