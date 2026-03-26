@@ -89,7 +89,7 @@ if [ "$OPT_DOTLOCK" != 0 ]; then
 		m=u=rx,$m
 	fi
 
-	__copychownfile y "$m" "$o" "$OBJDIR"/"$VAL_PS_DOTLOCK" "$VAL_LIBEXECDIR/$VAL_PS_DOTLOCK"
+	__copychownfile y "$m" "$o" "$OBJDIR"/"$VAL_PS_DOTLOCK_HELPER" "$VAL_LIBEXECDIR/$VAL_PS_DOTLOCK_HELPER"
 fi
 
 if [ "$OPT_OAUTH_HELPER" != 0 ]; then

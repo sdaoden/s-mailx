@@ -1703,11 +1703,12 @@ printf \
 	"$SHELL" "$TOPDIR" "./$VAL_SID$VAL_MAILX" >> $newmk
 
 # Add the known utility and some other variables
-printf "#define VAL_PS_DOTLOCK \"$VAL_SID$VAL_MAILX-dotlock\"\n" >> $newh
-printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> $newmk
-printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK\n' "$VAL_SID$VAL_MAILX-dotlock" >> $newenv
+VAL_PS_DOTLOCK_HELPER=$VAL_SID$VAL_MAILX-dotlock-helper
+printf '#define VAL_PS_DOTLOCK_HELPER "%s"\n' "$VAL_PS_DOTLOCK_HELPER" >> $newh
+printf 'VAL_PS_DOTLOCK_HELPER = \$(VAL_UAGENT)-dotlock-helper\n' >> $newmk
+printf 'VAL_PS_DOTLOCK_HELPER=%s;export VAL_PS_DOTLOCK_HELPER\n' "$VAL_PS_DOTLOCK_HELPER" >> $newenv
 if feat_yes DOTLOCK; then
-	printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> $newmk
+	printf '#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK_HELPER)\n' >> $newmk
 fi
 
 if feat_yes NET_TEST; then
@@ -3897,8 +3898,16 @@ i=$COMMLINE
 	printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> $h
 
 i="'\\0'"
+if feat_yes DOTLOCK; then
+	i="$VAL_LIBEXECDIR/$VAL_PS_DOTLOCK_HELPER"
+	i=$(string_to_char_array "$i")
+fi
+printf '#define VAL_BUILD_PS_DOTLOCK_HELPER_ARRAY %s\n' "$i" >> $h
+
+i="'\\0'"
 if feat_yes OAUTH_HELPER; then
-	i="$VAL_LIBEXECDIR/$VAL_UAGENT"-oauth-helper.py
+	VAL_OAUTH_HELPER="$VAL_UAGENT"-oauth-helper.py # also used below!
+	i="$VAL_LIBEXECDIR/$VAL_OAUTH_HELPER"
 	printf '#define VAL_BUILD_OAUTH_HELPER "%s"\n' "$i" >> $h
 	i=$(string_to_char_array "$i")
 fi
@@ -3938,14 +3947,14 @@ printf ',"\n' >> "$h"
 msg 'Creating object make rules'
 
 if feat_yes DOTLOCK; then
-	printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> "$mk"
+	printf 'OPTIONAL_PS_DOTLOCK = $(VAL_PS_DOTLOCK_HELPER)\n' >> "$mk"
 	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh ps-dotlock/*.c) >> "$mk"
 else
 	printf "OPTIONAL_PS_DOTLOCK =\n" >> "$mk"
 fi
 
 if feat_yes NET_TEST; then
-	printf "OPTIONAL_NET_TEST = net-test\n" >> "$mk"
+	printf 'OPTIONAL_NET_TEST = net-test\n' >> "$mk"
 	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh net-test/*.c) >> "$mk"
 else
 	printf "OPTIONAL_NET_TEST =\n" >> "$mk"
@@ -4024,6 +4033,8 @@ msg ' . System-wide resource file: %s/%s' "$VAL_SYSCONFDIR" "$VAL_SYSCONFRC"
 msg ' . bindir: %s' "$VAL_BINDIR"
 if feat_yes DOTLOCK || feat_yes OAUTH_HELPER; then
 	msg ' . libexecdir: %s' "$VAL_LIBEXECDIR"
+	feat_yes DOTLOCK && msg '   + dotlock helper: %s' "$VAL_PS_DOTLOCK_HELPER"
+	feat_yes OAUTH_HELPER && msg '   + oauth helper: %s' "$VAL_OAUTH_HELPER"
 fi
 msg ' . mandir: %s' "$VAL_MANDIR"
 msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "$VAL_MTA" "$VAL_MTA_ARGV0"

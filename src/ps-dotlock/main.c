@@ -136,7 +136,7 @@ main(int argc, char **argv){
 
 	/* We're a dumb helper, ensure as much as we can no one else uses us */
 	if(argc != 12 ||
-			strcmp(argv[ 0], VAL_PS_DOTLOCK) ||
+			strcmp(argv[ 0], VAL_PS_DOTLOCK_HELPER) ||
 			(argv[1][0] != 'r' && argv[1][0] != 'w') ||
 			strcmp(argv[ 1] + 1, "dotlock") ||
 			strcmp(argv[ 2], "mailbox") ||

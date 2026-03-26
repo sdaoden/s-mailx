@@ -242,7 +242,7 @@ jenametool:
 	if(cp == NIL || pi.pi_uid != n_user_id || pi.pi_gid != n_group_id){
 		char const *args[13];
 
-		args[ 0] = VAL_PS_DOTLOCK;
+		args[ 0] = VAL_PS_DOTLOCK_HELPER;
 		args[ 1] = mx_FILE_LOCK_MODE_IS_TSHARE(flm) ? "rdotlock" : "wdotlock";
 		args[ 2] = "mailbox"; args[ 3] = fdi.fdi_file_name;
 		args[ 4] = "name"; args[ 5] = fdi.fdi_lock_name;
@@ -250,7 +250,7 @@ jenametool:
 		args[ 8] = "randstr"; args[ 9] = fdi.fdi_randstr;
 		args[10] = "retry"; args[11] = fdi.fdi_retry;
 		args[12] = NIL;
-		execv(VAL_LIBEXECDIR "/" VAL_UAGENT "-dotlock", n_UNCONST(args));
+		execv(VAL_LIBEXECDIR "/" VAL_PS_DOTLOCK_HELPER, UNCONST(char**,args));
 
 		fdls = mx_FILE_DOTLOCK_STATE_NOEXEC;
 		write(STDOUT_FILENO, &fdls, sizeof fdls);

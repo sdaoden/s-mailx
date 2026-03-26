@@ -12,7 +12,7 @@ $(VAL_UAGENT): $(OBJ) uman.1 uman-config.7 urc.rc
 	$(ECHO_LINK)$(CC) $(MX_LDFLAGS) -o $(@) $(OBJ) $(MX_LIBS)
 	$(SIZE_CHECK)
 
-$(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
+$(VAL_PS_DOTLOCK_HELPER): $(PS_DOTLOCK_C_OBJ)
 	$(ECHO_LINK)$(CC) $(PS_DOTLOCK_LDFLAGS) -o $(@) $(PS_DOTLOCK_C_OBJ) $(PS_DOTLOCK_LIBS)
 	$(SIZE_CHECK)
 
@@ -50,7 +50,7 @@ clean:
 		./urc.rc;\
 	\
 	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
-		$(rm) -f $(PS_DOTLOCK_C_OBJ) "$(VAL_PS_DOTLOCK)";\
+		$(rm) -f $(PS_DOTLOCK_C_OBJ) "$(VAL_PS_DOTLOCK_HELPER)";\
 	fi;\
 	\
 	if [ -n "$(OPTIONAL_NET_TEST)" ]; then \
