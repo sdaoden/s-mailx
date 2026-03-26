@@ -2099,11 +2099,13 @@ a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta){ /* {{{ */
    NYD_IN;
 
    mx_fs_linepool_aquire(&buf, &bufsize);
+   llen = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
 
    if(*mta == '\0')
       fp = n_stdout;
    else{
-      if((fp = mx_fs_open(mta, mx_FS_O_RDWR | mx_FS_O_CREATE)) == NIL)
+      if((fp = mx_fs_open(mta, mx_FS_O_RDWR | mx_FS_O_CREATE |
+               (llen ? mx_FS_O_NONE : mx_FS_O_TRUNC))) == NIL)
          goto jeno;
       if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL |
             mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
@@ -2116,7 +2118,7 @@ a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta){ /* {{{ */
 
    fflush_rewind(scp->sc_input);
    cnt = fsize(scp->sc_input);
-   f = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
+   f = llen & a_MAFC;
 
    if((f & a_MAFC) &&
          fprintf(fp, "From %s %s", ok_vlook(LOGNAME), mx_time_current.tc_ctime) < 0)

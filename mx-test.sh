@@ -7892,93 +7892,88 @@ headerp;x26
 } #}}}
 
 t_can_send_rfc() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
-	</dev/null ${MAILX} ${ARGS} u@h > ./t0.mbox 2>${EX}
+	</dev/null $MAILX $ARGS u@h > ./t0.mbox 2>$EX
 	ck 0 0 ./t0.mbox '3215459377 97' '3597477661 59'
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -s Sub.1 receiver@number.1 > ${E0} 2>&1
+	</dev/null $MAILX $ARGS -Smta=test://./t.mbox -s Sub.1 receiver@number.1 > $E0 2>&1
 	cke0 1 0 ./t.mbox '550126528 126'
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -s Sub.2 \
+	</dev/null $MAILX $ARGS -Smta=test://./t.mbox -s Sub.2 \
 		-b bcc@no.1 -b bcc@no.2 -b bcc@no.3 \
 		-c cc@no.1 -c cc@no.2 -c cc@no.3 \
 		to@no.1 to@no.2 to@no.3 \
-		> ${E0} 2>&1
+		> $E0 2>&1
 	cke0 2 0 ./t.mbox '3259888945 324'
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -s Sub.2no \
+	</dev/null $MAILX $ARGS -Smta=test://./t.mbox -s Sub.2no \
 		-b bcc@no.1\ \ bcc@no.2 -b bcc@no.3 \
 		-c cc@no.1,cc@no.2 -c cc@no.3 \
 		to@no.1,to@no.2 to@no.3 \
-		> ${EX} 2>&1
+		> $EX 2>&1
 	ck 2no 4 ./t.mbox '3350946897 468' '1108872063 205'
 
 	# XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
 	# XXX would not treat that as a list but look for "," as a separator
-	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -Sfullnames -s Sub.3 \
+	</dev/null $MAILX $ARGS -Smta=test://./t.mbox -Sfullnames -s Sub.3 \
 		-T 'bcc?single: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
 		-T cc?si\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
 		-T to?:\ to@no.1,'<to@no.2>' -T to:\ to@no.3 \
-		> ${EX} 2>${E0}
+		> $EX 2>$E0
 	cke0 3 0 ./t.mbox '1453534480 678'
 
-	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -Sfullnames -s Sub.4 \
+	</dev/null $MAILX $ARGS -Smta=test://./t.mbox -Sfullnames -s Sub.4 \
 		-T 'bcc: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
 		-T cc:\ 'cc@no.1, <cc@no.2>' -T cc\ \ :\ \ cc@no.3 \
 		-T to\ :to@no.1,'<to@no.2>' -T to:\ to@no.3 \
-		> ${E0} 2>&1
+		> $E0 2>&1
 	cke0 4 0 ./t.mbox '535767201 882'
 
 	# Two test with a file-based MTA
-	${cat} <<-_EOT > ./tmta.sh
-		#!${SHELL} -
-		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
-			${cat} && echo pardauz && echo) > ./t.mbox
-	_EOT
-	${chmod} 0755 ./tmta.sh
+	$cat <<_EOT > ./tmta.sh
+#!$SHELL -
+(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' && $cat && echo pardauz && echo) > ./t.mbox
+_EOT
+	$chmod 0755 ./tmta.sh
 
-	</dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s Sub.mta-1 \
-		receiver@number.1 > ${E0} 2>&1
+	</dev/null $MAILX $ARGS -Smta=./tmta.sh -s Sub.mta-1 receiver@number.1 > $E0 2>&1
 	cke0 5 0 ./t.mbox '2384401657 138'
 
-	</dev/null ${MAILX} ${ARGS} -Smta=file://./tmta.sh -s Sub.mta-2 \
-		receiver@number.1 > ${E0} 2>&1
+	</dev/null $MAILX $ARGS -Smta=file://./tmta.sh -s Sub.mta-2 receiver@number.1 > $E0 2>&1
 	cke0 6 0 ./t.mbox '3006460737 138'
 
 	# Command
-	</dev/null ${MAILX} ${ARGS} -Smta=test \
+	</dev/null $MAILX $ARGS -Smta=test \
 		-Y '#
 mail hey@exam.ple
 ~s Subject 1
 Body1
 ~.
 echo "$?/$^ERRNAME"
-#	' > ./t7 2>${E0}
+#	' > ./t7 2>$E0
 	cke0 7 0 ./t7 '951018449 138'
 
 	## *record*, *outfolder*, with and without *mta-bcc-ok*
-	${mkdir} tfolder
-	xfolder="$(${pwd})"/tfolder
+	$mkdir tfolder
+	xfolder="$($pwd)"/tfolder
 
-	${cat} <<-_EOT > ./tmta.sh
-		#!${SHELL} -
-		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
-			${cat} && echo 'ARGS: '"\${@}" && echo) > ./t.mbox
-	_EOT
-	${chmod} 0755 ./tmta.sh
+	$cat <<_EOT > ./tmta.sh
+#!$SHELL -
+(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' && $cat && echo 'ARGS: '"\$@" && echo) > ./t.mbox
+_EOT
+	$chmod 0755 ./tmta.sh
 
 	t_it() {
 		tno=$1
 		shift
-		</dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -Sfolder="${xfolder}" \
-			"${@}" \
+		</dev/null $MAILX $ARGS -Smta=./tmta.sh -Sfolder="$xfolder" "$@" \
 			-s Sub.mta-1 \
 			-b bcc@no.1 -b bcc@no.2 -b bcc@no.3 \
 			-c cc@no.1 -c cc@no.2 -c cc@no.3 \
 			to@no.1 to@no.2 to@no.3 \
-			receiver@number.1 > ${E0} 2>&1
-		return ${?}
+			receiver@number.1 > $E0 2>&1
+		return $?
 	}
 
 	t_it 8 -Snomta-bcc-ok
@@ -8003,15 +7998,15 @@ echo "$?/$^ERRNAME"
 	### More RFC cases
 
 	## From: and Sender:
-	</dev/null ${MAILX} ${ARGS} -s ubject -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org to@exam.ple > ./t13 2>${E0}
+	</dev/null $MAILX $ARGS -s ubject -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org to@exam.ple > ./t13 2>$E0
 	cke0 13 0 ./t13 '2837699804 203'
 
 	# ..if From: is single mailbox and Sender: is same, no Sender:
-	</dev/null ${MAILX} ${ARGS} -s ubject -S from=a@b.org -S sender=a@b.org to@exam.ple > ./t14 2>${E0}
+	</dev/null $MAILX $ARGS -s ubject -S from=a@b.org -S sender=a@b.org to@exam.ple > ./t14 2>$E0
 	cke0 14 0 ./t14 '3373917180 151'
 
 	# Ensure header line folding works out, with/out *mta-bcc-ok*
-	</dev/null ${MAILX} ${ARGS} -S mta=./tmta.sh \
+	</dev/null $MAILX $ARGS -S mta=./tmta.sh \
 		-s ubject -Y 'Hi!' \
 		-b bcc-long-name-that-causes-wrap@no.1 \
 		-b bcc-long-name-that-causes-wrap@no.2 \
@@ -8025,10 +8020,10 @@ echo "$?/$^ERRNAME"
 		to-long-name-that-causes-wrap@no.2 \
 		to-long-name-that-causes-wrap@no.3 \
 		to-long-name-that-causes-wrap@no.4 \
-		> ${E0} 2>&1
+		> $E0 2>&1
 	cke0 15 0 ./t.mbox '3193007256 998'
 
-	</dev/null ${MAILX} ${ARGS} -S mta=./tmta.sh -S nomta-bcc-ok \
+	</dev/null $MAILX $ARGS -S mta=./tmta.sh -S nomta-bcc-ok \
 		-s ubject -Y 'Hi!' \
 		-b bcc-long-name-that-causes-wrap@no.1 \
 		-b bcc-long-name-that-causes-wrap@no.2 \
@@ -8042,18 +8037,26 @@ echo "$?/$^ERRNAME"
 		to-long-name-that-causes-wrap@no.2 \
 		to-long-name-that-causes-wrap@no.3 \
 		to-long-name-that-causes-wrap@no.4 \
-		> ${E0} 2>&1
+		> $E0 2>&1
 	cke0 16 0 ./t.mbox '2175359047 843'
 
-	# *mta-bcc-ok* ignored for test://
-	</dev/null ${MAILX} ${ARGS} -S mta=test -S nomta-bcc-ok -s v -Y 'x' -b b@y -b c@z a@x > ./t17 2> ${E0}
+	# test:// ignores *mta-bcc-ok*
+	</dev/null $MAILX $ARGS -S mta=test -S nomta-bcc-ok -s v -Y 'x' -b b@y -b c@z a@x > ./t17 2> $E0
 	cke0 17 0 ./t17 '2647141096 124'
-	</dev/null ${MAILX} ${ARGS} -S mta=test://./t18 -S nomta-bcc-ok -s w -Y 'y' -b b@y -b c@z a@x > ${E0} 2>&1
+	</dev/null $MAILX $ARGS -S mta=test://./t18 -S nomta-bcc-ok -s w -Y 'y' -b b@y -b c@z a@x > $E0 2>&1
 	cke0 18 0 ./t18 '250796110 124'
 	</dev/null $MAILX $ARGS -S mta=test://./t19 -S nomta-bcc-ok -s w -Y 'y' -b b@y -b c@z > $E0 2>&1
 	cke0 19 0 ./t19 '1221654526 116'
 
-	t_epilog "${@}"
+	# test:// honours *mbox-fcc-and-pcc*
+	</dev/null $MAILX $ARGS -S mta=test -S mbox-fcc-and-pcc -s v ./t20 > $E0 2>&1
+	cke0 20.1 0 ./t20 '477022396 100'
+	</dev/null $MAILX $ARGS -S mta=test -S mbox-fcc-and-pcc -s v ./t20 > $E0 2>&1
+	cke0 20.2 0 ./t20 '1063092333 200'
+	</dev/null $MAILX $ARGS -S mta=test -S nombox-fcc-and-pcc -s v ./t20 > $E0 2>&1
+	cke0 20.3 0 ./t20 '247300649 50'
+
+	t_epilog "$@"
 } #}}}
 
 t_mta_args() { #{{{
