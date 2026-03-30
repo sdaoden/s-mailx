@@ -176,8 +176,15 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if (setflags == 0 && ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
          m->m_uid == 0))
       goto jleave;
-   if((fp = mx_fs_open(encuid(mp, m->m_uid), mx_FS_O_RDONLY)) == NIL)
-      goto jleave;
+   /* C99 */{
+      char *cp;
+
+      cp = encuid(mp, m->m_uid);
+      if(cp == NIL)
+         goto jleave;
+      if((fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL)
+         goto jleave;
+   }
 
    mx_file_lock(fileno(fp), mx_FILE_LOCK_MODE_TSHARE);
    if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
@@ -311,8 +318,9 @@ putcache(struct mailbox *mp, struct message *m)
       oldoffset = 0;
 
    /* XXX file_lock errors */
-   if((obuf = mx_fs_open(name = encuid(mp, m->m_uid), (mx_FS_O_RDWR |
-            mx_FS_O_CREATE))) == NIL)
+   name = encuid(mp, m->m_uid);
+   if(name == NIL ||
+         (obuf = mx_fs_open(name, (mx_FS_O_RDWR | mx_FS_O_CREATE))) == NIL)
       goto jleave;
    mx_file_lock(fileno(obuf), mx_FILE_LOCK_MODE_TEXCL);
    if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
