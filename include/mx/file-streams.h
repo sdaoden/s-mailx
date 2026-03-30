@@ -155,11 +155,12 @@ EXPORT boole mx_fs_pipe_cloxy(sz fd[2], BITENUM(u8,mx_fs_cloxy) what);
  * In CHILD_FD_PASS cases pipe_close() must be called with waiting enabled, which is asserted!
  * Note that child.h is NOT included (reason for _CHILD_PASS).
  * Note that in CHILD_FD_PASS cases the used mx_child_fork() may cause a "signal condome" to be activated!
- * envadd may be NIL, otherwise it is expected to be a NIL terminated array of "K=V" strings to be placed additionally
+ * env_addon_or_nil: if set expected to be a NIL terminated array of "K=V" strings to be placed additionally
  * into the children's environment.
- * TODO v15 hack: If cmd==(char*)-1 then sh(ell) is indeed expected to be a PTF
+ * TODO v15 hack: If cmd==(char*)-1 then sh(ell)_or_nil is indeed expected to be a PTF
  * TODO v15 hack: :P that will be called from within the child process */
-EXPORT FILE *mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char const **envadd, sz newfd1);
+EXPORT FILE *mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *shor_nil,
+		char const **env_addon_or_nil, sz newfd1);
 
 /* Takes a FILE* returned by pipe_open, returns <0 if no process can be found, 0 on success, errno on kill(2) failure */
 EXPORT s32 mx_fs_pipe_signal(FILE *fp, s32 sig);

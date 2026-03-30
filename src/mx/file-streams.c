@@ -425,6 +425,7 @@ mx_fs_open_fd(char const *file, BITENUM(u32,mx_fs_oflags) oflags, s32 mode){
 	char const *osflags;
 	int osiflags;
 	NYD_IN;
+	ASSERT(file != NIL);
 
 	osiflags = a_fs_mx_to_os(oflags, &osflags);
 
@@ -441,7 +442,7 @@ mx_fs_open(char const *file, BITENUM(u32,mx_fs_oflags) oflags){
 	char const *osflags;
 	FILE *fp;
 	NYD_IN;
-
+	ASSERT(file != NIL);
 	ASSERT(!(oflags & mx_FS_O_CREATE_0600) || (oflags & mx_FS_O_CREATE));
 
 	fp = NIL;
@@ -479,7 +480,7 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, BITENUM(u32,m
 	s32 err;
 	FILE *rv;
 	NYD_IN;
-
+	ASSERT(file != NIL);
 	ASSERT(!(oflags & mx_FS_O_CREATE_0600) || (oflags & mx_FS_O_CREATE));
 
 	rv = NIL;
@@ -961,6 +962,7 @@ boole
 mx_fs_close(FILE *fp){
 	boole rv;
 	NYD_IN;
+	ASSERT(fp != NIL);
 
 	rv = TRU1;
 
@@ -1039,13 +1041,15 @@ jerr:
 }
 
 FILE *
-mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char const **env_addon, sz newfd1){
+mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh_or_nil, char const **env_addon_or_nil,
+		sz newfd1){
 	struct mx_child_ctx cc;
 	sz p[2], myside, hisside, fd0, fd1;
 	sigset_t nset;
 	char mod[2];
 	FILE *rv;
 	NYD_IN;
+	ASSERT(cmd != NIL);
 
 	rv = NIL;
 	mod[0] = mod[1] = '\0';
@@ -1080,7 +1084,7 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char
 	cc.cc_mask = &nset;
 	cc.cc_fds[mx_CHILD_FD_IN] = fd0;
 	cc.cc_fds[mx_CHILD_FD_OUT] = fd1;
-	cc.cc_env_addon = env_addon;
+	cc.cc_env_addon = env_addon_or_nil;
 
 	/* Is this a special in-process fork setup? */
 	if(cmd == R(char*,-1)){
@@ -1110,15 +1114,15 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char
 			n_stdin = fdopen(STDIN_FILENO, "r");
 			/*n_stdout = fdopen(STDOUT_FILENO, "w");*/
 			/*n_stderr = fdopen(STDERR_FILENO, "w");*/
-			u.ccp = sh;
+			u.ccp = sh_or_nil;
 			u.es = (*u.ptf)();
 			/*fflush(NULL);*/
 			for(;;)
 				_exit(u.es);
 		}
 	}else{
-		if(sh != NIL)
-			mx_child_ctx_set_args_for_sh(&cc, sh, cmd);
+		if(sh_or_nil != NIL)
+			mx_child_ctx_set_args_for_sh(&cc, sh_or_nil, cmd);
 
 		mx_child_run(&cc);
 	}
