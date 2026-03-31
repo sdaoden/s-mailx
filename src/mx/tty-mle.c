@@ -766,6 +766,8 @@ a_tty_hist_load(boole feedback){ /* {{{ */
 	a_tty_hist_clear();
 	mx_fs_linepool_aquire(&lbuf, &lsize);
 	emsg = NIL;
+	UNINIT(ents, 0);
+	UNINIT(version, 0);
 
 	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
