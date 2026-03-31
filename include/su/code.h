@@ -1380,7 +1380,8 @@ enum su_state_flags{
 	su_STATE_MT = 1u<<18, /* TODO <> su_state_create_core() should act */
 	/*! Reproducible behavior switch.
 	 * See \r{su_reproducible_build},
-	 * and \xln{https://reproducible-builds.org}. */
+	 * and \xln{https://reproducible-builds.org}.
+	 * \remarks{In this mode \r{su_LOG_DEBUG} messages with \r{su_LOG_F_CORE} set are not logged.} */
 	su_STATE_REPRODUCIBLE = 1u<<19
 };
 

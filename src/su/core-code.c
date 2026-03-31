@@ -100,7 +100,7 @@ struct su__state_on_gut *su__state_on_gut;
 struct su__state_on_gut *su__state_on_gut_final;
 
 /* */
-SINLINE void a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap);
+static void a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap);
 
 /* */
 #if DVLOR(1, 0)
@@ -108,7 +108,7 @@ static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen)
 		struct su__nyd_info const *nip);
 #endif
 
-SINLINE void
+static void
 a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
 	/* TODO buffer size is 2048; syslog: RFC 3164 -> 1024, RFC 5424 -> flexible,
 	 * TODO assume at least 4096; FreeBSD has 8Kib since 2021-12-31 (again) */
@@ -117,6 +117,9 @@ a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
 
 	f = lvl_a_flags & ~S(u32,su_LOG_PRIMASK);
 	lvl_a_flags &= su_LOG_PRIMASK;
+
+	if(su_state_has(su_STATE_REPRODUCIBLE) && lvl_a_flags == su_LOG_DEBUG && (f & su_LOG_F_CORE))
+		goto jleave;
 
 	cursor = xbuf = buf;
 
@@ -204,6 +207,7 @@ jspace:
 
 	if(lvl_a_flags == su_LOG_EMERG)
 		abort(); /* TODO configurable */
+jleave:;
 }
 
 #if DVLOR(1, 0)
