@@ -15,13 +15,13 @@ url_cs='https://www.iana.org/assignments/character-sets/character-sets.xml'
 datetime=$(date +'%FT%T%z')
 
 download() (
-	${curl} -v -o character-sets.xml ${url_cs}
+	$curl -v -o character-sets.xml $url_cs
 	echo download ok: $?
 	echo remember to adjust ASCII alias
 )
 
 process() {
-	${awk} -F "[<>]" -v FMT="${FMT}" -v MIME="${MIME}" -v DBG="${DBG}" -v URL="${url_cs}" -v DT="${datetime}" '
+	$awk -F "[<>]" -v FMT="$FMT" -v MIME="$MIME" -v DBG="$DBG" -v URL="$url_cs" -v DT="$datetime" '
 		function err(){
 			print "Bogus: " FILENAME " at line " FNR ": " $0 > "/dev/stderr"
 			exit 1
@@ -67,6 +67,25 @@ process() {
 				p = n
 			p = tolower(p)
 
+			# XXX Generalize exceptions!
+			if(p ~ /^us-ascii$/){
+				# IANA messed up database with XML conversion
+				a1 = a2 = 0
+				for(i = 1; i <= acnt; ++i){
+					if(tolower(aa[i]) ~ /^ascii$/)
+						a1 = 1
+					else if(tolower(aa[i]) ~ /^us$/)
+						a2 = 1
+				}
+				if(!a1)
+					aa[++acnt] = "ascii"
+				if(!a2)
+					aa[++acnt] = "us"
+				# OpenIndiana / Solaris uses that, but its own iconv cannot deal!
+				aa[++acnt] = "646"
+			}
+
+			# Output formats
 			if(FMT == "txt"){
 				if(!header_dumped++){
 					print "# character-sets.txt, created " DT
@@ -181,11 +200,11 @@ process() {
 			}
 		}
 	' < character-sets.xml
-	[ ${?} -eq 0 ] || exit 30
+	[ $? -eq 0 ] || exit 30
 }
 
-if [ -n "${FETCH}" ]; then
-	download || exit ${?}
+if [ -n "$FETCH" ]; then
+	download || exit $?
 fi
 process
 

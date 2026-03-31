@@ -54,7 +54,7 @@ iconv_t iconvd;
 /* TODO IANA character set names: "compress" data+structure, etc (mibenum,name) */
 struct a_iconv_cs{
 	u16 ics_mibenum;
-	u8 ics_cnt; /* name+alias count */
+	u8 ics_cnt; /* name+alias count (0 for MIME=y as next) */
 	/* offset to preferred MIME name (not counting [0]): normally U8_MAX because DB is generated
 	 * with MIME=y to cause make-character-set-update.sh generate space-minimized data set */
 	u8 ics_mime_off;
