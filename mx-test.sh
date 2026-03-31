@@ -11173,14 +11173,13 @@ __EOT
 		ck0 5 - ${E0} '4148718303 252'
 
 		# TODO no *smtp-debug*, yet uses "-Sescape=! -Y '!: set debug'"
-		</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Sexpandaddr=fail,-all,+addr,+forcename \
+		</dev/null $MAILX $ARGS -Snoexpandaddr -Sexpandaddr=fail,-all,+addr,+forcename \
 			-Smta=smtp://laber.backe -Ssmtp-config=-ehlo \
 			-Smta-aliases=./t.ali \
 			-Sescape=! -Y '!: set debug' \
-			-b a3 -c a2 a1 > ${E0} 2>${EX}
-		ck0 5ok.1 0 ${E0}
-		$sed -e '1d' < $EX > ./t5ok
-		ck 5ok.2 - ./t5ok '2896355916 1256'
+			-b a3 -c a2 a1 > $E0 2>$EX
+		ck0 5ok.1 0 $E0
+		ck 5ok.2 - $EX '2896355916 1256'
 	else
 		t_echoskip '[!3-5ok:!SMTP]'
 	fi
