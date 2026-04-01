@@ -855,7 +855,7 @@ jleave:
 
 static void
 a_coll_dead_save(void){
-	char c;
+	int c;
 	FILE *dfp;
 	NYD_IN;
 
