@@ -522,6 +522,9 @@ a_coll_print(FILE *cf, struct header *hp){
 	if(ferror(cf))
 		goto jleave;
 
+	/* On Solaris++ we *must* sync description/stream position now */
+	fflush(cf);
+
 	if(hp->h_attach != NIL){
 		if(fputs(_("-------\nAttachments:\n"), obuf) == EOF)
 			goto jleave;
