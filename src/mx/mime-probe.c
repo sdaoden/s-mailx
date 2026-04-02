@@ -132,6 +132,13 @@ mx_mime_probe_round(struct mx_mime_probe_ctx *mpcp, char const *bp, uz bl){
 	sz curlnlen;
 	NYD2_IN;
 
+#if 0
+
+TODO WE SHOULD COUNT 8-BIT ++, so that callee can decide whether quoted-printable is really a good thing, or whether
+base64 would not be the better alternative!!!!
+#endif
+
+
 	curlnlen = mpcp->mpc_curlnlen;
 	alllen = mpcp->mpc_all_len;
 	c = mpcp->mpc_c;
