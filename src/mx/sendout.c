@@ -1336,6 +1336,11 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
             fprintf(fp, "From %s %s",
                ok_vlook(LOGNAME), mx_time_current.tc_ctime);
          c = EOF;
+/*
+FIXME in order to get MBOXO quoting etc check *mbox-rfc4155* out, make mfap==mbox_fcc_and_pcc
+FIXME somehow mirror setting of that or whatever, and then do this here.
+credit olav maybe
+*/
          while(i = c, (c = getc(fo)) != EOF)
             putc(c, fp);
          rewind(fo);

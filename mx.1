@@ -11114,6 +11114,7 @@ and existing files are overwritten.
 .
 .Mx
 .It Va mbox-rfc4155
+FIXME
 \*(BO For compatibility with old software opening a MBOX
 .Ic folder
 uses tolerant \*(PO instead of the stricter RFC 4155 rules for message
@@ -11127,7 +11128,7 @@ setting it and reopening the folder may be a saveable corrective
 define mboxfix {
   local set mbox-rfc4155; File "$1"; copy * "$2"
 }
-
+FIXME
 call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .Ed
 .
@@ -11353,6 +11354,7 @@ quoted (prefixed with greater-than sign
 instead of causing a non-destructive encoding like
 .Ql quoted-printable
 to be chosen, unless context (like message signing) requires otherwise.
+FIXME 4155
 .
 .It Ql quoted-printable
 .Pf (Or\0 Ql qp . )
