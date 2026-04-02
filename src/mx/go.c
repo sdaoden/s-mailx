@@ -729,6 +729,7 @@ jwhite:
 		goto jenotsup;
 	}
 	/* */
+	ASSERT(!(cdp->cd_caflags & mx_CMD_ARG_A) || (cdp->cd_caflags & mx_CMD_ARG_A));
 	if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
 		ccp = N_("needs an active mailbox");
 		goto jenotsup;

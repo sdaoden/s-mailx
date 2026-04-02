@@ -429,7 +429,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 # define TWYRA mx_CMD_ARG_TYPE_WYRA
 #define TARG mx_CMD_ARG_TYPE_ARG
 
-#define A mx_CMD_ARG_A
+#define A mx_CMD_ARG_A /* MUST imply S */
 #define F mx_CMD_ARG_F
 #define G mx_CMD_ARG_G
 #define HG mx_CMD_ARG_HGABBY
@@ -458,13 +458,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 	{"!", &c_shell, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_shellcmd),
 	 N_("Execute <shell-command>")},
-	{"=", &c_pdot, (A | M | V | X | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pdot),
+	{"=", &c_pdot, (A | M | V | X | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pdot),
 	 N_("Show message number of [<msglist>] (or the \"dot\")")},
 	{":", su_R(int(*)(void*),-1)/*ok!*/, (HG | M | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_neffe),
 	 N_("No-effect: does nothing but expanding arguments")},
 	{"?", &a_cmd_c_help, (HG | M | X | TWYSH), 0, 1, NIL,
 	 N_("Show help [for the given command]")},
-	{"|", &c_pipe, (A | M | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe),
+	{"|", &c_pipe, (A | M | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe),
 	 N_("Pipe [<msglist>] to [<command>], honour `headerpick'")},
 
 {"alias", &c_alias, (M | TWYSH), 0, MAC, NIL,
@@ -475,7 +475,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Mail address <[+[+[+]]]e[ncode]|d[ecode]|s[kin[l[ist]]]> <rest-of-line>")},
 	{"alternates", &c_alternates, (M | V | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_alternates),
 	 N_("(alt) Show or define an alternate <address-list> (for *from* etc)")},
-	{"answered", &c_answered, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"answered", &c_answered, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Mark the given <msglist> as answered")},
 
 	{"bind",
@@ -487,7 +487,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 (M | TARG), 0, MAC, a_CMD_CAD_BIND,
 	 N_("For [<context> (base)], [<show>] or bind <key[:,key:]> [:<expansion>:]")},
 
-{"copy", &c_copy, (A | M | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_copy),
+{"copy", &c_copy, (A | M | EM | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_copy),
 	 N_("(c) Copy [<msglist>], do not mark them for deletion")},
 	{"cache",
 #ifdef mx_HAVE_IMAP
@@ -495,7 +495,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, 0, NIL,
+	 (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Read specified <message list> into the IMAP cache")},
 	{"call", &c_call, (L | LNMAC | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call),
 	 N_("Call macro <name> [:<arg>:]")},
@@ -509,7 +509,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TARG), 0, MMNDEL, a_CMD_CAD_CERTSAVE,
+	 (A | M | S | TARG), 0, MMNDEL, a_CMD_CAD_CERTSAVE,
 	 N_("Save S/MIME certificates of [<msglist>] to <file>")},
 {"chdir", &c_chdir, (M | TWYSH), 0, 1, NIL,
 	 N_("(ch) Change CWD to the specified, or the login directory")},
@@ -533,9 +533,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (A | M | S | TSTRING), 0, 0, NIL,
 	 N_("If disconnected, connect to IMAP `folder'")},
-	{"Copy", &c_Copy, (A | M | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Copy),
+	{"Copy", &c_Copy, (A | M | EM | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Copy),
 	 N_("(C) Like `copy', but derive `folder' from first sender")},
-	{"collapse", &c_collapse, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"collapse", &c_collapse, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Collapse thread view [of <msglist>] in \"sort thread\" view")},
 	{"csop",
 #ifdef mx_HAVE_CMD_CSOP
@@ -549,13 +549,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"cwd", &c_cwd, (M | V | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_cwd),
 	 N_("Print current working directory (CWD)")},
 
-{"delete", &c_delete, (A | M | W | P | SC | TMSGLST), 0, MMNDEL, NIL,
+{"delete", &c_delete, (A | M | W | P | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(d) Delete <msglist>")},
 {"discard", &c_ignore, (M | TWYRA), 0, MAC, NIL,
 	 N_("(di) Add <headers> to \"headerpick type ignore\", or show that list")},
-	{"Decrypt", &c_Decrypt, (A | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Decrypt),
+	{"Decrypt", &c_Decrypt, (A | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Decrypt),
 	 N_("Like `decrypt', but derive `folder' from first sender")},
-	{"decrypt", &c_decrypt, (A | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_decrypt),
+	{"decrypt", &c_decrypt, (A | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_decrypt),
 	 N_("Like `copy', but decrypt first, if encrypted")},
 	{"define", &c_define, (HG | M | X | TWYSH), 0, 2, NIL,
 	 N_("Define a <macro {>, or list [<macro>]/all existing ones")},
@@ -569,13 +569,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (A | M | S | TNDMLST), 0, 0, NIL,
 	 N_("If connected, disconnect from IMAP `folder'")},
-	{"dotmove", &c_dotmove, (A | M | SC | TSTRING), 1, 1, NIL,
+	{"dotmove", &c_dotmove, (A | M | S | TSTRING), 1, 1, NIL,
 	 N_("Move the dot up <-> or down <+> by one")},
-	{"dp", &c_deltype, (A | M | W | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"dp", &c_deltype, (A | M | W | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Delete [<msglist>]/\"dot\", then perform `next'")},
-	{"dt", &c_deltype, (A | M | W | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"dt", &c_deltype, (A | M | W | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Delete [<msglist>]/\"dot\", then perform `next'")},
-	{"draft", &c_draft, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"draft", &c_draft, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Mark <msglist> as draft")},
 
 {"edit", &c_edit, (A | I | M | S | TMSGLST), 0, MMNORM, NIL,
@@ -607,9 +607,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"exit", &c_exit, (M | X | TWYSH), 0, 1, NIL,
 	 N_("(ex) Immediately return [<status>] to the shell (no \"at-exit\" actions)")},
 
-{"Followup", &c_Followup, (A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Followup),
+{"Followup", &c_Followup, (A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Followup),
 	 N_("(F) Like `Reply', but derive `folder' from first sender")},
-{"from", &c_from, (A | M | SC | TMSGLST), 0, MMNORM, NIL,
+{"from", &c_from, (A | M | S | TMSGLST), 0, MMNORM, NIL,
 	 N_("(f) Type (matching) headers of <msglist> (a search specification)")},
 	{"File", &c_File, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("Open a new `folder' readonly, or show the current one")},
@@ -617,9 +617,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(fi) Open a new <folder> or show the current one")},
 	{"filetype", &c_filetype, (M | TWYSH), 0, MAC, NIL,
 	 N_("Create [:<extension> <load-cmd> <save-cmd>:] or list `folder' handlers")},
-	{"flag", &c_flag, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"flag", &c_flag, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("(Un)Flag <msglist> (for special attention)")},
-{"followup", &c_followup, (A | I | L | LNMAC | R | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_followup),
+{"followup", &c_followup, (A | I | L | LNMAC | R | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_followup),
 	 N_("(fo) Like `reply', but derive `folder' from first sender")},
 	{"Folder", &c_File, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("Open a new `folder' readonly, or show the current folder")},
@@ -637,13 +637,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("<Operation>s on file-/paths with [:<arguments>:].  Operations are: "
 			"close, expand, ftruncate, flock/lflock/lock/llock, glob, mkdir, mktemp, open, pass, "
 			"rename, rewind, rm, rmdir, stat/lstat, touch/ltouch")},
-	{"Forward", &c_Forward, (A | I | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Forward),
+	{"Forward", &c_Forward, (A | I | L | LNMAC | R | S | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Forward),
 	 N_("Like `forward', but derive `folder' from <address>")},
-	{"forward", &c_forward, (A | I | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_forward),
+	{"forward", &c_forward, (A | I | L | LNMAC | R | S | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_forward),
 	 N_("Forward <message> to <address>")},
-{"followupall", &c_followupall, (OBS | A | I | L | LNMAC | R | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_followupall),
+{"followupall", &c_followupall, (OBS | A | I | L | LNMAC | R | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_followupall),
  N_("Like `reply', but derive `folder' from first sender")},
-{"followupsender", &c_followupsender, (OBS | A | I | L | LNMAC | R | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_followupsender),
+{"followupsender", &c_followupsender, (OBS | A | I | L | LNMAC | R | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_followupsender),
  N_("Like `Followup', but always reply to sender only")},
 {"fwddiscard", &c_fwdignore, (OBS | M | TRAWLST), 0, MAC, NIL,
  N_("Please use `headerpick'")},
@@ -657,7 +657,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 {"ghost", &c_commandalias, (OBS | M | X | TWYRA), 0, MAC, NIL,
  N_("Please use `commandalias'")},
 
-{"headers", &c_headers, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+{"headers", &c_headers, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(h) Type a page of header fields (with the first of <msglist> if given)")},
 	{"headerorder", &c_headerorder, (M | V | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_headerorder),
 	 N_("Show or add header :<FIELD>: to the order list")},
@@ -673,7 +673,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (NOHIST | I | M | SC | TWYSH), 0, MAC, NIL,
 	 N_("<[show]|load|save|clear>, <delete> :<NO>:, or re-eval entry <NO>")},
-	{"hold", &c_preserve, (A | M | W | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"hold", &c_preserve, (A | M | W | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(ho) In primary `folder', mark <msglist> for *hold* (disable auto-move)")},
 	{"if", &c_if, (HG | F | M | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_if),
 	 N_("(i) Part of the if/elif/else/endif conditional expression")},
@@ -696,18 +696,18 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 (M | V | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_imapcodec),
 	 N_("IMAP `folder' name <e[ncode]|d[ecode]> <rest-of-line>")},
 
-	{"Lfollowup", &c_Lfollowup, (A | I | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Lfollowup),
+	{"Lfollowup", &c_Lfollowup, (A | I | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Lfollowup),
 	 N_("Mailing-list followup to the given <msglist>")},
 	{"list", &a_cmd_c_list, (M | TWYSH), 0, 0, NIL,
 	 N_("(l) List all commands (in lookup order)")},
 {"localopts", &c_localopts, (OBS | M | X | NMAC | NOHIST | TWYSH), 1, 2, NIL,
  N_("Please use the \"local\" command modifier instead")},
-	{"Lreply", &c_Lreply, (A | I | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Lreply),
+	{"Lreply", &c_Lreply, (A | I | L | LNMAC | R | S | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Lreply),
 	 N_("Mailing-list reply to the given <msglist>")},
 
-	{"Mail", &c_Sendmail, (I | L | LNMAC | R | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_mail),
+	{"Mail", &c_Sendmail, (I | L | LNMAC | R | EM | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_mail),
 	 N_("Like `mail', but derive `folder' from first recipient")},
-	{"mail", &c_sendmail, (I | L | LNMAC | R | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_mail),
+	{"mail", &c_sendmail, (I | L | LNMAC | R | EM | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_mail),
 	 N_("(m) Compose mail; recipients may be given as arguments")},
 	{"mailcap",
 #ifdef mx_HAVE_MAILCAP
@@ -717,23 +717,23 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (M | TWYSH), 0, 1, NIL,
 	 N_("[<show>], <load> or <clear> the $MAILCAPS cache")},
-	{"mbox", &c_mboxit, (A | M | W | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"mbox", &c_mboxit, (A | M | W | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(mb) In primary `folder', mark <msglist> for auto-move to *MBOX*")},
 	{"mimetype", &c_mimetype, (M | TWYSH), 0, MAC, NIL,
 	 N_("(Load and) show all known MIME types, or define some")},
-	{"mimeview", &c_mimeview, (A | I | EM | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"mimeview", &c_mimeview, (A | I | EM | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Show non-text parts of the given <message>")},
 	{"mlist", &c_mlist, (M | TWYSH), 0, MAC, NIL,
 	 N_("Show all known mailing lists or define some")},
 	{"mlsubscribe", &c_mlsubscribe, (M | TWYSH), 0, MAC, NIL,
 	 N_("Show all mailing list subscriptions or define some")},
-	{"More", &c_More, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"More", &c_More, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Invoke $PAGER [on <msglist>]")},
-	{"more", &c_more, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"more", &c_more, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Invoke $PAGER [on <msglist>]")},
-	{"Move", &c_Move, (A | M | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Move),
+	{"Move", &c_Move, (A | M | EM | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Move),
 	 N_("Like `move', but derive `folder' from first sender")},
-	{"move", &c_move, (A | M | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_move),
+	{"move", &c_move, (A | M | EM | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_move),
 	 N_("Like `copy', but mark messages for deletion")},
 	{"mtaaliases",
 #ifdef mx_HAVE_MTA_ALIASES
@@ -743,12 +743,12 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (M | TWYSH), 0, 2, NIL,
 	 N_("[<show>], <load>, <clear> *mta-aliases* cache, or show [-] <MTA alias>")},
-{"Mv", &c_Move, (OBS | A | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Move),
+{"Mv", &c_Move, (OBS | A | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Move),
  N_("Please use `Move'")},
-{"mv", &c_move, (OBS | A | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_move),
+{"mv", &c_move, (OBS | A | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_move),
  N_("Please use `move'")},
 
-{"next"/*--MKTAB-DFL--*/, &c_next, (A | M | SC | TNDMLST), 0, MMNDEL, NIL,
+{"next"/*--MKTAB-DFL--*/, &c_next, (A | M | S | TNDMLST), 0, MMNDEL, NIL,
 	 N_("(n) Go to and `type' [<msglist>]/\"next\" message")},
 	{"netrc",
 #ifdef mx_HAVE_NETRC
@@ -758,35 +758,35 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (M | TWYSH), 0, 2, NIL,
 	 N_("[<show>], <load>, <clear> cache, or <lookup> [USR@]HOST")},
-	{"New", &c_unread, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"New", &c_unread, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as not being read")},
-	{"new", &c_unread, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"new", &c_unread, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as not being read")},
-	{"newmail", &c_newmail, (A | M | T | NOHOOK | SC | TWYSH), 0, 0, NIL,
+	{"newmail", &c_newmail, (A | M | T | NOHOOK | S | TWYSH), 0, 0, NIL,
 	 N_("Check for new mail in current `folder'")},
 
-	{"noop", &c_noop, (A | M | SC | TWYSH), 0, 0, NIL,
+	{"noop", &c_noop, (A | M | S | TWYSH), 0, 0, NIL,
 	 N_("NOOP command if current `folder' is accessed via network")},
 
-{"Print", &c_Type, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+{"Print", &c_Type, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(P) Like `print', but bypass `headerpick'")},
-{"print", &c_type, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+{"print", &c_type, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(p) Type [all members of <msglist>], honour `headerpick'")},
-	{"Page", &c_More, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"Page", &c_More, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Invoke $PAGER [on <msglist>]")},
-	{"page", &c_more, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"page", &c_more, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Invoke $PAGER [on <msglist>]")},
-	{"Pipe", &c_Pipe, (A | M | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe),
+	{"Pipe", &c_Pipe, (A | M | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe),
 	 N_("Pipe raw [<msglist>] data to [<command>]")},
-	{"pipe", &c_pipe, (A | M | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe),
+	{"pipe", &c_pipe, (A | M | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe),
 	 N_("(pi) Pipe [<msglist>] to [<command>], honour `headerpick'")},
-	{"preserve", &c_preserve, (A | M | W | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"preserve", &c_preserve, (A | M | W | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(pre) In primary `folder', hold <msglist>, do not move it to *MBOX*")},
 
 	{"quit", &c_quit, (M | TWYSH), 0, 1, NIL,
 	 N_("(q) Exit session with [<status>], perform \"at-exit\" actions")},
 
-{"reply", &c_reply, (A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_reply),
+{"reply", &c_reply, (A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_reply),
 	 N_("(r) Reply to originator and recipients of <msglist>")},
 	{"read", &c_read, (HG | L | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_read),
 	 N_("Read a line into <variable>(s) or <^> the result set, split at $ifs")},
@@ -800,42 +800,42 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Remove the named `folder's")},
 	{"rename", &c_rename, (M | SC | TWYSH), 2, 2, NIL,
 	 N_("Rename <existing-folder> to <new-folder>")},
-	{"Reply", &c_Reply, (A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Reply),
+	{"Reply", &c_Reply, (A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Reply),
 	 N_("(R) Reply to originator, exclusively")},
-	{"Resend", &c_Resend, (A | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Resend),
+	{"Resend", &c_Resend, (A | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Resend),
 	 N_("Like `resend', but do not add Resent-* header lines")},
-	{"resend", &c_resend, (A | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_resend),
+	{"resend", &c_resend, (A | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_resend),
 	 N_("Resend <msglist> to <user>, add Resent-* header lines")},
-	{"Respond", &c_Reply, (A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Reply),
+	{"Respond", &c_Reply, (A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Reply),
 	 N_("Reply to originator, exclusively")},
-	{"respond", &c_reply, (A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_reply),
+	{"respond", &c_reply, (A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_reply),
 	 N_("Reply to originators and recipients of <msglist>")},
 	{"retain", &c_retain, (M | TWYRA), 0, MAC, NIL,
 	 N_("(ret) Add <headers> to \"headerpick type retain\", or show that list")},
 	{"return", &c_return, (HG | M | X | EM | NMAC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_return),
 	 N_("Return from macro [[<return value> [<exit status>]] [^ val1[ val2[..]]]]")},
-{"replyall", &c_replyall, (OBS | A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replyall),
+{"replyall", &c_replyall, (OBS | A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replyall),
  N_("Please use `reply'")},
-{"replysender", &c_replysender, (OBS | A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replysender),
+{"replysender", &c_replysender, (OBS | A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replysender),
  N_("Please use `Reply'")},
-{"respondall", &c_replyall, (OBS | A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replyall),
+{"respondall", &c_replyall, (OBS | A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replyall),
  N_("Please use `reply'")},
-{"respondsender", &c_replysender, (OBS | A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replysender),
+{"respondsender", &c_replysender, (OBS | A | I | L | LNMAC | R | EM | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replysender),
  N_("Please use `Reply'")},
 
-	{"Save", &c_Save, (A | EM | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Save),
+	{"Save", &c_Save, (A | EM | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Save),
 	 N_("(S) Like `save', but derive `folder' from first sender")},
-	{"save", &c_save, (A | EM | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_save),
+	{"save", &c_save, (A | EM | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_save),
 	 N_("(s) Append [[<msglist>] to <file>] or (\"dot\" to) $MBOX")},
 {"set", &c_set, (HG | L | M | O | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_set),
 	 N_("(se) Print all variables, or set (a) <variable>(s)")},
-	{"search", &c_from, (A | M | SC | TMSGLST), 0, MMNORM, NIL,
+	{"search", &c_from, (A | M | S | TMSGLST), 0, MMNORM, NIL,
 	 N_("Search for <msglist>, type matching headers")},
-	{"Seen", &c_seen, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"Seen", &c_seen, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as seen")},
-	{"seen", &c_seen, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"seen", &c_seen, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as seen")},
-	{"setdot", &c_setdot, (A | EM | M | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_setdot),
+	{"setdot", &c_setdot, (A | EM | M | S | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_setdot),
 	 N_("Set \"dot\" to the given <msg>")},
 {"shell", &c_dosh, (I | EM | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_shell),
 	 N_("(sh) Invoke an interactive $SHELL")},
@@ -845,15 +845,15 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Shift ([^] result set) [<count>](1) parameters at front (back if negative)")},
 	{"shortcut", &c_shortcut, (M | TWYSH), 0, MAC, NIL,
 	 N_("Define [:<shortcut> plus <expansion>:], or list shortcuts")},
-	{"show", &c_show, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"show", &c_show, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Like `type', but show raw message content of <msglist>")},
-	{"size", &c_messize, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"size", &c_messize, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(si) Show size in bytes for <msglist>")},
 	{"sleep", &c_sleep, (M | X | EM | NOHIST | TWYSH), 1, 3, NIL,
 	 N_("Sleep for <seconds> [<milliseconds>|empty [non-interruptible]]")},
 {"source", &c_source, (M | TWYSH), 1, 1, NIL,
 	 N_("(so) Read commands from <file>")},
-	{"sort", &c_sort, (A | M | SC | TWYSH), 0, 1, NIL,
+	{"sort", &c_sort, (A | M | S | TWYSH), 0, 1, NIL,
 	 N_("Change sorting: date,from,size,spam,status,subject,thread,to")},
 	{"source_if", &c_source_if, (M | TWYSH), 1, 1, NIL,
 	 N_("Like `source', but ignore non-existence")},
@@ -863,7 +863,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	 (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Clear spam flag [for members of <msglist>]")},
 	{"spamforget",
 #ifdef mx_HAVE_SPAM
@@ -871,7 +871,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	 (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Force spam detector to unlearn [members of <msglist>]")},
 	{"spamham",
 #ifdef mx_HAVE_SPAM
@@ -879,7 +879,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	 (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Teach spam detector [members of <msglist> are] ham")},
 	{"spamrate",
 #ifdef mx_HAVE_SPAM
@@ -887,7 +887,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	 (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Rate [<msglist>] via spam detector")},
 	{"spamset",
 #ifdef mx_HAVE_SPAM
@@ -895,7 +895,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	 (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Set spam flag [for members of <msglist>]")},
 	{"spamspam",
 #ifdef mx_HAVE_SPAM
@@ -903,7 +903,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	 (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Teach spam detector [members of <msglist> are] spam")},
 {"saveignore", &c_saveignore, (OBS | M | TRAWLST), 0, MAC, NIL,
  N_("Please use `headerpick'")},
@@ -912,9 +912,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 {"saveretain", &c_saveretain, (OBS | M | TRAWLST), 0, MAC, NIL,
  N_("Please use `headerpick'")},
 
-{"Type", &c_Type, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+{"Type", &c_Type, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(T) Like `type', but bypass `headerpick'")},
-{"type", &c_type, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+{"type", &c_type, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(t) Type [all members of <msglist>], honour `headerpick'")},
 	{"tls",
 #ifdef mx_HAVE_TLS
@@ -924,16 +924,16 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
 	 (V | EM | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_tls),
 	 N_("TLS information and management: <command> [<:argument:>]")},
-	{"Top", &c_Top, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"Top", &c_Top, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Like `top', but bypass `headerpick'")},
-	{"top", &c_top, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"top", &c_top, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Type first *toplines* [of all members of <msglist>]")},
-	{"touch", &c_stouch, (A | M | W | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"touch", &c_stouch, (A | M | W | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(tou) In primary `folder', mark <msglist> for auto-move; undo `hold'")},
-{"thread", &c_thread, (OBS | A | SC | TMSGLST), 0, 0, NIL,
+{"thread", &c_thread, (OBS | A | S | TMSGLST), 0, 0, NIL,
  N_("Please use \"sort thread\"")},
 
-{"undelete", &c_undelete, (A | M | P | SC | TMSGLST), MDELETED, MMNDEL, NIL,
+{"undelete", &c_undelete, (A | M | P | S | TMSGLST), MDELETED, MMNDEL, NIL,
 	 N_("(u) Un`delete' <msglist>")},
 {"unalias", &c_unalias, (M | TWYSH), 1, MAC, NIL,
 	 N_("(una) Un`alias' <name-list> (* for all)")},
@@ -941,7 +941,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Delete all given <accounts> (* for all)")},
 	{"unalternates", &c_unalternates, (M | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unalternates),
 	 N_("Delete alternate <address-list> (* for all)")},
-	{"unanswered", &c_unanswered, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"unanswered", &c_unanswered, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Un`answered' <msglist>")},
 	{"unbind",
 #ifdef mx_HAVE_KEY_BINDINGS
@@ -953,7 +953,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Un`bind' <context> <key[:,key:]> (* for all)")},
 	{"uncharsetalias", &c_uncharsetalias, (M | TWYSH), 1, MAC, NIL,
 	 N_("Delete <charset-mapping-list> (* for all)")},
-	{"uncollapse", &c_uncollapse, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"uncollapse", &c_uncollapse, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Uncollapse thread view [of <msglist>] in \"sort thread\" view")},
 	{"uncolour",
 #ifdef mx_HAVE_COLOUR
@@ -967,11 +967,11 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Delete <command-alias-list> (* for all)")},
 	{"undefine", &c_undefine, (M | X | TWYSH), 1, MAC, NIL,
 	 N_("Un`define' all given <macros> (* for all)")},
-	{"undraft", &c_undraft, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"undraft", &c_undraft, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Un`draft' <msglist>")},
 	{"unfiletype", &c_unfiletype, (M | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unfiletype),
 	 N_("Delete `folder' handler for [:<extension>:] (* for all)")},
-	{"unflag", &c_unflag, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"unflag", &c_unflag, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("(Un)Flag <msglist> (for special attention)")},
 	{"ungroup", &c_unalias, (M | TWYSH), 1, MAC, NIL,
 	 N_("Un`alias' <name-list> (* for all)")},
@@ -987,9 +987,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Un`mlsubscribe' <name-list> (* for all)")},
 	{"unmimetype", &c_unmimetype, (M | TWYSH), 1, MAC, NIL,
 	 N_("Delete <type>s (reset, * for all; former reinitializes)")},
-	{"Unread", &c_unread, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"Unread", &c_unread, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as not being read")},
-	{"unread", &c_unread, (A | M | SC | TMSGLST), 0, MMNDEL, NIL,
+	{"unread", &c_unread, (A | M | S | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as not being read")},
 	{"unretain", &c_unretain, (M | TWYRA), 0, MAC, NIL,
 	 N_("Un`retain' <headers>")},
@@ -997,7 +997,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(uns) Unset <option-list>")},
 	{"unshortcut", &c_unshortcut, (M | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unshortcut),
 	 N_("Delete <shortcut-list> (* for all)")},
-	{"unsort", &c_unsort, (A | M | SC | TMSGLST), 0, 0, NIL,
+	{"unsort", &c_unsort, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("The same as \"sort none\"")},
 	{"urlcodec", &c_urlcodec, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unset),
 	 N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")},
@@ -1011,7 +1011,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
  N_("Please use `unheaderpick'")},
 {"unsaveretain", &c_unsaveretain, (OBS | M | TRAWLST), 0, MAC, NIL,
  N_("Please use `unheaderpick'")},
-{"unthread", &c_unsort, (OBS | A | SC | TMSGLST), 0, 0, NIL,
+{"unthread", &c_unsort, (OBS | A | S | TMSGLST), 0, 0, NIL,
  N_("Please use \"sort none\" (disable sorted mode)")},
 
 {"visual", &c_visual, (A | I | M | S | TMSGLST), 0, MMNORM, NIL,
@@ -1024,7 +1024,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TMSGLST), 0, 0, NIL,
+	 (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("Verify <msglist>")},
 	{"version", &c_version, (NOHIST | M | V | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_version),
 	 N_("Show the version and feature set of the program")},
@@ -1042,7 +1042,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"vpospar", &c_vpospar, (HG | G | M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar),
 	 N_("Positional parameters (result set with [^]) <clear>, <quote>, or <set> from [:<arg>:]")},
 
-	{"write", &c_write, (A | M | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_write),
+	{"write", &c_write, (A | M | S | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_write),
 	 N_("(w) Write (append) [[<msglist>] to <file>]")},
 
 {"xit", &c_exit, (M | X | TWYSH), 0, 1, NIL,
@@ -1050,9 +1050,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"xcall", &c_xcall, (NOHIST | L | LNMAC | M | O | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call),
 	 N_("Replace currently executing macro with macro <name> [:<arg>:]")},
 
-	{"Z", &c_Scroll, (A | M | SC | TWYSH), 0, 1, NIL,
+	{"Z", &c_Scroll, (A | M | S | TWYSH), 0, 1, NIL,
 	 N_("Like `z', but continues to the next flagged message")},
-	{"z", &c_scroll, (A | M | SC | TWYSH), 0, 1, NIL,
+	{"z", &c_scroll, (A | M | S | TWYSH), 0, 1, NIL,
 	 N_("Scroll header display as indicated by the argument (0,-,+,$)")},
 
 	/* --MKTAB-END-- */
