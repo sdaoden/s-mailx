@@ -77,6 +77,128 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+/*
+ * Maildir as of DJB (cr.yp.to/proto/maildir.html):
+ * ------------------------------------------------
+
+Modern delivery identifiers are created by concatenating enough of the
+following strings to guarantee uniqueness:
+
+  * #/n/, where /n/ is (in hexadecimal) the output of the operating
+    system's unix_sequencenumber() system call, which returns a number
+    that increases by 1 every time it is called, starting from 0 after
+    reboot.
+  * X/n/, where /n/ is (in hexadecimal) the output of the operating
+    system's unix_bootnumber() system call, which reports the number of
+    times that the system has been booted. Together with #, this
+    guarantees uniqueness; unfortunately, most operating systems don't
+    support unix_sequencenumber() and unix_bootnumber.
+  * R/n/, where /n/ is (in hexadecimal) the output of the operating
+    system's unix_cryptorandomnumber() system call, or an equivalent
+    source such as /dev/urandom. Unfortunately, some operating systems
+    don't include cryptographic random number generators.
+  * I/n/, where /n/ is (in hexadecimal) the UNIX inode number of this
+    file. Unfortunately, inode numbers aren't always available through NFS.
+  * V/n/, where /n/ is (in hexadecimal) the UNIX device number of this
+    file. Unfortunately, device numbers aren't always available through
+    NFS. (Device numbers are also not helpful with the standard UNIX
+    filesystem: a maildir has to be within a single UNIX device for
+    link() and rename() to work.)
+  * M/n/, where /n/ is (in decimal) the microsecond counter from the
+    same gettimeofday() used for the left part of the unique name.
+  * P/n/, where /n/ is (in decimal) the process ID.
+  * Q/n/, where /n/ is (in decimal) the number of deliveries made by
+    this process.
+
+Old-fashioned delivery identifiers use the following formats:
+
+  * /n/, where /n/ is the process ID, and where this process has been
+    forked to make one delivery. Unfortunately, some foolish operating
+    systems repeat process IDs quickly, breaking the standard time+pid
+    combination.
+  * /n/_/m/, where /n/ is the process ID and /m/ is the number of
+    deliveries made by this process.
+
+[...]
+
+When you move a file from *new* to *cur*, you have to change its name
+from /uniq/ to /uniq:info/. Make sure to preserve the /uniq/ string, so
+that separate messages can't bump into each other.
+
+/info/ is morally equivalent to the Status field used by mbox readers.
+It'd be useful to have MUAs agree on the meaning of /info/, so I'm
+keeping a list of /info/ semantics. Here it is.
+
+/info/ starting with "1,": Experimental semantics.
+
+/info/ starting with "2,": Each character after the comma is an
+independent flag.
+
+  * Flag "P" (passed): the user has resent/forwarded/bounced this
+    message to someone else.
+  * Flag "R" (replied): the user has replied to this message.
+  * Flag "S" (seen): the user has viewed this message, though perhaps he
+    didn't read all the way through it.
+  * Flag "T" (trashed): the user has moved this message to the trash;
+    the trash will be emptied by a later user action.
+  * Flag "D" (draft): the user considers this message a draft; toggled
+    at user discretion.
+  * Flag "F" (flagged): user-defined flag; toggled at user discretion.
+
+New flags may be defined later. Flags must be stored in ASCII order:
+e.g., "2,FRS".
+
+
+
+
+Maildir, COURIER:
+-----------------
+
+A new unique filename is created using one of two possible forms: “time.MusecPpid.host”,
+or “time.MusecPpid_unique.host”.
+..
+The name of the file in new should be "time.MusecPpidVdevIino.host,S=cnt", or
+"time.MusecPpidVdevIino_unique.host,S=cnt".
+[.] "cnt" is the message's size, in bytes.
+
+
+Maildir, dovecot:
+-----------------
+
+E.g., 1276528487.M364837P9451.kurkku,S=1355,W=1394:2,
+      1035478339.27041_118.foo.org,S=1000,W=1030:2,S
+
+. There may be more fields before ‘:’ character
+..
+
+The standard filename definition is: |<base filename>:2,<flags>|.
+Dovecot has extended the |<flags>| field to be |<flags>[,<non-standard
+fields>]|. This means that if Dovecot sees a comma in the |<flags>|
+field while updating flags in the filename, it doesn’t touch anything
+after the comma. However other Maildir MUAs may mess them up, so it’s
+still not such a good idea to do that.
+[.]
+Dovecot supports reading a few fields from the |<base filename>|:
+
+  * |,S=<size>|: |<size>| contains the file size. Getting the size from
+    the filename avoids doing a system |stat()| call, which may improve
+    the performance. This is especially useful with Quota Backend:
+    maildir <https://doc.dovecot.org/2.3/configuration_manual/quota/
+    quota_maildir/#quota-backend-maildir>.
+
+  * |,W=<vsize>|: |<vsize>| contains the file’s RFC822.SIZE, i.e., the
+    file size with linefeeds being CR+LF characters. If the message was
+    stored with CR+LF linefeeds, |<size>| and |<vsize>| are the same.
+    Setting this may give a small speedup because now Dovecot doesn’t
+    need to calculate the size itself.
+
+
+
+ */
+
+
+
+
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 /*
 
@@ -100,7 +222,7 @@ get rid of jumps thus?!?!?!
 #define a_MAILDIR_XPECT_ENTLEN 64
 
 static char const a_maildir_sds[3][4] = {"cur", "new", "tmp"};
-enum a_maildir_sdsn {a_MAILDIR_SDS_CUR, a_MAILDIR_SDS_NEW, a_MAILDIR_SDS_TMP, a__MAILDIR_SDS_MAX};
+enum a_maildir_sdsn ZIPENUM_SPEC(u8){a_MAILDIR_SDS_CUR, a_MAILDIR_SDS_NEW, a_MAILDIR_SDS_TMP, a__MAILDIR_SDS_MAX};
 enum {a_MAILDIR_SDS_LEN = 3};
 
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
@@ -140,7 +262,7 @@ static struct message *a_maildir_mdlook(char const *name, struct message *data);
 
 static void a_maildir_mktable(void);
 
-static boole a_maildir_rmsubdir(struct n_string *sp, ZIPENUM(u8,a_maildir_sdsn) sub);
+static boole a_maildir_rmsubdir(struct n_string *sop, ZIPENUM(u8,a_maildir_sdsn) sub);
 
 static void
 __maildircatch(int s){
@@ -955,17 +1077,17 @@ a_maildir_mktable(void){
 }
 
 static boole
-a_maildir_rmsubdir(struct n_string *sp, ZIPENUM(u8,a_maildir_sdsn) sub){
+a_maildir_rmsubdir(struct n_string *sop, ZIPENUM(u8,a_maildir_sdsn) sub){
 	struct dirent *dp;
 	DIR *dirp;
 	NYD_IN;
 
-	sp = n_string_push_buf(sp, a_maildir_sds[sub], a_MAILDIR_SDS_LEN);
+	sop = n_string_push_buf(sop, a_maildir_sds[sub], a_MAILDIR_SDS_LEN);
 
-	if((dirp = opendir(n_string_cp_const(sp))) == NIL)
+	if((dirp = opendir(n_string_cp_const(sop))) == NIL)
 		goto jerrno;
 
-	sp = n_string_push_c(sp, su_PATH_SEP_C);
+	sop = n_string_push_c(sop, su_PATH_SEP_C);
 
 	while((dp = readdir(dirp)) != NIL){
 		uz dl;
@@ -976,17 +1098,17 @@ a_maildir_rmsubdir(struct n_string *sp, ZIPENUM(u8,a_maildir_sdsn) sub){
 			continue;
 
 		dl = su_cs_len(dp->d_name);
-		sp = n_string_push_buf(sp, dp->d_name, dl);
+		sop = n_string_push_buf(sop, dp->d_name, dl);
 
-		if(!su_path_rm(n_string_cp_const(sp)))
+		if(!su_path_rm(n_string_cp_const(sop)))
 			goto jerr;
 
-		sp = n_string_trunc(sp, sp->s_len - dl);
+		sop = n_string_trunc(sop, sop->s_len - dl);
 	}
 
-	sp = n_string_trunc(sp, sp->s_len - 1);
+	sop = n_string_trunc(sop, sop->s_len - 1);
 
-	if(!su_path_rmdir(n_string_cp_const(sp)))
+	if(!su_path_rmdir(n_string_cp_const(sop)))
 		goto jerr;
 
 jleave:
@@ -994,15 +1116,15 @@ jleave:
 		closedir(dirp);
 
 	NYD_OU;
-	return (sp != NIL);
+	return (sop != NIL);
 jerrno:
 	su_err_by_errno();
 jerr:
 /*
 FIXME
 */
-	n_perr(n_string_cp_const(sp), 0);
-	sp = NIL;
+	n_perr(n_string_cp_const(sop), 0);
+	sop = NIL;
 	goto jleave;
 }
 
@@ -1269,21 +1391,21 @@ jleave:
 
 boole
 maildir_remove(char const *name){
-	struct n_string s_b, *sp;
+	struct n_string s_b, *sop;
 	ZIPENUM(u8,a_maildir_sdsn) sdsn;
-	uz sl;
+	uz sol;
 	NYD_IN;
 	ASSERT(name != NIL);
 
-	sp = n_string_creat_auto(&s_b);
-	sl = su_cs_len(name);
-	sp = n_string_book(sp, sl + 1 + a_MAILDIR_SDS_LEN + 1 + a_MAILDIR_XPECT_ENTLEN /*+1*/);
-	sp = n_string_push_buf(sp, name, sl);
-	sp = n_string_push_c(sp, su_PATH_SEP_C);
-	sl = sp->s_len;
+	sop = n_string_creat_auto(&s_b);
+	sol = su_cs_len(name);
+	sop = n_string_book(sop, sol + 1 + a_MAILDIR_SDS_LEN + 1 + a_MAILDIR_XPECT_ENTLEN /*+1*/);
+	sop = n_string_push_buf(sop, name, sol);
+	sop = n_string_push_c(sop, su_PATH_SEP_C);
+	sol = sop->s_len;
 
 	sdsn = 0;
-	do if(!a_maildir_rmsubdir(n_string_trunc(sp, sl), sdsn))
+	do if(!a_maildir_rmsubdir(n_string_trunc(sop, sol), sdsn))
 		goto jleave;
 	while(++sdsn < a__MAILDIR_SDS_MAX);
 
@@ -1297,7 +1419,7 @@ jleave:
 	/*n_string_gut(sp);*/
 
 	NYD_OU;
-	return (name  == NIL);
+	return (name == NIL);
 }
 
 boole
