@@ -230,6 +230,10 @@ OPT_AMALGAMATION=no
 OPT_AUTOCC=yes
 	VAL_AUTOCC=bind_now,pie,stackprot,fortify,cfprot
 
+# "Umbrella option" to (dis)allow building of test executables etc.
+# (Not counted as an option as such, only packager etc convenience.)
+OPT_BUILD_TESTS=yes
+
 # Whether commands `csop', .. `vexpr' .. shall be added (requireable).
 OPT_CMD_CSOP=yes
 OPT_CMD_FOP=yes
@@ -362,6 +366,7 @@ OPT_NET=yes
 
 	# This will compile a test server which the test series will use to
 	# test the network code.  It is not installed, but only for testing.
+	# (Overwritten by $OPT_BUILD_TESTS.)
 	OPT_NET_TEST=yes
 
 	# If enabled, installs a Python3 script that may be used to gain and

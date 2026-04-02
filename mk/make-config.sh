@@ -224,6 +224,10 @@ option_update() {
 		;;
 	esac
 
+	if feat_no BUILD_TESTS; then
+		OPT_NET_TEST=0
+	fi
+
 	if feat_no TLS; then
 		OPT_TLS_ALL_ALGORITHMS=0 OPT_TLS_MD5=0
 	fi
