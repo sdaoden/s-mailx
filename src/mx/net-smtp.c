@@ -538,9 +538,9 @@ jsend:
 
 	for(np = scp->sc_to; np != NIL; np = np->n_flink){
 		if(!(np->n_type & GDEL)){ /* TODO should not happen!?! */
-			if(np->n_flags & mx_NAME_ADDRSPEC_WITHOUT_DOMAIN)
-				snprintf(o, sizeof o, NETLINE("RCPT TO:<%s@%s>"),
-					np->n_name, hostname);
+			/* RFC 5321, 2.3.5: allow plain "postmaster" [case-insensitively: already normalized] */
+			if((np->n_flags & mx_NAME_ADDRSPEC_WITHOUT_DOMAIN) && su_cs_cmp(np->n_name, "postmaster"))
+				snprintf(o, sizeof o, NETLINE("RCPT TO:<%s@%s>"), np->n_name, hostname);
 			else
 				snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), np->n_name);
 			a_SMTP_OUT(o);

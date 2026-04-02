@@ -89,7 +89,7 @@ static char const *a_nm_addrspec_with_guts(struct n_addrguts *agp, char const *n
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
  * Otherwise perform content checking and isolate the domain part (for IDNA) */
-static boole a_nm_addrspec_check(struct n_addrguts *agp, boole skinned, boole issingle_hack);
+static boole a_nm_addrspec_check(struct n_addrguts *agp, boole skinned);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
@@ -668,7 +668,7 @@ jredo_uri:
 	n_lofi_free(nbuf);
 	agp->ag_n_flags = mx_NAME_NAME_SALLOC | mx_NAME_SKINNED;
 jcheck:
-	if(a_nm_addrspec_check(agp, ((flags & a_DOSKIN) != 0), ((flags & a_NOLIST) != 0)) <= FAL0)
+	if(a_nm_addrspec_check(agp, ((flags & a_DOSKIN) != 0)) <= FAL0)
 		name = NIL;
 	else
 		name = agp->ag_input;
@@ -678,7 +678,7 @@ jleave:
 } /* }}} */
 
 static boole
-a_nm_addrspec_check(struct n_addrguts *agp, boole skinned, boole issingle_hack){ /* {{{ */
+a_nm_addrspec_check(struct n_addrguts *agp, boole skinned){ /* {{{ */
 	char *addr, *p;
 	union {boole b; char c; unsigned char u; u32 ui32; s32 si32;} c;
 	enum{
@@ -1290,7 +1290,14 @@ jput_quote_esc:
 jinsert_domain:
 			if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
 					cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>'){
-				if(su_cs_cmp(addr, ok_vlook(LOGNAME)) && getpwnam(addr) == NIL){
+				boole ispm;
+
+				/* RFC 5321, 2.3.5: allow plain "postmaster", case-insensitively */
+				ispm = !su_cs_cmp_case(addr, "postmaster"); /* XXX add flag, test once! */
+				if(ispm){
+					for(p = addr; *p != '\0'; ++p)
+						*p = S(char,su_cs_to_lower(*p));
+				}else if(su_cs_cmp(addr, ok_vlook(LOGNAME)) && getpwnam(addr) == NIL){
 					agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
 							mx_NAME_ADDRSPEC_ERR_NAME, '*');
 					goto jleave;
@@ -1300,7 +1307,7 @@ jinsert_domain:
 				 * XXX indicates that the used *mta* will perform the
 				 * XXX auto-expansion instead.  Not so with `addrcodec' though */
 				agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR;
-				if(!issingle_hack && (cp = ok_vlook(hostname)) != NIL && *cp == '\0')
+				if((cp = ok_vlook(hostname)) != NIL && *cp == '\0')
 					agp->ag_n_flags |= mx_NAME_ADDRSPEC_WITHOUT_DOMAIN;
 				else{
 					c.ui32 = su_cs_len(cp = n_nodename(TRU1));

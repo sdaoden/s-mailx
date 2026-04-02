@@ -915,7 +915,9 @@ are expanded through
 .Ic alias
 and
 .Va mta-aliases .
-A valid local user
+A valid local user (or
+.Dq postmaster :
+case-insensitively via RFC 5321 section 2.3.5)
 .Ql <name>
 in angle brackets (an invalid address) expands to a qualified address if
 .Va hostname

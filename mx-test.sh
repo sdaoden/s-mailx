@@ -16001,6 +16001,7 @@ t_net_smtp() { #{{{ TODO v15: drop smtp-hostname tests
 	have_feat tls && ext_tls=250-STARTTLS || ext_tls=
 
 	# SMTP net-test script {{{
+	postmaster_test=ex@am.ple
 	smtp__script() {
 		file=$1
 		proto=$2
@@ -16012,8 +16013,7 @@ t_net_smtp() { #{{{ TODO v15: drop smtp-hostname tests
 			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
 			-Suser=steffen -Spassword=Sway -s ub \\
 			-S 'mta=$proto://localhost:'\$1 \\
-			$@ \\
-			ex@am.ple
+			$@ "$postmaster_test"
 		_EOT
 		$chmod 0755 ./t.sh
 	}
@@ -16449,6 +16449,18 @@ Content-Transfer-Encoding: 8bit'
 		t_echoskip '4:[!ICONV]'
 	fi
 	#}}}
+
+	# RFC 5321, 2.3.5: allow plain "postmaster"
+	postmaster_test='<PoStMASTER>'
+	mail_from=i@a from='ch <i@a>'
+	msgid='
+Message-ID: <19961002015007.AQAAAgAA@i%a>'
+	smtp__script /dev/null smtp -Ssmtp-config=-ehlo -Shostname= -Sfrom="'$from'" -Sfullnames
+	{ smtp_helo && smtp_mail_from_to postmaster && smtp_data &&
+			printf 'To: <PoStMASTER>\n' &&
+			smtp_head_tail && smtp_quit; } |
+		../net-test t.sh > ./tpostmaster 2>$E0
+	ck0e0 postmaster 0 ./tpostmaster
 
 	t_epilog "$@"
 } #}}}
