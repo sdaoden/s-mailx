@@ -336,7 +336,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){ /* {{{ */
 	NYD_IN;
 
 	i = (mcp->mc_A != NIL) ? FEDIT_MAIN | FEDIT_ACCOUNT : FEDIT_MAIN;
-	if(n_poption & n_PO_QUICKRUN_MASK)
+	if(n_poption & (n_PO_QUICKRUN_MASK /* | n_PO_R_FLAG */))
 		i |= FEDIT_RDONLY;
 
 	if(mcp->mc_folder == NIL){

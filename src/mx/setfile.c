@@ -152,7 +152,7 @@ jlogname:
 
       switch(proto){
       case n_PROTO_EML:
-         if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){
+         if(!(fm & FEDIT_RDONLY)){
             n_err(_("Sorry, for now eml:// files only work read-only: %s\n"),
                orig_name);
             goto jeperm;
@@ -164,7 +164,7 @@ jlogname:
          FALLTHRU
       case n_PROTO_FILE:
          if(name[1] == '\0' && name[0] == '-'){
-            if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){
+            if(!(fm & FEDIT_RDONLY)){
                n_err(_("Standard input \"-\" requires read-only mode\n"));
                goto jeperm;
             }
