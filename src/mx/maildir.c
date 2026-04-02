@@ -77,6 +77,128 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+/*
+ * Maildir as of DJB (cr.yp.to/proto/maildir.html):
+ * ------------------------------------------------
+
+Modern delivery identifiers are created by concatenating enough of the
+following strings to guarantee uniqueness:
+
+  * #/n/, where /n/ is (in hexadecimal) the output of the operating
+    system's unix_sequencenumber() system call, which returns a number
+    that increases by 1 every time it is called, starting from 0 after
+    reboot.
+  * X/n/, where /n/ is (in hexadecimal) the output of the operating
+    system's unix_bootnumber() system call, which reports the number of
+    times that the system has been booted. Together with #, this
+    guarantees uniqueness; unfortunately, most operating systems don't
+    support unix_sequencenumber() and unix_bootnumber.
+  * R/n/, where /n/ is (in hexadecimal) the output of the operating
+    system's unix_cryptorandomnumber() system call, or an equivalent
+    source such as /dev/urandom. Unfortunately, some operating systems
+    don't include cryptographic random number generators.
+  * I/n/, where /n/ is (in hexadecimal) the UNIX inode number of this
+    file. Unfortunately, inode numbers aren't always available through NFS.
+  * V/n/, where /n/ is (in hexadecimal) the UNIX device number of this
+    file. Unfortunately, device numbers aren't always available through
+    NFS. (Device numbers are also not helpful with the standard UNIX
+    filesystem: a maildir has to be within a single UNIX device for
+    link() and rename() to work.)
+  * M/n/, where /n/ is (in decimal) the microsecond counter from the
+    same gettimeofday() used for the left part of the unique name.
+  * P/n/, where /n/ is (in decimal) the process ID.
+  * Q/n/, where /n/ is (in decimal) the number of deliveries made by
+    this process.
+
+Old-fashioned delivery identifiers use the following formats:
+
+  * /n/, where /n/ is the process ID, and where this process has been
+    forked to make one delivery. Unfortunately, some foolish operating
+    systems repeat process IDs quickly, breaking the standard time+pid
+    combination.
+  * /n/_/m/, where /n/ is the process ID and /m/ is the number of
+    deliveries made by this process.
+
+[...]
+
+When you move a file from *new* to *cur*, you have to change its name
+from /uniq/ to /uniq:info/. Make sure to preserve the /uniq/ string, so
+that separate messages can't bump into each other.
+
+/info/ is morally equivalent to the Status field used by mbox readers.
+It'd be useful to have MUAs agree on the meaning of /info/, so I'm
+keeping a list of /info/ semantics. Here it is.
+
+/info/ starting with "1,": Experimental semantics.
+
+/info/ starting with "2,": Each character after the comma is an
+independent flag.
+
+  * Flag "P" (passed): the user has resent/forwarded/bounced this
+    message to someone else.
+  * Flag "R" (replied): the user has replied to this message.
+  * Flag "S" (seen): the user has viewed this message, though perhaps he
+    didn't read all the way through it.
+  * Flag "T" (trashed): the user has moved this message to the trash;
+    the trash will be emptied by a later user action.
+  * Flag "D" (draft): the user considers this message a draft; toggled
+    at user discretion.
+  * Flag "F" (flagged): user-defined flag; toggled at user discretion.
+
+New flags may be defined later. Flags must be stored in ASCII order:
+e.g., "2,FRS".
+
+
+
+
+Maildir, COURIER:
+-----------------
+
+A new unique filename is created using one of two possible forms: “time.MusecPpid.host”,
+or “time.MusecPpid_unique.host”.
+..
+The name of the file in new should be "time.MusecPpidVdevIino.host,S=cnt", or
+"time.MusecPpidVdevIino_unique.host,S=cnt".
+[.] "cnt" is the message's size, in bytes.
+
+
+Maildir, dovecot:
+-----------------
+
+E.g., 1276528487.M364837P9451.kurkku,S=1355,W=1394:2,
+      1035478339.27041_118.foo.org,S=1000,W=1030:2,S
+
+. There may be more fields before ‘:’ character
+..
+
+The standard filename definition is: |<base filename>:2,<flags>|.
+Dovecot has extended the |<flags>| field to be |<flags>[,<non-standard
+fields>]|. This means that if Dovecot sees a comma in the |<flags>|
+field while updating flags in the filename, it doesn’t touch anything
+after the comma. However other Maildir MUAs may mess them up, so it’s
+still not such a good idea to do that.
+[.]
+Dovecot supports reading a few fields from the |<base filename>|:
+
+  * |,S=<size>|: |<size>| contains the file size. Getting the size from
+    the filename avoids doing a system |stat()| call, which may improve
+    the performance. This is especially useful with Quota Backend:
+    maildir <https://doc.dovecot.org/2.3/configuration_manual/quota/
+    quota_maildir/#quota-backend-maildir>.
+
+  * |,W=<vsize>|: |<vsize>| contains the file’s RFC822.SIZE, i.e., the
+    file size with linefeeds being CR+LF characters. If the message was
+    stored with CR+LF linefeeds, |<size>| and |<vsize>| are the same.
+    Setting this may give a small speedup because now Dovecot doesn’t
+    need to calculate the size itself.
+
+
+
+ */
+
+
+
+
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 /*
 
