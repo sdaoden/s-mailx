@@ -1,7 +1,7 @@
 #!/bin/sh -
 #@ See usage() below.
-#@ MUST be edited as LATIN1!
-#@ P.S.: some redundancy cannot be avoided.
+#@ Note: MUST be edited as LATIN1!
+#@ P.S.: some redundancy cannot be avoided (it seems).
 #@ TODO get rid of ${old} style syntax
 #
 # Public Domain
@@ -10080,30 +10080,53 @@ t_ttycharset_detect() { #{{{
 	t_prolog "$@"
 
 	printf 'â˜º' > u.txt
+	cp u.txt 'â˜º'.txt
+	cp u.txt 'dü'.txt
 	printf 'â˜º, â˜º, ötzi' > l.txt
 	printf 'dödeldü' > l2.txt
+	cp l2.txt 'dö'.txt
+	cp l2.txt 'hÃ¶'.txt
 
 	if have_feat iconv; then
-		< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=utf8 -a u.txt -s 'Knödel' x@y > ./t0 2> $E0
-		cke0 0 0 ./t0 '339306247 693'
+		< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=utf8 \
+			-a u.txt -s 'Knödel' x@y > ./tic1 2> $E0
+		cke0 ic-1 0 ./tic1 '339306247 693'
 
-		< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=latin1,utf8 -a u.txt -s 'Knödel' x@y > ./t1 2> $E0
-		cke0 1 0 ./t1 '4118552667 695'
+		< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=latin1,utf8 \
+			-a u.txt -s 'Knödel' x@y > ./tic2 2> $E0
+		cke0 ic-2 0 ./tic2 '4118552667 695'
 
-		< l.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=utf8,latin1 -a l.txt -s 'â˜º' x@y > ./t2 2> $E0
-		cke0 2 0 ./t2 '3511208580 766'
+		< l.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=utf8,latin1 \
+			-a l.txt -s 'â˜º' x@y > ./tic3 2> $E0
+		cke0 ic-3 0 ./tic3 '3511208580 766'
+
+		< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=utf8,latin1 \
+			-a l2.txt -a 'â˜º'.txt -a 'dö'.txt -a 'dü'.txt -a 'hÃ¶'.txt \
+			-s 'dü' x@y > ./tic4 2> $E0
+		cke0 ic-4 0 ./tic4 '2619658389 1541'
+
+		< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Siconv-disable \
+			-a l2.txt -a 'â˜º'.txt -a 'dö'.txt -a 'dü'.txt -a 'hÃ¶'.txt \
+			-s 'dü' x@y > ./tic5 2> $E0
+		cke0 ic-5 0 ./tic5 '75933530 1543'
 	else
-		t_echoskip '[!0-2:!ICONV]'
+		t_echoskip '[!ic-1-5:!ICONV]'
 	fi
 
 	# with iconv: sendcharsets; without: (only) -detect
-	< l.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=l1 -a l.txt -s 'â˜º, ö' x@y > ./t3 2> $E0
-	cke0 3 0 ./t3 '328719751 765'
+	< l.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=l1 -a l.txt -s 'â˜º, ö' x@y > ./tvar1 2> $E0
+	cke0 var-1 0 ./tvar1 '328719751 765'
+
+	# "same as ic-5"
+	< u.txt $MAILX $ARGS -Sttycharset-detect=l1 -Ssendcharsets=l1 \
+		-a l2.txt -a 'â˜º'.txt -a 'dö'.txt -a 'dü'.txt -a 'hÃ¶'.txt \
+		-s 'dü' x@y > ./tvar2 2> $E0
+	cke0 var-2 0 ./tvar2 '75933530 1543'
 
 	#..
 	< l2.txt $MAILX $ARGS -Siconv-disable -Sttycharset-detect=CP1252 \
-		-a l.txt -a u.txt -a l2.txt -a l2.txt=l1 -s "$($cat l2.txt)" x@y > ./t4 2> $E0
-	cke0 4 0 ./t4 '2175093842 1311'
+		-a l.txt -a u.txt -a l2.txt -a l2.txt=l1 -s "$($cat l2.txt)" x@y > ./tnic1 2> $E0
+	cke0 nic-1 0 ./tnic1 '2175093842 1311'
 
 	t_epilog "$@"
 } #}}}
