@@ -1,0 +1,54 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: x@y
+Subject: =?utf-8?B?ZMO8?=
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+=E2=98=BA=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename="l2.txt"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+d=C3=B6deld=C3=BC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename*=utf-8''%E2%98%BA.txt
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+=E2=98=BA=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename*=iso-8859-1''d%F6.txt
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+d=C3=B6deld=C3=BC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename*=iso-8859-1''d%FC.txt
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+=E2=98=BA=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Disposition: attachment; filename*=utf-8''h%C3%B6.txt
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+d=C3=B6deld=C3=BC=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
