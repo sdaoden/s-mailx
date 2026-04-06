@@ -133,11 +133,13 @@ mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
    int c;
    uz bufsize, buflen, cnt;
    char *buf;
+   void *lofi_snap;
    boole rv;
    NYD_IN;
 
    rv = FAL0;
    mx_fs_linepool_aquire(&buf, &bufsize);
+   lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
    *hp = *bp = NIL;
 
    if((*hp = mx_fs_tmp_open(NIL, "smimeh", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
@@ -199,7 +201,6 @@ mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
          goto jleave;
       tail = head;
       head = head->ml_next;
-      su_LOFI_FREE(tail);
    }
 
    if(putc('\n', *bp) == EOF)
@@ -225,6 +226,7 @@ jleave:
       }
    }
 
+   su_mem_bag_lofi_snap_gut(su_MEM_BAG_SELF, lofi_snap);
    mx_fs_linepool_release(buf, bufsize);
 
    NYD_OU;
