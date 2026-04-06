@@ -1030,19 +1030,20 @@ jebracenoc:
 			if(LIKELY(spcp->spc_quotec == '"') || !(state & a_SHEXP_PARSE_FS_SPLIT)){
 				xcookie = S(char const**,C(void*,*spcp->spc_cookie));
 				ASSERT(xcookie != NIL && xcookie[0] != NIL);
-				/* The pointers need to be aligned in order to store flags, and they may not be so */
+
+				/* Align var_vexplode() pointers explicitly 64-bit for _ZIGGY (caches may align 32!) */
 				for(; *xcookie != NIL; ++xcookie){
 					up ap;
 
 					ap = R(up,*xcookie);
-					if(UNLIKELY(ap != ALIGN_Z_PZ(ap)))
+					if(UNLIKELY(ap != ALIGN_Z(ap)))
 						*xcookie = savestr(R(char const*,ap));
 				}
+
 				*xcookie = R(char const*,R(up,
 						(spcp->spc_quotec == '\0' ? a_SHEXP_PARSE_COOKIE_FLAGS_NO_QUOTES : 0) |
 						a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN));
 				xcookie = S(char const**,C(void*,*spcp->spc_cookie));
-
 				*xcookie = R(char const*,R(up,*xcookie) | a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN);
 				state |= a_SHEXP_PARSE_COOKIE;
 				rv = a_SHEXP_PARSE_ACTION_RESTART_EMPTY;
@@ -1331,9 +1332,9 @@ a_shexp_parse__strlist_to_cookie(struct a_shexp_parse_ctx *spcp, struct n_strlis
 					: a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN;
 			++n;
 			slpp = &slp->sl_next;
-			i += ALIGN_Z_PZ(1);
+			i += ALIGN_Z(1);
 			++j;
-			i += ALIGN_Z_PZ(j);
+			i += ALIGN_Z(j);
 		}else{
 			if(n == 0)
 				cf1 &= ~a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN;
@@ -1345,12 +1346,13 @@ a_shexp_parse__strlist_to_cookie(struct a_shexp_parse_ctx *spcp, struct n_strlis
 	if(n > 0){
 		char *cp;
 
-		i += ALIGN_Z_PZ(1);
+		i += ALIGN_Z(1);
 		cp = su_AUTO_TALLOC(char, i);
 		cppx = R(char const**,S(void*,cp));
-		cp += ++n * sizeof(char const**);
+		cp += ++n * ALIGN_Z(sizeof(char const**));
 
 		*spcp->spc_cookie = R(void const*,cppx);
+		ASSERT(!(R(up,*spcp->spc_cookie) & a_SHEXP_PARSE_COOKIE_FLAGS_MASK));
 
 		for(slp = slp_head; slp != NIL; slp = slp->sl_next){
 			BITENUM(u8,a_shexp_parse_cookie_flags) cf;
@@ -1366,7 +1368,7 @@ a_shexp_parse__strlist_to_cookie(struct a_shexp_parse_ctx *spcp, struct n_strlis
 			*cppx++ = R(void*,R(up,cp) | cf);
 
 			cp += slp->sl_len +1;
-			cp = R(char*,ALIGN_Z_PZ(cp));
+			cp = R(char*,ALIGN_Z(cp));
 		}
 		*cppx = R(void*,cfx | R(up,(spcp->spc_quotec == '\0') ? a_SHEXP_PARSE_COOKIE_FLAGS_NO_QUOTES : 0));
 
@@ -1489,6 +1491,7 @@ jrestart_empty:
 
 		/* Problem: if last cookie is without MAY_JOIN then we need to terminate this parse stint, but we need
 		 * to report our state to the next invocation! TODO optimize: only with !NO_QUOTES */
+		ASSERT(!(R(up,*xcookie) & ~a_SHEXP_PARSE_COOKIE_FLAGS_MASK));
 		if(R(up,*xcookie) & a_SHEXP_PARSE_COOKIE_FLAGS_MAY_JOIN){
 jcookie_done:
 			state &= ~(a_SHEXP_PARSE_COOKIE | a_SHEXP_PARSE_XPLODE | a_SHEXP_PARSE_XPLODE_STAR |
