@@ -596,7 +596,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"Save", &c_Save, (A | SC | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Save),
 	 N_("Like `save', but derive filename from first sender")},
 	{"save", &c_save, (A | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_save),
-	 N_("Append [<msglist>] to <file>")},
+	 N_("Append [[<msglist>] to <file>] or (\"dot\" to) $MBOX")},
 {"set", &c_set, (HG | L | M | X | TWYRA), 0, MAC, NIL,
 	 N_("Print all variables, or set (a) <variable>(s)")},
 	{"search", &c_from, (A | TMSGLST), 0, MMNORM, NIL,

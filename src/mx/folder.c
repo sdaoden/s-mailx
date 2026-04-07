@@ -142,25 +142,36 @@ jdocopy:
    mailp = mailname;
    dispp = displayname;
 
-   /* Don't display an absolute path but "+FOLDER" if under *folder* */
+   /* Don't display an absolute path but "+FOLDER" if within *folder* */
+   n_pstate &= ~n_PS_MAILNAME_WITHIN_FOLDER;
    if(*(foldp = n_folder_query()) != '\0'){
       foldlen = su_cs_len(foldp);
       if(su_cs_cmp_n(foldp, mailp, foldlen))
          foldlen = 0;
+      else
+         n_pstate |= n_PS_MAILNAME_WITHIN_FOLDER;
    }else
       foldlen = 0;
+
+   /* And never include any paths in displayname when reproducible */
+   if(su_state_has(su_STATE_REPRODUCIBLE))
+      mailp = n_filename_to_repro(mailp);
 
    maillen = su_cs_len(mailp);
 
    /* We want to see the name of the folder .. on the screen */
    i = maillen;
    if(i < sizeof(displayname) - 3 -1){
-      if(foldlen > 0){
+      if(foldlen > 0 /* xxx -> n_pstate & n_PS_MAILNAME_WITHIN_FOLDER */){
          *dispp++ = '+';
          *dispp++ = '[';
-         su_mem_copy(dispp, mailp, foldlen);
-         dispp += foldlen;
-         mailp += foldlen;
+         if(su_state_has(su_STATE_REPRODUCIBLE))
+            foldlen = 0;
+         else{
+            su_mem_copy(dispp, mailp, foldlen);
+            dispp += foldlen;
+            mailp += foldlen;
+         }
          *dispp++ = ']';
          su_mem_copy(dispp, mailp, i -= foldlen);
          dispp[i] = '\0';
@@ -227,8 +238,15 @@ a_folder_info(void){
 
    /* If displayname gets truncated the user effectively has no option to see
     * the full pathname of the mailbox, so print it at least for '? fi' */
-   fprintf(n_stdout, "%s: ", n_shexp_quote_cp(
-      (_update_mailname(NULL) ? displayname : mailname), FAL0));
+   /* C99 */{
+      char const *cp;
+
+      cp = _update_mailname(NULL) ? displayname : mailname;
+      if(su_state_has(su_STATE_REPRODUCIBLE))
+         cp = n_filename_to_repro(cp);
+
+      fprintf(n_stdout, "%s: ", n_shexp_quote_cp(cp, FAL0));
+   }
    if (msgCount == 1)
       fprintf(n_stdout, _("1 message"));
    else
@@ -611,7 +629,7 @@ jlogname:
          }
          flags = a_STDIN;
       }else if((n_poption & n_PO_BATCH_FLAG) &&
-            !su_cs_cmp(name, su_path_dev_null))
+            !su_cs_cmp(name, su_path_null))
          flags = a_DEVNULL;
       else{
 #ifdef mx_HAVE_REALPATH
@@ -957,8 +975,8 @@ print_header_summary(char const *Larg)
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
       if ((n_poption & (n_PO_V | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
-         n_stdout = freopen(su_path_dev_null, "w", stdout);
-         n_stderr = freopen(su_path_dev_null, "w", stderr);
+         n_stdout = freopen(su_path_null, "w", stdout);
+         n_stderr = freopen(su_path_null, "w", stderr);
       }
       i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, FAL0, NIL
             ) <= 0);

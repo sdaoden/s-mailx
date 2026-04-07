@@ -3194,8 +3194,7 @@ jredo:
 		goto jmac;
 
 	/* If we are under *folder*, try the usual +NAME syntax, too */
-	/* XXX is there a better way than [0]=='+'?  this is sick */
-	if(mn == mailname && displayname[0] == '+'){
+	if(mn == mailname && (n_pstate & n_PS_MAILNAME_WITHIN_FOLDER)){
 		for(cp = &mailname[len]; cp != mailname; --cp)
 			if(cp[-1] == '/'){
 				char *x;
@@ -3502,12 +3501,12 @@ n_var_setup_batch_mode(void){
 
 	n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
 	n_poption |= n_PO_S_FLAG_TEMPORARY;
-	ok_vset(MAIL, su_path_dev_null);
-	ok_vset(MBOX, su_path_dev_null);
+	ok_vset(MAIL, su_path_null);
+	ok_vset(MBOX, su_path_null);
 	ok_bset(emptystart);
 	ok_bclear(errexit);
 	ok_bclear(header);
-	ok_vset(inbox, su_path_dev_null);
+	ok_vset(inbox, su_path_null);
 	ok_bclear(posix);
 	ok_bset(quiet);
 	ok_vset(sendwait, su_empty);

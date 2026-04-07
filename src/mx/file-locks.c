@@ -213,7 +213,7 @@ jenametool:
 		}
 
 		/* fd is a file, not portable to use for _PC_NAME_MAX */
-		if((pc = su_path_filename_max(NIL)) - 1 < S(uz,i))
+		if((pc = su_path_max_filename(NIL)) - 1 < S(uz,i))
 			goto jenametool;
 	}
 

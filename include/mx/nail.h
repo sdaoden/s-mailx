@@ -499,7 +499,8 @@ do{\
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */
    n_PS_READLINE_NL = 1u<<25, /* readline_input()+ saw a \n */
    n_PS_BASE64_STRIP_CR = 1u<<26, /* Go for text output, strip CR's */
-   n_PS_SIGALARM = 1u<<27 /* Some network timer has alarm(2) installed */
+   n_PS_SIGALARM = 1u<<27, /* Some network timer has alarm(2) installed */
+   n_PS_MAILNAME_WITHIN_FOLDER = 1u<<28 /* mailname[] within *folder* */
 };
 
 /* Various states set once, and first time messages or initializers */
@@ -566,7 +567,6 @@ enum okeys{
    ok_b_add_file_recipients,
 ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_allnet,
-   ok_b_append,
    /* *ask* is auto-mapped to *asksub* as imposed by standard! */
    ok_b_ask, /* {vip=1} */
    ok_b_askatend,
@@ -669,7 +669,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_history_gabby,
    ok_b_history_gabby_persist,
    ok_v_history_size, /* {notempty=1,posnum=1} */
-   ok_b_hold,
+   ok_b_hold, /* {i3val=TRU1} */
    ok_v_hostname, /* {vip=1} */
 
    ok_b_idna_disable,
@@ -680,9 +680,9 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_inbox,
    ok_v_indentprefix, /* {defval="\t"} */
 
-   ok_b_keep,
+   ok_b_keep, /* {i3val=TRU1} */
    ok_b_keep_content_length,
-   ok_b_keepsave,
+   ok_b_keepsave, /* {i3val=TRU1} */
 
    ok_v_LANG, /* {vip=1,env=1,notempty=1} */
    ok_v_LC_ALL, /* {name=LC_ALL,vip=1,env=1,notempty=1} */

@@ -1,4 +1,6 @@
 /*@ (File-) Path (-descriptor) operations, path information.
+ *@ TODO get_device_part, get_dir_part(), get_home(), get_tmp, is_valid, split_components, convert_separators,
+ *@ TODO expand_long_name, readlink, canonicalize and/or realpath, and and and
  *
  * Copyright (c) 2021 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -40,6 +42,8 @@ struct su_pathinfo;
  * \defgroup PATH Operations on (file-) paths
  * \ingroup IO
  * \brief Operations on (file-) paths (\r{su/path.h})
+ *
+ * Contains two groups of functions, one works on strings, the other performs physical access.
  * @{
  */
 
@@ -131,27 +135,66 @@ INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *pip){
 /*! @} *//* }}} */
 
 /* path utils {{{ */
-/*! \c{/dev/null}. */
-#define su_PATH_DEV_NULL "/dev/null"
 
-/*! Compiled-in version of \r{su_PATH_DEV_NULL}. */
-EXPORT_DATA char const su_path_dev_null[sizeof su_PATH_DEV_NULL];
+#if !su_OS_POSIX || defined DOXYGEN
+# define su_PATH_IS_DEV_STYLE 1 /*!< Does the operating system use paths with device parts like \c{c:\\}? */
 
-/**/
+# define su_PATH_SEP_C '\\' /*!< Directory separator byte (character). */
+# define su_PATH_LIST_SEP_C ';' /*!< Path separator byte (character) in lists (\c{$PATH} etc). */
 
-/*! Maximum length of a filename in the directory denoted by \a{path}.
- * If \a{path} is \NIL the current directory is used.
- * No error condition: without limits \r{su_UZ_MAX} is returned, the real value upon success,
- * and \c{NAME_MAX} on OS error or without OS support. */
-EXPORT uz su_path_filename_max(char const *path);
+# define su_PATH_CURRENT "." /*!< "Some notion" of a the current directory. */
+# define su_PATH_NULL "NUL" /*!< Literal \c{/dev/null} / \c{null} etc. */
+# define su_PATH_ROOT "c:\\" /*!< "Some notion" of a root device / directory / path. */
+#else
+# define su_PATH_IS_DEV_STYLE 0
+# define su_PATH_SEP_C '/'
+# define su_PATH_LIST_SEP_C ':'
+# define su_PATH_CURRENT "."
+# define su_PATH_NULL "/dev/null"
+# define su_PATH_ROOT "/"
+#endif
 
-/*! Maximum length of a pathname in the directory denoted by \a{path}.
- * If \a{path} is \NIL the current directory is used.
- * No error condition: without limits \r{su_UZ_MAX} is returned, the real value upon success,
- * and \c{PATH_MAX} on OS error or without OS support. */
-EXPORT uz su_path_pathname_max(char const *path);
+/*! Compiled-in \r{CS} version of \r{su_PATH_SEP_C}. */
+EXPORT_DATA char const su_path_sep[2];
 
-/**/
+/*! Compiled-in \r{CS} version of \r{su_PATH_LIST_SEP_C}. */
+EXPORT_DATA char const su_path_list_sep[2];
+
+/*! Compiled-in version of \r{su_PATH_CURRENT}. */
+EXPORT_DATA char const su_path_current[sizeof su_PATH_CURRENT];
+
+/*! Compiled-in version of \r{su_PATH_NULL}. */
+EXPORT_DATA char const su_path_null[sizeof su_PATH_NULL];
+
+/*! Compiled-in version of \r{su_PATH_ROOT}. */
+EXPORT_DATA char const su_path_root[sizeof su_PATH_ROOT];
+
+/* string */
+
+/*! Scan \a{path} to describe the last component of a pathname.
+ * \pb{For pathnames containing at least one filename: the final, or only, filename in the pathname.
+ * For pathnames consisting only of \r{su_PATH_SEP_C} characters: \r{su_PATH_ROOT}
+ * (on \r{su_OS_POSIX}: or \c{//} if the pathname consists of exactly two \c{//} characters).}
+ * \remarks{May modify \a{path}, or return a pointer to internal constant storage.} */
+EXPORT char const *su_path_basename(char *path);
+
+/*! Scan \a{path} to report the parent directory component of a pathname.
+ * \remarks{May modify \a{path}, or return a pointer to internal constant storage.} */
+EXPORT char const *su_path_dirname(char *path);
+
+/*! Does \a{path} specify an absolute path?
+ * The empty path is not an absolute path.
+ * \remarks{This may mean it starts with device description on some platforms.} */
+INLINE boole su_path_is_absolute(char const *path){
+	ASSERT_RET(path != NIL, FAL0);
+#if su_PATH_IS_DEV_STYLE
+# error path_is_absolute
+#else
+	return *path == '/';
+#endif
+}
+
+/* physical */
 
 /*! Test bitmix of \r{su_iopf_access}. */
 EXPORT boole su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode);
@@ -165,10 +208,22 @@ EXPORT boole su_path_chdir(char const *path);
 EXPORT boole su_path_fchmod(sz fd, u32 permprot);
 
 /*! \_ */
-EXPORT boole su_path_isatty(sz fd);
+EXPORT boole su_path_is_a_tty(sz fd);
 
 /*! Link (\c{link(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_link(char const *dst, char const *src);
+
+/*! Maximum length of a filename in the directory denoted by \a{path}.
+ * If \a{path} is \NIL the current directory is used.
+ * No error condition: without limits \r{su_UZ_MAX} is returned, the real value upon success,
+ * and \c{NAME_MAX} on OS error or without OS support. */
+EXPORT uz su_path_max_filename(char const *path);
+
+/*! Maximum length of a pathname in the (filesystem of the) directory denoted by \a{path}.
+ * If \a{path} is \NIL the current directory is used.
+ * No error condition: without limits \r{su_UZ_MAX} is returned, the real value upon success,
+ * and \c{PATH_MAX} on OS error or without OS support. */
+EXPORT uz su_path_max_pathname(char const *path);
 
 /*! Create directory \a{path}, possibly \a{recursive}ly, with \r{su_iopf_permission} \a{mode}.
  * A \c{su_ERR_EXIST} error results in success if \a{path} is a directory.
@@ -248,8 +303,8 @@ public:
 		/*! \copydoc{su_pathinfo_fstat()} */
 		boole fstat(sz fd) {return su_pathinfo_fstat(this, fd);}
 
-		/*! \copydoc{su_pathinfo_descriptive_char() */
-		char descriptive_char(void) const {return su_pathinfo_descriptive_char((this);}
+		/*! \copydoc{su_pathinfo_descriptive_char()} */
+		char descriptive_char(void) const {return su_pathinfo_descriptive_char(this);}
 
 		/*! \copydoc{su_pathinfo::pi_flags}.
 		 * In C++ you better use specific checks like \r{is_dir()}. */
@@ -288,18 +343,39 @@ public:
 	};
 	/* }}} */
 
-	/*! \copydoc{su_PATH_DEV_NULL} */
-	static char const dev_null[sizeof su_PATH_DEV_NULL];
+	static boole const is_dev_style = su_PATH_IS_DEV_STYLE; /*!< \copydoc{su_PATH_IS_DEV_STYLE} */
 
-	//
+	static char const sep_c = su_PATH_SEP_C; /*!< \copydoc{su_PATH_SEP_C} */
+	static char const list_sep_c = su_PATH_LIST_SEP_C; /*!< \copydoc{su_PATH_LIST_SEP_C} */
 
-	/*! \copydoc{su_path_filename_max()} */
-	static uz filename_max(char const *path=NIL) {return su_path_filename_max(path);}
+	static char const sep[sizeof su_path_sep]; /*!< \copydoc{su_path_sep} */
+	static char const list_sep[sizeof su_path_list_sep]; /*!< \copydoc{su_path_list_sep} */
 
-	/*! \copydoc{su_path_pathname_max()} */
-	static uz pathname_max(char const *path=NIL) {return su_path_pathname_max(path);}
+	static char const current[sizeof su_PATH_CURRENT]; /*!< \copydoc{su_path_current} */
+	static char const null[sizeof su_PATH_NULL]; /*!< \copydoc{su_path_null} */
+	static char const root[sizeof su_PATH_ROOT]; /*!< \copydoc{su_path_root} */
 
-	//
+	// string
+
+	/*! \copydoc{su_path_basename()} */
+	static char const *basename(char *path){
+		ASSERT_RET(path != NIL, NIL);
+		return su_path_basename(path);
+	}
+
+	/*! \copydoc{su_path_dirname()} */
+	static char const *dirname(char *path){
+		ASSERT_RET(path != NIL, NIL);
+		return su_path_dirname(path);
+	}
+
+	/*! \copydoc{su_path_is_absolute()} */
+	static boole is_absolute(char const *path){
+		ASSERT_RET(path != NIL, FAL0);
+		return su_path_is_absolute(path);
+	}
+
+	// physical
 
 	/*! \copydoc{su_path_access()} */
 	static boole access(char const *path, BITENUM_IS(u32,iopf_access) mode){
@@ -310,12 +386,21 @@ public:
 	/*! \copydoc{su_path_fchmod()} */
 	static boole fchmod(sz fd, u32 permprot) {return su_path_fchmod(fd, permprot);}
 
+	/*! \copydoc{su_path_is_a_tty()} */
+	static boole is_a_tty(sz fd) {return su_path_is_a_tty(fd);}
+
 	/*! \copydoc{su_path_link()} */
 	static boole link(char const *dst, char const *src){
 		ASSERT_RET(dst != NIL, FAL0);
 		ASSERT_RET(src != NIL, FAL0);
 		return su_path_link(dst, src);
 	}
+
+	/*! \copydoc{su_path_max_filename()} */
+	static uz max_filename(char const *path=NIL) {return su_path_max_filename(path);}
+
+	/*! \copydoc{su_path_max_pathname()} */
+	static uz max_pathname(char const *path=NIL) {return su_path_max_pathname(path);}
 
 	/*! \copydoc{su_path_mkdir()} */
 	static boole mkdir(char const *path, BITENUM_IS(u32,iopf_permission) perm=iopf_perm_mask,

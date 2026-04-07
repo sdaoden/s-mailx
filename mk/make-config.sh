@@ -1,5 +1,6 @@
 #!/bin/sh -
 #@ Please see INSTALL and make.rc instead.
+#@ TODO - Modularize
 
 LC_ALL=C
 export LC_ALL
@@ -83,14 +84,12 @@ XOPTIONS_XTRA="\
 	SMIME='S/MIME message signing, verification, en- and decryption' \
 "
 
-# To avoid too many recompilations we use a two-stage "configuration changed"
-# detection, the first uses mk-config.env, which only goes for actual user
-# config settings etc. the second uses mk-config.h, which thus includes the
-# things we have truly detected.  This does not work well for multiple choice
-# values of which only one will be really used, so those user wishes may not be
-# placed in the header, only the really detected one (but that has to!).
-# Used for grep(1), for portability assume fixed matching only.
-H_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
+# To avoid too many recompilations we use a two-stage "configuration changed" detection, the first uses mk-config.env,
+# which only goes for actual (a bit re-verified) user config settings etc. the second uses mk-config.h, which thus
+# includes the things we have truly detected.  This does not work well for multiple choice values of which only one
+# will be really used, so those user wishes may not be placed in the header, only the really detected one (but that has
+# to!).  Used for grep(1), for portability assume fixed matching only.
+H_VAL_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
 
 # The problem is that we do not have any tools we can use right now, so
 # encapsulate stuff in functions which get called in right order later on
@@ -277,6 +276,13 @@ option_update() {
 	elif feat_no TERMCAP; then
 		OPT_TERMCAP_VIA_TERMINFO=0
 	fi
+
+	if feat_yes ASAN_ADDRESS; then
+		OPT_ASAN_ADDRESS=require
+	fi
+	if feat_yes USAN; then
+		OPT_USAN=require
+	fi
 }
 
 ## - >8 - << OPTIONS | EARLY >> - 8< - ##
@@ -304,7 +310,8 @@ ld_need_R_flags=
 ld_no_bind_now=
 ld_rpath_not_runpath=
 
-_CFLAGS= _LDFLAGS=
+_CFLAGS= _LDFLAGS=  _CFLAGS_NOT4TESTS= _LDFLAGS_NOT4TESTS=
+OPT_ANYEVAL= VAL_ANYEVAL=
 
 os_early_setup() {
 	# We do not "have any utility" (see make.rc)
@@ -391,6 +398,12 @@ _os_setup_sunos() {
 
 	msg 'Whatever $CC, turning off stack protection (see INSTALL)!'
 	cc_maxopt=2 cc_no_stackprot=1
+
+	if [ "${VAL_SHELL}" = /bin/sh ]; then
+		VAL_SHELL=/usr/xpg4/bin/sh
+		msg ' ! VAL_SHELL=/bin/sh will not do on SunOS, using '${VAL_SHELL}
+	fi
+
 	return 1
 }
 
@@ -420,9 +433,9 @@ cc_setup() {
 		cc_no_flagtest=1
 	else
 		msg_nonl 'Searching for a usable C compiler .. $CC='
-		if acmd_set CC clang || acmd_set CC gcc ||
+		if acmd_set CC gcc || acmd_set CC clang ||
 				acmd_set CC tcc || acmd_set CC pcc ||
-				acmd_set CC c89 || acmd_set CC c99; then
+				acmd_set CC c99 || acmd_set CC c89; then
 			case "${CC}" in
 			*pcc*) cc_no_fortify=1;;
 			*) ;;
@@ -430,7 +443,7 @@ cc_setup() {
 		else
 			msg 'boing booom tschak'
 			msg 'ERROR: I cannot find a compiler!'
-			msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+			msg ' Neither of gcc(1), clang(1), tcc(1), pcc(1), c99(1) and c89(1).'
 			msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
 			config_exit 1
 		fi
@@ -482,7 +495,7 @@ _cc_default() {
 	if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
 		:
 	else
-		msg '. C compiler ${CC}=%s' "${CC}"
+		msg ' . C compiler ${CC}=%s' "${CC}"
 	fi
 
 	case "${CC}" in
@@ -604,10 +617,15 @@ _cc_flags_tcc() {
 _cc_flags_generic() {
 	__cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
 	_CFLAGS= _LDFLAGS=
-	# Prefer C99+ due to 64-bit types etc
-	__x='c99 c11 c18 c2x c89'
+	# Prefer C99+ due to native 64-bit types etc
+	_i=c89
+	if feat_yes ASAN_ADDRESS || feat_yes USAN; then
+		msg ' ! Disabling ISO C89 due to desire to use sanitizers'
+		_i=
+	fi
+	__x='c99 c11 c18 c2x '${_i}
 	if feat_yes DEVEL && [ -n "${date}" ]; then
-		__y=$(${date} +%s)
+		__y=$(${date} +%M) # not too often
 		if [ ${?} -eq 0 ]; then
 			if [ -n "${good_shell}" ]; then
 				__y=${__y##*0}
@@ -615,11 +633,11 @@ _cc_flags_generic() {
 				__y=$(echo ${__y} | ${sed} -e 's/^0*//')
 			fi
 			case "$((__y % 5))" in
-			0) __x='c89 c99 c11 c18 c2x';;
+			0) __x=${_i}' c99 c11 c18 c2x';;
 			1) ;;
-			2) __x='c11 c18 c2x c89 c99';;
-			3) __x='c18 c2x c89 c99 c11';;
-			4) __x='c2x c89 c99 c11 c18';;
+			2) __x='c11 c18 c2x c99 '${_i};;
+			3) __x='c18 c2x c99 c11 '${_i};;
+			4) __x='c2x c99 c11 c18 '${_i};;
 			esac
 		fi
 		unset __y
@@ -629,7 +647,7 @@ _cc_flags_generic() {
 	done
 
 	# E.g., valgrind does not work well with high optimization
-	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
+	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS; then
 		msg ' ! OPT_EXTERNAL_MEM_CHECK, setting cc_maxopt=1 (-O1)'
 		cc_maxopt=1
 	fi
@@ -650,7 +668,7 @@ _cc_flags_generic() {
 	fi
 
 	if feat_yes AMALGAMATION; then
-		cc_check -pipe
+		cc_check -pipe # reduce memory peak
 	fi
 
 	#if feat_yes DEVEL && cc_check -Weverything; then
@@ -696,58 +714,70 @@ _cc_flags_generic() {
 
 	if val_has VAL_AUTOCC stackprot; then
 		if [ -z "${cc_no_stackprot}" ]; then
-			if cc_check -fstack-protector-strong || cc_check -fstack-protector-all; then
-				if val_has VAL_AUTOCC fortify; then
-					if [ -z "${cc_no_fortify}" ]; then
-						cc_check -D_FORTIFY_SOURCE=2
-					else
-						msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
-						msg ' ! it caused errors in a "similar" configuration.'
-						msg ' ! You may turn off OPT_AUTOCC, then rerun.'
+			_ocf=${_CFLAGS} _old=${_LDFLAGS} _i=
+			if cc_check -fstack-protector-strong; then
+				_i=-fstack-protector-strong
+			elif cc_check -fstack-protector-all; then
+				_i=-fstack-protector-all
+			fi
+			if [ -n "${_i}" ]; then
+				_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
+				if [ -z "${cc_no_fortify}" ]; then
+					if val_has VAL_AUTOCC fortify && cc_check -D_FORTIFY_SOURCE=2; then
+						_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -D_FORTIFY_SOURCE=2"
 					fi
+				else
+					msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+					msg ' ! it caused errors in a "similar" configuration.'
+					msg ' ! You may turn off OPT_AUTOCC, then rerun.'
 				fi
 			fi
+			_CFLAGS=${_ocf} _LDFLAGS=${_old}
 		else
-			msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+			msg ' ! No check for stack protection options,'
 			msg ' ! it caused errors in a "similar" configuration.'
 			msg ' ! You may turn off OPT_AUTOCC, then rerun.'
+			xy
 		fi
 	fi
 
 	# LD (+ dependent CC)
 
+	_any_sani=
 	if feat_yes ASAN_ADDRESS; then
-		_ccfg=${_CFLAGS}
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
 		if cc_check -fsanitize=address && ld_check -fsanitize=address; then
-			:
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize=address"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize=address"
+			_any_sani=y
 		else
 			feat_bail_required ASAN_ADDRESS
-			_CFLAGS=${_ccfg}
 		fi
-	fi
-
-	if feat_yes ASAN_MEMORY; then
-		_ccfg=${_CFLAGS}
-		if cc_check -fsanitize=memory && ld_check -fsanitize=memory &&
-				cc_check -fsanitize-memory-track-origins=2 &&
-				ld_check -fsanitize-memory-track-origins=2; then
-			:
-		else
-			feat_bail_required ASAN_MEMORY
-			_CFLAGS=${_ccfg}
-		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
 	if feat_yes USAN; then
-		_ccfg=${_CFLAGS}
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
 		if cc_check -fsanitize=undefined && ld_check -fsanitize=undefined; then
-			:
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize=undefined"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize=undefined"
+			_any_sani=y
 		else
 			feat_bail_required USAN
-			_CFLAGS=${_ccfg}
 		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
+	if [ -n "${_any_sani}" ]; then
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+		if cc_check -fsanitize-recover=all; then # && ld_check -fsanitize-recover=all; then
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize-recover=all"
+#			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize-recover=address"
+		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+	fi
+
+	#
 	ld_check -Wl,-z,relro
 	if val_has VAL_AUTOCC bind_now; then
 		if [ -z "${ld_no_bind_now}" ]; then
@@ -779,27 +809,34 @@ _cc_flags_generic() {
 
 	# Address randomization
 	if val_has VAL_AUTOCC pie; then
-		_ccfg=${_CFLAGS}
-		if cc_check -fPIE || cc_check -fpie; then
-			ld_check -pie || _CFLAGS=${_ccfg}
+		_ocf=${_CFLAGS} _old=${_LDFLAGS} _i=
+		if cc_check -fPIE; then
+			_i=-fPIE
+		elif cc_check -fpie; then
+			_i=-fpie
 		fi
-		unset _ccfg
+		if [ -n "${_i}" ] && ld_check -pie; then
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -pie"
+		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
 	# Retpoline (xxx maybe later?)
-#	_ccfg=${_CFLAGS} _i=
-#	if cc_check -mfunction-return=thunk; then
-#		if cc_check -mindirect-branch=thunk; then
-#			_i=1
-#		fi
+#	_ocf=${_CFLAGS} _old=${_LDFLAGS}
+#	if cc_check -fcf-protection=full; then
+#		_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fcf-protection=full"
 #	elif cc_check -mretpoline; then
-#		_i=1
+#		#if ld_check -Wl,-z,retpolineplt; then .. ignored in newer clang
+#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mretpoline"
+#		#	_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -Wl,-z,retpolineplt"
+#		#fi
+#	elif cc_check -mfunction-return=thunk; then
+#		if cc_check -mindirect-branch=thunk; then
+#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mfunction-return=thunk -mindirect-branch=thunk"
+#		fi
 #	fi
-#	if [ -n "${_i}" ]; then
-#		ld_check -Wl,-z,retpolineplt || _i=
-#	fi
-#	[ -n "${_i}" ] || _CFLAGS=${_ccfg}
-#	unset _ccfg
+#	_CFLAGS=${_ocf} _LDFLAGS=${_old}
 
 	_CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
 	unset __cflags __ldflags
@@ -834,7 +871,7 @@ config_exit() {
 }
 
 # Our feature check environment
-_feats_eval_done=0
+_feats_cleanup_done=0
 
 _feat_val_no() {
 	[ "x${1}" = x0 ] || [ "x${1}" = xn ] || [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
@@ -851,7 +888,7 @@ _feat_val_require() {
 
 _feat_check() {
 	eval _fc_i=\$OPT_${1}
-	if [ "$_feats_eval_done" = 1 ]; then
+	if [ "$_feats_cleanup_done" = 1 ]; then
 		[ "x${_fc_i}" = x0 ] && return 1
 		return 0
 	fi
@@ -962,8 +999,7 @@ option_doc_of() {
 }
 
 option_join_rc() {
-	# Join the values from make.rc into what currently is defined, not
-	# overwriting yet existing settings
+	# Join the values from make.rc into what currently is defined, not overwriting yet existing settings
 	${rm} -f ${tmp}
 	# We want read(1) to perform reverse solidus escaping in order to be able to
 	# use multiline values in make.rc; the resulting sh(1)/sed(1) code was very
@@ -1005,10 +1041,10 @@ option_join_rc() {
 				sub(/^[^=]*=/, "", LINE)
 				sub(/^"*/, "", LINE)
 				sub(/"*$/, "", LINE)
-				# Sun xpg4/bin/awk expands those twice:
-				# Notice that backslash escapes are interpreted twice, once in
-				# lexical processing of the string and once in processing the
-				# regular expression.
+				# Sun xpg4/bin/awk expands those twice and says:
+				#   Notice that backslash escapes are interpreted twice, once in
+				#   lexical processing of the string and once in processing the
+				#   regular expression.
 					i = "\""
 					gsub(/"/, "\\\\\"", i)
 					i = (i == "\134\"")
@@ -1020,16 +1056,18 @@ option_join_rc() {
 		[ "${i}" = "OBJDIR" ] && continue
 		echo "${i}=\"${j}\""
 	done > ${tmp}
-	# Reread the mixed version right now
+
+	# Reread the mixed version right now - this evaluates shell snippets!
 	. ${tmp}
 }
 
-option_evaluate() {
-	# Expand the option values, which may contain shell snippets
-	# Set booleans to 0 or 1, or require, set _feats_eval_done=1
+option_cleanup() { # xxx i think we could "merge this" .. away??
+	# Set booleans to 0 or 1, or require, set _feats_cleanup_done=1
 	${rm} -f ${newenv} ${newmk}
+	printf '' > ${newenv}
+	printf '' > ${newmk}
 
-	exec 7<&0 8>&1 <${tmp} >${newenv}
+	exec 7<&0 <${tmp}
 	while read line; do
 		z=
 		if [ -n "${good_shell}" ]; then
@@ -1039,7 +1077,7 @@ option_evaluate() {
 			i=$(${awk} -v LINE="${line}" 'BEGIN{
 				gsub(/=.*$/, "", LINE);\
 				print LINE
-			}')
+				}')
 			if echo "${i}" | ${grep} '^OPT_' >/dev/null 2>&1; then
 				z=1
 			fi
@@ -1050,30 +1088,25 @@ option_evaluate() {
 			j="$(echo ${j} | ${tr} '[A-Z]' '[a-z]')"
 			if [ -z "${j}" ] || _feat_val_no "${j}"; then
 				j=0
-				printf "\t/* #undef ${i} */\n" >> ${newh}
 			elif _feat_val_yes "${j}"; then
 				if _feat_val_require "${j}"; then
 					j=require
 				else
 					j=1
 				fi
-				printf "   /* #define ${i} */\n" >> ${newh}
 			else
-				msg 'ERROR: cannot parse <%s>' "${line}"
+				msg 'ERROR: cannot parse <%s> (<%s>=<%s>)' "${line}" "${i}" "${j}"
 				config_exit 1
 			fi
-		elif { echo ${i} | ${grep} ${H_BLACKLIST} >/dev/null 2>&1; }; then
-			:
+			eval "${i}=\"${j}\""
+			OPT_ANYEVAL="${OPT_ANYEVAL} ${i}"
 		else
-			printf "#define ${i} \"${j}\"\n" >> ${newh}
+			VAL_ANYEVAL="${VAL_ANYEVAL} ${i}"
 		fi
-		printf -- "${i} = ${j}\n" >> ${newmk}
-		printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})"
-		eval "${i}=\"${j}\""
 	done
-	exec 0<&7 1>&8 7<&- 8<&-
+	exec 0<&7 7<&-
 
-	_feats_eval_done=1
+	_feats_cleanup_done=1
 }
 
 val_allof() {
@@ -1616,11 +1649,8 @@ SU_CWDDIR=${CWDDIR}
 	SU_INCDIR=${INCDIR}
 	SU_SRCDIR=${SRCDIR}
 
-# Our configuration options may at this point still contain shell snippets,
-# we need to evaluate them in order to get them expanded, and we need those
-# evaluated values not only in our new configuration file, but also at hand..
-msg_nonl 'Evaluating all configuration items ... '
-option_evaluate
+msg_nonl 'Cleaning up configuration items ... '
+option_cleanup
 msg 'done'
 
 option_update 1
@@ -1640,10 +1670,10 @@ if [ -z "${VERBOSE}" ]; then
 	printf -- "ECHO_TEST = @\n" >> ${newmk}
 	printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
 fi
-printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check %s\n' \
+printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh check %s\n' \
 	"${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 printf \
-	'testnj: all\n\t$(ECHO_TEST)JOBNO=1 %s %smx-test.sh --check %s\n' \
+	'testnj: all\n\t$(ECHO_TEST)JOBNO=1 %s %smx-test.sh check %s\n' \
 	"${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
@@ -1673,6 +1703,7 @@ for i in \
 		cksum; do
 	eval j=\$${i}
 	printf -- "${i} = ${j}\n" >> ${newmk}
+	[ "${i}" = MAKEFLAGS ] && continue # GNU make 4.4 embeds volatile info
 	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
 done
 
@@ -1719,8 +1750,32 @@ if feat_yes DEBUG; then
 	fi
 fi
 
+# Done with detection!  Write out our stuff!!
+for i in ${OPT_ANYEVAL}; do
+	eval j=\$${i}
+	if [ "${j}" = 0 ]; then
+		printf "\t/* #undef ${i} */\n" >> ${newh}
+	else
+		[ "${j}" = require ] && j=1 # lesser possibilities
+		printf "\t/* #define ${i} */\n" >> ${newh}
+	fi
+	printf -- "${i} = ${j}\n" >> ${newmk}
+	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+done
+for i in ${VAL_ANYEVAL}; do
+	eval j=\$${i}
+	if { echo ${i} | ${grep} ${H_VAL_BLACKLIST} >/dev/null 2>&1; }; then
+		:
+	else
+		printf "#define ${i} \"${j}\"\n" >> ${newh}
+	fi
+	printf -- "${i} = ${j}\n" >> ${newmk}
+	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+done
+
+_ocf=${CFLAGS} _old=${LDFLAGS}
+CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}" LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 for i in \
-		COMMLINE \
 		PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
 		CC CFLAGS LDFLAGS \
 		INCS LIBS \
@@ -1730,6 +1785,7 @@ for i in \
 	eval j="\$${i}"
 	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
 done
+CFLAGS=${_ocf} LDFLAGS=${_old}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
@@ -2411,9 +2467,9 @@ fi
 
 ### FORK AWAY SHARED BASE SERIES ###
 
-BASE_CFLAGS=${CFLAGS}
+BASE_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
 BASE_INCS=$(squeeze_ws "${INCS}")
-BASE_LDFLAGS=${LDFLAGS}
+BASE_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 BASE_LIBS=$(squeeze_ws "${LIBS}")
 
 ## The remains are expected to be used only by the main MUA binary!
@@ -2541,21 +2597,30 @@ int main(void){
 	char inb[16], oub[16], *inbp, *oubp;
 	iconv_t id;
 	size_t inl, oul;
-	int rv;
+	int glibc_bug, rv;
 
-	/* U+2013 */
-	memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
-	inl = sizeof("\342\200\223") -1;
+	glibc_bug = 0;
+
+jredo:
+	/* U+1FA78/f0 9f a9 b9/;DROP OF BLOOD */
+	memcpy(inbp = inb, "\360\237\251\271", sizeof("\360\237\251\271"));
+	inl = sizeof("\360\237\251\271") -1;
 	oul = sizeof oub;
 	oubp = oub;
 
 	rv = 1;
-	if((id = iconv_open("us-ascii", "utf-8")) == (iconv_t)-1)
+	if((id = iconv_open((glibc_bug ? "us-ascii//TRANSLIT" : "us-ascii"), "utf-8")) == (iconv_t)-1)
 		goto jleave;
 
 	rv = 14;
-	if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
+	if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1){
+		if(glibc_bug == 0){
+			iconv_close(id);
+			glibc_bug = 32;
+			goto jredo;
+		}
 		goto jleave;
+	}
 
 	*oubp = '\0';
 	oul = (size_t)(oubp - oub);
@@ -2574,12 +2639,12 @@ int main(void){
 	}
 
 	/* Byte-wise replacement? */
-	if(oul == sizeof("\342\200\223") -1){
+	if(oul == sizeof("\360\237\251\271") -1){
 		rv = 12;
-		if(!memcmp(oub, "???????", sizeof("\342\200\223") -1))
+		if(!memcmp(oub, "????", sizeof("\360\237\251\271") -1))
 			goto jleave;
 		rv = 13;
-		if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
+		if(!memcmp(oub, "****", sizeof("\360\237\251\271") -1))
 			goto jleave;
 		rv = 14;
 	}
@@ -2588,7 +2653,7 @@ jleave:
 	if(id != (iconv_t)-1)
 		iconv_close(id);
 
-	return rv;
+	return rv | glibc_bug;
 }
 !
 
@@ -2612,17 +2677,20 @@ jleave:
 
 	if feat_yes ICONV && feat_no CROSS_BUILD; then
 		{ ${tmp}; } >/dev/null 2>&1
-		case ${?} in
-		1)
+		i=${?} j=FAL0
+		[ ${i} -gt 31 ] && j=TRU1
+		case ${i} in
+		1|33)
 			msg 'WARN: disabling ICONV due to faulty conversion/restrictions'
 			feat_bail_required ICONV
 			;;
-		2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
-		3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
-		12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
-		13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
+		2|34) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
+		3|35) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
+		12|44) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
+		13|45) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
 		*) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
 		esac
+		echo '#define mx_ICONV_NEEDS_TRANSLIT '${j} >> ${h}
 	fi
 else
 	feat_is_disabled ICONV
@@ -3680,7 +3748,6 @@ fi
 feat_def USE_PKGSYS
 
 feat_def ASAN_ADDRESS 0
-feat_def ASAN_MEMORY 0
 feat_def USAN 0
 feat_def DEVEL 0
 feat_def EXTERNAL_MEM_CHECK 0
@@ -3694,9 +3761,9 @@ option_update 2
 INCS=$(squeeze_ws "${INCS}")
 LIBS=$(squeeze_ws "${LIBS}")
 
-MX_CFLAGS=${CFLAGS}
+MX_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
 	MX_INCS=${INCS}
-	MX_LDFLAGS=${LDFLAGS}
+	MX_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 	MX_LIBS=${LIBS}
 SU_CFLAGS="${BASE_CFLAGS} -Dsu_USECASE_MX"
 	SU_CXXFLAGS=
@@ -3707,9 +3774,9 @@ PS_DOTLOCK_CFLAGS=${BASE_CFLAGS}
 	PS_DOTLOCK_INCS=${BASE_INCS}
 	PS_DOTLOCK_LDFLAGS=${BASE_LDFLAGS}
 	PS_DOTLOCK_LIBS=${BASE_LIBS}
-NET_TEST_CFLAGS=${CFLAGS}
+NET_TEST_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
 	NET_TEST_INCS=${INCS}
-	NET_TEST_LDFLAGS=${LDFLAGS}
+	NET_TEST_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 	NET_TEST_LIBS=${LIBS}
 
 for i in \
@@ -3748,8 +3815,8 @@ elif (${CC} -v) >/dev/null 2>&1; then
 fi
 
 CC=$(squeeze_ws "${CC}")
-CFLAGS=$(squeeze_ws "${CFLAGS}")
-LDLAGS=$(squeeze_ws "${LDFLAGS}")
+CFLAGS=$(squeeze_ws "${CFLAGS} ${_CFLAGS_NOT4TESTS}")
+LDFLAGS=$(squeeze_ws "${LDFLAGS} ${_LDFLAGS_NOT4TESTS}")
 LIBS=$(squeeze_ws "${LIBS}")
 # $MAKEFLAGS often contain job-related things which hinders reproduceability.
 # For at least GNU make(1) we can separate those and our regular configuration
@@ -3878,7 +3945,7 @@ ${cat} "${TOPDIR}"mk/make-config.in >> ${mk}
 ## Finished!
 ##
 
-# We have completed the new configuration header.  Check whether *really*
+# We have completed the new configuration header.
 # Do the "second stage configuration changed" detection, exit if nothing to do
 if [ -f ${oldh} ]; then
 	if ${cmp} ${h} ${oldh} >/dev/null 2>&1; then

@@ -189,7 +189,7 @@ a_fs_register_file(FILE *fp, BITENUM_IS(u32,mx_fs_oflags) oflags, BITENUM_IS(u32
 		fsep->fse_realfile = su_cs_dup(realfile, 0);
 	fsep->fse_link = a_fs_fp_head;
 	fsep->fse_flags = flags;
-	fsep->fse_oflags = oflags & (mx__FS_O_RWMASK | mx_FS_O_APPEND);
+	fsep->fse_oflags = oflags/* & (mx__FS_O_RWMASK | mx_FS_O_APPEND)*/;
 	fsep->fse_offset = offset;
 	fsep->fse_fp = fp;
 	if(save_cmd != NIL)
@@ -304,7 +304,8 @@ a_fs_file_save(struct a_fs_ent *fsep){
 
 #ifdef mx_HAVE_MAILDIR
 	if((fsep->fse_flags & a_FS_EF_MASK) == a_FS_EF_MAILDIR){
-		rv = maildir_append(fsep->fse_realfile, fsep->fse_fp, fsep->fse_offset);
+		rv = maildir_append(fsep->fse_realfile, fsep->fse_fp, fsep->fse_offset,
+				((fsep->fse_oflags & mx_FS_O_EXACT_MESSAGE_STATE_REFLECTION) != 0));
 		goto jleave;
 	}
 #endif
@@ -322,7 +323,8 @@ a_fs_file_save(struct a_fs_ent *fsep){
 	osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | a_FS_O_NOXY_BITS;
 	if(!(fsep->fse_oflags & mx_FS_O_APPEND))
 		osiflags |= O_TRUNC;
-	if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags, 0666)) == -1){
+	if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags,
+			(fsep->fse_oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 		s32 err;
 
 		err = su_err_no_by_errno();
@@ -380,11 +382,13 @@ mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
 	FILE *fp;
 	NYD_IN;
 
+	ASSERT(!(oflags & mx_FS_O_CREATE_0600) || (oflags & mx_FS_O_CREATE));
+
 	fp = NIL;
 
 	osiflags = a_fs_mx_to_os(oflags, &osflags);
 
-	if((fd = open(file, osiflags, 0666)) == -1){
+	if((fd = open(file, osiflags, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 		su_err_no_by_errno();
 		goto jleave;
 	}
@@ -422,6 +426,8 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 	s32 err;
 	FILE *rv;
 	NYD_IN;
+
+	ASSERT(!(oflags & mx_FS_O_CREATE_0600) || (oflags & mx_FS_O_CREATE));
 
 	rv = NIL;
 	err = su_ERR_NONE;
@@ -462,7 +468,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 
 	case n_PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
-		if(fs_or_nil != NIL && !access(file, F_OK))
+		if(fs_or_nil != NIL && su_path_access(file, su_IOPF_EXIST))
 			fs |= mx_FS_OPEN_STATE_EXISTS;
 		flags |= a_FS_EF_MAILDIR;
 		/*osiflags = O_RDWR | O_APPEND | O_CREAT | a_FS_O_NOXY_BITS;*/
@@ -482,7 +488,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 	case n_PROTO_FILE:{
 		struct mx_filetype ft;
 
-		if(!(oflags & mx_FS_O_EXCL) && fs_or_nil != NIL && !access(file, F_OK))
+		if(!(oflags & mx_FS_O_EXCL) && fs_or_nil != NIL && su_path_access(file, su_IOPF_EXIST))
 			fs |= mx_FS_OPEN_STATE_EXISTS;
 
 		if(mx_filetype_exists(&ft, file)){/* TODO report real name to outside */
@@ -532,7 +538,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 			goto jleave;
 		}
 	}else{
-		if((infd = creat(file, 0666)) == -1){
+		if((infd = creat(file, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 			err = su_err_no_by_errno();
 			fclose(rv);
 			rv = NIL;
@@ -597,7 +603,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(
 	if(tdir_or_nil == NIL || tdir_or_nil == mx_FS_TMP_TDIR_TMP) /* (EQ) */
 		tdir_or_nil = ok_vlook(TMPDIR);
 
-	if((maxname = su_path_filename_max(tdir_or_nil)) < a_RANDCHARS + a_HINT_MIN){
+	if((maxname = su_path_max_filename(tdir_or_nil)) < a_RANDCHARS + a_HINT_MIN){
 		su_err_set_no(su_ERR_NAMETOOLONG);
 		goto jleave;
 	}
