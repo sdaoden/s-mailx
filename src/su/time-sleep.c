@@ -26,7 +26,6 @@ su_USECASE_CONFIG_CHECKS(
    su_HAVE_SLEEP
    )
 
-#include <errno.h>
 #include <time.h>
 
 #ifdef su_HAVE_SLEEP
@@ -39,6 +38,8 @@ su_USECASE_CONFIG_CHECKS(
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 uz
 su_time_msleep(uz millis, boole ignint){
    uz rv;
@@ -49,7 +50,7 @@ su_time_msleep(uz millis, boole ignint){
       struct su_timespec ts, trem;
 
       ts.ts_sec = millis / su_TIMESPEC_SEC_MILLIS;
-      ts.ts_nano = (millis %= su_TIMESPEC_SEC_MILLIS) *
+      ts.ts_nano = S(sz,millis %= su_TIMESPEC_SEC_MILLIS) *
             (su_TIMESPEC_SEC_NANOS / su_TIMESPEC_SEC_MILLIS);
 
       for(;;){
@@ -66,7 +67,7 @@ su_time_msleep(uz millis, boole ignint){
             continue;
          }
 
-         rv = ((tsp->ts_sec * su_TIMESPEC_SEC_MILLIS) +
+         rv = S(uz,(tsp->ts_sec * su_TIMESPEC_SEC_MILLIS) +
                   (tsp->ts_nano /
                    (su_TIMESPEC_SEC_NANOS / su_TIMESPEC_SEC_MILLIS)));
          break;
@@ -127,7 +128,11 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
             &ts, &tsr);
 
       if(rv != 0){
-         switch((rv = errno)){
+         switch((rv
+# ifndef su_HAVE_CLOCK_NANOSLEEP
+               = su_err_no_by_errno()
+# endif
+               )){
          case su_ERR_INTR:
             if(rem_or_nil != NIL){
                rem_or_nil->ts_sec = tsr.tv_sec;

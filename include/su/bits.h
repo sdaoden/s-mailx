@@ -1,4 +1,5 @@
-/*@ Bit operations. TODO asm optimizations
+/*@ Bit operations.
+ *@ TODO size-specific interface+optimization option like atomic.h
  *
  * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -30,6 +31,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* bits {{{ */
 /*!
  * \defgroup BITS Bit operations
  * \ingroup MISC
@@ -133,7 +135,7 @@ INLINE uz su_bits_find_first_set(uz x){
    if(x != 0)
       do if(x & 1)
          return i;
-      while((++i, x >>= 1));
+      while((S(void,++i), x >>= 1));
    return UZ_MAX;
 }
 
@@ -220,8 +222,8 @@ EXTERN uz su_bits_array_find_last_set(uz const *xap, uz xaplen);
 EXTERN uz su_bits_array_find_first_set_after(uz const *xap, uz xaplen,
       uz startbit);
 #endif
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -231,6 +233,7 @@ NSPC_BEGIN(su)
 
 class bits;
 
+/* bits {{{ */
 /*!
  * \ingroup BITS
  * C++ variant of \r{BITS} (\r{su/bits.h})
@@ -325,9 +328,10 @@ public:
    }
 #endif
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_BITS_H */
 /* s-it-mode */

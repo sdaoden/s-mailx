@@ -74,13 +74,14 @@ struct a_netrc_entry{
    char nrce_dat[VFIELD_SIZE(3)];
 };
 
-static struct su_cs_dict *a_netrc_dp, a_netrc__d; /* XXX atexit _gut (DVL()) */
+static struct su_cs_dict *a_netrc_dp, a_netrc__d;
 
 /* We stop parsing and _gut(FAL0) on hard errors like NOMEM, OVERFLOW and IO */
 static void a_netrc_create(void);
 static enum a_netrc_token a_netrc__token(FILE *fi,
       char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last);
 static void a_netrc_gut(boole gut_dp);
+DVL( static void a_netrc__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* */
 static struct n_strlist *a_netrc_dump(char const *cmdname, char const *key,
@@ -114,6 +115,7 @@ a_netrc_create(void){
    a_netrc_dp = su_cs_dict_set_treshold_shift(
          su_cs_dict_create(&a_netrc__d, a_NETRC_FLAGS, NIL),
             a_NETRC_TRESHOLD_SHIFT);
+   DVL( su_state_on_gut_install(&a_netrc__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 
    f = a_NONE;
    UNINIT(emsg, NIL);
@@ -277,7 +279,7 @@ jleave:
    return;
 
 jerrdoc:
-   emsg = su_err_doc(su_err_no());
+   emsg = su_err_doc(-1);
 jerr:
    UNUSED(emsg);
    n_err(_(".netrc: %s: %s\n"), n_shexp_quote_cp(netrc_load, FAL0), V_(emsg));
@@ -406,6 +408,21 @@ a_netrc_gut(boole gut_dp){
    NYD2_OU;
 }
 
+#if DVLOR(1, 0)
+static void
+a_netrc__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+   UNUSED(flags);
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      a_netrc_gut(TRU1);
+
+   a_netrc_dp = NIL;
+
+   NYD2_OU;
+}
+#endif
+
 static struct n_strlist *
 a_netrc_dump(char const *cmdname, char const *key, void const *dat){
    struct n_string s_b, *s;
@@ -519,7 +536,7 @@ jerr:
    vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 
 jlookup:{
    struct mx_netrc_entry nrce;

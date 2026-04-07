@@ -1,4 +1,5 @@
 /*@ Memory: tools like copy, move etc., and a heap allocation interface.
+ *@ TODO optimization option like atomic.h
  *
  * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -30,6 +31,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* mem_tools {{{ */
 /*!
  * \defgroup MEM_TOOLS Memory tools
  * \ingroup MEM
@@ -40,13 +42,12 @@ C_DECL_BEGIN
  * @{
  */
 
-/*! A memset that is not optimized away */
-EXPORT_DATA void * (* volatile su_mem_set_volatile)(void*, int, uz);
-
 /*! \_ */
 EXPORT sz su_mem_cmp(void const *vpa, void const *vpb, uz len);
 
-/*! \_ */
+/*! \_
+ * \remarks{Because this may end up calling native functions, overlap is
+ * generally forbidden, even if it makes no sense logically.} */
 EXPORT void *su_mem_copy(void *vp, void const *src, uz len);
 
 /*! \_ */
@@ -61,7 +62,15 @@ EXPORT void *su_mem_move(void *vp, void const *src, uz len);
 /*! \_ */
 EXPORT void *su_mem_set(void *vp, s32 what, uz len);
 
-/*! @} */
+/*! Ensure \a{len} bytes of \a{vp} are zeroed.
+ * Care is taken compiler or linker do not optimize this away. */
+INLINE void su_mem_zero(void *vp, uz len){
+   void *(*const volatile set_v)(void *, s32, uz) = &su_mem_set;
+   (*set_v)(vp, 0, len);
+}
+/*! @} *//* }}} */
+
+/* heap memory {{{ */
 /*!
  * \defgroup MEM_CACHE_ALLOC Heap memory
  * \ingroup MEM
@@ -95,11 +104,21 @@ enum su_mem_alloc_flags{
    /*! Zero memory.
     * \remarks{TODO: until the C++ memory cache is ported this flag will not be
     * honoured by reallocation requests.} */
-   su_MEM_ALLOC_CLEAR = 1u<<1,
+   su_MEM_ALLOC_ZERO = 1u<<1,
+   /*! Try to mark memory so it is not included in core dumps, is not
+    * inherited by child processes upon \c{fork(2)} time, and is zeroed when
+    * the pointer is \r{su_mem_free()}d.
+    * But for the last all mentioned attributes require operating system
+    * support and therefore may or may not be backed by functionality.
+    * \remarks{TODO: until the C++ memory cache is ported this flag will not
+    * do anything.} */
+   su_MEM_ALLOC_CONCEAL = 1u<<2,
+
    /*! Perform overflow checks against 32-bit, not \r{su_UZ_MAX}. */
-   su_MEM_ALLOC_32BIT_OVERFLOW = 1u<<2,
+   su_MEM_ALLOC_32BIT_OVERFLOW = 1u<<3,
    /*! Perform overflow checks against 31-bit, not \r{su_UZ_MAX}. */
-   su_MEM_ALLOC_31BIT_OVERFLOW = 1u<<3,
+   su_MEM_ALLOC_31BIT_OVERFLOW = 1u<<4,
+
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
    su_MEM_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
@@ -147,50 +166,56 @@ enum{
    su_MEM_ALLOC_MIN = Z_ALIGN(1)
 };
 
-/*! Most \r{su_mem_set_conf()} flags are \r{su_MEM_ALLOC_DEBUG} specific.
- * They are bits not values unless otherwise noted. */
+/*! Most \r{su_mem_set_conf()} flags are \r{su_MEM_ALLOC_DEBUG} specific. */
 enum su_mem_conf_option{
    su_MEM_CONF_NONE,
    /* su_MEM_ALLOC_DEBUG only: booleans */
    su_MEM_CONF_DEBUG = 1u<<0, /*!< More tests, be verbose. */
    su_MEM_CONF_ON_ERROR_EMERG = 1u<<1, /*!< Error out if tests fail. */
-   su_MEM_CONF_LINGER_FREE = 1u<<2, /*!< Keep \c{free()}s until.. */
-   su_MEM_CONF_LINGER_FREE_RELEASE = 1u<<3, /*!< ..they are released */
+   /*! Keep \c{free()}s until they are explicitly released. */
+   su_MEM_CONF_LINGER_FREE = 1u<<2,
+   /*! Release lingering \c{free()}s. */
+   su_MEM_CONF_LINGER_FREE_RELEASE = 1u<<3,
+   /* su_MEM_ALLOC_DEBUG only: values */
+   /*! Set fill byte of allocations that do not use \r{su_MEM_ALLOC_ZERO}.
+    * The default is \c{0xAA}; it is believed that \c{0} and \c{0xFF} are also
+    * good candidates to reveal problems. */
+   su_MEM_CONF_FILLER_SET = 1u<<4,
 
 /*madvise,free area count*/
 /*say_if_empty_on_exit,statistics*/
-   su__MEM_CONF_MAX = su_MEM_CONF_LINGER_FREE_RELEASE
+   su__MEM_CONF_MAX = su_MEM_CONF_FILLER_SET
 };
 
 #ifdef su_MEM_ALLOC_DEBUG
 EXPORT boole su__mem_get_can_book(uz size, uz no);
-EXPORT boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE);
-EXPORT boole su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL);
+EXPORT boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE);
+EXPORT boole su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL);
 #endif
 
 /*! Rather internal, but due to the \r{su_mem_alloc_flags} \a{maf} maybe
  * handy sometimes.
  * Normally to be used through the macros below */
 EXPORT void *su_mem_allocate(uz size, uz no,
-      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
 
 /*! If \NIL is returned, then the original memory has not been freed.
  * (From our point of view. TODO We are yet backed by OS malloc.) */
 EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no,
-      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
-EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
+EXPORT void su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 #define su_MEM_ALLOCATE(SZ,NO,F) \
-      su_mem_allocate(SZ, NO, F  su_DBG_LOC_ARGS_INJ)
+      su_mem_allocate(SZ, NO, F  su_DVL_LOC_ARGS_INJ)
 
 /*! \_ */
 #define su_MEM_REALLOCATE(OVP,SZ,NO,F) \
-      su_mem_reallocate(OVP, SZ, NO, F  su_DBG_LOC_ARGS_INJ)
+      su_mem_reallocate(OVP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_ALLOCATE_LOC(SZ,NO,F,FNAME,LNNO) \
       su_mem_allocate(SZ, NO, F, FNAME, LNNO)
 
@@ -221,16 +246,16 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
       su_MEM_ALLOCATE_LOC(SZ, NO, su_MEM_ALLOC_NONE, FNAME, LNNO)
 
 /*! \_ */
-#define su_MEM_CALLOC(SZ) su_MEM_ALLOCATE(SZ, 1, su_MEM_ALLOC_CLEAR)
+#define su_MEM_CALLOC(SZ) su_MEM_ALLOCATE(SZ, 1, su_MEM_ALLOC_ZERO)
 /*! \_ */
 #define su_MEM_CALLOC_LOC(SZ,FNAME,LNNO) \
-      su_MEM_ALLOCATE_LOC(SZ, 1, su_MEM_ALLOC_CLEAR, FNAME, LNNO)
+      su_MEM_ALLOCATE_LOC(SZ, 1, su_MEM_ALLOC_ZERO, FNAME, LNNO)
 
 /*! \_ */
-#define su_MEM_CALLOC_N(SZ,NO) su_MEM_ALLOCATE(SZ, NO, su_MEM_ALLOC_CLEAR)
+#define su_MEM_CALLOC_N(SZ,NO) su_MEM_ALLOCATE(SZ, NO, su_MEM_ALLOC_ZERO)
 /*! \_ */
 #define su_MEM_CALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
-      su_MEM_ALLOCATE_LOC(SZ, NO, su_MEM_ALLOC_CLEAR, FNAME, LNNO)
+      su_MEM_ALLOCATE_LOC(SZ, NO, su_MEM_ALLOC_ZERO, FNAME, LNNO)
 
 /*! \_ */
 #define su_MEM_REALLOC(OVP,SZ) su_MEM_REALLOCATE(OVP, SZ, 1, su_MEM_ALLOC_NONE)
@@ -272,10 +297,10 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 
 /*! \_ */
 #define su_MEM_TCALLOCF(T,NO,F) \
-   su_S(T *,su_MEM_ALLOCATE(sizeof(T), NO, su_MEM_ALLOC_CLEAR | (F)))
+   su_S(T *,su_MEM_ALLOCATE(sizeof(T), NO, su_MEM_ALLOC_ZERO | (F)))
 /*! \_ */
 #define su_MEM_TCALLOCF_LOC(T,NO,F,FNAME,LNNO) \
-   su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), NO, su_MEM_ALLOC_CLEAR | (F)),\
+   su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), NO, su_MEM_ALLOC_ZERO | (F)),\
       FNAME, LNNO)
 
 /*! \_ */
@@ -286,8 +311,8 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
       su_S(T *,su_MEM_REALLOCATE_LOC(OVP, sizeof(T), NO, F, FNAME, LNNO))
 
 /*! \_ */
-#define su_MEM_FREE(OVP) su_mem_free(OVP  su_DBG_LOC_ARGS_INJ)
-#ifdef su_HAVE_DBG_LOC_ARGS
+#define su_MEM_FREE(OVP) su_mem_free(OVP  su_DVL_LOC_ARGS_INJ)
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_FREE_LOC(OVP,FNAME,LNNO) su_mem_free(OVP, FNAME, LNNO)
 #else
    /*! \_ */
@@ -295,7 +320,7 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 #endif
 
 /* (The painful _LOCOR series) */
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_ALLOC_LOCOR(SZ,ORARGS) su_MEM_ALLOC_LOC(SZ, ORARGS)
 # define su_MEM_ALLOC_N_LOCOR(SZ,NO,ORARGS) su_MEM_ALLOC_N_LOC(SZ, NO, ORARGS)
 # define su_MEM_CALLOC_LOCOR(SZ,ORARGS) su_MEM_CALLOC_LOC(SZ, ORGARGS)
@@ -343,9 +368,10 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 # define su_MEM_TREALLOCF_LOCOR(T,OVP,F,NO) su_MEM_TREALLOCF(T, OVP, NO, F)
    /*! \_ */
 # define su_MEM_FREE_LOCOR(OVP,ORARGS) su_MEM_FREE_LOC(OVP, ORARGS)
-#endif /* !su_HAVE_DBG_LOC_ARGS */
+#endif /* !su_HAVE_DVL_LOC_ARGS */
+/*! @} *//* }}} */
 
-/*! @} */
+/* heap support {{{ */
 /*!
  * \defgroup MEM_CACHE_SUP Heap "support"
  * \ingroup MEM
@@ -380,11 +406,14 @@ INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
 #define su_mem_get_usable_size_32(SZ) su_S(su_u32,su_Z_ALIGN(SZ)) /*XXX*/
 /* XXX get_usable_size_ptr(), get_memory_usage()  */
 
-/*! Most options are actually boolean flags: multiple thereof can be set or
+/*! Configure aspects of the memory allocator.
+ * Most options are actually boolean flags: multiple thereof can be set or
  * cleared with one operation by ORing together the according
- * \r{su_mem_conf_option}s in \a{mco} , the (then) \r{su_boole} \a{val} will be
- * used for all of them.
+ * \r{su_mem_conf_option}s in \a{mco} , the (then) \r{su_boole} \a{val} will
+ * be used for all of them.
  * \list{\li{
+ * \c{FILLER_SET} (exclusive, no flag): lowest byte of \a{val} is used.
+ * }\li{
  * \c{LINGER_FREE}: unsetting causes \c{LINGER_FREE_RELEASE} to take place.
  * }\li{
  * \c{LINGER_FREE_RELEASE} completely ignores \a{val}.
@@ -397,7 +426,7 @@ EXPORT void su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val);
  * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined. */
 INLINE boole su_mem_check(void){
 #ifdef su_MEM_ALLOC_DEBUG
-   return su__mem_check(su_DBG_LOC_ARGS_INJ_SOLE);
+   return su__mem_check(su_DVL_LOC_ARGS_INJ_SOLE);
 #else
    return FAL0;
 #endif
@@ -416,13 +445,13 @@ INLINE boole su_mem_check(void){
 INLINE boole su_mem_trace(boole dumpmem){ /* XXX ochannel, thrptr */
    UNUSED(dumpmem);
 #ifdef su_MEM_ALLOC_DEBUG
-   return su__mem_trace(dumpmem su_DBG_LOC_ARGS_INJ);
+   return su__mem_trace(dumpmem su_DVL_LOC_ARGS_INJ);
 #else
    return FAL0;
 #endif
 }
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -432,10 +461,12 @@ NSPC_BEGIN(su)
 
 class mem;
 
+/* {{{ */
 /*! \_ */
 class mem{
    su_CLASS_NO_COPY(mem);
 public:
+   /* c++ memory tools {{{ */
    /*!
     * \defgroup CXX_MEM_TOOLS C++ memory tools
     * \ingroup MEM_TOOLS
@@ -476,13 +507,12 @@ public:
       return su_mem_set(vp, what, len);
    }
 
-   /*! \copydoc{su_mem_set_volatile()} */
-   static void *set_volatile(void *vp, s32 what, uz len){
-      return (*su_mem_set_volatile)(vp, what, len);
-   }
+   /*! \copydoc{su_mem_zero()} */
+   static void zero(void *vp, uz len) {su_mem_zero(vp, len);}
+   /*! @} *//* }}} */
 
 public:
-   /*! @} */
+   /* c++ heap memory {{{ */
    /*!
     * \defgroup CXX_MEM_CACHE_ALLOC C++ heap memory
     * \ingroup MEM_CACHE_ALLOC
@@ -500,11 +530,15 @@ public:
    /*! \copydoc{su_mem_alloc_flags} */
    enum alloc_flags{
       alloc_none = su_MEM_ALLOC_NONE, /*!< \copydoc{su_MEM_ALLOC_NONE} */
-      alloc_clear = su_MEM_ALLOC_CLEAR, /*!< \copydoc{su_MEM_ALLOC_CLEAR} */
+      alloc_zero = su_MEM_ALLOC_ZERO, /*!< \copydoc{su_MEM_ALLOC_ZERO} */
+      /*! \copydoc{su_MEM_ALLOC_CONCEAL} */
+      alloc_conceal = su_MEM_ALLOC_CONCEAL,
+
       /*! \copydoc{su_MEM_ALLOC_32BIT_OVERFLOW} */
       alloc_32bit_overflow = su_MEM_ALLOC_32BIT_OVERFLOW,
       /*! \copydoc{su_MEM_ALLOC_31BIT_OVERFLOW} */
       alloc_31bit_overflow = su_MEM_ALLOC_31BIT_OVERFLOW,
+
       /*! \copydoc{su_MEM_ALLOC_OVERFLOW_OK} */
       alloc_overflow_ok = su_MEM_ALLOC_OVERFLOW_OK,
       /*! \copydoc{su_MEM_ALLOC_NOMEM_OK} */
@@ -532,7 +566,9 @@ public:
       /*! \copydoc{su_MEM_CONF_LINGER_FREE} */
       conf_linger_free = su_MEM_CONF_LINGER_FREE,
       /*! \copydoc{su_MEM_CONF_LINGER_FREE_RELEASE} */
-      conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE
+      conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE,
+      /*! \copydoc{su_MEM_CONF_FILLER_SET} */
+      conf_filler_set = su_MEM_CONF_FILLER_SET
    };
 
 /*! The base of \r{su_MEM_NEW()} etc.
@@ -553,11 +589,32 @@ public:
 
 /*! \_ */
 #define su_MEM_CNEW(T) \
-   su_MEM_ALLOC_NEW(T, su_MEM_ALLOC_CLEAR | su_MEM_ALLOC_MUSTFAIL)
+   su_MEM_ALLOC_NEW(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL)
 /*! \_ */
 #define su_MEM_CNEW_LOC(T,FNAME,LNNO) \
-   su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_CLEAR | su_MEM_ALLOC_MUSTFAIL,\
+   su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL,\
       FNAME, LNNO)
+
+/*! \remarks{In order to support hardening, this introduces a block,
+ * and therefore assigns the result to \a{RES}.
+ * That is, flags only come in via \a{F}, even \r{su_MEM_ALLOC_MUSTFAIL} is not
+ * set by default.
+ * The constructor is called with \a{CTOR_ARGS_IN_PARENS}, one may pass only
+ * a space if no arguments are needed.} */
+#define su_MEM_NEWF_BLK(RES,T,F,CTOR_ARGS_IN_PARENS) \
+do{\
+   RES = su_S(T *,su_MEM_ALLOCATE(sizeof(T), 1, F));\
+   if((RES) != NIL)\
+      RES = su_MEM_NEW_HEAP(T, RES) CTOR_ARGS_IN_PARENS;\
+}while(0)
+
+/*! See \r{su_MEM_NEWF_BLK()}. */
+#define su_MEM_NEWF_BLK_LOC(RES,T,F,CTOR_ARGS_IN_PARENS,FNAME,LNNO) \
+do{\
+   RES = su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), 1, F, FNAME, LNNO));\
+   if((RES) != NIL)\
+      RES = su_MEM_NEW_HEAP(T, RES) CTOR_ARGS_IN_PARENS;\
+}while(0)
 
 /*! \_ */
 #define su_MEM_NEW_HEAP(T,VP) new(VP, su_S(su_NSPC(su)mem::johnny*,su_NIL)) T
@@ -588,9 +645,11 @@ public:
    (su_ASSERT((TP) != su_NIL), (TP)->~T())
 
 /* (The painful _LOCOR series) */
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_NEW_LOCOR(T,ORARGS) su_MEM_NEW_LOC(T, ORARGS)
 # define su_MEM_CNEW_LOCOR(T,ORARGS) su_MEM_CNEW_LOC(T, ORARGS)
+# define su_MEM_NEWF_BLK_LOCOR(RES,T,F,CAIP,ORARGS) \
+      su_MEM_NEWF_BLK_LOC(RES, T, F, CAIP, ORARGS)
 # define su_MEM_NEW_HEAP_LOCOR(T,VP,ORARGS) su_MEM_NEW_HEAP_LOC(T, VP, ORARGS)
 # define su_MEM_DEL_LOCOR(TP,ORARGS) su_MEM_DEL_LOC(TP, ORARGS)
 # define su_MEM_DEL_HEAP_LOCOR(TP,ORARGS) su_MEM_DEL_HEAP_LOC(TP, ORARGS)
@@ -604,6 +663,9 @@ public:
    /*! \_ */
 # define su_MEM_CNEW_LOCOR(T,ORARGS) su_MEM_CNEW(T)
    /*! \_ */
+# define su_MEM_NEWF_BLK_LOCOR(RES,T,F,CTOR_ARGS_IN_PARENS,ORARGS) \
+      su_MEM_NEWF_BLK_LOC(RES, T, F, CTOR_ARGS_IN_PARENS)
+   /*! \_ */
 # define su_MEM_NEW_HEAP_LOCOR(T,VP,ORARGS) su_MEM_NEW_HEAP(T, VP)
    /*! \_ */
 # define su_MEM_DEL_LOCOR(TP,ORARGS) su_MEM_DEL(TP)
@@ -614,9 +676,11 @@ public:
    /*! \_ */
 # define su_MEM_DEL_HEAP_PRIVATE_LOCOR(T,TP,ORARGS) \
       su_MEM_DEL_HEAP_PRIVATE(T, TP)
-#endif /* !su_HAVE_DBG_LOC_ARGS */
+#endif /* !su_HAVE_DVL_LOC_ARGS */
+   /*! @} *//* }}} */
 
-   /*! @} */
+public:
+   /* c++ heap support {{{ */
    /*!
     * \defgroup CXX_MEM_CACHE_SUP C++ heap "support"
     * \ingroup MEM_CACHE_SUP
@@ -648,9 +712,9 @@ public:
       ASSERT_RET_VOID(tptr != NIL);
       tptr->~T();
    }
-
-   /*! @} */
+   /*! @} *//* }}} */
 };
+/* }}} */
 
 NSPC_END(su)
 
@@ -665,6 +729,6 @@ inline void *operator new(size_t sz, void *vp, NSPC(su)mem::johnny const *j){
 }
 
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* !su_MEM_H */
 /* s-it-mode */

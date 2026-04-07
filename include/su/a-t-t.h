@@ -34,9 +34,10 @@
  * \c{typedef}.
  * A later inclusion (without that variable) will then provide the definitions.
  */
-#endif
+#endif /* @CXX_DOXYGEN */
 
 #include <su/code.h>
+
 su_USECASE_MX_DISABLED
 #if !su_C_LANG || defined CXX_DOXYGEN
 
@@ -50,6 +51,7 @@ NSPC_BEGIN(su)
 
 template<class T> class auto_type_toolbox;
 
+/* auto_type_toolbox {{{ */
 #ifndef su_A_T_T_DECL_OK
 # define su_A_T_T_DECL_OK
 
@@ -165,9 +167,10 @@ template<class T>
 STA type_toolbox<T> const auto_type_toolbox<T>::instance =
       su_TYPE_TOOLBOX_I9R(&s_clone, &s_delete, &s_assign, &s_compare, &s_hash);
 #endif // !su_A_T_T_DECL_ONLY
+/* }}} */
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !su_C_LANG || defined CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_A_T_T_H */
 /* s-it-mode */

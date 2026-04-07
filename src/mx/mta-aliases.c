@@ -58,6 +58,9 @@ struct a_mtaali_g{
     * where ENUM is enum a_mtaali_type (NAME needs recursion).
     * The first entry also has memory to store the mtaali_alias */
    struct su_cs_dict mag_dict;
+#if DVLOR(1, 0)
+   boole mag_ever_init;
+#endif
 };
 #define a_MTAALI_G_ERR R(char*,-1) /* .mag_path */
 
@@ -84,11 +87,12 @@ struct a_mtaali_query{
    u32 maq_type;
 };
 
-static struct a_mtaali_g a_mtaali_g; /* XXX debug atexit */
+static struct a_mtaali_g a_mtaali_g;
 
 static void a_mtaali_gut_csd(struct su_cs_dict *csdp);
 
 static s32 a_mtaali_cache_init(char const *usrfile);
+DVL( static void a_mtaali__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 static s32 a_mtaali__read_file(struct a_mtaali_stack *masp);
 
 static void a_mtaali_expand(uz lvl, char const *name,
@@ -114,6 +118,7 @@ a_mtaali_gut_csd(struct su_cs_dict *csdp){
    }
 
    su_cs_dict_gut(csdp);
+
    NYD2_OU;
 }
 
@@ -141,6 +146,13 @@ a_mtaali_cache_init(char const *usrfile){
       a_mtaali_g.mag_path = su_cs_dup(mas.mas_path, 0);
       a_mtaali_g.mag_aliases = mas.mas_aliases;
       a_mtaali_g.mag_dict = mas.mas_dict;
+
+#if DVLOR(1, 0)
+      if(a_mtaali_g.mag_ever_init == FAL0){
+         a_mtaali_g.mag_ever_init = TRU1;
+         su_state_on_gut_install(&a_mtaali__on_gut, FAL0, su_STATE_ERR_NOPASS);
+      }
+#endif
    }else
       rv = su_ERR_NONE;
 
@@ -160,6 +172,23 @@ jerr_nolog:
    goto jleave;
 }
 
+#if DVLOR(1, 0)
+static void
+a_mtaali__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){
+         su_FREE(a_mtaali_g.mag_path);
+         a_mtaali_gut_csd(&a_mtaali_g.mag_dict);
+      }
+
+   STRUCT_ZERO(struct a_mtaali_g, &a_mtaali_g);
+
+   NYD2_OU;
+}
+#endif
+
 static s32
 a_mtaali__read_file(struct a_mtaali_stack *masp){
    struct str line, l;
@@ -178,8 +207,7 @@ a_mtaali__read_file(struct a_mtaali_stack *masp){
       goto jleave;
    }
 
-   dp = su_cs_dict_create(&masp->mas_dict,
-         (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE), NIL);
+   dp = su_cs_dict_create(&masp->mas_dict, su_CS_DICT_CASE, NIL);
    su_cs_dict_view_setup(&csdv, dp);
    nsp = n_string_creat_auto(&ns);
    nsp = n_string_book(nsp, 512);
@@ -429,7 +457,7 @@ jerr:
    vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 
 jclear:
    if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){

@@ -1,6 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of ignore.h.
- *@ XXX debug+: on-exit cleanup
  *
  * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -93,7 +92,7 @@ static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
    {mx_IGNORE_TYPE, "print\0"},
    {mx_IGNORE_FWD, "fwd"}
 };
-#ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "mx_ignore is defined locally" */
+#if DVLOR(1, 0) /* Avoid gcc warn cascade "mx_ignore is defined locally" */
 CTAV(-mx__IGNORE_TYPE - mx__IGNORE_ADJUST == 0);
 CTAV(-mx__IGNORE_SAVE - mx__IGNORE_ADJUST == 1);
 CTAV(-mx__IGNORE_FWD - mx__IGNORE_ADJUST == 2);
@@ -104,6 +103,11 @@ CTA(S(u32,mx__IGNORE_MAX) <= S(u32,a_IGNORE_BLTIN_MASK), "Bit range excessed");
 
 static struct mx_ignore *a_ignore_bltin[mx__IGNORE_MAX + 1];
 static struct mx_ignore *a_ignore_list;
+#if DVLOR(1, 0)
+static boole a_ignore_on_gut_installed;
+#endif
+
+DVL( static void a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* */
 static struct mx_ignore *a_ignore_new(char const *name,
@@ -148,11 +152,43 @@ static boole a_ignore_lookup(struct mx_ignore const *self, boole retain,
 static boole a_ignore_insert(struct a_ignore_type *itp,
       char const *dat, uz len, boole isre);
 
+#if DVLOR(1, 0)
+static void
+a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      uz i;
+      struct mx_ignore *ip;
+
+      while((ip = a_ignore_list) != NIL)
+         mx_ignore_del(ip);
+
+      for(i = 0; i <= mx__IGNORE_MAX; ++i)
+         if((ip = a_ignore_bltin[i]) != NIL)
+            mx_ignore_del(ip);
+   }
+
+   su_mem_set(a_ignore_bltin, 0, sizeof(a_ignore_bltin));
+   a_ignore_list = NIL;
+   a_ignore_on_gut_installed = FAL0;
+
+   NYD2_OU;
+}
+#endif
+
 static struct mx_ignore *
 a_ignore_new(char const *name, BITENUM_IS(u32,a_ignore_new_flags) f){
    struct mx_ignore *self;
    uz l;
    NYD2_IN;
+
+#if DVLOR(1, 0)
+   if(!a_ignore_on_gut_installed){
+      a_ignore_on_gut_installed = TRU1;
+      su_state_on_gut_install(&a_ignore__on_gut, FAL0, su_STATE_ERR_NOPASS);
+   }
+#endif
 
    l = su_cs_len(name) +1;
 
@@ -169,7 +205,7 @@ a_ignore_new(char const *name, BITENUM_IS(u32,a_ignore_new_flags) f){
    su_mem_copy(self->i_name, name, l);
 
    if(f & a_IGNORE_CLEANUP){
-      self->i_gcc.gcc_fun = R(su_delete_fun,&mx_ignore_del);
+      self->i_gcc.gcc_fun = R(su_del_fun,&mx_ignore_del);
       mx_go_ctx_cleanup_push(&self->i_gcc);
    }
 
@@ -365,7 +401,7 @@ a_ignore__show(struct mx_ignore const *ip, boole retain){
    *ap = NIL;
 
    su_sort_shell_vpp(su_S(void const**,ring), P2UZ(ap - ring),
-      su_cs_toolbox_case.tb_compare);
+      su_cs_toolbox_case.tb_cmp);
 
    i = fprintf(n_stdout, "headerpick %s %s",
          ip->i_name, (retain ? "retain" : "ignore"));
@@ -642,7 +678,7 @@ c_headerpick(void *vp){
    if(*argv == NIL){
       struct a_ignore_bltin_map const *ibmp;
 
-      rv = n_EXIT_OK;
+      rv = su_EX_OK;
 
       for(ibmp = &a_ignore_bltin_map[0];
             ibmp <= &a_ignore_bltin_map[mx__IGNORE_MAX]; ++ibmp){
@@ -671,7 +707,7 @@ c_headerpick(void *vp){
             su_cs_starts_with_case("join", *argv)){
 jecreatname:
          n_err(_("headerpick: create: invalid context name: %s\n"), *argv);
-         rv = n_EXIT_ERR;
+         rv = su_EX_ERR;
          goto jleave;
       }else{
          struct a_ignore_bltin_map const *ibmp;
@@ -685,12 +721,12 @@ jecreatname:
       for(xself = a_ignore_list; xself != NIL; xself = xself->i_next)
          if(!su_cs_cmp_case(xself->i_name, *argv)){
             n_err(_("headerpick: create: context exists: %s\n"), *argv);
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
             goto jleave;
          }
 
       self = mx_ignore_new(*argv, FAL0);
-      rv = n_EXIT_OK;
+      rv = su_EX_OK;
       goto jleave;
    }
 
@@ -713,7 +749,7 @@ jecreatname:
    if((self = mx_ignore_by_name(*argv)) == NIL){
 jectx:
       n_err(_("headerpick: invalid context: %s\n"), *argv);
-      rv = n_EXIT_ERR;
+      rv = su_EX_ERR;
       goto jleave;
    }
    ++argv;
@@ -723,10 +759,10 @@ jectx:
       if(rv > 0){
          if((self = a_ignore_resolve_self(self, FAL0)) != NIL)
             mx_ignore_del(self);
-         rv = n_EXIT_OK;
+         rv = su_EX_OK;
       }else
          rv = a_ignore_assijoin(xself, self, (rv != -1))
-               ? n_EXIT_OK : n_EXIT_ERR;
+               ? su_EX_OK : su_EX_ERR;
       goto jleave;
    }
 
@@ -760,7 +796,7 @@ jleave:
    return rv;
 jesyn:
    mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("headerpick"), NIL);
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
    goto jleave;
 }
 

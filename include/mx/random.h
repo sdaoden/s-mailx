@@ -24,20 +24,17 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* mx_HAVE_RANDOM: supported (external) PRG implementations */
-#define mx_RANDOM_IMPL_BUILTIN 0
-#define mx_RANDOM_IMPL_ARC4 1
-#define mx_RANDOM_IMPL_TLS 2
-#define mx_RANDOM_IMPL_GETENTROPY 3
-#define mx_RANDOM_IMPL_GETRANDOM 4 /* (both, syscall + library) */
-#define mx_RANDOM_IMPL_URANDOM 5
-
 /* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
  * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL then we produce
  * a reproducible string by using and managing that counter instead */
 EXPORT char *mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil);
 EXPORT char *mx_random_create_cp(uz len, u32 *reprocnt_or_nil);
+
+/* Any non-TLS su_random hook */
+#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
+EXPORT boole mx_random_hook(void **cookie, void *buf, uz len);
+#endif
 
 #include <su/code-ou.h>
 #endif /* mx_RANDOM_H */

@@ -27,9 +27,10 @@
  *
  * Merely of interest when creating new C++ collection types.
  */
-#endif
+#endif /* @CXX_DOXYGEN */
 
 #include <su/code.h>
+
 su_USECASE_MX_DISABLED
 #if !su_C_LANG || defined CXX_DOXYGEN
 
@@ -50,6 +51,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_unidir_const;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
 
+/* doc {{{ */
 /*!
  * \defgroup VIEW C++ View superclasses
  * \ingroup COLL
@@ -234,6 +236,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * }}
  * @{
  */
+/* }}} */
 
 /*! \_ */
 enum view_category{
@@ -314,7 +317,7 @@ public:
 // base& _x   ...   MYSELF& y = _x   ...   y.m_view
 // (and only so if we put a "using" directive, see su__VIEW_IMPL_START__BASE).
 // To be (hopefully..) absolutely safe use a C-style cast
-#define su__VIEW_DOWNCAST(X) ((su__VIEW_NAME&)X)
+#define su__VIEW_DOWNCAST(X) C(su__VIEW_NAME &,X)
 
 #define su__VIEW_IMPL_START /*{{{*/\
 template<class VIEWTRAITS, class GBASEVIEWT>\
@@ -461,7 +464,7 @@ public:\
       ASSERT_RET(startpos.is_valid(), err::einval);\
       ASSERT_RET(!endpos.is_valid() || startpos.is_same_parent(endpos),\
          err::einval);\
-      if(DBGOR(1, 0)){\
+      if(DVLDBGOR(1, 0)){\
          if(is_same_parent(startpos)){\
             myself v(startpos);\
             if(endpos.is_valid()){\
@@ -836,6 +839,6 @@ su__VIEW_IMPL_END
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !su_C_LANG || defined CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_VIEW_H */
 /* s-it-mode */

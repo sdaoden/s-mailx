@@ -33,11 +33,15 @@
 # include "su/cs.h"
 #endif
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/mem.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
+
+NSPC_USE(su)
 
 #ifndef su_MEM_ALLOC_DEBUG
 # define a_MEMA_DBG(X)
@@ -55,50 +59,50 @@
     * and primes from maxv@netbsd.org, src/sys/kern/subr_kmem.c */
 # define a_MEMA_HOPE_LOWER(M,P) \
 do{\
-   u64 __h__ = R(up,P);\
-   __h__ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
-   __h__ >>= 56;\
-   (M) = S(u8,__h__);\
+   u64 h___ = R(up,P);\
+   h___ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
+   h___ >>= 56;\
+   (M) = S(u8,h___);\
 }while(0)
 
 # define a_MEMA_HOPE_UPPER(M,P) \
 do{\
-   u32 __i__;\
-   u64 __x__, __h__ = R(up,P);\
-   __h__ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
-   for(__i__ = 56; __i__ != 0; __i__ -= 8)\
-      if((__x__ = (__h__ >> __i__)) != 0){\
-         (M) = S(u8,__x__);\
+   u32 i___;\
+   u64 x___, h___ = R(up,P);\
+   h___ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
+   for(i___ = 56; i___ != 0; i___ -= 8)\
+      if((x___ = (h___ >> i___)) != 0){\
+         (M) = S(u8,x___);\
          break;\
       }\
-   if(__i__ == 0)\
+   if(i___ == 0)\
       (M) = 0xAAu;\
 }while(0)
 
 # define a_MEMA_HOPE_SET(T,C) \
 do{\
-   union a_mema_ptr __xp;\
-   struct a_mema_chunk *__xc;\
-   __xp.map_vp = (C).map_vp;\
-   __xc = R(struct a_mema_chunk*,__xp.T - 1);\
+   union a_mema_ptr xp__;\
+   struct a_mema_chunk *xc__;\
+   xp__.map_vp = (C).map_vp;\
+   xc__ = R(struct a_mema_chunk*,xp__.T - 1);\
    a_MEMA_HOPE_INC((C).map_cp);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[0], &__xp.map_u8p[0]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[1], &__xp.map_u8p[1]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[2], &__xp.map_u8p[2]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[3], &__xp.map_u8p[3]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[4], &__xp.map_u8p[4]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[5], &__xp.map_u8p[5]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[6], &__xp.map_u8p[6]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[7], &__xp.map_u8p[7]);\
-   a_MEMA_HOPE_INC(__xp.map_u8p) + __xc->mac_size - __xc->mac_user_off;\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[0], &__xp.map_u8p[0]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[1], &__xp.map_u8p[1]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[2], &__xp.map_u8p[2]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[3], &__xp.map_u8p[3]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[4], &__xp.map_u8p[4]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[5], &__xp.map_u8p[5]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[6], &__xp.map_u8p[6]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[7], &__xp.map_u8p[7]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[0], &xp__.map_u8p[0]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[1], &xp__.map_u8p[1]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[2], &xp__.map_u8p[2]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[3], &xp__.map_u8p[3]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[4], &xp__.map_u8p[4]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[5], &xp__.map_u8p[5]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[6], &xp__.map_u8p[6]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[7], &xp__.map_u8p[7]);\
+   a_MEMA_HOPE_INC(xp__.map_u8p) + xc__->mac_size - xc__->mac_user_off;\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[0], &xp__.map_u8p[0]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[1], &xp__.map_u8p[1]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[2], &xp__.map_u8p[2]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[3], &xp__.map_u8p[3]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[4], &xp__.map_u8p[4]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[5], &xp__.map_u8p[5]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[6], &xp__.map_u8p[6]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[7], &xp__.map_u8p[7]);\
 }while(0)
 
 # define a_MEMA_HOPE_GET_TRACE(T,C,BAD) \
@@ -110,72 +114,72 @@ do{\
 
 # define a_MEMA_HOPE_GET(T,C,BAD) \
 do{\
-   union a_mema_ptr __xp;\
-   struct a_mema_chunk *__xc;\
-   u32 __i;\
-   u8 __m;\
-   __xp.map_vp = (C).map_vp;\
-   a_MEMA_HOPE_DEC(__xp.map_cp);\
-   (C).map_cp = __xp.map_cp;\
-   __xc = R(struct a_mema_chunk*,__xp.T - 1);\
+   union a_mema_ptr xp__;\
+   struct a_mema_chunk *xc__;\
+   u32 i__;\
+   u8 m___;\
+   xp__.map_vp = (C).map_vp;\
+   a_MEMA_HOPE_DEC(xp__.map_cp);\
+   (C).map_cp = xp__.map_cp;\
+   xc__ = R(struct a_mema_chunk*,xp__.T - 1);\
    (BAD) = FAL0;\
-   __i = 0;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[0]);\
-      if(__xp.map_u8p[0] != __m) __i |= 1<<7;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[1]);\
-      if(__xp.map_u8p[1] != __m) __i |= 1<<6;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[2]);\
-      if(__xp.map_u8p[2] != __m) __i |= 1<<5;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[3]);\
-      if(__xp.map_u8p[3] != __m) __i |= 1<<4;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[4]);\
-      if(__xp.map_u8p[4] != __m) __i |= 1<<3;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[5]);\
-      if(__xp.map_u8p[5] != __m) __i |= 1<<2;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[6]);\
-      if(__xp.map_u8p[6] != __m) __i |= 1<<1;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[7]);\
-      if(__xp.map_u8p[7] != __m) __i |= 1<<0;\
-   if(__i != 0){\
-      (BAD) = (__i >= (1<<3)) ? TRUM1 : TRU1;\
+   i__ = 0;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[0]);\
+      if(xp__.map_u8p[0] != m___) i__ |= 1<<7;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[1]);\
+      if(xp__.map_u8p[1] != m___) i__ |= 1<<6;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[2]);\
+      if(xp__.map_u8p[2] != m___) i__ |= 1<<5;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[3]);\
+      if(xp__.map_u8p[3] != m___) i__ |= 1<<4;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[4]);\
+      if(xp__.map_u8p[4] != m___) i__ |= 1<<3;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[5]);\
+      if(xp__.map_u8p[5] != m___) i__ |= 1<<2;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[6]);\
+      if(xp__.map_u8p[6] != m___) i__ |= 1<<1;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[7]);\
+      if(xp__.map_u8p[7] != m___) i__ |= 1<<0;\
+   if(i__ != 0){\
+      (BAD) = (i__ >= (1<<3)) ? TRUM1 : TRU1;\
       a_MEMA_HOPE_INC((C).map_cp);\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt lower canary: " \
-            "0x%02X: %s, line %" PRIu32 "\n",\
-         (C).map_cp, __i, su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);\
+            "0x%02X: %s, line %" PRIu32,\
+         (C).map_cp, i__, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
-   a_MEMA_HOPE_INC(__xp.map_u8p) + __xc->mac_size - __xc->mac_user_off;\
-   __i = 0;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[0]);\
-      if(__xp.map_u8p[0] != __m) __i |= 1<<0;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[1]);\
-      if(__xp.map_u8p[1] != __m) __i |= 1<<1;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[2]);\
-      if(__xp.map_u8p[2] != __m) __i |= 1<<2;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[3]);\
-      if(__xp.map_u8p[3] != __m) __i |= 1<<3;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[4]);\
-      if(__xp.map_u8p[4] != __m) __i |= 1<<4;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[5]);\
-      if(__xp.map_u8p[5] != __m) __i |= 1<<5;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[6]);\
-      if(__xp.map_u8p[6] != __m) __i |= 1<<6;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[7]);\
-      if(__xp.map_u8p[7] != __m) __i |= 1<<7;\
-   if(__i != 0){\
-      (BAD) |= (__i >= (1<<3)) ? TRUM1 : TRU1;\
+   a_MEMA_HOPE_INC(xp__.map_u8p) + xc__->mac_size - xc__->mac_user_off;\
+   i__ = 0;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[0]);\
+      if(xp__.map_u8p[0] != m___) i__ |= 1<<0;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[1]);\
+      if(xp__.map_u8p[1] != m___) i__ |= 1<<1;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[2]);\
+      if(xp__.map_u8p[2] != m___) i__ |= 1<<2;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[3]);\
+      if(xp__.map_u8p[3] != m___) i__ |= 1<<3;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[4]);\
+      if(xp__.map_u8p[4] != m___) i__ |= 1<<4;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[5]);\
+      if(xp__.map_u8p[5] != m___) i__ |= 1<<5;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[6]);\
+      if(xp__.map_u8p[6] != m___) i__ |= 1<<6;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[7]);\
+      if(xp__.map_u8p[7] != m___) i__ |= 1<<7;\
+   if(i__ != 0){\
+      (BAD) |= (i__ >= (1<<3)) ? TRUM1 : TRU1;\
       a_MEMA_HOPE_INC((C).map_cp);\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt upper canary: " \
-            "0x%02X: %s, line %" PRIu32 "\n",\
-         (C).map_cp, __i, su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);\
+            "0x%02X: %s, line %" PRIu32,\
+         (C).map_cp, i__, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
    if(BAD)\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
-         "! SU memory:   ..canary last seen: %s, line %" PRIu32 "\n",\
-         __xc->mac_file, __xc->mac_line);\
+         "! SU memory:   ..canary last seen: %s, line %" PRIu32,\
+         xc__->mac_file, xc__->mac_line);\
 }while(0)
 #endif /* su_MEM_ALLOC_DEBUG */
 
@@ -190,8 +194,8 @@ struct a_mema_chunk{
 };
 # define a_MEMA_MARK_TO_STORE(X) \
    ((S(u32,X) >> su__MEM_ALLOC_MARK_SHIFT) & su__MEM_ALLOC_MARK_MASK)
-# define a_MEMA_STORE_TO_MARK(MACP) \
-   ((MACP)->mac_mark << su__MEM_ALLOC_MARK_SHIFT)
+/*# define a_MEMA_STORE_TO_MARK(MACP) \
+ *   ((MACP)->mac_mark << su__MEM_ALLOC_MARK_SHIFT)*/
 
 /* The heap memory mem_free() may become delayed to detect double frees */
 struct a_mema_heap_chunk{
@@ -274,9 +278,9 @@ a_mema_release_free(void){
          free(vp);
       }
 
-      su_log_write(su_LOG_INFO | su_LOG_F_CORE,
+      su_log_write(su_LOG_DEBUG | su_LOG_F_CORE,
          "su_mem_set_conf(LINGER_FREE_RELEASE): freed %" PRIuZ
-            " chunks / %" PRIuZ " bytes\n",
+            " chunks / %" PRIuZ " bytes",
          c, s);
    }
 
@@ -301,7 +305,7 @@ a_mema_dump_chunk(boole how, char buf[a_MEMA_DUMP_SIZE],
 
    if((size = MIN(size, a_MEMA_DUMP_SIZE - 4)) == 0)
       dp = buf;
-   else for(cp = vp; size > 0; ++cp, --size)
+   else for(cp = S(char const*,vp); size > 0; ++cp, --size)
       *dp++ = su_cs_is_print(*cp) ? *cp : '?';
 
    *dp = '\0';
@@ -332,7 +336,7 @@ jleave:
 }
 
 boole
-su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
+su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE){
    union a_mema_ptr p, xp;
    boole anybad, isbad;
    NYD2_IN;
@@ -348,7 +352,7 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
          anybad |= isbad;
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "! SU memory: CANARY ERROR (heap): %p (%" PRIuZ
-               " bytes): %s, line %" PRIu32 "\n",
+               " bytes): %s, line %" PRIu32,
             xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
             p.map_c->mac_file, p.map_c->mac_line);
       }
@@ -363,23 +367,39 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
          anybad |= isbad;
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "! SU memory: CANARY ERROR (free list): %p (%" PRIuZ
-               " bytes): %s, line %" PRIu32 "\n",
+               " bytes): %s, line %" PRIu32,
             xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
             p.map_c->mac_file, p.map_c->mac_line);
+      }else{
+         uz i;
+         u8 const *ubp;
+
+         ubp = xp.map_u8p;
+         i = p.map_c->mac_size - p.map_c->mac_user_off;
+
+         while(i-- != 0)
+            if(ubp[i] != 0xBA){
+               anybad |= 1;
+               su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
+                  "! SU memory: FREED BUFFER MODIFIED: %p (%" PRIuZ
+                     " bytes): %s, line %" PRIu32,
+                  xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
+                  p.map_c->mac_file, p.map_c->mac_line);
+            }
       }
    }
 
    if(anybad)
       su_log_write(((a_mema_conf & su_MEM_CONF_ON_ERROR_EMERG)
-            ? su_LOG_EMERG : su_LOG_CRIT) | su_LOG_F_CORE,
-         "SU memory check: errors encountered\n");
+            ? su_LOG_EMERG : su_LOG_ALERT) | su_LOG_F_CORE,
+         "SU memory check: errors encountered");
 
    NYD2_OU;
    return anybad;
 }
 
 boole
-su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
+su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL){
    char dump[a_MEMA_DUMP_SIZE];
    union a_mema_ptr p, xp;
    u32 mark;
@@ -417,7 +437,7 @@ su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
                p.map_c->mac_size - p.map_c->mac_user_off);
 
          su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
-            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s\n",
+            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
             p.map_c->mac_file, p.map_c->mac_line, dump);
@@ -429,7 +449,7 @@ su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
 
    if(a_mema_free_list != NIL){
       su_log_write(su_LOG_INFO | su_LOG_F_CORE,
-         "Freed memory lingering for release:\n");
+         "Freed memory lingering for release:");
 
       for(p.map_hc = a_mema_free_list; p.map_hc != NIL;
             p.map_hc = p.map_hc->mahc_next){
@@ -443,7 +463,7 @@ su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
                p.map_c->mac_size - p.map_c->mac_user_off);
 
          su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
-            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s\n",
+            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
             p.map_c->mac_file, p.map_c->mac_line, dump);
@@ -457,7 +477,7 @@ su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
 
 void *
 su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -465,7 +485,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
 #endif
    void *rv;
    NYD_IN;
-   su_DBG_LOC_ARGS_UNUSED();
+   su_DVL_LOC_ARGS_UNUSED();
 
    a_MEMA_DBG( user_sz = size su_COMMA user_no = no; )
    if(UNLIKELY(size == 0))
@@ -494,18 +514,18 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
          /* XXX Of course this may run on odd ranges, but once upon a time
           * XXX i will port my C++ cache and then we're fine again (it will not
           * XXX even be handled in here) */
-         if(maf & su_MEM_ALLOC_CLEAR)
+         if(maf & su_MEM_ALLOC_ZERO)
             su_mem_set(rv, 0, size);
 #ifdef su_MEM_ALLOC_DEBUG
          else
-            su_mem_set(rv, 0xAA, size);
+            su_mem_set(rv, su__mem_filler, size);
          p.map_vp = rv;
 
          p.map_hc->mahc_prev = NIL;
          if((p.map_hc->mahc_next = a_mema_heap_list) != NIL)
             a_mema_heap_list->mahc_prev = p.map_hc;
-         p.map_c->mac_file = su_DBG_LOC_ARGS_FILE;
-         p.map_c->mac_line = su_DBG_LOC_ARGS_LINE;
+         p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+         p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
          p.map_c->mac_isfree = FAL0;
          p.map_c->mac_mark = mark = a_MEMA_MARK_TO_STORE(maf);
          ASSERT(size - user_sz <= S32_MAX);
@@ -540,7 +560,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
 
 void *
 su_mem_reallocate(void *ovp, uz size, uz no,
-      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL){
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -549,7 +569,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
 #endif
    void *rv;
    NYD_IN;
-   su_DBG_LOC_ARGS_UNUSED();
+   su_DVL_LOC_ARGS_UNUSED();
 
    a_MEMA_DBG( user_sz = size su_COMMA user_no = no su_COMMA orig_sz = 0; )
    if(UNLIKELY(size == 0))
@@ -574,16 +594,16 @@ su_mem_reallocate(void *ovp, uz size, uz no,
       else if(isbad == TRUM1){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer corrupted!  At %s, line %" PRIu32
-               "\n\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+               "\n\tLast seen: %s, line %" PRIu32
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of corrupted pointer"));
          goto NYD_OU_LABEL;
       }else{
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer freed!  At %s, line %" PRIu32
-               "\n\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+               "\n\tLast seen: %s, line %" PRIu32
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of a freed pointer"));
          goto NYD_OU_LABEL;
@@ -616,8 +636,8 @@ su_mem_reallocate(void *ovp, uz size, uz no,
          p.map_hc->mahc_prev = NIL;
          if((p.map_hc->mahc_next = a_mema_heap_list) != NIL)
             a_mema_heap_list->mahc_prev = p.map_hc;
-         p.map_c->mac_file = su_DBG_LOC_ARGS_FILE;
-         p.map_c->mac_line = su_DBG_LOC_ARGS_LINE;
+         p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+         p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
          p.map_c->mac_isfree = FAL0;
          p.map_c->mac_mark = mark = a_MEMA_MARK_TO_STORE(maf);
          ASSERT(size - user_sz <= S32_MAX);
@@ -642,7 +662,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
 
          if(origovp != NIL){
             su_mem_copy(rv, origovp, MIN(orig_sz, size));
-            su_mem_free(origovp su_DBG_LOC_ARGS_USE);
+            su_mem_free(origovp su_DVL_LOC_ARGS_USE);
          }
       }
 #endif /* su_MEM_ALLOC_DEBUG */
@@ -655,9 +675,9 @@ su_mem_reallocate(void *ovp, uz size, uz no,
 }
 
 void
-su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
+su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
-   su_DBG_LOC_ARGS_UNUSED();
+   su_DVL_LOC_ARGS_UNUSED();
 
    if(LIKELY(ovp != NIL)){
 #ifdef su_MEM_ALLOC_DEBUG
@@ -673,14 +693,14 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
       if(isbad == TRUM1){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: free of corrupted pointer at %s, line %" PRIu32 "\n"
-            "\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+            "\tLast seen: %s, line %" PRIu32
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          goto NYD_OU_LABEL;
       }else if(p.map_c->mac_isfree){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: double-free avoided at %s, line %" PRIu32 "\n"
-            "\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+            "\tLast seen: %s, line %" PRIu32
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          goto NYD_OU_LABEL;
       }
 
@@ -688,8 +708,8 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
       su_mem_set(ovp, 0xBA, orig_sz);
       ovp = p.map_vp;
 
-      p.map_c->mac_file = su_DBG_LOC_ARGS_FILE;
-      p.map_c->mac_line = su_DBG_LOC_ARGS_LINE;
+      p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+      p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
       p.map_c->mac_isfree = TRU1;
       if(p.map_hc == a_mema_heap_list){
          if((a_mema_heap_list = p.map_hc->mahc_next) != NIL)
@@ -713,8 +733,8 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    else
       su_log_write(su_LOG_DEBUG,
-         "SU memory: free(NIL) from %s, line %" PRIu32 "\n"
-         su_DBG_LOC_ARGS_USE);
+         "SU memory: free(NIL) from %s, line %" PRIu32
+         su_DVL_LOC_ARGS_USE);
 #endif
 
    NYD_OU;
@@ -729,16 +749,19 @@ su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val){
    ASSERT_NYD(rmco <= su__MEM_CONF_MAX);
 
    if((rmco & su_MEM_CONF_LINGER_FREE_RELEASE) ||
-         (!val && (rmco & su_MEM_CONF_LINGER_FREE))){
-      rmco &= ~su_MEM_CONF_LINGER_FREE_RELEASE;
+         ((rmco & su_MEM_CONF_LINGER_FREE) && !val)){
+      rmco &= ~S(uz,su_MEM_CONF_LINGER_FREE_RELEASE);
 #ifdef su_MEM_ALLOC_DEBUG
       su_mem_check();
       a_mema_release_free();
 #endif
    }
 
+   if(rmco == su_MEM_CONF_FILLER_SET){
+      DVLDBG( su__mem_filler = S(u8,val); )
+   }
    /* xxx !MEM_DEBUG does not test whether mem_conf_option is available */
-   if(rmco != 0){
+   else if(rmco != 0){
       if(val != FAL0)
          a_mema_conf |= rmco;
       else

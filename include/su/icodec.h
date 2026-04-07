@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* icodec {{{ */
 /*!
  * \defgroup ICODEC Integer/String conversion
  * \ingroup TEXT
@@ -37,6 +38,7 @@ C_DECL_BEGIN
  * @{
  */
 
+/* idec {{{ */
 /*!
  * \defgroup IDEC Integers from Strings
  * \ingroup ICODEC
@@ -52,7 +54,9 @@ enum su_idec_mode{
    /*! If a power-of-two is used explicitly, or if a \a{base} of 0 is used
     * and a known standard prefix is seen, enforce interpretation as unsigned.
     * This only makes a difference in conjunction with
-    * \r{su_IDEC_MODE_SIGNED_TYPE}. */
+    * \r{su_IDEC_MODE_SIGNED_TYPE}, and in respect to the overflow cutlimit
+    * calculation; overflow constants are (still) based upon whether
+    * a leading hyphen-minus was seen, or not. */
    su_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
    /*! Relaxed \a{base} 0 convenience: if the input used \c{BASE#number} number
     * sign syntax, then the scan will be restarted anew with the base given.
@@ -83,7 +87,16 @@ enum su_idec_state{
    /*! Malformed input, no usable result has been stored. */
    su_IDEC_STATE_EINVAL = 1u<<8,
    /*! Bad character according to base, but we have seen some good ones
-    * before, otherwise \r{su_IDEC_STATE_EINVAL} would have been used. */
+    * before, otherwise \r{su_IDEC_STATE_EINVAL} would have been used.
+    *
+    * \remarks{After some error in the tor software all software (which had to,
+    * we did) turned to an interpretation of the C standard which says that the
+    * prefix may optionally precede an otherwise valid sequence, which means
+    * that "0x" is not a STATE_INVAL error but gives a "0" result with
+    * a STATE_BASE error and a rest of "x".
+    * Ever since this is a rather regular error, and all of \c{0B}, \c{09},
+    * \c{0x} (with base 0 or 2, 8, 16, respectively) will have a result of
+    * 0 and leave the last byte unconsumed.} */
    su_IDEC_STATE_EBASE = 2u<<8,
    su_IDEC_STATE_EOVERFLOW = 3u<<8, /*!< Result too large. */
    su_IDEC_STATE_EMASK = 3u<<8, /*!< All errors, that is. */
@@ -91,8 +104,8 @@ enum su_idec_state{
    su_IDEC_STATE_CONSUMED = 1u<<17, /*!< All the input has been consumed. */
    su__IDEC_PRIVATE_SHIFT1 = 24u
 };
-#ifndef DOXYGEN
-MCTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
+#ifdef su_SOURCE_ICODEC_DEC
+CTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps");
 #endif
 
 /*! Decode \a{clen} (or \r{su_cs_len()} if \r{su_UZ_MAX}) bytes of \a{cbuf}
@@ -102,7 +115,8 @@ MCTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
  * whether MIN/MAX are used), which must point to storage of the correct type,
  * return the resulting \r{su_idec_state} (which includes \a{idec_mode}).
  * If \a{endptr_or_nil} is will be pointed to the last parsed byte.
- * Base auto-detection can be enfored by setting \a{base} to 0. */
+ * Base auto-detection can be enfored by setting \a{base} to 0,
+ * otherwise \a{base} must be within and including 2 and 64. */
 EXPORT BITENUM_IS(u32,su_idec_state) su_idec(void *resp,
       char const *cbuf, uz clen,
       u8 base, BITENUM_IS(u32,su_idec_mode) idec_mode,
@@ -202,8 +216,9 @@ INLINE BITENUM_IS(u32,su_idec_state) su_idec_cp(void *resp, char const *cp,
 #define su_idec_up_cp(RP,CBP,B,CLP) su_idec_up(RP,CBP,su_UZ_MAX,B,CLP)
 /*! \_ */
 #define su_idec_sp_cp(RP,CBP,B,CLP) su_idec_sp(RP,CBP,su_UZ_MAX,B,CLP)
+/*! @} *//* }}} */
 
-/*! @} */
+/* ienc {{{ */
 /*!
  * \defgroup IENC Integers to Strings
  * \ingroup ICODEC
@@ -233,8 +248,8 @@ enum su_ienc_mode{
    /*! No base prefixes shall prepend the number, even if the conversion base
     * would normally place one. */
    su_IENC_MODE_NO_PREFIX = 1u<<4,
-   /*! For bases greater ten (10), use lowercase letters instead of the default
-    * uppercase.
+   /*! For bases greater ten (10), and less than 37, use lowercase letters
+    * instead of the default uppercase.
     * This does not cover the base. */
    su_IENC_MODE_LOWERCASE = 1u<<5,
 
@@ -242,7 +257,7 @@ enum su_ienc_mode{
    su__IENC_MODE_MASK = (1u<<su__IENC_MODE_SHIFT) - 1
 };
 
-/*! Encode an integer value according to base (2-36) and \r{su_ienc_mode}
+/*! Encode an integer according to base (2-64, including) and \r{su_ienc_mode}
  * \a{ienc_mode}, return pointer to starting byte or \NIL on error.
  * An error only happens for an invalid base. */
 EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,
@@ -253,45 +268,52 @@ EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,
    su_ienc(CBP, su_S(su_u8,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s8(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s8,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, S(su_u64,su_S(su_s64,su_S(su_s8,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_u16(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_u16,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s16(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s16,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_s16,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_u32(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_u32,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s32(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s32,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_s32,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_u64(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_u64,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s64(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s64,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_s64,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_uz(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_uz,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_sz(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_sz,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_sz,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_up(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_up,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_sp(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_sp,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_sp,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
+/*! @} *//* }}} */
 
-/*! @} */
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -302,6 +324,7 @@ NSPC_BEGIN(su)
 class idec;
 class ienc;
 
+/* idec {{{ */
 /*!
  * \ingroup IDEC
  * C++ variant of \r{IDEC} (\r{su/icodec.h})
@@ -352,101 +375,147 @@ public:
          u8 base, BITENUM_IS(u32,mode) mode, char const **endptr_or_nil=NIL){
       return su_idec(resp, cbuf, clen, base, mode, endptr_or_nil);
    }
-   /*! \r{su_idec()} */
+   /*! \copydoc{su_idec_cp()} */
    static BITENUM_IS(u32,mode) convert(void *resp, char const *cbuf,
          u8 base, BITENUM_IS(u32,mode) mode, char const **endptr_or_nil=NIL){
       return su_idec_cp(resp, cbuf, base, mode, endptr_or_nil);
    }
 
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u8 &resr, char const *cbuf, uz clen,
+   /*! \copydoc{su_idec_u8()} */
+   static BITENUM_IS(u32,mode) convert_u8(u8 *resp, char const *cbuf, uz clen,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u8(&resr, cbuf, clen, base, endptr_or_nil);
+      return su_idec_u8(resp, cbuf, clen, base, endptr_or_nil);
    }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u8 &resr, char const *cbuf,
+   /*! \copydoc{su_idec_u8_cp()} */
+   static BITENUM_IS(u32,mode) convert_u8(u8 *resp, char const *cbuf,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u8_cp(&resr, cbuf, base, endptr_or_nil);
-   }
-
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s8 &resr, char const *cbuf, uz clen,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s8(&resr, cbuf, clen, base, endptr_or_nil);
-   }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s8 &resr, char const *cbuf,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s8_cp(&resr, cbuf, base, endptr_or_nil);
+      return su_idec_u8_cp(resp, cbuf, base, endptr_or_nil);
    }
 
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u16 &resr, char const *cbuf, uz clen,
+   /*! \copydoc{su_idec_s8()} */
+   static BITENUM_IS(u32,mode) convert_s8(s8 *resp, char const *cbuf, uz clen,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u16(&resr, cbuf, clen, base, endptr_or_nil);
+      return su_idec_s8(resp, cbuf, clen, base, endptr_or_nil);
    }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u16 &resr, char const *cbuf,
+   /*! \copydoc{su_idec_s8_cp()} */
+   static BITENUM_IS(u32,mode) convert_s8(s8 *resp, char const *cbuf,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u16_cp(&resr, cbuf, base, endptr_or_nil);
-   }
-
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s16 &resr, char const *cbuf, uz clen,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s16(&resr, cbuf, clen, base, endptr_or_nil);
-   }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s16 &resr, char const *cbuf,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s16_cp(&resr, cbuf, base, endptr_or_nil);
+      return su_idec_s8_cp(resp, cbuf, base, endptr_or_nil);
    }
 
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u32 &resr, char const *cbuf, uz clen,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u32(&resr, cbuf, clen, base, endptr_or_nil);
+   /*! \copydoc{su_idec_u16()} */
+   static BITENUM_IS(u32,mode) convert_u16(u16 *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_u16(resp, cbuf, clen, base, endptr_or_nil);
    }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u32 &resr, char const *cbuf,
+   /*! \copydoc{su_idec_u16_cp()} */
+   static BITENUM_IS(u32,mode) convert_u16(u16 *resp, char const *cbuf,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u32_cp(&resr, cbuf, base, endptr_or_nil);
-   }
-
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s32 &resr, char const *cbuf, uz clen,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s32(&resr, cbuf, clen, base, endptr_or_nil);
-   }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s32 &resr, char const *cbuf,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s32_cp(&resr, cbuf, base, endptr_or_nil);
+      return su_idec_u16_cp(resp, cbuf, base, endptr_or_nil);
    }
 
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u64 &resr, char const *cbuf, uz clen,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u64(&resr, cbuf, clen, base, endptr_or_nil);
+   /*! \copydoc{su_idec_s16()} */
+   static BITENUM_IS(u32,mode) convert_s16(s16 *resp, char const *cbuf,
+            uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_s16(resp, cbuf, clen, base, endptr_or_nil);
    }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(u64 &resr, char const *cbuf,
+   /*! \copydoc{su_idec_s16_cp()} */
+   static BITENUM_IS(u32,mode) convert_s16(s16 *resp, char const *cbuf,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_u64_cp(&resr, cbuf, base, endptr_or_nil);
+      return su_idec_s16_cp(resp, cbuf, base, endptr_or_nil);
    }
 
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s64 &resr, char const *cbuf, uz clen,
-         u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s64(&resr, cbuf, clen, base, endptr_or_nil);
+   /*! \copydoc{su_idec_u32()} */
+   static BITENUM_IS(u32,mode) convert_u32(u32 *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_u32(resp, cbuf, clen, base, endptr_or_nil);
    }
-   /*! \r{su_idec()} */
-   static BITENUM_IS(u32,mode) convert(s64 &resr, char const *cbuf,
+   /*! \copydoc{su_idec_u32_cp()} */
+   static BITENUM_IS(u32,mode) convert_u32(u32 *resp, char const *cbuf,
          u8 base, char const **endptr_or_nil=NIL){
-      return su_idec_s64_cp(&resr, cbuf, base, endptr_or_nil);
+      return su_idec_u32_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_s32()} */
+   static BITENUM_IS(u32,mode) convert_s32(s32 *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_s32(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_s32_cp()} */
+   static BITENUM_IS(u32,mode) convert_s32(s32 *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_s32_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_u64()} */
+   static BITENUM_IS(u32,mode) convert_u64(u64 *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_u64(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_u64_cp()} */
+   static BITENUM_IS(u32,mode) convert_u64(u64 *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_u64_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_s64()} */
+   static BITENUM_IS(u32,mode) convert_s64(s64 *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_s64(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_s64_cp()} */
+   static BITENUM_IS(u32,mode) convert_s64(s64 *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_s64_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_uz()} */
+   static BITENUM_IS(u32,mode) convert_uz(uz *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_uz(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_uz_cp()} */
+   static BITENUM_IS(u32,mode) convert_uz(uz *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_uz_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_sz()} */
+   static BITENUM_IS(u32,mode) convert_sz(sz *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_sz(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_sz_cp()} */
+   static BITENUM_IS(u32,mode) convert_sz(sz *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_sz_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_up()} */
+   static BITENUM_IS(u32,mode) convert_up(uz *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_up(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_up_cp()} */
+   static BITENUM_IS(u32,mode) convert_up(uz *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_up_cp(resp, cbuf, base, endptr_or_nil);
+   }
+
+   /*! \copydoc{su_idec_sp()} */
+   static BITENUM_IS(u32,mode) convert_sp(sz *resp, char const *cbuf,
+         uz clen, u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_sp(resp, cbuf, clen, base, endptr_or_nil);
+   }
+   /*! \copydoc{su_idec_sp_cp()} */
+   static BITENUM_IS(u32,mode) convert_sp(sz *resp, char const *cbuf,
+         u8 base, char const **endptr_or_nil=NIL){
+      return su_idec_up_cp(resp, cbuf, base, endptr_or_nil);
    }
 };
+/* }}} */
 
+/* ienc {{{ */
 /*!
  * \ingroup IENC
  * C++ variant of \r{IENC} (\r{su/icodec.h})
@@ -476,52 +545,69 @@ public:
    };
 
    /*! \copydoc{su_ienc()} */
-   static char *convert(char *cbuf, u64 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
-   }
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, s64 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
+   static char *convert(char *cbuf, u64 value, u8 base=10,
+         BITENUM_IS(u32,mode) mode=mode_none){
       return su_ienc(cbuf, value, base, mode);
    }
 
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, u32 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
+   /*! \copydoc{su_ienc_u8()} */
+   static char *convert_u8(char *cbuf, u8 value, u8 base=10){
+      return su_ienc_u8(cbuf, value, base);
    }
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, s32 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
+   /*! \copydoc{su_ienc_s8()} */
+   static char *convert_s8(char *cbuf, s8 value, u8 base=10){
+      return su_ienc_s8(cbuf, value, base);
    }
 
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, u16 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
+   /*! \copydoc{su_ienc_u16()} */
+   static char *convert_u16(char *cbuf, u16 value, u8 base=10){
+      return su_ienc_u16(cbuf, value, base);
    }
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, s16 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
+   /*! \copydoc{su_ienc_s16()} */
+   static char *convert_s16(char *cbuf, s16 value, u8 base=10){
+      return su_ienc_s16(cbuf, value, base);
    }
 
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, u8 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
+   /*! \copydoc{su_ienc_u32()} */
+   static char *convert_u32(char *cbuf, u32 value, u8 base=10){
+      return su_ienc_u32(cbuf, value, base);
    }
-   /*! \r{su_ienc()} */
-   static char *convert(char *cbuf, s8 value,
-         u8 base=10, BITENUM_IS(u32,mode) mode=mode_none){
-      return su_ienc(cbuf, value, base, mode);
+   /*! \copydoc{su_ienc_s32()} */
+   static char *convert_s32(char *cbuf, s32 value, u8 base=10){
+      return su_ienc_s32(cbuf, value, base);
+   }
+
+   /*! \copydoc{su_ienc_u64()} */
+   static char *convert_u64(char *cbuf, u64 value, u8 base=10){
+      return su_ienc_u64(cbuf, value, base);
+   }
+   /*! \copydoc{su_ienc_s64()} */
+   static char *convert_s64(char *cbuf, s64 value, u8 base=10){
+      return su_ienc_s64(cbuf, value, base);
+   }
+
+   /*! \copydoc{su_ienc_uz()} */
+   static char *convert_uz(char *cbuf, uz value, u8 base=10){
+      return su_ienc_uz(cbuf, value, base);
+   }
+   /*! \copydoc{su_ienc_sz()} */
+   static char *convert_sz(char *cbuf, sz value, u8 base=10){
+      return su_ienc_sz(cbuf, value, base);
+   }
+
+   /*! \copydoc{su_ienc_up()} */
+   static char *convert_up(char *cbuf, up value, u8 base=10){
+      return su_ienc_up(cbuf, value, base);
+   }
+   /*! \copydoc{su_ienc_sp()} */
+   static char *convert_sp(char *cbuf, sp value, u8 base=10){
+      return su_ienc_sp(cbuf, value, base);
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_ICODEC_H */
 /* s-it-mode */

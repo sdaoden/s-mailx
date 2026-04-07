@@ -1,6 +1,9 @@
 /*@ Mem bag objects to throw in and possibly forget about allocations.
  *@ Depends on su_HAVE_MEM_BAG_{AUTO,LOFI}. TODO FLUX
  *@ The allocation interface is macro-based for the sake of debugging.
+ *@ TODO MEM_BAG_SELF could be made so it optionally returns NIL, aka
+ *@ TODO is available but not currently available; ie hookable.
+ *@ TODO Library should be clean for this use case then
  *
  * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -29,29 +32,13 @@
 #include <su/code.h>
 
 #if defined su_HAVE_MEM_BAG_AUTO || defined su_HAVE_MEM_BAG_LOFI
-   /*!
-    * \ingroup MEM_BAG
+   /*! \ingroup MEM_BAG
     * Defined if memory bags are available.
-    * They are if just any memory allocation type is supported.
-    */
+    * They are if the \r{CONFIG} enables one of the memory bag allocation types
+    * \r{su_HAVE_MEM_BAG_AUTO} and/or \r{su_HAVE_MEM_BAG_LOFI}. */
 # define su_HAVE_MEM_BAG
 #endif
 #ifdef su_HAVE_MEM_BAG
-
-/* Use-case related foreign hooks */
-#ifdef su_USECASE_MX
-# include <su/code-in.h>
-C_DECL_BEGIN
-
-struct mx_go_data_ctx;
-struct su_mem_bag;
-struct su__mem_bag_mx {struct su_mem_bag *mbm_bag;};
-EXPORT_DATA struct mx_go_data_ctx *mx_go_data;
-# define su_MEM_BAG_SELF (su_R(struct su__mem_bag_mx*,mx_go_data)->mbm_bag)
-
-C_DECL_END
-# include <su/code-ou.h>
-#endif /* su_USECASE_MX */
 
 #define su_HEADER
 #include <su/code-in.h>
@@ -59,6 +46,7 @@ C_DECL_BEGIN
 
 struct su_mem_bag;
 
+/* {{{ */
 /*!
  * \defgroup MEM_BAG Memory bags
  * \ingroup MEM
@@ -86,6 +74,8 @@ struct su_mem_bag;
  * By defining \c{su_MEM_BAG_SELF} a more convenient preprocessor based
  * interface is available, just as for the \r{MEM_CACHE_ALLOC} interface.
  * This is not furtherly documented, though.
+ * \c{su_MEM_BAG_SELF_ALLOC_FLAGS} will be used for this interface,
+ * or \r{su_MEM_BAG_ALLOC_MUSTFAIL} as a fallback if not defined.
  *
  * If any of \r{su_HAVE_DEBUG} or \r{su_HAVE_MEM_CANARIES_DISABLE} is defined
  * then these objects only manage the chunks, the user chunk memory itself
@@ -94,10 +84,15 @@ struct su_mem_bag;
  * @{
  */
 
+#if defined su_MEM_BAG_SELF && !defined su_MEM_BAG_SELF_ALLOC_FLAGS
+# define su_MEM_BAG_SELF_ALLOC_FLAGS su_MEM_BAG_ALLOC_MUSTFAIL
+#endif
+
 /*! Mirrors a subset of the \r{su_mem_alloc_flags}. *//* Equality CTAsserted */
 enum su_mem_bag_alloc_flags{
    su_MEM_BAG_ALLOC_NONE, /*!< \_ */
-   su_MEM_BAG_ALLOC_CLEAR = 1u<<1, /*!< Zero memory. */
+   su_MEM_BAG_ALLOC_ZERO = 1u<<1, /*!< Zero memory. */
+
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
    su_MEM_BAG_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
@@ -194,7 +189,7 @@ INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
 }
 
 /*
- * Allocation interface: auto
+ * Allocation interface: auto {{{
  */
 
 #ifdef su_HAVE_MEM_BAG_AUTO
@@ -225,12 +220,12 @@ EXPORT struct su_mem_bag *su_mem_bag_auto_relax_unroll(
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_AUTO_ALLOCATE(BAGP,SZ,NO,F) \
-      su_mem_bag_auto_allocate(BAGP, SZ, NO, F  su_DBG_LOC_ARGS_INJ)
-# ifdef su_HAVE_DBG_LOC_ARGS
+      su_mem_bag_auto_allocate(BAGP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
+# ifdef su_HAVE_DVL_LOC_ARGS
 #  define su_MEM_BAG_AUTO_ALLOCATE_LOC(BAGP,SZ,NO,F,FNAME,LNNO) \
       su_mem_bag_auto_allocate(BAGP, SZ, NO, F, FNAME, LNNO)
 # else
@@ -239,36 +234,37 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
       su_mem_bag_auto_allocate(BAGP, SZ, NO, F)
 # endif
 
+
 /* The "normal" interface, slim, but su_USECASE_ specific: use _ALLOCATE_ for
- * other use cases.  These set MUSTFAIL and always return a valid pointer. */
+ * other use cases */
 # ifdef su_MEM_BAG_SELF
 #  define su_MEM_BAG_SELF_AUTO_ALLOC(SZ) \
       su_MEM_BAG_AUTO_ALLOCATE(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_AUTO_ALLOC_LOC(SZ,FNAME,LNNO) \
       su_MEM_BAG_AUTO_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_AUTO_ALLOC_N(SZ,NO) \
       su_MEM_BAG_AUTO_ALLOCATE(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_AUTO_ALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
       su_MEM_BAG_AUTO_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_AUTO_CALLOC(SZ) \
       su_MEM_BAG_AUTO_ALLOCATE(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_AUTO_CALLOC_LOC(SZ,FNAME,LNNO) \
       su_MEM_BAG_AUTO_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_AUTO_CALLOC_N(SZ,NO) \
       su_MEM_BAG_AUTO_ALLOCATE(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_AUTO_CALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
       su_MEM_BAG_AUTO_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_AUTO_TALLOC(T,NO) \
       su_S(T *,su_MEM_BAG_SELF_AUTO_ALLOC_N(sizeof(T), su_S(su_uz,NO)))
@@ -283,7 +279,7 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
          FNAME, LNNO))
 
    /* (The painful _LOCOR series) */
-#  ifdef su_HAVE_DBG_LOC_ARGS
+#  ifdef su_HAVE_DVL_LOC_ARGS
 #   define su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(SZ,ORARGS) \
       su_MEM_BAG_SELF_AUTO_ALLOC_LOC(SZ, ORARGS)
 #   define su_MEM_BAG_SELF_AUTO_ALLOC_N_LOCOR(SZ,NO,ORARGS) \
@@ -309,12 +305,13 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
       su_MEM_BAG_SELF_AUTO_TALLOC(T, NO)
 #   define su_MEM_BAG_SELF_AUTO_TCALLOC_LOCOR(T,NO,ORARGS) \
       su_MEM_BAG_SELF_AUTO_TCALLOC(T, NO)
-#  endif /* !su_HAVE_DBG_LOC_ARGS */
+#  endif /* !su_HAVE_DVL_LOC_ARGS */
 # endif /* su_MEM_BAG_SELF */
 #endif /* su_HAVE_MEM_BAG_AUTO */
+/* }}} */
 
 /*
- * Allocation interface: lofi
+ * Allocation interface: lofi {{{
  */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
@@ -336,16 +333,16 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self,
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
 
 /*! Free \a{ovp}; \r{su_HAVE_DEBUG} will log if it is not stack top. */
 EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
-      void *ovp su_DBG_LOC_ARGS_DECL);
+      void *ovp su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_LOFI_ALLOCATE(BAGP,SZ,NO,F) \
-      su_mem_bag_lofi_allocate(BAGP, SZ, NO, F  su_DBG_LOC_ARGS_INJ)
-# ifdef su_HAVE_DBG_LOC_ARGS
+      su_mem_bag_lofi_allocate(BAGP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
+# ifdef su_HAVE_DVL_LOC_ARGS
 #  define su_MEM_BAG_LOFI_ALLOCATE_LOC(BAGP,SZ,NO,F,FNAME,LNNO) \
       su_mem_bag_lofi_allocate(BAGP, SZ, NO, F, FNAME, LNNO)
 # else
@@ -356,8 +353,8 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 
 /*! \_ */
 # define su_MEM_BAG_LOFI_FREE(BAGP,OVP) \
-   su_mem_bag_lofi_free(BAGP, OVP  su_DBG_LOC_ARGS_INJ)
-# ifdef su_HAVE_DBG_LOC_ARGS
+   su_mem_bag_lofi_free(BAGP, OVP  su_DVL_LOC_ARGS_INJ)
+# ifdef su_HAVE_DVL_LOC_ARGS
 #  define su_MEM_BAG_LOFI_FREE_LOC(BAGP,OVP,FNAME,LNNO) \
       su_mem_bag_lofi_free(BAGP, OVP, FNAME, LNNO)
 # else
@@ -367,35 +364,35 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 # endif
 
 /* The "normal" interface, slim, but su_USECASE_ specific: use _ALLOCATE_ for
- * other use cases.  These set MUSTFAIL and always return a valid pointer. */
+ * other use cases */
 # ifdef su_MEM_BAG_SELF
 #  define su_MEM_BAG_SELF_LOFI_ALLOC(SZ) \
       su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_LOFI_ALLOC_LOC(SZ,FNAME,LNNO) \
       su_MEM_BAG_LOFI_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_LOFI_ALLOC_N(SZ,NO) \
       su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_LOFI_ALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
       su_MEM_BAG_LOFI_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_LOFI_CALLOC(SZ) \
       su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_LOFI_CALLOC_LOC(SZ,FNAME,LNNO) \
       su_MEM_BAG_LOFI_SELF_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_LOFI_CALLOC_N(SZ,NO) \
       su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS)
 #  define su_MEM_BAG_SELF_LOFI_CALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
       su_MEM_BAG_LOFI_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_SELF_ALLOC_FLAGS, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_LOFI_TALLOC(T,NO) \
       su_S(T *,su_MEM_BAG_SELF_LOFI_ALLOC_N(sizeof(T), su_S(su_uz,NO)))
@@ -415,7 +412,7 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
       su_MEM_BAG_LOFI_FREE_LOC(su_MEM_BAG_SELF, OVP, FNAME, LNNO)
 
    /* (The painful _LOCOR series) */
-#  ifdef su_HAVE_DBG_LOC_ARGS
+#  ifdef su_HAVE_DVL_LOC_ARGS
 #   define su_MEM_BAG_SELF_LOFI_ALLOC_LOCOR(SZ,ORARGS) \
       su_MEM_BAG_SELF_LOFI_ALLOC_LOC(SZ, ORARGS)
 #   define su_MEM_BAG_SELF_LOFI_ALLOC_N_LOCOR(SZ,NO,ORARGS) \
@@ -445,11 +442,13 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
       su_MEM_BAG_SELF_LOFI_TCALLOC(T, NO)
 #   define su_MEM_BAG_SELF_LOFI_FREE_LOCOR(OVP,ORARGS) \
       su_MEM_BAG_SELF_LOFI_FREE_LOC(OVP, ORARGS)
-#  endif /* !su_HAVE_DBG_LOC_ARGS */
+#  endif /* !su_HAVE_DVL_LOC_ARGS */
 # endif /* su_MEM_BAG_SELF */
 #endif /* su_HAVE_MEM_BAG_LOFI */
+/* }}}*/
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -459,6 +458,7 @@ NSPC_BEGIN(su)
 
 class mem_bag;
 
+/* mem_bag {{{ */
 /*!
  * \ingroup MEM_BAG
  * C++ variant of \r{MEM_BAG} (\r{su/mem-bag.h})
@@ -470,8 +470,9 @@ public:
    enum alloc_flags{
       /*! \copydoc{su_MEM_BAG_ALLOC_NONE} */
       alloc_none = su_MEM_BAG_ALLOC_NONE,
-      /*! \copydoc{su_MEM_BAG_ALLOC_CLEAR} */
-      alloc_clear = su_MEM_BAG_ALLOC_CLEAR,
+      /*! \copydoc{su_MEM_BAG_ALLOC_ZERO} */
+      alloc_zero = su_MEM_BAG_ALLOC_ZERO,
+
       /*! \copydoc{su_MEM_BAG_ALLOC_OVERFLOW_OK} */
       alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK,
       /*! \copydoc{su_MEM_BAG_ALLOC_NOMEM_OK} */
@@ -528,7 +529,7 @@ public:
    /*! \copydoc{su_mem_bag_auto_allocate()} */
    void *auto_allocate(uz size, uz no=1,
          BITENUM_IS(u32,alloc_flags) af=alloc_none){
-      return su_mem_bag_auto_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
+      return su_mem_bag_auto_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
    }
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
@@ -544,19 +545,20 @@ public:
    /*! \copydoc{su_mem_bag_lofi_allocate()} */
    void *lofi_allocate(uz size, uz no=1,
          BITENUM_IS(u32,alloc_flags) af=alloc_none){
-      return su_mem_bag_lofi_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
+      return su_mem_bag_lofi_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
    }
 
    /*! \copydoc{su_mem_bag_lofi_free()} */
    mem_bag &lofi_free(void *ovp){
-      SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DBG_LOC_ARGS_INJ));
+      SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DVL_LOC_ARGS_INJ));
    }
 #endif /* su_HAVE_MEM_BAG_LOFI */
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_HAVE_MEM_BAG */
 #endif /* !su_MEM_BAG_H */
 /* s-it-mode */

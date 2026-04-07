@@ -221,7 +221,7 @@ c_remove(void *vp){
       switch(which_protocol(name, TRU1, FAL0, NIL)){
       case n_PROTO_EML:
          if(!su_path_rm(name)){
-            emsg = su_err_doc(su_err_no());
+            emsg = su_err_doc(-1);
             goto jerr;
          }
          break;
@@ -289,7 +289,7 @@ jerr:
    /* if(s != NIL) n_string_gut(s); */
 
    NYD_OU;
-   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
+   return (emsg == NIL ? su_EX_OK : su_EX_ERR);
 }
 
 FL int
@@ -325,12 +325,10 @@ c_rename(void *vp){
       /* FALLTHRU */
    case PROTO_FILE:
       if(link(oldn, newn) == -1){
-         emsg = savecatsep(_("link(2) failed:"), ' ',
-               _(su_err_doc(su_err_no())));
+         emsg = savecatsep(_("link(2) failed:"), ' ', _(su_err_doc(-1)));
          goto jerrnotr;
       }else if(!su_path_rm(oldn)){
-         emsg = savecatsep(_("removing file failed:"), ' ',
-               _(su_err_doc(su_err_no())));
+         emsg = savecatsep(_("removing file failed:"), ' ', _(su_err_doc(-1)));
          goto jerrnotr;
       }
       break;
@@ -343,7 +341,7 @@ c_rename(void *vp){
          emsg =
 #ifdef mx_HAVE_MAILDIR
                savecatsep(_("rename(2) failed:"), ' ',
-                  _(su_err_doc(su_err_no())))
+                  _(su_err_doc(su_err_no_by_errno())))
 #else
                _("no Maildir support available")
 #endif
@@ -378,7 +376,7 @@ c_rename(void *vp){
 
 jleave:
    NYD_OU;
-   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
+   return (emsg == NIL ? su_EX_OK : su_EX_ERR);
 
 
 jerr:
@@ -403,7 +401,7 @@ c_folders(void *v){ /* TODO fexpand*/
    int rv;
    NYD_IN;
 
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
 
    if(*(argv = v) != NIL){
       if((cp = fexpand(*argv, fexp)) == NIL)
@@ -423,8 +421,8 @@ c_folders(void *v){ /* TODO fexpand*/
       cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
       cc.cc_cmd = ok_vlook(LISTER);
       cc.cc_args[0] = cp;
-      if(mx_child_run(&cc) && cc.cc_exit_status == 0)
-         rv = n_EXIT_OK;
+      if(mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK)
+         rv = su_EX_OK;
    }
 
 jleave:

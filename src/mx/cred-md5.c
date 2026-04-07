@@ -261,7 +261,7 @@ MD5Transform(mx_md5_type state[4], unsigned char block[64])
 	/*
 	 * Zeroize sensitive information.
 	 */
-	(*su_mem_set_volatile)(x, 0, sizeof x);
+	su_mem_zero(x, sizeof x);
 }
 
 /*
@@ -349,7 +349,7 @@ mx_md5_final(unsigned char digest[mx_MD5_DIGEST_SIZE], mx_md5_t *context)
 	/*
 	 * Zeroize sensitive information.
 	 */
-	(*su_mem_set_volatile)(context, 0, sizeof *context);
+	su_mem_zero(context, sizeof *context);
 }
 
 # undef UINT4B_MAX

@@ -1134,6 +1134,15 @@ jleave:
 }
 
 FL void
+n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len){
+   UNUSED(len);
+   if(!(lvl_a_flags & su_LOG_F_CORE))
+      n_err(msg, NIL);
+   else
+      fprintf(stderr, "%s%s", ok_vlook(log_prefix), msg);
+}
+
+FL void
 n_err_sighdl(char const *format, ...){ /* TODO sigsafe; obsolete! */
    va_list ap;
    NYD;
@@ -1324,7 +1333,7 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    if(cnt > 1)
       /* This works even for case-insensitive keys because cs_dict will store
        * keys in lowercase-normalized versions, then */
-      su_sort_shell_vpp(su_S(void const**,cpp), cnt, su_cs_toolbox.tb_compare);
+      su_sort_shell_vpp(su_S(void const**,cpp), cnt, su_cs_toolbox.tb_cmp);
 
    for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
       struct n_strlist *slp;

@@ -28,7 +28,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-#if 0
+NSPC_USE(su)
+
 boole
 su_cs_ends_with_case(char const *cp, char const *xp){
    boole rv;
@@ -48,7 +49,7 @@ su_cs_ends_with_case(char const *cp, char const *xp){
          goto jleave;
 
       for(cp += cl - xl;; ++cp, ++xp){
-         char c, xc;
+         s32 c, xc;
 
          if((c = su_cs_to_lower(*cp)) != (xc = su_cs_to_lower(*xp)))
             break;
@@ -64,7 +65,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* 0 */
 
 char *
 su_cs_rfind_c(char const *cp, char x){
@@ -73,7 +73,7 @@ su_cs_rfind_c(char const *cp, char x){
    ASSERT_NYD_EXEC(cp != NIL, match = NIL);
 
    for(match = NIL, tail = cp;; ++tail){
-      char c;
+      s32 c;
 
       if((c = *tail) == x)
          match = tail;

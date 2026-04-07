@@ -218,6 +218,8 @@ static char const * const a_go_bltin_rc_lines[] = {
 
 static n_sighdl_t a_go_oldpipe;
 
+static struct su_cs_dict a_go__obsol, *a_go_obsol; /* XXX only if any! */
+
 /* Our current execution context, and the buffer backing the outermost level */
 static struct a_go_ctx *a_go_ctx;
 
@@ -231,6 +233,8 @@ static union{
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
 struct mx_go_data_ctx *mx_go_data;
+
+DVL( static void a_go__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* PS_STATE_PENDMASK requires some actions */
 static void a_go_update_pstate(void);
@@ -261,6 +265,20 @@ static boole a_go_load(struct a_go_ctx *gcp);
 /* A simplified command loop for recursed state machines */
 static boole a_go_event_loop(struct a_go_ctx *gcp,
       BITENUM_IS(u32,mx_go_input_flags) gif);
+
+#if DVLOR(1, 0)
+static void
+a_go__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_cs_dict_gut(a_go_obsol);
+
+   a_go_obsol = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 static void
 a_go_update_pstate(void){
@@ -322,14 +340,14 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
 
    /* Take care not to overwrite existing exit status */
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
-      n_exit_status = n_EXIT_OK;
+      n_exit_status = su_EX_OK;
 
    flags = ((mx_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
          (gecp->gec_ignerr ? a_IGNERR : a_NONE));
    eval_cnt = 0;
    rv = 1;
    nerrn = su_ERR_NONE;
-   nexn = n_EXIT_OK;
+   nexn = su_EX_OK;
    cdp = NIL;
    vput = NIL;
    alias_name = NIL;
@@ -682,12 +700,13 @@ jeflags:
 
    if((cdp->cd_caflags & mx_CMD_ARG_O) && /* XXX Remove! -> within command! */
          !su_state_has(su_STATE_REPRODUCIBLE)){
-      static struct su_cs_dict a_go__obsol, *a_go_obsol;
-
-      if(UNLIKELY(a_go_obsol == NIL)) /* XXX atexit cleanup */
+      if(UNLIKELY(a_go_obsol == NIL)){
          a_go_obsol = su_cs_dict_set_treshold_shift(
-               su_cs_dict_create(&a_go__obsol, (su_CS_DICT_POW2_SPACED |
-                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+               su_cs_dict_create(&a_go__obsol, (su_CS_DICT_HEAD_RESORT |
+                  su_CS_DICT_ERR_PASS), NIL), 2);
+         DVL( su_state_on_gut_install(&a_go__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
+      }
 
       if(UNLIKELY(!su_cs_dict_has_key(a_go_obsol, cdp->cd_name))){
          su_cs_dict_insert(a_go_obsol, cdp->cd_name, NIL);
@@ -930,7 +949,7 @@ jmsglist_go:
       }break;
 
    default:
-      DBG( n_panic(_("Implementation error: unknown argument type: %d"),
+      DVLDBG( n_panic(_("Implementation error: unknown argument type: %d"),
          cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK); )
       nerrn = su_ERR_NOTOBACCO;
       nexn = 1;
@@ -967,7 +986,7 @@ jleave:
    if(flags & a_IGNERR){
       /* Take care not to overwrite existing exit status */
       if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
-         n_exit_status = n_EXIT_OK;
+         n_exit_status = su_EX_OK;
       n_pstate &= ~n_PS_ERR_EXIT_MASK;
    }else if(rv != 0){
       if(ok_blook(errexit))
@@ -981,8 +1000,8 @@ jleave:
          rv = 0;
 
       if(rv != 0){
-         if(n_exit_status == n_EXIT_OK)
-            n_exit_status = n_EXIT_ERR;
+         if(n_exit_status == su_EX_OK)
+            n_exit_status = su_EX_ERR;
          if((n_poption & n_PO_D_V) &&
                !(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)))
             n_alert(_("Non-interactive, bailing out due to errors "
@@ -1016,8 +1035,9 @@ static void
 a_go_hangup(int s){
    NYD; /* Signal handler */
    UNUSED(s);
-   /* nothing to do? */
-   exit(n_EXIT_ERR);
+
+   su_state_gut(su_STATE_GUT_ACT_CARE);
+   exit(su_EX_ERR);
 }
 
 #ifdef mx_HAVE_IMAP
@@ -1444,7 +1464,7 @@ mx_go_init(void){
    ASSERT(n_stdin != NIL);
 
    gcp = S(void*,a_go__mainctx_b.uf);
-   DBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
+   DVLDBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
       su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -1543,7 +1563,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
                      mx_sigs_all_holdx();
 
                      if(n < 0) {
-                        n_exit_status |= n_EXIT_ERR;
+                        n_exit_status |= su_EX_ERR;
                         rv = FAL0;
                         break;
                      }
@@ -1753,7 +1773,7 @@ mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags) giif,
 int
 (mx_go_input)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, char const *string, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    /* TODO readline: linebuf pool!; mx_go_input should return s64.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
     * TODO and consumed by OnLineCompletedEvent listeners */
@@ -1900,7 +1920,7 @@ jforce_stdin:
             else
                *linesize = S(uz,n) + mx_LINESIZE +1;
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
-                  su_DBG_LOC_ARGS_ORUSE);
+                  su_DVL_LOC_ARGS_ORUSE);
            su_mem_copy(*linebuf, string, S(uz,n) +1);
          }
          string = NIL;
@@ -1908,7 +1928,7 @@ jforce_stdin:
          mx_sigs_all_rele();
 
          n = (mx_tty_readline)(gif, prompt, linebuf, linesize, n, histok_or_nil
-               su_DBG_LOC_ARGS_USE);
+               su_DVL_LOC_ARGS_USE);
 
          mx_sigs_all_holdx();
 
@@ -1927,7 +1947,7 @@ jforce_stdin:
          }
 
          n = (readline_restart)(ifile, linebuf, linesize, n
-               su_DBG_LOC_ARGS_USE);
+               su_DVL_LOC_ARGS_USE);
 
          mx_sigs_all_holdx();
 
@@ -2504,7 +2524,7 @@ c_source(void *vp){
    int rv;
    NYD_IN;
 
-   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -2515,7 +2535,7 @@ c_source_if(void *vp){ /* XXX obsolete?, support file tests in `if' etc.! */
    int rv;
    NYD_IN;
 
-   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -2598,7 +2618,7 @@ c_exit(void *vp){
    if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL) &
             (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED)
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
       fflush(NIL);
@@ -2609,7 +2629,7 @@ c_exit(void *vp){
    n_psonce |= n_PSO_XIT;
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 int
@@ -2620,7 +2640,7 @@ c_quit(void *vp){
    if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL) &
             (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED)
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
       fflush(NIL);
@@ -2631,7 +2651,7 @@ c_quit(void *vp){
    n_psonce |= n_PSO_QUIT;
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 int
@@ -2795,8 +2815,10 @@ jfound:
          emsg = NIL;
          elen = 0;
 
-         if((fp = fdopen(fd, "r")) == NIL)
+         if((fp = fdopen(fd, "r")) == NIL){
+            su_err_no_by_errno();
             goto jecreate;
+         }
       }
 
       /* C99 */{
@@ -2836,7 +2858,7 @@ jfound:
 
 jleave:
    NYD_OU;
-   return (f & a_ERR) ? n_EXIT_ERR : n_EXIT_OK;
+   return (f & a_ERR) ? su_EX_ERR : su_EX_OK;
 
 jecreate:
    emsg = N_("readctl: failed to open file: %s: %s\n");

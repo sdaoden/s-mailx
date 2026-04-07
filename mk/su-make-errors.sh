@@ -10,7 +10,7 @@ XOUT=src/su/gen-errors.h
 MAILX='LC_ALL=C s-nail -#:/'
 
 # Acceptable "longest distance" from hash-modulo-index to key
-MAXDISTANCE_PENALTY=5
+MAXDISTANCE_PENALTY=6
 
 # Generate a more verbose output.  Not for shipout versions.
 VERB=1
@@ -87,12 +87,14 @@ ERRORS="\
    NOTDIR='Not a directory' \
    NOTEMPTY='Directory not empty' \
    NOTOBACCO='No tobacco, snorkeling on empty pipe' \
+   NOTRECOVERABLE='State not recoverable' \
    NOTSOCK='Socket operation on non-socket' \
    NOTSUP='Operation not supported' \
    NOTTY='Inappropriate ioctl for device' \
    NXIO='Device not configured' \
    OPNOTSUPP='Operation not supported' \
    OVERFLOW='Value too large to be stored in data type' \
+   OWNERDEAD='Previous owner died' \
    PERM='Operation not permitted' \
    PIPE='Broken pipe' \
    PROTO='Protocol error' \
@@ -141,6 +143,9 @@ compile_time() { # {{{
       exit 1
    }
    set -e
+   pipefail=
+   ( set -o pipefail ) >/dev/null 2>&1 && pipefail=y
+   [ -n "${pipefail}" ] && set -o pipefail
 
    {
       printf '#include <errno.h>\nsu_ERROR_START\n'
@@ -355,8 +360,8 @@ fi
 echo >&2 'Invalid usage'
 exit 1
 
-# PERL {{{
-# Thanks to perl(5) and it's -x / #! perl / __END__ mechanism!
+#' PERL {{{
+# Thanks to perl(5) and its -x / #! perl / __END__ mechanism!
 # Why can env(1) not be used for such easy things in #!?
 #!perl
 
@@ -526,7 +531,7 @@ sub hash_em{
    die "hash_em: open: $^E"
       unless my $pid = open2 *RFD, *WFD, $ENV{MAILX};
    foreach my $e (@ENTS){
-      print WFD "csop hash32 $e->{name}\n";
+      print WFD "csop hash32?case $e->{name}\n";
       my $h = <RFD>;
       chomp $h;
       $e->{hash} = $h

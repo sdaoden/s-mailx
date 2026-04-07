@@ -336,6 +336,9 @@ static struct a_amv_lostack *a_amv_lopts;
    /*a_amv_compose_lostack != NIL*/ a_amv_lopts != NIL)
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
+#endif
 
 /* The global a_AMV_VSC_POSPAR stack */
 static struct a_amv_pospar a_amv_pospar;
@@ -347,6 +350,12 @@ static struct a_amv_var *a_amv_folder_hook_lopts;
 
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_lostack *a_amv_compose_lostack;
+
+#if DVLOR(1, 0)
+static boole a_amv_on_gut_installed;
+#endif
+
+DVL( static void a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* Lookup for macros/accounts: if newamp is not NIL it will be linked in the
  * map, if _MF_UNDEF is set a possibly existing entry will be removed (first).
@@ -463,12 +472,52 @@ static boole a_amv_var_c_set(char const **ap,
 static void a_amv_var_obsolete(char const *name);
 #endif
 
+#if DVLOR(1, 0)
+static void
+a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      struct a_amv_var *avp;
+      uz i;
+
+      (void)a_amv_mac_undef(n_star, a_AMV_MF_ACCOUNT);
+      (void)a_amv_mac_undef(n_star, a_AMV_MF_NONE);
+
+      for(i = 0; i < a_AMV_PRIME; ++i){
+         while((avp = a_amv_vars[i]) != NIL){/* TODO !ENV clearance on_gut! */
+            a_amv_vars[i] = avp->av_link;
+            a_amv_var_free(avp->av_value);
+            su_FREE(avp);
+         }
+      }
+
+      if(a_amv_var_obsol != NIL)
+         su_cs_dict_gut(a_amv_var_obsol);
+   }
+
+   su_mem_set(a_amv_macs, 0, sizeof(a_amv_macs));
+   su_mem_set(a_amv_vars, 0, sizeof(a_amv_vars));
+   a_amv_var_obsol = NIL;
+   a_amv_on_gut_installed = FAL0;
+
+   NYD2_OU;
+}
+#endif /* DVLOR(1,0) */
+
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
       BITENUM_IS(u32,a_amv_mac_flags) amf){
    struct a_amv_mac *amp, **ampp, **ampp_base;
    BITENUM_IS(u32,a_amv_mac_flags) save_amf;
    NYD2_IN;
+
+#if DVLOR(1, 0)
+   if(!a_amv_on_gut_installed){
+      su_state_on_gut_install(&a_amv__on_gut, FAL0, su_STATE_ERR_NOPASS);
+      a_amv_on_gut_installed = TRU1;
+   }
+#endif
 
    save_amf = amf;
    amf &= a_AMV_MF_TYPE_MASK;
@@ -642,7 +691,7 @@ a_amv_mac__finalize(void *vp){
 
       for(avpp_base = *amcap->amca_local_vars, avpp = &avpp_base[a_AMV_PRIME];
             avpp-- != avpp_base;){
-         while((avp = *avpp)){
+         while((avp = *avpp) != NIL){
             ASSERT(!(avp->av_flags & ~a_AMV_VF_EXT__LOCAL_MASK));
             *avpp = avp->av_link;
             a_amv_var_free(avp->av_value);
@@ -1293,8 +1342,8 @@ jefrom:
          n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
          break;
       case ok_b_memdebug:
-         DBG( su_mem_set_conf((ok_blook(debug) ? 0 : a_DEBUG_MEMCONF) |
-               su_MEM_CONF_ON_ERROR_EMERG, FAL0); )
+         DBG( su_mem_set_conf((a_DEBUG_MEMCONF | su_MEM_CONF_ON_ERROR_EMERG),
+            FAL0); )
 #undef a_DEBUG_MEMCONF
          break;
       case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
@@ -1588,6 +1637,13 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, /* XXX too complicated! */
    ASSERT(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
       (avlf & a_AMV_VLOOK_I3VAL_NONEW));
    ASSERT(!(avlf & a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO));
+
+#if DVLOR(1, 0)
+   if(!a_amv_on_gut_installed){
+      su_state_on_gut_install(&a_amv__on_gut, FAL0, su_STATE_ERR_NOPASS);
+      a_amv_on_gut_installed = TRU1;
+   }
+#endif
 
    avcp->avc_prime = a_AMV_HASH2PRIME(avcp->avc_hash);
    avmp = avcp->avc_map;
@@ -2573,7 +2629,7 @@ a_amv_var_show_all(void){
       *cap++ = a_amv_var_virts[i].avv_var->av_name;
 
    if(no > 1)
-      su_sort_shell_vpp(S(void const**,vacp), no, su_cs_toolbox.tb_compare);
+      su_sort_shell_vpp(S(void const**,vacp), no, su_cs_toolbox.tb_cmp);
 
    msgp = &msg;
    msgp = n_string_reserve(n_string_creat(msgp), 80);
@@ -2788,24 +2844,23 @@ a_amv_var_c_set(char const **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
 #ifdef a_AMV_VAR_HAS_OBSOLETE
 static void
 a_amv_var_obsolete(char const *name){
-   static struct su_cs_dict a_csd__obsol, *a_csd_obsol;
    NYD2_IN;
 
    if(!su_state_has(su_STATE_REPRODUCIBLE)){
-      if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
-         a_csd_obsol = su_cs_dict_set_treshold_shift(
-               su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
-                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+      if(UNLIKELY(a_amv_var_obsol == NIL))
+         a_amv_var_obsol = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_amv_var__obsol, (su_CS_DICT_HEAD_RESORT |
+                  su_CS_DICT_ERR_PASS), NIL), 2);
 
-      if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
-         su_cs_dict_insert(a_csd_obsol, name, NIL);
+      if(UNLIKELY(!su_cs_dict_has_key(a_amv_var_obsol, name))){
+         su_cs_dict_insert(a_amv_var_obsol, name, NIL);
          n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
       }
    }
 
    NYD2_OU;
 }
-#endif
+#endif /* a_AMV_VAR_HAS_OBSOLETE */
 
 FL int
 c_define(void *v){
@@ -3057,7 +3112,7 @@ c_localopts(void *vp){
    n_OBSOLETE("`localopts': please use \"local [environ] set\" for variables, "
       "and \"local call\" etc. for macros");
 
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
 
    if((argv = vp)[1] == NIL || su_cs_starts_with_case("scope", (++argv)[-1]))
       alf = alm = a_AMV_LF_SCOPE;
@@ -3084,7 +3139,7 @@ jesynopsis:
    if(rv > FAL0)
       a_amv_lopts->as_loflags |= alf;
 
-   rv = n_EXIT_OK;
+   rv = su_EX_OK;
 jleave:
    NYD_OU;
    return rv;
@@ -3144,7 +3199,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
    mx_go_input_force_eof();
 
    n_pstate_err_no = su_ERR_NONE;
-   rv = n_EXIT_OK;
+   rv = su_EX_OK;
 
    if((argv = vp)[0] != NIL){
       s32 i;
@@ -3157,7 +3212,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
          n_err(_("return: return value argument is invalid: %s\n"),
             argv[0]);
          n_pstate_err_no = su_ERR_INVAL;
-         rv = n_EXIT_ERR;
+         rv = su_EX_ERR;
       }
 
       if(argv[1] != NIL){
@@ -3169,7 +3224,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
             n_err(_("return: error number argument is invalid: %s\n"),
                argv[1]);
             n_pstate_err_no = su_ERR_INVAL;
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
          }
       }
    }
@@ -3700,11 +3755,11 @@ c_set(void *vp){
 
    if(*(ap = vp) == NIL){
       a_amv_var_show_all();
-      err = n_EXIT_OK;
+      err = su_EX_OK;
    }else
       err = a_amv_var_c_set(ap, ((n_pstate & n_PS_ARGMOD_LOCAL)
                ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE)
-            ) ? n_EXIT_OK : n_EXIT_ERR;
+            ) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return err;
@@ -3721,7 +3776,7 @@ c_unset(void *vp){
    avscf = (n_pstate & n_PS_ARGMOD_LOCAL) ? a_AMV_VSETCLR_LOCAL
          : a_AMV_VSETCLR_NONE;
 
-   for(err = n_EXIT_OK, ap = vp; *ap != NIL; ++ap){
+   for(err = su_EX_OK, ap = vp; *ap != NIL; ++ap){
       if(a_amv_var_check_name(*ap, FAL0)){
          a_amv_var_revlookup(&avc, *ap, FAL0);
 
@@ -3729,7 +3784,7 @@ c_unset(void *vp){
             continue;
       }
 
-      err = n_EXIT_ERR;
+      err = su_EX_ERR;
    }
 
    NYD_OU;
@@ -3774,7 +3829,7 @@ c_varshow(void *vp){
       clearerr(fp);
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -3800,18 +3855,18 @@ c_environ(void *vp){
       if(*++ap == NIL || ap[1] != NIL) /* XXX arg-parser, subcommand.. */
          goto jeuse;
 
-      rv = n_EXIT_ERR;
+      rv = su_EX_ERR;
       if((ev = getenv(*ap)) != NIL){
          if(vp == NIL){
             if(fprintf(n_stdout, "%s\n", ev) > 0)
-               rv = n_EXIT_OK;
+               rv = su_EX_OK;
             else
-               n_pstate_err_no = su_err_no();
+               n_pstate_err_no = su_err_no_by_errno();
          }else if(!n_var_vset(vp, R(up,ev),
                ((avscf & a_AMV_VSETCLR_LOCAL) != 0)))
             n_pstate_err_no = su_ERR_NOTSUP;
          else
-            rv = n_EXIT_OK;
+            rv = su_EX_OK;
       }else
          n_pstate_err_no = su_ERR_NOENT;
 
@@ -3825,9 +3880,9 @@ c_environ(void *vp){
 
    if((islnk = su_cs_starts_with_case("link", *ap)) ||
          su_cs_starts_with_case("unlink", *ap)){
-      for(rv = n_EXIT_OK; *++ap != NIL;){
+      for(rv = su_EX_OK; *++ap != NIL;){
          if(!a_amv_var_check_name(*ap, TRU1)){
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
             continue;
          }
 
@@ -3871,41 +3926,41 @@ jlopts_check:
             if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) &&
                   (n_poption & n_PO_D_V))
                n_err(_("environ: unlink: no link established: %s\n"), *ap);
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
          }else{
             char const *evp;
 
             if((evp = getenv(*ap)) != NIL){
                if(!a_amv_var_set(&avc, evp, avscf))
-                  rv = n_EXIT_ERR;
+                  rv = su_EX_ERR;
             }else{
                n_err(_("environ: link: cannot link to non-existent: %s\n"),
                   *ap);
-               rv = n_EXIT_ERR;
+               rv = su_EX_ERR;
             }
          }
       }
    }else if(su_cs_starts_with_case("set", *ap)){
-      rv = a_amv_var_c_set(++ap, avscf) ? n_EXIT_OK : n_EXIT_ERR;
+      rv = a_amv_var_c_set(++ap, avscf) ? su_EX_OK : su_EX_ERR;
    }else if(su_cs_starts_with_case("unset", *ap)){
-      for(rv = n_EXIT_OK; *++ap != NIL;){
+      for(rv = su_EX_OK; *++ap != NIL;){
          if(!a_amv_var_check_name(*ap, TRU1)){
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
             continue;
          }
 
          a_amv_var_revlookup(&avc, *ap, FAL0);
 
          if(!a_amv_var_clear(&avc, avscf))
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
       }
    }else{
 jeuse:
       mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("environ"), NIL);
-      rv = n_EXIT_ERR;
+      rv = su_EX_ERR;
    }
 
-   if(rv != n_EXIT_OK)
+   if(rv != su_EX_OK)
       n_pstate_err_no = su_ERR_INVAL;
 
 jleave:
@@ -4043,7 +4098,7 @@ jeover:
 
       if(cacp->cac_vput == NIL){
          if(fprintf(n_stdout, "%s\n", varres) < 0){
-            n_pstate_err_no = su_err_no();
+            n_pstate_err_no = su_err_no_by_errno();
             f |= a_ERR;
          }
       }else if(!n_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_cm_local)){
@@ -4054,7 +4109,7 @@ jeover:
 
 jleave:
    NYD_OU;
-   return (f & a_ERR) ? n_EXIT_ERR : n_EXIT_OK;
+   return (f & a_ERR) ? su_EX_ERR : su_EX_OK;
 }
 
 #undef a_AMV_VLOOK_LOG_OBSOLETE

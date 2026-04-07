@@ -230,8 +230,10 @@ Enable OPT_DEBUG=yes during compilation
 
   $ make CONFIG=MAXIMAL OPT_DEBUG=yes
 
-to gain compiler debug flags, memory bound canaries and Not-Yet-Dead
-function graph listings in case of crashes etc.
+to gain compiler debug flags (and code assertions).
+(Memory bound canaries and Not-Yet-Dead function graph listings in case
+of crashes etc. require OPT_DEVEL=yes, but this should ONLY EVER be used
+to address a specific program misbehaviour, shall you ever detect that.)
 For sanitizers plus special options exist, please read make.rc for more.
 
 In case of errors using the -d (*debug*) and -v (*verbose*[=VALUE])

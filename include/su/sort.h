@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* sort {{{ */
 /*!
  * \defgroup SORT Sorting of arrays
  * \ingroup MISC
@@ -44,9 +45,10 @@ C_DECL_BEGIN
  * Otherwise, \a{cmp_or_nil} will not be called for \NIL array entries,
  * which thus can result in false sorting. */
 EXPORT void su_sort_shell_vpp(void const **arr, uz entries,
-      su_compare_fun cmp_or_nil);
+      su_cmp_fun cmp_or_nil);
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -56,6 +58,7 @@ NSPC_BEGIN(su)
 
 class sort;
 
+/* sort {{{ */
 /*!
  * \ingroup SORT
  * C++ variant of \r{SORT} (\r{su/sort.h})
@@ -66,15 +69,16 @@ public:
    /*! \copydoc{su_sort_shell_vpp()} */
    template<class T>
    static void shell(T const **arr, uz entries,
-         typename type_toolbox<T>::compare_fun cmp_or_nil){
+         typename type_toolbox<T>::cmp_fun cmp_or_nil){
       ASSERT_RET_VOID(entries == 0 || arr != NIL);
       su_sort_shell_vpp(R(void const**,arr), entries,
-         R(su_compare_fun,cmp_or_nil));
+         R(su_cmp_fun,cmp_or_nil));
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_SORT_H */
 /* s-it-mode */

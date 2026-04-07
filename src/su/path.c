@@ -52,6 +52,8 @@ su_USECASE_CONFIG_CHECKS(su_HAVE_PATHCONF su_HAVE_UTIMENSAT)
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* POSIX 2008/Cor 1-2013 defines a minimum of 14 for _POSIX_NAME_MAX */
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
@@ -143,7 +145,7 @@ su_path_filename_max(char const *path){
    errno = 0;
    if((sr = pathconf(path, _PC_NAME_MAX)) != -1)
       rv = S(uz,sr);
-   else if(errno == 0)
+   else if(su_err_no_by_errno() == 0)
       rv = UZ_MAX;
    else
 #endif
@@ -168,7 +170,7 @@ su_path_pathname_max(char const *path){
    errno = 0;
    if((sr = pathconf(path, _PC_PATH_MAX)) != -1)
       rv = S(uz,sr);
-   else if(errno == 0)
+   else if(su_err_no_by_errno() == 0)
       rv = UZ_MAX;
    else
 #endif
@@ -179,14 +181,28 @@ su_path_pathname_max(char const *path){
 }
 
 boole
-su_path_mkdir(char const *path, boole recursive){ /* TODO estate argument! */
+su_path_chdir(char const *path){
+   boole rv;
+   NYD_IN;
+   ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
+
+   if(!(rv = (chdir(path) == 0)))
+      su_err_no_by_errno();
+
+   NYD_OU;
+   return rv;
+}
+
+boole
+su_path_mkdir(char const *path, boole recursive, u32 estate){
 #undef a_ALLOC
 #undef a_FREE
 #if defined su_HAVE_MEM_BAG_LOFI && defined su_MEM_BAG_SELF
-# define a_ALLOC(SZ) su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1, 0)
+# define a_ALLOC(SZ) \
+   su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1, estate & su_STATE_ERR_MASK)
 # define a_FREE(P) su_MEM_BAG_SELF_LOFI_FREE(P)
 #else
-# define a_ALLOC(SZ) su_ALLOC(SZ)
+# define a_ALLOC(SZ) su_ALLOCATE(SZ, 1, estate & su_STATE_ERR_MASK)
 # define a_FREE(P) su_FREE(P)
 #endif
 
@@ -203,7 +219,7 @@ jredo:
    if(mkdir(path, 0777) == 0)
       rv = TRU1;
    else{
-      e = su_err_no();
+      e = su_err_no_by_errno();
 
       /* Try it recursively? */
       if(recursive && e == su_ERR_NOENT && buf == NIL){
@@ -211,7 +227,7 @@ jredo:
          uz len;
 
          len = su_cs_len(path) +1 +1; /* NULNUL terminated */
-         if((buf = a_ALLOC(len)) == NIL){
+         if((buf = S(char*,a_ALLOC(len))) == NIL){
             rv = FAL0;
             goto NYD_OU_LABEL;
          }
@@ -276,7 +292,8 @@ su_path_rename(char const *dst, char const *src){
    ASSERT_NYD_EXEC(dst != NIL, rv = FAL0);
    ASSERT_NYD_EXEC(src != NIL, rv = FAL0);
 
-   rv = (rename(src, dst) == 0);
+   if(!(rv = (rename(src, dst) == 0)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -288,7 +305,8 @@ su_path_rm(char const *path){
    NYD_IN;
    ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
-   rv = (unlink(path) == 0);
+   if(!(rv = (unlink(path) == 0)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -300,7 +318,8 @@ su_path_rmdir(char const *path){
    NYD_IN;
    ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
-   rv = (rmdir(path) == 0);
+   if(!(rv = (rmdir(path) == 0)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -333,6 +352,9 @@ su_path_touch(char const *path, struct su_timespec const *tsp){
       rv = (utime(path, &utb) == 0);
    }
 #endif
+
+   if(!rv)
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;

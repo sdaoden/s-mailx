@@ -309,7 +309,7 @@ c_csop(void *vp){
    uz i, j;
    NYD_IN;
 
-   DVL( su_mem_set(&csc, 0xAA, sizeof csc); )
+   DVLDBG( su_mem_set(&csc, 0xAA, sizeof csc); )
    csc.csc_flags = a_CSOP_ERR;
    csc.csc_cmderr = a_CSOP_ERR_SUBCMD;
    csc.csc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
@@ -434,7 +434,7 @@ jestr:
        * more bases for the fun of it */
       if(csc.csc_varres != NIL &&
             fprintf(n_stdout, "%s\n", csc.csc_varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          f |= a_CSOP_ERR;
       }
    }else if(!n_var_vset(csc.csc_varname, S(up,csc.csc_varres),

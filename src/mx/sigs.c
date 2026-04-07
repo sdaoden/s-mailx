@@ -458,11 +458,12 @@ n_sigman_consume(void){
    NYD2_OU;
 }
 
-#if su_DVLOR(1, 0)
-static void a_sigs_nyd__dump(su_up cookie, char const *buf, su_uz blen);
+#if DVLOR(1, 0)
+static void a_sigs_nyd__dump(up cookie, char const *buf, uz blen);
+
 static void
-a_sigs_nyd__dump(su_up cookie, char const *buf, su_uz blen){
-   write((int)cookie, buf, blen);
+a_sigs_nyd__dump(up cookie, char const *buf, uz blen){
+   write(S(int,cookie), buf, blen);
 }
 
 void
@@ -550,7 +551,7 @@ mx__nyd_oncrash(int signo){
       n_raise(signo);
 
       for(;;)
-         _exit(n_EXIT_ERR);
+         _exit(su_EX_ERR);
    }
 
    su_nyd_set_disabled(FAL0);

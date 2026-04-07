@@ -25,8 +25,8 @@
 /*#define su_HAVE_NSPC*/
 
 /* For now thought of _MX, _ROFF; _SU: standalone library */
-#ifndef su_USECASE_SU
-# define su_USECASE_MX
+#ifndef su_USECASE_MX
+# define su_USECASE_SU
 #endif
 
 #ifdef su_USECASE_MX
@@ -55,52 +55,62 @@
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
 /*# define su_HAVE_MEM_CANARIES_DISABLE*/
+# define su_HAVE_MD
+/*TODO #  define su_HAVE_MD_BLAKE2B*/
 # define su_HAVE_RE /* Unconditionally for now xxx */
 # undef su_HAVE_SMP /* for now xxx */
 #  undef su_HAVE_MT
+/*#  define su_ATOMIC_IS_REAL <-> ISO C11++ at SU compile time or other impl */
+/*#  define su__MUTEX_IMPL_SIZE "sizeof(pthread_mutex_t)" */
+/*#  define su__MUTEX_IMPL_ALIGNMENT 128 <-> the real sizeof */
+/*#  define su__THREAD_IMPL_SIZE "sizeof(pthread_t)" */
+/*#  define su__THREAD_IMPL_ALIGNMENT 128 <-> the real sizeof */
+# undef su_HAVE_STATE_GUT_FORK
 
 #elif defined su_USECASE_MX /* sue_USECASE_SU */
 # ifdef mx_HAVE_DEBUG
 #  define su_HAVE_DEBUG
 # endif
-
 # ifdef mx_HAVE_DEVEL
 #  define su_HAVE_DEVEL
+#  define su_NYD_ENABLE
+#  define su_NYD2_ENABLE
 # endif
-
 # ifdef mx_HAVE_DOCSTRINGS
 #  define su_HAVE_DOCSTRINGS
 # endif
-
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
-# ifdef mx_HAVE_NOMEMDBG
+# ifdef mx_HAVE_EXTERNAL_MEM_CHECK
 #  define su_HAVE_MEM_CANARIES_DISABLE
 # endif
-
-# undef su_HAVE_MT
-
+# define su_HAVE_MD
+#  undef su_HAVE_MD_BLAKE2B
 # ifdef mx_HAVE_REGEX
 #  define su_HAVE_RE
 # endif
-
 # undef su_HAVE_SMP
+#  undef su_HAVE_MT
+# undef su_HAVE_STATE_GUT_FORK
+
+/* */
+struct mx_go_data_ctx;
+struct su_mem_bag;
+struct su__mem_bag_mx {struct su_mem_bag *mbm_bag;};
+extern struct mx_go_data_ctx *mx_go_data;
+# define su_MEM_BAG_SELF (su_R(struct su__mem_bag_mx*,mx_go_data)->mbm_bag)
+/*# define su_MEM_BAG_SELF_ALLOC_FLAGS su_MEM_BAG_ALLOC_MUSTFAIL*/
+
 #else /* su_USECASE_MX */
 # error Unknown SU usecase
 #endif
 
 /* Internal configurables: values */
 
-/* DVLOR(1,0) ... */
-#if defined su_USECASE_MX &&\
-   (defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
-      || defined DOXYGEN)
-# define su_NYD_ENABLE_ALWAYS
-/*#undef su_NYDPROF_ENBALE_ALWAYS*/
-#endif
-
 /* Number of Not-Yet-Dead calls that are remembered */
-#define su_NYD_ENTRIES (25 * 84)
+#ifdef su_HAVE_DEVEL
+# define su_NYD_ENTRIES (25 * 84)
+#endif
 
 #endif /* !su_CONFIG_H */
 /* s-it-mode */

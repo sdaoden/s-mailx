@@ -27,6 +27,8 @@
 
 #include "su/mem.h"
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/mem-bag.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -35,6 +37,8 @@
 
 su_EMPTY_FILE()
 #ifdef su_HAVE_MEM_BAG
+
+NSPC_USE(su)
 
 /* Are we a managing hull for the heap cache, for ASAN etc. integration? */
 #if defined su_HAVE_DEBUG || defined su_HAVE_MEM_CANARIES_DISABLE
@@ -70,7 +74,7 @@ CTA(a_MEMBAG_BSZ_UPPER <= S32_MAX, "Excesses datatype storage");
 
 /* enum su_mem_bag_alloc_flags == enum su_mem_alloc_flags */
 CTAV(S(u32,su_MEM_BAG_ALLOC_NONE) == S(u32,su_MEM_ALLOC_NONE));
-CTAV(S(u32,su_MEM_BAG_ALLOC_CLEAR) == S(u32,su_MEM_ALLOC_CLEAR));
+CTAV(S(u32,su_MEM_BAG_ALLOC_ZERO) == S(u32,su_MEM_ALLOC_ZERO));
 CTAV(S(u32,su_MEM_BAG_ALLOC_OVERFLOW_OK) == S(u32,su_MEM_ALLOC_OVERFLOW_OK));
 CTAV(S(u32,su_MEM_BAG_ALLOC_NOMEM_OK) == S(u32,su_MEM_ALLOC_NOMEM_OK));
 CTAV(S(u32,su_MEM_BAG_ALLOC_MUSTFAIL) == S(u32,su_MEM_ALLOC_MUSTFAIL));
@@ -110,20 +114,20 @@ CTA(a_MEMBAG_BSZ_BASE + a_MEMBAG_BSZ_GAP < a_MEMBAG_BSZ_LOWER,
 
 /* Free .mb_lofi_top */
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE struct su_mem_bag *a_membag_lofi_free_top(struct su_mem_bag *self);
+SINLINE struct su_mem_bag *a_membag_lofi_free_top(struct su_mem_bag *self);
 #endif
 
 /* Free vp, which really is storage for (a) user heap pointer(s) */
 #ifdef su_HAVE_MEM_BAG_AUTO
-su_SINLINE void a_membag_free_auto_hulls(void *vp, char *maxp);
-su_SINLINE void a_membag_free_auto_huge_hull(void *vp);
+SINLINE void a_membag_free_auto_hulls(void *vp, char *maxp);
+SINLINE void a_membag_free_auto_huge_hull(void *vp);
 #endif
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE void a_membag_free_lofi_hulls(void *vp, char *maxp);
+SINLINE void a_membag_free_lofi_hulls(void *vp, char *maxp);
 #endif
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE struct su_mem_bag *
+SINLINE struct su_mem_bag *
 a_membag_lofi_free_top(struct su_mem_bag *self){
    struct su__mem_bag_lofi_pool *mblpp;
    boole isheap;
@@ -158,7 +162,7 @@ a_membag_lofi_free_top(struct su_mem_bag *self){
 #endif /* su_HAVE_MEM_BAG_LOFI */
 
 #ifdef su_HAVE_MEM_BAG_AUTO
-su_SINLINE void
+SINLINE void
 a_membag_free_auto_hulls(void *vp, char *maxp){
    NYD2_IN;
    UNUSED(vp);
@@ -176,7 +180,7 @@ a_membag_free_auto_hulls(void *vp, char *maxp){
    NYD2_OU;
 }
 
-su_SINLINE void
+SINLINE void
 a_membag_free_auto_huge_hull(void *vp){
    NYD2_IN;
    UNUSED(vp);
@@ -195,7 +199,7 @@ a_membag_free_auto_huge_hull(void *vp){
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE void
+SINLINE void
 a_membag_free_lofi_hulls(void *vp, char *maxp){
    NYD2_IN;
    UNUSED(vp);
@@ -246,8 +250,7 @@ su_mem_bag_gut(struct su_mem_bag *self){
    ASSERT(self);
 
    DBG( if(self->mb_top != NIL)
-      su_log_write(su_LOG_DEBUG, "su_mem_bag_gut(%p): has bag stack!\n",
-         self); )
+      su_log_write(su_LOG_DEBUG, "su_mem_bag_gut(%p): has bag stack!", self); )
 
    self = su_mem_bag_reset(self);
 
@@ -328,8 +331,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 
       /* Forcefully gut() an active relaxation */
       if(self->mb_auto_relax_recur > 0){
-         DBG( su_log_write(su_LOG_DEBUG,
-            "su_mem_bag_reset(): has relaxation!\n"); )
+         DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!"); )
          self->mb_auto_relax_recur = 1;
          self = su_mem_bag_auto_relax_gut(self);
       }
@@ -376,7 +378,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 #ifdef su_HAVE_MEM_BAG_LOFI
    if(self->mb_lofi_top != NIL){
       DBG( su_log_write(su_LOG_DEBUG,
-         "su_mem_bag_reset(%p): still has LOFI memory!\n", self); )
+         "su_mem_bag_reset(%p): still has LOFI memory!", self); )
       do
          self = a_membag_lofi_free_top(self);
       while(self->mb_lofi_top != NIL);
@@ -525,7 +527,7 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 
 void *
 su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL){
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -577,7 +579,7 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
           * head (top) if possible */
          mbabp = S(struct su__mem_bag_auto_buf*,su_ALLOCATE_LOC((self->mb_bsz +
                   a_MEMBAG_BSZ_BASE), 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
          if(mbabp == NIL)
             goto jleave;
          cp = mbabp->mbab_buf;
@@ -600,11 +602,11 @@ jhave_pool:;
 
             v.p = rv;
             rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
-                  su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+                  su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);
             if(rv != NIL)
                *v.pp = rv;
             else{
-               mbabp->mbab_caster = v.p;
+               mbabp->mbab_caster = S(char*,v.p);
                goto jleave;
             }
          }
@@ -613,13 +615,13 @@ jhave_pool:;
          struct su__mem_bag_auto_huge *mbahp;
 
          DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_auto_allocate(): huge: "
-            "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
-            size  su_DBG_LOC_ARGS_USE); )
+            "%" PRIuZ " bytes from %s:%" PRIu32,
+            size  su_DVL_LOC_ARGS_USE); )
 
          mbahp = S(struct su__mem_bag_auto_huge*,su_ALLOCATE_LOC(
                VSTRUCT_SIZEOF(struct su__mem_bag_auto_huge,mbah_buf) + chunksz,
                1, (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
          if(UNLIKELY(mbahp == NIL))
             goto jleave;
 #if !a_MEMBAG_HULL
@@ -627,7 +629,7 @@ jhave_pool:;
 #else
          rv = su_ALLOCATE_LOC(size, 1,
                (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);
          if(rv != NIL){
             union {void *p; void **pp;} v;
 
@@ -642,8 +644,9 @@ jhave_pool:;
          self->mb_auto_huge = mbahp;
       }
 
-      if(mbaf & su_MEM_BAG_ALLOC_CLEAR)
+      if(mbaf & su_MEM_BAG_ALLOC_ZERO)
          su_mem_set(rv, 0, size);
+      DVLDBG( else su_mem_set(rv, su__mem_filler, size); )
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: auto allocation request"));
@@ -686,7 +689,7 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 #ifdef su_HAVE_DEBUG
       if(mblcp == NIL){
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_snap_unroll(%p): no such "
-            "snap exists: non-debug crash!\n", oself);
+            "snap exists: non-debug crash!", oself);
          break;
       }
 #endif
@@ -700,7 +703,7 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 
 void *
 su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL){
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -731,8 +734,8 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
          realsz = Z_ALIGN(size);
          DBG( if(realsz > self->mb_bsz)
             su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_allocate(): huge: "
-                  "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
-               size  su_DBG_LOC_ARGS_USE); )
+                  "%" PRIuZ " bytes from %s:%" PRIu32,
+               size  su_DVL_LOC_ARGS_USE); )
          isheap = (a_MEMBAG_HULL || realsz > self->mb_bsz);
          chunksz = Z_ALIGN(VSTRUCT_SIZEOF(struct su__mem_bag_lofi_chunk,
                   mblc_buf)) + (isheap ? sizeof(up) : realsz);
@@ -752,7 +755,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
       /* Need a pool */
       mblpp = S(struct su__mem_bag_lofi_pool*,su_ALLOCATE_LOC((self->mb_bsz +
             a_MEMBAG_BSZ_BASE), 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
-            su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
+            su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
       if(mblpp == NIL)
          goto jleave;
       rv = cp = mblpp->mblp_buf;
@@ -764,7 +767,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
 jhave_pool:
       mblcp = S(struct su__mem_bag_lofi_chunk*,rv);
       mblcp->mblc_last = R(struct su__mem_bag_lofi_chunk*,
-            R(up,self->mb_lofi_top) | isheap);
+            R(up,self->mb_lofi_top) | S(uz,isheap));
       if(!isheap)
          rv = mblcp->mblc_buf;
       else{
@@ -772,19 +775,20 @@ jhave_pool:
 
          v.p = rv;
          rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);
          if(rv != NIL){
             v.p = mblcp->mblc_buf;
             *v.pp = S(void*,rv);
          }else{
-            mblpp->mblp_caster = v.p;
+            mblpp->mblp_caster = S(char*,v.p);
             goto jleave;
          }
       }
       self->mb_lofi_top = mblcp;
 
-      if(mbaf & su_MEM_BAG_ALLOC_CLEAR)
+      if(mbaf & su_MEM_BAG_ALLOC_ZERO)
          su_mem_set(rv, 0, size);
+      DVLDBG( else su_mem_set(rv, su__mem_filler, size); )
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: lofi allocation request"));
@@ -795,7 +799,7 @@ jleave:
 }
 
 struct su_mem_bag *
-su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
+su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
    UNUSED(ovp);
    ASSERT(self);
@@ -809,14 +813,15 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
 
       if(ovp == NIL){
          su_log_write(su_LOG_DEBUG,
-            "su_mem_bag_lofi_free(): NIL from %s:%" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE);
+            "su_mem_bag_lofi_free(): NIL from %s:%" PRIu32
+            su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
 
-      if(((mblcp = self->mb_lofi_top) == NIL)){
+      if((mblcp = self->mb_lofi_top) == NIL){
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
-            "no LOFI memory exists at %s:%" PRIu32 "!\n"  su_DBG_LOC_ARGS_USE);
+            "no LOFI memory exists at %s:%" PRIu32
+            su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
 
@@ -830,7 +835,8 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
       }else if(ovp != mblcp->mblc_buf){
 jeinval:
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
-            "invalid pointer from %s:%" PRIu32 "!\n"  su_DBG_LOC_ARGS_USE);
+            "invalid pointer from %s:%" PRIu32
+            su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
    }

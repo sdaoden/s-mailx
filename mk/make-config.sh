@@ -313,9 +313,10 @@ ld_rpath_not_runpath=
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
-   # We don't "have any utility" (see make.rc)
-   [ -n "${OS}" ] && [ -n "${OSFULLSPEC}" ] ||
+   # We do not "have any utility" (see make.rc)
+   if [ -z "${OS}" ] || [ -z "${OSFULLSPEC}" ]; then
       thecmd_testandset_fail uname uname
+   fi
 
    [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
@@ -516,10 +517,14 @@ doit(char const *s){
 !
 }
 
+cc_build_tmp_as_tmp2() {
+   ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1
+}
+
 cc_hello() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiles "Hello world" .. '
-   if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS}; then
+   if cc_build_tmp_as_tmp2; then
       [ -n "${cc_check_silent}" ] || msg 'yes'
       feat_yes CROSS_BUILD && return 0
       [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiled program works .. '
@@ -633,9 +638,9 @@ ${__s1}', '${__s2}', '${__s3}', '${__s4}', '${__s5}
    fi
 
    # E.g., valgrind does not work well with high optimization
-   if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
+   if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK &&
          feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
-      msg ' ! OPT_NOMEMDBG, setting cc_maxopt=1 (-O1)'
+      msg ' ! OPT_EXTERNAL_MEM_CHECK, setting cc_maxopt=1 (-O1)'
       cc_maxopt=1
    fi
    # Check -g first since some others may rely upon -g / optim. level
@@ -1484,9 +1489,9 @@ os_early_setup
 # Check those tools right now that we need before including $rc
 msg 'Checking for basic utility set'
 thecmd_testandset_fail awk awk
+thecmd_testandset_fail pwd pwd
 thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
-thecmd_testandset_fail pwd pwd
 
 # Lowercase this now in order to isolate all the remains from case matters
 OS_ORIG_CASE=${OS}
@@ -1563,34 +1568,41 @@ msg 'done'
 os_setup
 
 msg 'Checking for remaining set of utilities'
-thecmd_testandset_fail getconf getconf
+# Needed for path_check
 thecmd_testandset_fail grep grep
 
 # Before we step ahead with the other utilities perform a path cleanup first.
 path_check PATH
 
-# awk(1) above
+# far above thecmd_testandset_fail awk awk
 thecmd_testandset_fail basename basename
 thecmd_testandset_fail cat cat
 thecmd_testandset_fail chmod chmod
 thecmd_testandset_fail cp cp
 thecmd_testandset_fail cmp cmp
-# grep(1) above
+thecmd_testandset_fail getconf getconf
+# above thecmd_testandset_fail grep grep
 thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
-# rm(1) above
+# far above thecmd_testandset_fail pwd pwd
+# far above thecmd_testandset_fail rm rm
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
 thecmd_testandset_fail tee tee
+# far above thecmd_testandset_fail tr tr
+
+thecmd_testandset_fail MAKE make
+make=${MAKE}
+export MAKE
+
 __PATH=${PATH}
 thecmd_testandset chown chown ||
    PATH="/sbin:${PATH}" thecmd_set chown chown ||
    PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
 PATH=${__PATH}
-thecmd_testandset_fail MAKE make
-make=${MAKE}
-export MAKE
+
+thecmd_testandset objcopy objcopy
 thecmd_testandset strip strip
 
 # For ./mx-test.sh only
@@ -1682,9 +1694,12 @@ for i in \
          PS_DOTLOCK_CWDDIR PS_DOTLOCK_INCDIR PS_DOTLOCK_SRCDIR \
          NET_TEST_CWDDIR NET_TEST_INCDIR NET_TEST_SRCDIR \
          SU_CWDDIR SU_INCDIR SU_SRCDIR \
+      \
       awk basename cat chmod chown cp cmp grep getconf \
          ln mkdir mv pwd rm sed sort tee tr \
-      MAKE MAKEFLAGS make SHELL strip \
+      \
+      MAKE MAKEFLAGS make objcopy SHELL strip \
+      \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
@@ -1718,12 +1733,32 @@ cc_hello
 # This may also update ld_runtime_flags() (again)
 cc_flags
 
+DEBUG_IN_EXTERNAL_FILE=
+if feat_yes DEBUG; then
+   [ -n "${cc_check_silent}" ] ||
+      msg_nonl ' . Can place debug symbols in external file .. '
+   cc_create_testfile
+   if cc_build_tmp_as_tmp2 && [ -n "${objcopy}" ] && [ -n "${strip}" ] &&
+         ${objcopy} --only-keep-debug ${tmp2} \
+            ${tmp2}.debug >/dev/null 2>&1 &&
+         ${strip} -g ${tmp2} >/dev/null 2>&1 &&
+         ${objcopy} --add-gnu-debuglink=${tmp2}.debug \
+            ${tmp2} >/dev/null 2>&1 &&
+         [ -s ${tmp2} ] && [ -s ${tmp2}.debug ]; then
+      [ -n "${cc_check_silent}" ] || msg 'yes'
+      DEBUG_IN_EXTERNAL_FILE=y
+   else
+      [ -n "${cc_check_silent}" ] || msg 'no'
+   fi
+fi
+
 for i in \
       COMMLINE \
       PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
       CC CFLAGS LDFLAGS \
       INCS LIBS \
       OSFULLSPEC \
+      DEBUG_IN_EXTERNAL_FILE \
       ; do
    eval j="\$${i}"
    printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`" >> ${newenv}
@@ -1937,6 +1972,29 @@ then
 else
    msg 'ERROR: we require one of nanosleep(2) and sleep(3).'
    config_exit 1
+fi
+
+# XXX yet not for -lpthread, we only need it for one thread
+if link_check sched_yield 'sched_yield(2)' \
+      '#define su_HAVE_SCHED_YIELD' << \!
+#include <sched.h>
+int main(void){
+   sched_yield();
+   return 0;
+}
+!
+then
+   :
+elif link_check pthread_yield 'pthread_yield(2)' \
+      '#define su_HAVE_PTHREAD_YIELD' << \!
+#include <pthread.h>
+int main(void){
+   pthread_yield();
+   return 0;
+}
+!
+then
+   :
 fi
 
 if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
@@ -3211,20 +3269,42 @@ fi
 # Random implementations which completely replace our builtin machine
 
 val_random_arc4() {
-   link_check arc4random 'VAL_RANDOM: arc4random(3)' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_ARC4' << \!
+   if link_check arc4random 'VAL_RANDOM: arc4random_buf(3)' \
+      '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
+         #define su_RANDOM_HOOK_FUN mx_random_hook
+         #define mx_RANDOM_SEED_HOOK 1' << \!
+#include <stdlib.h>
+int main(void){
+   char buf[4];
+   arc4random_buf(buf, sizeof buf);
+   return 0;
+}
+!
+   then
+      return 0
+   elif link_check arc4random 'VAL_RANDOM: arc4random(3)' \
+      '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
+         #define su_RANDOM_HOOK_FUN mx_random_hook
+         #define mx_RANDOM_SEED_HOOK 2' << \!
 #include <stdlib.h>
 int main(void){
    arc4random();
    return 0;
 }
 !
+   then
+      return 0
+   else
+      return 1
+   fi
 }
 
 val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_TLS' >> ${h}
+      echo '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
+         #define su_RANDOM_HOOK_FUN mx_random_hook
+         #define mx_RANDOM_SEED_HOOK 3' >> ${h}
       # Avoid reseeding, all we need is a streamy random producer
       link_check xtls_rand_drbg_set_reseed_defaults \
          'RAND_DRBG_set_reseed_defaults(3ssl)' \
@@ -3241,29 +3321,11 @@ int main(void){
    fi
 }
 
-# The remaining random implementation are only used to seed our builtin
-# machine; we are prepared to handle failures of those, meaning that we have
-# a homebrew seeder; that tries to yield the time slice once, via
-# sched_yield(2) if available, nanosleep({0,0},) otherwise
-val__random_yield_ok=
-val__random_check_yield() {
-   [ -n "${val__random_yield_ok}" ] && return
-   val__random_yield_ok=1
-   link_check sched_yield 'sched_yield(2)' '#define mx_HAVE_SCHED_YIELD' << \!
-#include <sched.h>
-int main(void){
-   sched_yield();
-   return 0;
-}
-!
-}
-
 val_random_libgetrandom() {
-   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
-      #define mx_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
-      #define mx_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
+      '#define su_RANDOM_SEED su_RANDOM_SEED_GETRANDOM
+      #define su_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
+      #define su_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
 #include <sys/random.h>
 int main(void){
    char buf[256];
@@ -3274,11 +3336,10 @@ int main(void){
 }
 
 val_random_sysgetrandom() {
-   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
-      #define mx_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define mx_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
+      '#define su_RANDOM_SEED su_RANDOM_SEED_GETRANDOM
+      #define su_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define su_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
 #include <sys/syscall.h>
 int main(void){
    char buf[256];
@@ -3289,9 +3350,8 @@ int main(void){
 }
 
 val_random_getentropy() {
-   val__random_check_yield
    link_check getentropy 'VAL_RANDOM: getentropy(3)' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETENTROPY' <<\!
+      '#define su_RANDOM_SEED su_RANDOM_SEED_GETENTROPY' <<\!
 # include <errno.h>
 #include <limits.h>
 #include <unistd.h>
@@ -3310,14 +3370,13 @@ int main(void){
 }
 
 val_random_urandom() {
-   val__random_check_yield
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> ${h}
    elif [ -f /dev/urandom ]; then
       msg yes
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> ${h}
    else
       msg no
       return 1
@@ -3326,16 +3385,8 @@ val_random_urandom() {
 }
 
 val_random_builtin() {
-   val__random_check_yield
-   msg_nonl ' . VAL_RANDOM: builtin ... '
-   if [ -n "${have_no_subsecond_time}" ]; then
-      msg 'no\nERROR: %s %s' 'without a specialized PRG ' \
-         'one of clock_gettime(2) and gettimeofday(2) is required.'
-      config_exit 1
-   else
-      msg yes
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_BUILTIN' >> ${h}
-   fi
+   msg ' . VAL_RANDOM: using builtin seeder'
+   echo '#define su_RANDOM_SEED su_RANDOM_SEED_BUILTIN' >> ${h}
 }
 
 val_random_error() {
@@ -3685,6 +3736,9 @@ feat_def COLOUR
 feat_def CROSS_BUILD
 feat_def DOTLOCK
 feat_def FILTER_HTML_TAGSOUP
+feat_def DEBUG 0
+feat_def DOCSTRINGS
+feat_def ERRORS
 if feat_yes FILTER_QUOTE_FOLD; then
    if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
       echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> ${h}
@@ -3694,8 +3748,6 @@ if feat_yes FILTER_QUOTE_FOLD; then
 else
    feat_is_disabled FILTER_QUOTE_FOLD
 fi
-feat_def DOCSTRINGS
-feat_def ERRORS
 feat_def IMAP
 feat_def IMAP_SEARCH
 feat_def MAILCAP
@@ -3723,9 +3775,8 @@ feat_def USE_PKGSYS
 feat_def ASAN_ADDRESS 0
 feat_def ASAN_MEMORY 0
 feat_def USAN 0
-feat_def DEBUG 0
 feat_def DEVEL 0
-feat_def NOMEMDBG 0
+feat_def EXTERNAL_MEM_CHECK 0
 
 ##
 ## Summarizing
@@ -3740,7 +3791,7 @@ MX_CFLAGS=${CFLAGS}
    MX_INCS=${INCS}
    MX_LDFLAGS=${LDFLAGS}
    MX_LIBS=${LIBS}
-SU_CFLAGS=${BASE_CFLAGS}
+SU_CFLAGS="${BASE_CFLAGS} -Dsu_USECASE_MX"
    SU_CXXFLAGS=
    SU_INCS=${BASE_INCS}
    SU_LDFLAGS=${BASE_LDFLAGS}

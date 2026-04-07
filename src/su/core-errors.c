@@ -28,11 +28,13 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 struct a_corerr_map{
-   u32 cem_hash;     /* Hash of name */
-   u32 cem_nameoff;  /* Into a_corerr_names[] */
-   u32 cem_docoff;   /* Into a_corerr_docs[] */
-   s32 cem_errno;    /* OS errno value for this one */
+   u32 cem_hash; /* Hash of name */
+   u32 cem_nameoff; /* Into a_corerr_names[] */
+   u32 cem_docoff; /* Into a_corerr_docs[] */
+   s32 cem_errno; /* OS errno value for this one */
 };
 
 /* Include the constant su-make-errors.sh output */
@@ -84,6 +86,9 @@ su_err_doc(s32 eno){
    struct a_corerr_map const *cemp;
    NYD2_IN;
 
+   if(eno == -1)
+      eno = su_err_no();
+
    cemp = a_corerr_map_from_no(eno);
    rv = (
 #ifdef su_HAVE_DOCSTRINGS
@@ -102,6 +107,9 @@ su_err_name(s32 eno){
    struct a_corerr_map const *cemp;
    NYD2_IN;
 
+   if(eno == -1)
+      eno = su_err_no();
+
    cemp = a_corerr_map_from_no(eno);
    rv = &a_corerr_names[cemp->cem_nameoff];
 
@@ -116,7 +124,7 @@ su_err_by_name(char const *name){
    s32 rv;
    NYD2_IN;
 
-   hash = su_cs_hash(name) & U32_MAX;
+   hash = su_cs_hash_case(name) & U32_MAX;
 
    for(i = hash % a_CORERR_REV_PRIME, j = 0; j <= a_CORERR_REV_LONGEST; ++j){
       if((x = a_corerr_revmap[i]) == a_CORERR_REV_ILL)
@@ -124,7 +132,7 @@ su_err_by_name(char const *name){
 
       cemp = &a_corerr_map[x];
       if(cemp->cem_hash == hash &&
-            !su_cs_cmp(&a_corerr_names[cemp->cem_nameoff], name)){
+            !su_cs_cmp_case(&a_corerr_names[cemp->cem_nameoff], name)){
          rv = cemp->cem_errno;
          goto jleave;
       }

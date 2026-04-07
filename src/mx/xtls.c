@@ -446,7 +446,7 @@ static void a_xtls__load_algos(void);
 #  define a_xtls_load_algos a_xtls__load_algos
 # endif
 # if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
-static void a_xtls_atexit(void);
+static void a_xtls__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
 # endif
 #endif
 #ifndef a_xtls_load_algos
@@ -520,12 +520,12 @@ a_xtls_rand_init(void){
 # endif
 
    err = TRU1;
-   randfile = NULL;
+   randfile = NIL;
 
    /* Prefer possible user setting */
-   if((cp = ok_vlook(tls_rand_file)) != NULL ||
-         (cp = ok_vlook(ssl_rand_file)) != NULL){
-      x = NULL;
+   if((cp = ok_vlook(tls_rand_file)) != NIL ||
+         (cp = ok_vlook(ssl_rand_file)) != NIL){
+      x = NIL;
       if(*cp != '\0'){
          if((x = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
                ) == NIL)
@@ -535,10 +535,11 @@ a_xtls_rand_init(void){
       }
       cp = x;
    }
-   if(cp == NULL){
-      randfile = n_lofi_alloc(PATH_MAX);
-      if((cp = RAND_file_name(randfile, PATH_MAX)) == NULL){
-         n_err(_("*tls-rand-file*: no TLS entropy file, can't seed PRNG\n"));
+
+   if(cp == NIL){
+      randfile = su_LOFI_ALLOC(PATH_MAX);
+      if((cp = RAND_file_name(randfile, PATH_MAX)) == NIL){
+         n_err(_("*tls-rand-file*: no TLS entropy file, cannot seed PRNG\n"));
          goto jleave;
       }
    }
@@ -546,36 +547,29 @@ a_xtls_rand_init(void){
    (void)RAND_load_file(cp, a_XTLS_RAND_LOAD_FILE_MAXBYTES);
 
    /* And feed in some data, then write the updated file.
-    * While this rather feeds the PRNG with itself in the RANDOM_IMPL_TLS
-    * case, let us stir the buffer a little bit.
+    * While this feeds the PRNG with itself, let's stir the buffer a bit.
     * Estimate a low but likely still too high number of entropy bytes, use
     * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
     * alphabet is a 6 bit one */
-   for(x = (char*)-1;;){
+   for(x = R(char*,-1);;){
       RAND_add(mx_random_create_buf(b64buf, sizeof(b64buf) -1, NIL),
          sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
-      if((x = (char*)((up)x >> (1
-# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
-         + 3
-# endif
-            ))) == NULL){
+      if((x = R(char*,R(up,x) >> 3)) == NIL){
          err = (RAND_status() == 0);
          break;
       }
-# if mx_HAVE_RANDOM != mx_RANDOM_IMPL_TLS
       if(!(err = (RAND_status() == 0)))
          break;
-# endif
    }
 
    if(!err)
       err = (RAND_write_file(cp) == -1);
 
 jleave:
-   if(randfile != NULL)
-      n_lofi_free(randfile);
+   if(randfile != NIL)
+      su_LOFI_FREE(randfile);
    if(err)
-      n_panic(_("Cannot seed the *TLS PseudoRandomNumberGenerator, "
+      n_panic(_("Cannot seed the PseudoRandomNumberGenerator, "
             "RAND_status() is 0!\n"
          "  Please set *tls-rand-file* to a file with sufficient entropy.\n"
          "  On a machine with entropy: "
@@ -643,7 +637,7 @@ a_xtls_init(void){
 # if mx_HAVE_XTLS < 0x10100
          if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
             a_xtls_state |= a_XTLS_S_EXIT_HDL;
-            atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
+            su_state_on_gut_install(&a_xtls__on_gut, FAL0, su_STATE_ERR_PASS);
          }
 # endif
          if(n_poption & n_PO_D_V)
@@ -673,7 +667,7 @@ a_xtls__load_algos(void){
 
       if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
          a_xtls_state |= a_XTLS_S_EXIT_HDL;
-         atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
+         su_state_on_gut_install(&a_xtls__on_gut, FAL0, su_STATE_ERR_PASS);
       }
    }
    NYD2_OU;
@@ -682,18 +676,22 @@ a_xtls__load_algos(void){
 
 # if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void
-a_xtls_atexit(void){
+a_xtls__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
    NYD2_IN;
 
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
 #  ifdef mx_XTLS_HAVE_CONFIG
-   if(a_xtls_state & a_XTLS_S_CONF_LOAD)
-      CONF_modules_free();
+      if(a_xtls_state & a_XTLS_S_CONF_LOAD)
+         CONF_modules_free();
 #  endif
 
 #  ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-   if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
-      EVP_cleanup();
+      if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
+         EVP_cleanup();
 #  endif
+   }
+
+   a_xtls_state = 0;
 
    NYD2_OU;
 }
@@ -1958,17 +1956,21 @@ jleave:
    return rv;
 }
 
-#if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
-FL void
-mx_tls_rand_bytes(void *buf, uz blen){
+#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3
+FL boole
+mx_random_hook(void **cookie, void *buf, uz len){
    NYD2_IN;
+   ASSERT(len > 0);
+   ASSERT(cookie != NIL && *cookie == NIL);
+   UNUSED(cookie);
+
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
 
-   while(blen > 0){
+   for(;;){
       s32 i;
 
-      switch(RAND_bytes(buf, i = MIN(S32_MAX, blen))){
+      switch(RAND_bytes(buf, i = MIN(S32_MAX, len))){
       default:
          /* LibreSSL always succeeds, i think it aborts otherwise.
           * With elder OpenSSL we ensure via RAND_status() in
@@ -1980,23 +1982,27 @@ mx_tls_rand_bytes(void *buf, uz blen){
           * 20190104180735.GA25041@roeckx.be), so we have not that many options
           * on what to do.  Since OSs will try hard to serve, a simple sleep
           * may be it, so do that */
-#if mx_HAVE_TLS != mx_TLS_IMPL_RESSL && !defined mx_XTLS_HAVE_RAND_FILE
+# if mx_HAVE_TLS != mx_TLS_IMPL_RESSL && !defined mx_XTLS_HAVE_RAND_FILE
          n_err(_("TLS RAND_bytes(3ssl) failed (missing entropy?), "
             "waiting a bit\n"));
          /* Around ~Y2K+1 anything <= was a busy loop iirc, so give pad */
          su_time_msleep(250, FAL0);
          continue;
-#endif
+# endif
          /* FALLTHRU */
       case 1:
          break;
       }
-      blen -= i;
-      buf = (u8*)buf + i;
+
+      if((len -= i) == 0)
+         break;
+      buf = &S(u8*,buf)[i];
    }
+
    NYD2_OU;
+   return TRU1;
 }
-#endif /* HAVE_RANDOM == RANDOM_IMPL_TLS */
+#endif /* su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3 */
 
 FL boole
 n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
@@ -2304,7 +2310,7 @@ c_verify(void *vp)
    srelax_rele();
 
    if ((rv = ec) != 0)
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
 jleave:
    if (store != NULL)
       X509_STORE_free(store);

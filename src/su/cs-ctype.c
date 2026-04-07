@@ -27,6 +27,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* Include the constant su-make-cs-ctype.sh output */
 #include "su/gen-cs-ctype.h" /* $(SU_SRCDIR) */
 
@@ -38,7 +40,7 @@ su_cs_cmp_case(char const *cp1, char const *cp2){
    ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
    for(;;){
-      u8 c1, c2;
+      s32 c1, c2;
 
       c1 = su_cs_to_lower(*cp1++);
       c2 = su_cs_to_lower(*cp2++);
@@ -58,7 +60,7 @@ su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n){
    ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
    for(rv = 0; n != 0; --n){
-      u8 c1, c2;
+      s32 c1, c2;
 
       c1 = su_cs_to_lower(*cp1++);
       c2 = su_cs_to_lower(*cp2++);

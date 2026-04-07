@@ -726,7 +726,7 @@ jleave:
    n_autorec_relax_gut();
 
    NYD2_OU;
-   return (msgvec == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (msgvec == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 static int
@@ -817,7 +817,7 @@ a_crese_Reply(int *msgvec, boole recipient_record){
 
 jleave:
    NYD2_OU;
-   return (msgvec == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (msgvec == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 static int
@@ -840,7 +840,7 @@ a_crese_fwd(void *vp, boole recipient_record){
    cap = cacp->cac_arg;
    msgvec = cap->ca_arg.ca_msglist;
    cap = cap->ca_next;
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
@@ -906,7 +906,7 @@ jwork_msg:
       goto jwork_msg;
    }
 
-   rv = n_EXIT_OK;
+   rv = su_EX_OK;
 jleave:
    n_autorec_relax_gut();
 j_leave:

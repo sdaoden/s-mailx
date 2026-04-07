@@ -36,7 +36,7 @@
 #define NSPC_USE su_NSPC_USE
 #define NSPC su_NSPC
 
-#if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
+#ifdef __cplusplus
 # define CLASS_NO_COPY su_CLASS_NO_COPY
 # define SELFTHIS_RET su_SELFTHIS_RET
 
@@ -102,6 +102,11 @@
 
 /* SUPPORT MACROS+ */
 
+#undef SU
+#undef MX
+#define SU su_SU
+#define MX su_MX
+
 #undef ABS
 #undef CLIP
 #undef IS_POW2
@@ -146,6 +151,8 @@
 #define ASSERT_NYD su_ASSERT_NYD
 #define ASSERT_NYD_LOC su_ASSERT_NYD_LOC
 
+#define ATOMIC su_ATOMIC
+
 #define BITENUM_IS su_BITENUM_IS
 #define BITENUM_MASK su_BITENUM_MASK
 
@@ -155,11 +162,20 @@
 #define DVL su_DVL
 #define NDVL su_NDVL
 #define DVLOR su_DVLOR
+#define DVLDBG su_DVLDBG
+#define NDVLDBG su_NDVLDBG
+#define DVLDBGOR su_DVLDBGOR
 
+#define FALLTHRU su_FALLTHRU
+#define FIELD_DISTANCEOF su_FIELD_DISTANCEOF
 #define FIELD_INITN su_FIELD_INITN
+#define FIN su_FIELD_INITN
 #define FIELD_INITI su_FIELD_INITI
+#define FII su_FIELD_INITI
 #define FIELD_OFFSETOF su_FIELD_OFFSETOF
 #define FIELD_RANGEOF su_FIELD_RANGEOF
+#define FIELD_RANGE_COPY su_FIELD_RANGE_COPY
+#define FIELD_RANGE_ZERO su_FIELD_RANGE_ZERO
 #define FIELD_SIZEOF su_FIELD_SIZEOF
 
 #define MT su_MT
@@ -169,30 +185,25 @@
 /* Not-Yet-Dead macros, only for su_FILE sources */
 #ifdef su_FILE
 # define NYD_OU_LABEL su_NYD_OU_LABEL
-# define su__NYD_IN_NOOP do{
-# define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-# define su__NYD_NOOP do{}while(0)
+# if 0
+#  define su__NYD_IN_NOOP do{do{}while(0)
+#  define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
+#  define su__NYD_NOOP do{}while(0)
+# else
+#  define su__NYD_IN_NOOP if(1){do{}while(0)
+#  define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}do{}while(0)
+#  define su__NYD_NOOP do{}while(0)
+# endif
 
-# if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
+# ifndef su_HAVE_DEVEL
 #  define su__NYD_IN su__NYD_IN_NOOP
 #  define su__NYD_OU su__NYD_OU_NOOP
 #  define su__NYD su__NYD_NOOP
-# elif defined NYDPROF_ENABLE || defined su_NYDPROF_ENABLE_ALWAYS
+# elif defined NYDPROF_ENABLE || defined su_NYDPROF_ENABLE
 #  error TODO NYDPROF not yet implemented.
-#  if defined su_HAVE_DEVEL
-#  else
-#  endif
-# elif defined su_HAVE_DEVEL
-#  define su__NYD_IN \
-   if(1){su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
-#  define su__NYD_OU \
-   goto NYD_OU_LABEL;NYD_OU_LABEL:\
-   su_nyd_chirp(su_NYD_ACTION_LEAVE,__FILE__,__LINE__,su_FUN);}else{}
-#  define su__NYD \
-   if(0){}else{su_nyd_chirp(su_NYD_ACTION_ANYWHERE,__FILE__,__LINE__,su_FUN);}
 # else
 #  define su__NYD_IN \
-   do{su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
+   do{su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN)
 #  define su__NYD_OU \
    goto NYD_OU_LABEL;NYD_OU_LABEL:\
    su_nyd_chirp(su_NYD_ACTION_LEAVE,__FILE__,__LINE__,su_FUN);}while(0)
@@ -200,22 +211,28 @@
    do{su_nyd_chirp(su_NYD_ACTION_ANYWHERE,__FILE__,__LINE__,su_FUN);}while(0)
 # endif
 
-# if defined NYD_ENABLE || defined su_NYD_ENABLE_ALWAYS
-#  undef NYD_ENABLE
+# if defined NYD_ENABLE || defined su_NYD_ENABLE
 #  define NYD_IN su__NYD_IN
 #  define NYD_OU su__NYD_OU
 #  define NYD su__NYD
-# else
+#  if defined NYD2_ENABLE || defined su_NYD2_ENABLE
+#   define NYD2_IN su__NYD_IN
+#   define NYD2_OU su__NYD_OU
+#   define NYD2 su__NYD
+#  endif
+# endif
+
+# undef NYD_ENABLE
+# undef NYDPROF_ENABLE
+# undef NYD2_ENABLE
+# undef NYDPROF2_ENABLE
+
+# ifndef NYD_IN
 #  define NYD_IN su__NYD_IN_NOOP
 #  define NYD_OU su__NYD_OU_NOOP
 #  define NYD su__NYD_NOOP
 # endif
-# ifdef NYD2_ENABLE
-#  undef NYD2_ENABLE
-#  define NYD2_IN su__NYD_IN
-#  define NYD2_OU su__NYD_OU
-#  define NYD2 su__NYD
-# else
+# ifndef NYD2_IN
 #  define NYD2_IN su__NYD_IN_NOOP
 #  define NYD2_OU su__NYD_OU_NOOP
 #  define NYD2 su__NYD_NOOP
@@ -249,6 +266,11 @@
 #endif
 
 #define SMP su_SMP
+
+#define STRING su_STRING
+#define CONCAT su_CONCAT
+
+#define STRUCT_ZERO su_STRUCT_ZERO
 
 #define UCMP su_UCMP
 
@@ -324,6 +346,11 @@
 #define SZ_MAX su_SZ_MAX
 #define UZ_BITS su_UZ_BITS
 
+/* state_gut */
+#if DVLOR(1, 0) || defined su_HAVE_STATE_GUT_FORK
+# define su__STATE_ON_GUT_FUN
+#endif
+
 /* MEMORY */
 
 #define su_ALLOCATE su_MEM_ALLOCATE
@@ -378,6 +405,9 @@
 # define su_CNEW su_MEM_CNEW
 # define su_CNEW_LOC su_MEM_CNEW_LOC
 # define su_CNEW_LOCOR su_MEM_CNEW_LOCOR
+# define su_NEWF_BLK su_MEM_NEWF_BLK
+# define su_NEWF_BLK_LOC su_MEM_NEWF_BLK_LOC
+# define su_NEWF_BLK_LOCOR su_MEM_NEWF_BLK_LOCOR
 # define su_NEW_HEAP su_MEM_NEW_HEAP
 # define su_NEW_HEAP_LOC su_MEM_NEW_HEAP_LOC
 # define su_NEW_HEAP_LOCOR su_MEM_NEW_HEAP_LOCOR

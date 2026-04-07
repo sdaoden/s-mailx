@@ -60,10 +60,11 @@
  * TODO SU needs to be available as a (static) library to overcome this */
 uz su__state;
 #ifdef su_MEM_ALLOC_DEBUG
-boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
-boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_trace(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
 #define su_err_no() errno
+#define su_err_no_by_errno() errno
 #define su_err_set_no(X) (errno = X)
 
 static void _ign_signal(int signum);
@@ -94,15 +95,15 @@ su_time_msleep(uz millis, boole ignint){
       ts.tv_nsec = (millis %= 1000) * 1000 * 1000;
 
       while((i =
-#ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su_HAVE_CLOCK_NANOSLEEP
                  clock_nanosleep
-#else
+# else
                  nanosleep
-#endif
+# endif
                  (
-#ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su_HAVE_CLOCK_NANOSLEEP
                   CLOCK_REALTIME, 0,
-#endif
+# endif
                   &ts, &trem)) != 0 && ignint)
          ts = trem;
       rv = (i == 0) ? 0
@@ -151,7 +152,7 @@ jeuse:
          "  The sole purpose is outsourcing of high privileges into\n"
          "  fewest lines of code in order to reduce attack surface.\n"
          "  This program cannot be run by itself.\n");
-      exit(n_EXIT_USE);
+      exit(su_EX_USAGE);
    }else{
       /* Prevent one more path injection attack vector, but be friendly */
       char const *ccp;
@@ -260,7 +261,7 @@ jmsg:
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   return (fdls == mx_FILE_DOTLOCK_STATE_NONE ? n_EXIT_OK : n_EXIT_ERR);
+   return (fdls == mx_FILE_DOTLOCK_STATE_NONE ? su_EX_OK : su_EX_ERR);
 }
 
 #include "su/code-ou.h"

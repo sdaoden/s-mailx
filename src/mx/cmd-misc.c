@@ -143,9 +143,9 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
             cp = n_string_cp(n_string_trunc(s, s->s_len - 1));
          n_errx(TRU1, (donl ? "%s\n" : "%s"), cp);
       }else if(fputs(cp, fp) == EOF)
-         e = su_err_no();
+         e = su_err_no_by_errno();
       if((rv = (fflush(fp) == EOF)))
-         e = su_err_no();
+         e = su_err_no_by_errno();
       rv |= ferror(fp) ? 1 : 0;
       n_pstate_err_no = e;
    }else if(!n_var_vset(varname, R(up,cp), cm_local)){
@@ -343,7 +343,7 @@ c_shell(void *vp){
          cc.cc_fds[mx_CHILD_FD_OUT] = fileno(fp);
       mx_child_ctx_set_args_for_sh(&cc, NIL, a_cmisc_bangexp(*argv));
 
-      if(!mx_child_run(&cc) || (rv = cc.cc_exit_status) < 0){
+      if(!mx_child_run(&cc) || (rv = cc.cc_exit_status) < su_EX_OK){
          n_pstate_err_no = cc.cc_error;
          rv = -1;
       }
@@ -367,7 +367,7 @@ c_shell(void *vp){
                *x++ = c;
             *x++ = '\0';
             if(l != 0){
-               n_pstate_err_no = su_err_no();
+               n_pstate_err_no = su_err_no_by_errno();
                varres = n_empty; /* xxx hmmm */
             }
          }
@@ -400,7 +400,7 @@ c_dosh(void *vp){
    cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
    cc.cc_cmd = ok_vlook(SHELL);
 
-   if(mx_child_run(&cc) && (rv = cc.cc_exit_status) >= 0){
+   if(mx_child_run(&cc) && (rv = cc.cc_exit_status) >= su_EX_OK){
       putc('\n', n_stdout);
       /* Line buffered fflush(n_stdout); */
       n_pstate_err_no = su_ERR_NONE;
@@ -432,7 +432,7 @@ c_cwd(void *vp){
       if(getcwd(s->s_dat, s->s_len) == NIL){
          int e;
 
-         e = su_err_no();
+         e = su_err_no_by_errno();
          if(e == su_ERR_RANGE)
             continue;
          n_perr(_("Failed to getcwd(3)"), e);
@@ -454,7 +454,7 @@ c_cwd(void *vp){
    }
 
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 int
@@ -470,13 +470,13 @@ c_chdir(void *vp){
       goto jleave;
 
    if(chdir(cp) == -1){
-      n_perr(cp, 0);
+      n_perr(cp, su_err_no_by_errno());
       cp = NIL;
    }
 
 jleave:
    NYD_OU;
-   return (cp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (cp == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 int

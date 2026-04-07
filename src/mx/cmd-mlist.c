@@ -45,7 +45,7 @@
 #include "su/code-in.h"
 
 /* ..of a_ml_dp.. */
-#define a_ML_FLAGS (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE |\
+#define a_ML_FLAGS (su_CS_DICT_CASE |\
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_ML_TRESHOLD_SHIFT 2
 
@@ -58,7 +58,7 @@
  * a_ml_regex* == self with bit 1 indicating subscription state.
  * We MUST pass non-NIL to assign()! */
 #ifdef mx_HAVE_REGEX
-# define a_ML_RE_FLAGS (su_CS_DICT_POW2_SPACED | su_CS_DICT_OWNS |\
+# define a_ML_RE_FLAGS (su_CS_DICT_OWNS |\
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS | su_CS_DICT_NILISVALO)
 # define a_ML_RE_TRESHOLD_SHIFT 4
 #endif
@@ -73,9 +73,9 @@ struct a_ml_regex{
 
 /* The value of our direct match dict is in fact a boole, the regex one
  * uses a_ml_regex* (still with boole as first bit, as above) */
-static struct su_cs_dict *a_ml_dp, a_ml__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_ml_dp, a_ml__d;
 #ifdef mx_HAVE_REGEX
-static struct su_cs_dict *a_ml_re_dp, a_ml__re_d; /* XXX atexit _gut (DVL()) */
+static struct su_cs_dict *a_ml_re_dp, a_ml__re_d;
 
 /* Regex are searched in order, subscribed first, then "default"; make this
  * easier by using two dedicated lists.
@@ -85,6 +85,8 @@ static struct a_ml_regex *a_ml_re_def, *a_ml_re_sub;
 
 /* +toolbox below */
 #endif
+
+DVL( static void a_ml__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* */
 static boole a_ml_mux(boole subscribe, char const **argv);
@@ -105,6 +107,28 @@ static void *a_ml_re_assign(void *self, void const *t, u32 estate);
 static struct su_toolbox const a_ml_re_tbox = su_TOOLBOX_I9R(
    &a_ml_re_clone, &a_ml_re_delete, &a_ml_re_assign, NIL, NIL
 );
+#endif
+
+#if DVLOR(1, 0)
+static void
+a_ml__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      su_cs_dict_gut(&a_ml__d);
+#ifdef mx_HAVE_REGEX
+      su_cs_dict_gut(&a_ml__re_d);
+#endif
+   }
+
+   a_ml_dp = NIL;
+#ifdef mx_HAVE_REGEX
+   a_ml_re_dp = NIL;
+   a_ml_re_def = a_ml_re_sub = NIL;
+#endif
+
+   NYD2_OU;
+}
 #endif
 
 static boole
@@ -135,6 +159,8 @@ a_ml_mux(boole subscribe, char const **argv){
                su_cs_dict_create(&a_ml__re_d, a_ML_RE_FLAGS, &a_ml_re_tbox),
                a_ML_RE_TRESHOLD_SHIFT);
 #endif
+         DVL( su_state_on_gut_install(&a_ml__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
       }
 
       notrv = FAL0;

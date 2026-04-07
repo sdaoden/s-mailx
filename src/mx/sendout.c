@@ -443,7 +443,7 @@ a_sendout_attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
       err = a_sendout__attach_file(hp, ap, fo, force);
       mx_fs_close(ap->a_tmpf);
-      su_DBG( ap->a_tmpf = NIL; )
+      DVLDBG( ap->a_tmpf = NIL; )
       goto jleave;
    }
 
@@ -571,7 +571,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
 
       if (putc('\n', fo) == EOF) {
 jerr_header:
-         err = su_err_no();
+         err = su_err_no_by_errno();
          goto jerr_fclose;
       }
    }
@@ -749,7 +749,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    /* the final boundary with two attached dashes */
    if(fprintf(fo, "\n--%s--\n", _sendout_boundary) < 0)
 jerr:
-      if((err = su_err_no()) == su_ERR_NONE)
+      if((err = su_err_no_by_errno()) == su_ERR_NONE)
          err = su_ERR_IO;
 jleave:
    NYD_OU;
@@ -880,7 +880,7 @@ jiconv_err:
       goto jerr;
 
    if(fflush(nfo) == EOF)
-      err = su_err_no();
+      err = su_err_no_by_errno();
 
 jerr:
    mx_fs_close(nfo);
@@ -1057,7 +1057,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
             putc('\n', fp);
          fflush(fp);
          if(ferror(fp)){
-            n_perr(_("Finalizing write of temporary image"), 0);
+            n_perr(_("Finalizing write of temporary image"),
+                  su_err_no_by_errno());
             goto jerror;
          }
 
@@ -1260,7 +1261,7 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
 jbail:
       n_err(_("Failed to save message in %s - message not sent\n"),
          n_shexp_quote_cp(ccp, FAL0));
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
       savedeadletter(fp, 1);
       rv = FAL0;
    }
@@ -1327,7 +1328,7 @@ jeappend:
                break;
             }
          }
-      /*}su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
+      /*}DVLDBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
 
       emptyline = (buflen > 0 && *buf == '\n');
       if(fwrite(buf, sizeof *buf, buflen, fo) != buflen){
@@ -1587,7 +1588,7 @@ jstop:
    else if(dowait){
       /* TODO Now with SPAWN_CONTROL we could actually (1) handle $DEAD only
        * TODO in the parent, and (2) report the REAL child error status!! */
-      rv = (mx_child_wait(&cc) && cc.cc_exit_status == 0);
+      rv = (mx_child_wait(&cc) && cc.cc_exit_status == su_EX_OK);
       if(!rv)
          goto jstop;
    }else{
@@ -1605,7 +1606,7 @@ jkid:
 #ifdef mx_HAVE_SMTP
    if(rv == TRU1){
       if(mx_smtp_mta(scp))
-         _exit(n_EXIT_OK);
+         _exit(su_EX_OK);
       savedeadletter(scp->sc_input, TRU1);
       if(!dowait)
          n_err(_("... message not sent\n"));
@@ -1616,7 +1617,7 @@ jkid:
       mx_child_in_child_exec_failed(&cc, su_err_no());
    }
    for(;;)
-      _exit(n_EXIT_ERR);
+      _exit(su_EX_ERR);
 }
 
 static char const **

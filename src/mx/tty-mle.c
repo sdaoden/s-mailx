@@ -611,7 +611,7 @@ static u8 a_tty_wcwidth(wchar_t wc);
 
 /* Memory / cell / word generics */
 static void a_tty_check_grow(struct a_tty_line *tlp, u32 no
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 static sz a_tty_cell2dat(struct a_tty_line *tlp);
 static void a_tty_cell2save(struct a_tty_line *tlp);
 
@@ -661,7 +661,7 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
 
 /* Readline core */
 static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 
 # ifdef mx_HAVE_KEY_BINDINGS
 /* Find context or -1 */
@@ -735,6 +735,7 @@ a_tty_hist_load(void){
    u8 version;
    uz lsize, cnt, llen;
    char *lbuf, *cp;
+   s32 eno;
    FILE *fp;
    char const *hfname;
    boole rv;
@@ -748,12 +749,15 @@ a_tty_hist_load(void){
 
    mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
-   if((fp = fopen(hfname, "r")) == NIL ||
-         !mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TSHARE |
-            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-      s32 eno;
+   if((fp = fopen(hfname, "r")) == NIL){
+      eno = su_err_no_by_errno();
+      goto jerr;
+   }
 
+   if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TSHARE |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
       eno = su_err_no();
+jerr:
       n_err(_("Cannot read/lock *history-file*=%s: %s\n"),
          n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
       rv = FAL0;
@@ -852,6 +856,7 @@ static boole
 a_tty_hist_save(void){
    uz i;
    struct a_tty_hist *thp;
+   s32 eno;
    FILE *fp;
    char const *v;
    boole rv, dogabby;
@@ -873,14 +878,17 @@ a_tty_hist_save(void){
    mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
    /* TODO temporary histfile + rename?! */
-   if((fp = fopen(v, "w")) == NIL ||
-         !mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL |
-            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-      int e;
+   if((fp = fopen(v, "w")) == NIL){
+      eno = su_err_no_by_errno();
+      goto jerr;
+   }
 
-      e = su_err_no();
+   if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
+      eno = su_err_no();
+jerr:
       n_err(_("Cannot write/lock *history-file*=%s: %s\n"),
-         n_shexp_quote_cp(v, FAL0), su_err_doc(e));
+         n_shexp_quote_cp(v, FAL0), su_err_doc(eno));
       rv = FAL0;
       goto jrele;
    }
@@ -1422,7 +1430,7 @@ a_tty_wcwidth(wchar_t wc){
 }
 
 static void
-a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
+a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DVL_LOC_ARGS_DECL){
    u32 cmax;
    NYD2_IN;
 
@@ -1435,7 +1443,7 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
          i <<= 1;
          tlp->tl_line.cbuf =
          *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
-               su_DBG_LOC_ARGS_ORUSE);
+               su_DVL_LOC_ARGS_ORUSE);
          *tlp->tl_x_bufsize = i;
          mx_sigs_all_rele(); /* XXX v15 drop */
       }
@@ -1552,7 +1560,7 @@ a_tty_vinuni(struct a_tty_line *tlp){
    buf[sizeof(buf) -1] = '\0';
    for(i = 0;;){
       if(read(STDIN_FILENO, &buf[i], 1) != 1){ /* xxx tty_fd */
-         if(su_err_no() == su_ERR_INTR) /* xxx #if !SA_RESTART ? */
+         if(su_err_no_by_errno() == su_ERR_INTR) /* xxx #if !SA_RESTART ? */
             continue;
          goto jleave;
       }
@@ -3190,7 +3198,7 @@ jreset:
 
 static sz
 a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
@@ -3218,7 +3226,7 @@ jrestart:
    /* Treat buffer take-over mode specially, that simplifies the below */
    if(UNLIKELY(len != 0)){
       /* Ensure we have valid pointers, and room for grow */
-      a_tty_check_grow(tlp, S(u32,len)  su_DBG_LOC_ARGS_USE);
+      a_tty_check_grow(tlp, S(u32,len)  su_DVL_LOC_ARGS_USE);
 
       for(;;){
          ASSERT(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NIL);
@@ -3246,7 +3254,7 @@ jrestart:
          }
 
          /* Ensure more room -- should normally be a no-op */
-         a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
+         a_tty_check_grow(tlp, 1  su_DVL_LOC_ARGS_USE);
       }
       goto jrestart;
    }
@@ -3276,7 +3284,7 @@ jinput_loop:
 
       for(;;){
          /* Ensure we have valid pointers, and room for grow */
-         a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
+         a_tty_check_grow(tlp, 1  su_DVL_LOC_ARGS_USE);
 
 # ifdef mx_HAVE_KEY_BINDINGS
          timeout = FAL0;
@@ -3320,7 +3328,7 @@ jread_again:
 
             while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
                /* TODO Currently a noop due to SA_RESTART */
-               if(su_err_no() != su_ERR_INTR ||
+               if(su_err_no_by_errno() != su_ERR_INTR ||
                      ((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
                       !a_tty_vi_refresh(tlp)))
                   break;
@@ -3497,7 +3505,7 @@ jmle_fun:
 jtake_over:
          for(rv = 0, isp = isp_head; isp != NIL; ++rv, isp = isp->next)
             ;
-         a_tty_check_grow(tlp, rv  su_DBG_LOC_ARGS_USE);
+         a_tty_check_grow(tlp, rv  su_DVL_LOC_ARGS_USE);
          for(isp = isp_head; isp != NIL; isp = isp->next)
             if(a_tty_kother(tlp, isp->tbtp->tbt_char)){
                /* TODO ??? */
@@ -3583,7 +3591,7 @@ jinject_input:{
    i = su_cs_len(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
       *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
       *tlp->tl_x_bufsize = i;
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
@@ -4479,18 +4487,22 @@ mx_tty_destroy(boole xit_fastpath){
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
+# if defined mx_HAVE_KEY_BINDINGS && DVLOR(1, 0)
+   if(!xit_fastpath){
+      mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
+      a_tty_bind_tree_teardown();
+   }
+# endif
+
    /* Write the history file */
 # ifdef mx_HAVE_HISTORY
-   if(!xit_fastpath)
+   if(!xit_fastpath){
       a_tty_hist_save();
+      DVL( a_tty_hist_clear(); )
+   }
 # endif
 
-# if defined mx_HAVE_KEY_BINDINGS && defined mx_HAVE_DEBUG
-   if(!xit_fastpath)
-      mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
-# endif
-
-# ifdef mx_HAVE_DEBUG
+# if DVLOR(1, 0)
    su_mem_set(&a_tty, 0, sizeof a_tty);
 
    n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
@@ -4503,7 +4515,7 @@ jleave:
 int
 (mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    struct a_tty_line tl;
    struct n_string xprompt;
    sz nn;
@@ -4534,7 +4546,7 @@ int
    mx_termios_cmd(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_RAW, 1);
    mx_termios_on_state_change_set(&a_tty_on_state_change, S(up,NIL));
    mx_TERMCAP_RESUME(FAL0);
-   nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
+   nn = a_tty_readline(&tl, n, histok_or_nil  su_DVL_LOC_ARGS_USE);
    /*mx_COLOUR( mx_colour_env_gut(); )
     *mx_TERMCAP_SUSPEND(FAL0);*/
    mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
@@ -4621,7 +4633,7 @@ c_history(void *vp){
 
 jleave:
    NYD_OU;
-   return (x > FAL0 ? n_EXIT_OK : n_EXIT_ERR);
+   return (x > FAL0 ? su_EX_OK : su_EX_ERR);
 }
 # endif /* mx_HAVE_HISTORY */
 
@@ -4709,7 +4721,7 @@ c_bind(void *vp){
 
 jleave:
    NYD_OU;
-   return (vp != NIL) ? n_EXIT_OK : n_EXIT_ERR;
+   return (vp != NIL) ? su_EX_OK : su_EX_ERR;
 }
 
 int
@@ -4766,7 +4778,7 @@ jredo:
 
 jleave:
    NYD_OU;
-   return (vp != NIL) ? n_EXIT_OK : n_EXIT_ERR;
+   return (vp != NIL) ? su_EX_OK : su_EX_ERR;
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
 
@@ -4793,7 +4805,7 @@ mx_tty_destroy(boole xit_fastpath){
 int
 (mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    struct n_string xprompt;
    int rv;
    NYD_IN;
@@ -4806,7 +4818,7 @@ int
       }
    }
 
-   rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
+   rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DVL_LOC_ARGS_USE);
 
    NYD_OU;
    return rv;

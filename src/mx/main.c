@@ -94,7 +94,7 @@ VL char const n_qm[2] = "?";
 VL char const n_at[2] = "@";
 
 /* Perform basic startup initialization */
-static void a_main_startup(void);
+static void a_main_startup(char const *argv0);
 
 /* Grow a char** */
 static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
@@ -110,7 +110,7 @@ static int a_main_rcv_mode(struct a_main_ctx *mcp);
 static void a_main_hdrstop(int signo);
 
 /* SIGUSR1, then */
-#if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+#if DVLOR(1, 0) && defined su_MEM_ALLOC_DEBUG
 static void a_main_memtrace(int signo);
 #endif
 
@@ -125,7 +125,7 @@ static boole a_main_dump_doc(up cookie, boole has_arg, char const *sopt,
       char const *lopt, char const *doc);
 
 static void
-a_main_startup(void){
+a_main_startup(char const *argv0){
    struct passwd *pwuid;
    char *cp;
    NYD2_IN;
@@ -134,13 +134,14 @@ a_main_startup(void){
    n_stdout = stdout;
    n_stderr = stderr;
 
-   if((cp = su_cs_rfind_c(su_program, '/')) != NIL)
-      su_program = ++cp;
+   /* SU init */
    /* XXX Due to n_err() mess the su_log config only applies to EMERG yet! */
-   su_state_set(su_STATE_LOG_SHOW_LEVEL | su_STATE_LOG_SHOW_PID
-         /* XXX | su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW */
-   );
-   su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
+   su_state_create(su_STATE_CREATE_V1, argv0,
+         (su_STATE_LOG_SHOW_LEVEL | /*su_STATE_LOG_SHOW_PID |*/
+          n_LOG_LEVEL /* XXX _EMERG is 0.. */),
+      su_STATE_ERR_NOPASS);
+
+   su_log_set_write_fun(&n_su_log_write_fun);
 
    /* Change to reproducible mode asap */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
@@ -181,7 +182,7 @@ a_main_startup(void){
       safe_signal(SIGPIPE, SIG_IGN);
 
 #if DVLOR(1, 0)
-# if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+# if defined su_MEM_ALLOC_DEBUG
    safe_signal(SIGUSR1, &a_main_memtrace);
 # endif
    safe_signal(SIGUSR2, &mx__nyd_oncrash);
@@ -342,20 +343,20 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 
    i = setfile(mcp->mc_folder, i);
    if(i < 0){
-      n_exit_status = n_EXIT_ERR; /* error already reported */
+      n_exit_status = su_EX_ERR; /* error already reported */
       goto jquit;
    }
    temporary_folder_hook_check(FAL0);
    if(n_poption & n_PO_QUICKRUN_MASK){
       n_exit_status = i;
-      if(i == n_EXIT_OK && (!(n_poption & n_PO_EXISTONLY) ||
+      if(i == su_EX_OK && (!(n_poption & n_PO_EXISTONLY) ||
             (n_poption & n_PO_HEADERLIST)))
          print_header_summary(mcp->mc_L);
       goto jquit;
    }
 
    if(i > 0 && !ok_blook(emptystart)){
-      n_exit_status = n_EXIT_ERR;
+      n_exit_status = su_EX_ERR;
       goto jleave;
    }
 
@@ -374,7 +375,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
    /* Enter the command loop */
    /* "load()" more commands given on command line */
    if(mcp->mc_Y_cnt > 0 && !mx_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
-      n_exit_status = n_EXIT_ERR;
+      n_exit_status = su_EX_ERR;
    else
       mx_go_main_loop(TRU1);
 
@@ -404,7 +405,7 @@ a_main_hdrstop(int signo){
    siglongjmp(a_main__hdrjmp, 1);
 }
 
-#if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+#if DVLOR(1, 0) && defined su_MEM_ALLOC_DEBUG
 static void
 a_main_memtrace(int signo){
    enum su_log_level lvl;
@@ -489,7 +490,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
    a[1] = NIL;
    n_poption |= n_PO_S_FLAG_TEMPORARY;
    n_pstate |= n_PS_ROBOT;
-   b = (c_set(a) == n_EXIT_OK);
+   b = (c_set(a) == su_EX_OK);
    n_pstate &= ~n_PS_ROBOT;
    n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
@@ -715,7 +716,7 @@ main(int argc, char *argv[]){
       "header-summary;H;" N_("is to be displayed (for given file) only"),
          "help;h;" N_("short help"),
       "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
-      "long-help;\201;" N_("this listing"),
+      "long-help;-1;" N_("this listing"),
       "no-header-summary;N;" N_("identical to -Snoheader"),
       "quote-file:;q;" N_("initialize body of message to be sent with a file"),
       "read-only;R;" N_("any mailbox file will be opened read-only"),
@@ -733,22 +734,21 @@ main(int argc, char *argv[]){
 
    struct a_main_ctx mc;
    struct su_avopt avo;
-   int i;
+   s32 i;
    char const *emsg;
    char *cp;
    BITENUM_IS(u32,a_rf_ids) resfiles;
    NYD_IN;
 
-   su_mem_set(&mc, 0, sizeof mc);
-   resfiles = a_RF_DEFAULT;
-   UNINIT(emsg, NIL);
-
    /*
     * Start our lengthy setup, finalize by setting n_PSO_STARTED
     */
 
-   su_program = (argc != 0) ? argv[0] : su_empty;
-   a_main_startup();
+   a_main_startup(argc != 0 ? argv[0] : su_empty);
+
+   su_mem_set(&mc, 0, sizeof mc);
+   resfiles = a_RF_DEFAULT;
+   UNINIT(emsg, NIL);
 
    /* Command line parsing.
     * XXX We could parse silently to grasp the actual mode (send, receive
@@ -841,9 +841,9 @@ main(int argc, char *argv[]){
          n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'h':
-      case S(char,S(u8,'\201')):
+      case -1:
          a_main_usage(n_stdout);
-         if(i != 'h'){
+         if(i < 0){
             fprintf(n_stdout, "\nLong options:\n");
             (void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,n_stdout));
          }
@@ -958,7 +958,7 @@ jeMmq:
 
          fputs(n_string_cp_const(mx_version(
             n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
-         n_exit_status = n_EXIT_OK;
+         n_exit_status = su_EX_OK;
          }goto jleave;
       case 'v':
          /* Be verbose */
@@ -1026,7 +1026,7 @@ jusage:
                n_err("%s\n", V_(emsg));
          }
          a_main_usage(n_stderr);
-         n_exit_status = n_EXIT_USE;
+         n_exit_status = su_EX_USAGE;
          goto jleave;
       }
    }
@@ -1072,7 +1072,7 @@ jgetopt_done:
    while(argv[i] != NIL)
       ++i;
    if(n_smopts_cnt + i > mc.mc_smopts_size)
-      DBG(mc.mc_smopts_size =)
+      DVLDBG(mc.mc_smopts_size =)
       a_main_grow_cpp(&n_smopts, n_smopts_cnt + i + 1, n_smopts_cnt);
 
    /* Check for inconsistent arguments, fix some temporaries */
@@ -1195,7 +1195,7 @@ jgetopt_done:
 je_expandargv:
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
                "using *mta-arguments*\n"));
-            n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
+            n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
             goto jleave;
          }
          do{
@@ -1231,7 +1231,7 @@ je_expandargv:
       a[1] = NIL;
       if(c_account(a) && (!(n_psonce & n_PSO_INTERACTIVE) ||
             ok_blook(errexit) || ok_blook(posix))){
-         n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
+         n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
          goto jleave;
       }
    }
@@ -1251,7 +1251,7 @@ je_expandargv:
          if(!mx_mime_type_is_known(n_poption_arg_Mm)){
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
-            n_exit_status = n_EXIT_ERR;
+            n_exit_status = su_EX_ERR;
             goto jleave_full;
          }
       }else if(/* XXX only to satisfy Coverity! */mc.mc_quote != NIL &&
@@ -1259,7 +1259,7 @@ je_expandargv:
                ) == NIL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(mc.mc_quote, FAL0));
-         n_exit_status = n_EXIT_ERR;
+         n_exit_status = su_EX_ERR;
          goto jleave_full;
       }else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
          n_poption_arg_Mm = NULL;
@@ -1281,14 +1281,14 @@ je_expandargv:
          mc.mc_attach = mx_attachments_append(mc.mc_attach,
                mc.mc_a_head->maa_file, &aerr, NIL);
          if(aerr != mx_ATTACHMENTS_ERR_NONE){
-            n_exit_status = n_EXIT_ERR;
+            n_exit_status = su_EX_ERR;
             goto jleave_full;
          }
       }
 
       /* "load()" more commands given on command line */
       if(mc.mc_Y_cnt > 0 && !mx_go_load_lines(TRU1, mc.mc_Y, mc.mc_Y_cnt))
-         n_exit_status = n_EXIT_ERR;
+         n_exit_status = su_EX_ERR;
       else
          n_mail((((n_psonce & n_PSO_INTERACTIVE
                   ) ? n_MAILSEND_HEADERS_PRINT : 0) |
@@ -1299,45 +1299,60 @@ je_expandargv:
 
 jleave_full:/* C99 */{
       char const *ccp;
-      boole was_xit;
+      u32 opsonce;
 
       i = n_exit_status;
-      was_xit = ((n_psonce & n_PSO_XIT) != 0);
+      opsonce = n_psonce;
 
-      n_psonce &= ~n_PSO_EXIT_MASK;
+      n_psonce &= ~n_PSO_EXIT_MASK; /* (macro call->event loop shall run) */
       mx_account_leave();
 
       if(n_psonce & n_PSO_INTERACTIVE){
-         mx_tty_destroy(was_xit);
+         mx_tty_destroy((opsonce & n_PSO_XIT) != 0);
 #ifdef mx_HAVE_TCAP
          mx_termcap_destroy();
 #endif
       }
 
-      n_psonce &= ~n_PSO_EXIT_MASK;
-      if((ccp = ok_vlook(on_program_exit)) != NIL)
+      if((ccp = ok_vlook(on_program_exit)) != NIL){
+         n_psonce &= ~n_PSO_EXIT_MASK; /* (macro call->event loop shall run) */
          temporary_on_xy_hook_caller("on-program-exit", ccp, FAL0);
+      }
 
       n_exit_status = i;
+      n_psonce = opsonce;
    }
 
 jleave:
-   if(n_exit_status == n_EXIT_OK && (n_psonce & n_PSO_SEND_ERROR) &&
+   if(n_exit_status == su_EX_OK && (n_psonce & n_PSO_SEND_ERROR) &&
          ok_blook(posix))
       n_exit_status = n_EXIT_SEND_ERROR;
 
    if(!mx_fs_flush(NIL)){
-      n_err(_("Flushing file output buffers failed: %s\n"),
-         su_err_doc(su_err_no()));
-      if(n_exit_status == n_EXIT_OK)
-         n_exit_status = n_EXIT_IOERR;
+      n_err(_("Flushing file output buffers failed: %s\n"), su_err_doc(-1));
+      if(n_exit_status == su_EX_OK)
+         n_exit_status = su_EX_IOERR;
    }
 
-#ifdef su_HAVE_DEBUG
-   /* xxx call atexit handlers here */
-   su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
-   su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
-#endif
+   if(n_exit_status == su_EX_OK){
+      DVL( boole memdbg = ok_blook(memdebug); )
+
+      DVL(
+         mx_fs_linepool_cleanup(TRU1);
+         su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
+      )
+
+      su_log_set_write_fun(NIL);
+      su_state_gut(
+         ((n_psonce & n_PSO_XIT)
+            ? su_STATE_GUT_ACT_QUICK : su_STATE_GUT_ACT_NORM)
+         DVL(
+            | ((!memdbg ||
+                (!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_D_VV)))
+               ? 0 : su_STATE_GUT_MEM_TRACE)
+         ));
+   }/*else
+      su_state_gut(su_STATE_GUT_ACT_CARE);*/
 
    NYD_OU;
    return n_exit_status;

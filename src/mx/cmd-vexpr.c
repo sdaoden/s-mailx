@@ -776,7 +776,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
    uz i, j;
    NYD_IN;
 
-   /*DVL(*/ su_mem_set(&vc, 0xAA, sizeof vc); /*)*/
+   /*DVLDBG(*/ su_mem_set(&vc, 0xAA, sizeof vc); /*)*/
    vc.vc_flags = a_VEXPR_ERR | a_VEXPR_ISNUM;
    vc.vc_cmderr = a_VEXPR_ERR_SUBCMD;
    vc.vc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
@@ -947,12 +947,12 @@ jestr:
                      ) < 0 ||
                   ((f & a_VEXPR_PBASE) &&
                      fprintf(n_stdout, "%s\n", vc.vc_varres) < 0)){
-            n_pstate_err_no = su_err_no();
+            n_pstate_err_no = su_err_no_by_errno();
             f |= a_VEXPR_ERR;
          }
       }else if(vc.vc_varres != NIL &&
             fprintf(n_stdout, "%s\n", vc.vc_varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          f |= a_VEXPR_ERR;
       }
    }else if(!n_var_vset(vc.vc_varname, R(up,vc.vc_varres), vc.vc_cm_local)){

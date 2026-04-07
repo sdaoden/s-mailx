@@ -33,6 +33,7 @@ C_DECL_BEGIN
 struct su_cs_dict;
 struct su_cs_dict_view;
 
+/* cs_dict {{{ */
 /*!
  * \defgroup CS_DICT Dictionary with C-style string keys
  * \ingroup COLL
@@ -52,21 +53,34 @@ struct su_cs_dict_view;
  * Dependent upon \r{su_CS_DICT_NIL_IS_VALID_OBJECT} \NIL values will still be
  * supported.
  * }\li{
+ * Most characteristics can be adjusted via \r{su_cs_dict_add_flags()} and
+ * \r{su_cs_dict_clear_flags()}.
+ * Doing so can cause crashes or tear memory holes later on!
+ * The only flags safe to adjust at any time are
+ * \r{su_CS_DICT_AUTO_SHRINK},
+ * \r{su_CS_DICT_FROZEN},
+ * and \r{su_CS_DICT_HEAD_RESORT},
+ * as below, all others should only be changed directly after
+ * \r{su_cs_dict_create()} or \r{su_cs_dict_clear()}.
+ * }\li{
  * \r{su_STATE_ERR_PASS} may be enforced on a per-object level by setting
  * \r{su_CS_DICT_ERR_PASS}.
  * This interacts with \r{su_CS_DICT_NIL_IS_VALID_OBJECT}.
  * }\li{
- * In-array-index list node head resorting can be controlled via
- * \r{su_CS_DICT_HEAD_RESORT}.
- * }\li{
- * The array size / node count spacing relation is controllable via
- * \r{su_cs_dict_set_treshold_shift()}.
+ * The balance of array size / node count spacing relation is controllable
+ * via \r{su_cs_dict_set_treshold_shift()}.
  * Automatic shrinks are unaffected by that and happen only if
  * \r{su_CS_DICT_AUTO_SHRINK} is enabled.
  * }\li{
  * It is possible to turn instances into \r{su_CS_DICT_FROZEN} state.
- * \r{su_cs_dict_balance()} can be used at a later time to thaw the object
- * and make it reflect its new situation, if so desired.
+ * When inserting/removing many key/value tuples it may increase efficiency to
+ * temporarily freeze the dictionary, then call \r{su_cs_dict_balance()} to
+ * thaw the object and make it reflect its new situation, if so desired.
+ * (Alternatively the flag may simply be cleared again.)
+ * }\li{
+ * In-array-index list node head resorting can be controlled via
+ * \r{su_CS_DICT_HEAD_RESORT}.
+ * In an ideal situation this can help improve lookup times.
  * }}
  *
  * \remarks{This collection does not offer \fn{hash()} and \fn{compare()}
@@ -77,38 +91,37 @@ struct su_cs_dict_view;
  * @{
  */
 
+/* dict {{{ */
 /*! Flags for \r{su_cs_dict_create()}, to be queried via
  * \r{su_cs_dict_flags()}, and to be adjusted via \r{su_cs_dict_add_flags()}
  * and \r{su_cs_dict_clear_flags()}. */
 enum su_cs_dict_flags{
-   /*! Whether power-of-two spacing and mask indexing is used.
-    * If this is not set, prime spacing and modulo indexing will be used.
-    * \remarks{Changing this setting later on is possible, but testifying the
-    * implied consequences work out is up to the caller.} */
-   su_CS_DICT_POW2_SPACED = 1u<<0,
-   /*! Values are owned.
-    * \remarks{Changing this setting later on is possible, but testifying the
-    * implied consequences work out is up to the caller.} */
-   su_CS_DICT_OWNS = 1u<<1,
-   /*! Keys shall be hashed, compared and stored case-insensitively. */
-   su_CS_DICT_CASE = 1u<<2,
-   /*! Enable array-index list head rotation?
-    * This dictionary uses an array of nodes which form singly-linked lists.
-    * With this bit set, whenever a key is found in such a list, its list node
-    * will become the new head of the list, which could over time improve
-    * lookup speed due to lists becoming sorted by "hotness" over time. */
-   su_CS_DICT_HEAD_RESORT = 1u<<3,
-   /*! Enable automatic shrinking of the management array.
-    * This is not enabled by default (the array only grows).
-    * See \r{su_CS_DICT_FROZEN} (and \r{su_cs_dict_set_treshold_shift()}). */
-   su_CS_DICT_AUTO_SHRINK = 1u<<4,
+   /*! Values are owned. */
+   su_CS_DICT_OWNS = 1u<<0,
+   /*!  If this is set, prime spacing and modulo indexing will be used.
+    * By default power-of-two spacing and mask indexing is used, which provides
+    * good distribution of "normal" key data via \r{su_cs-hash()}, as well as
+    * with "all" key data via \r{su_cs_hash_strong()}, which is used in
+    * conjunction with \r{su_CS_DICT_STRONG}. */
+   su_CS_DICT_PRIME_SPACED = 1u<<2,
+   /*! Enable automatic shrinking of management array(s).
+    * It occurs when \r{su_cs_dict_count()} is half of \r{su_cs_dict_size()}.
+    * This is not enabled by default (array(s) only grow(s)). */
+   su_CS_DICT_AUTO_SHRINK = 1u<<3,
    /*! Freeze the dictionary.
-    * A frozen dictionary will neither grow nor shrink the management array of
-    * nodes automatically.
-    * When inserting/removing many key/value tuples it increases efficiency to
-    * first freeze, perform the operations, and then perform finalization
-    * by calling \r{su_cs_dict_balance()}. */
-   su_CS_DICT_FROZEN = 1u<<5,
+    * A frozen dictionary will neither grow nor shrink management array(s) of
+    * nodes automatically. */
+   su_CS_DICT_FROZEN = 1u<<4,
+   /*! Enable array-index list head rotation?
+    * This dictionary uses nodes which form singly-linked lists.
+    * With this bit set, whenever a key is found in such a list, its list node
+    * will become the new head of the list, potentially improving lookup speed
+    * due to lists becoming sorted by "hotness" over time. */
+   su_CS_DICT_HEAD_RESORT = 1u<<5,
+   /*! Strong key hashing shall be used (\r{su_cs_hash_strong_cbuf()}). */
+   su_CS_DICT_STRONG = 1u<<6,
+   /*! Keys shall be hashed, compared and stored case-insensitively. */
+   su_CS_DICT_CASE = 1u<<7,
    /*! Mapped to \r{su_STATE_ERR_PASS}. */
    su_CS_DICT_ERR_PASS = su_STATE_ERR_PASS,
    /*! Mapped to \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}, but only honoured for
@@ -117,9 +130,11 @@ enum su_cs_dict_flags{
    /*! Alias for \r{su_CS_DICT_NIL_IS_VALID_OBJECT}. */
    su_CS_DICT_NILISVALO = su_CS_DICT_NIL_IS_VALID_OBJECT,
 
-   su__CS_DICT_CREATE_MASK = su_CS_DICT_POW2_SPACED |
-         su_CS_DICT_OWNS | su_CS_DICT_CASE |
-         su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
+   su__CS_DICT_CREATE_MASK = su_CS_DICT_OWNS |
+         su_CS_DICT_PRIME_SPACED |
+         su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
+         su_CS_DICT_HEAD_RESORT |
+         su_CS_DICT_STRONG | su_CS_DICT_CASE |
          su_CS_DICT_ERR_PASS | su_CS_DICT_NIL_IS_VALID_OBJECT
 };
 #ifdef su_SOURCE_CS_DICT
@@ -132,9 +147,10 @@ struct su_cs_dict{
    struct su__cs_dict_node **csd_array;
    u16 csd_flags;
    u8 csd_tshift;
-   u8 csd__pad[su_6432(5,1)];
+   u8 csd__pad[1];
    u32 csd_count;
    u32 csd_size;
+   u32 csd_min_size;
    struct su_toolbox const *csd_tbox;
 };
 
@@ -152,7 +168,7 @@ EXPORT struct su__cs_dict_node *su__cs_dict_lookup(
 /* *lookarg_or_nil is always updated */
 EXPORT s32 su__cs_dict_insrep(struct su_cs_dict *self, char const *key,
       void *value, up replace_and_view_or_nil);
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 EXPORT void su__cs_dict_stats(struct su_cs_dict const *self);
 #endif
 
@@ -180,7 +196,8 @@ EXPORT SHADOW struct su_cs_dict *su_cs_dict_create_copy(
 EXPORT void su_cs_dict_gut(struct su_cs_dict *self);
 
 /*! Assign \a{t}, and return 0 on success or, depending on the
- * \r{su_CS_DICT_ERR_PASS} setting, the corresponding \r{su_state_err()}.
+ * \r{su_CS_DICT_ERR_PASS} setting, the corresponding \r{su_state_err()}
+ * (also see \r{su_clone_fun}).
  * \remarks{The element order of \SELF and \a{t} may not be identical.}
  * \copydoc{su_assign_fun} */
 EXPORT s32 su_cs_dict_assign(struct su_cs_dict *self,
@@ -200,6 +217,37 @@ EXPORT struct su_cs_dict *su_cs_dict_clear_elems(struct su_cs_dict *self);
 /*! Swap the fields of \a{self} and \a{t}. */
 EXPORT struct su_cs_dict *su_cs_dict_swap(struct su_cs_dict *self,
       struct su_cs_dict *t);
+
+/*! Current number of key/value element pairs. */
+INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_count;
+}
+
+/*! Current size of the node management array.
+ * (Might be of interest to re\r{su_cs_dict_balance()} with
+ * \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
+INLINE u32 su_cs_dict_size(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_size;
+}
+
+/*! The minimum size of the node management array.
+ * See \r{su_cs_dict_set_min_size()}. */
+INLINE u32 su_cs_dict_min_size(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_min_size;
+}
+
+/*! Set the minimum size of the node management array.
+ * If set the array will not be (re)sized to a size smaller than this.
+ * \remarks{\a{nmsize} cannot be larger than 0xB947 (a large 16-bit prime).} */
+INLINE struct su_cs_dict *su_cs_dict_set_min_size(
+      struct su_cs_dict *self, u32 nmsize){
+   ASSERT(self);
+   self->csd_min_size = MIN(0xB947u, nmsize);
+   return self;
+}
 
 /*! Get the used \r{su_cs_dict_flags}. */
 INLINE u16 su_cs_dict_flags(struct su_cs_dict const *self){
@@ -259,21 +307,25 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self,
    ASSERT(self);
    ASSERT(!(su_cs_dict_flags(self) & su_CS_DICT_OWNS) ||
       (tbox_or_nil != NIL && tbox_or_nil->tb_clone != NIL &&
-       tbox_or_nil->tb_delete != NIL && tbox_or_nil->tb_assign != NIL));
+       tbox_or_nil->tb_del != NIL && tbox_or_nil->tb_assign != NIL));
    self->csd_tbox = tbox_or_nil;
    return self;
 }
 
-/*! Current number of key/value element pairs. */
-INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
-   ASSERT(self);
-   return self->csd_count;
-}
+/*! Resize the management table to accommodate for \a{xcount} elements.
+ * Calculate the new size as via \r{su_cs_dict_set_treshold_shift}.
+ * The \r{su_CS_DICT_FROZEN} state is ignored, but possibly needs to be set to
+ * avoid an immediate automatic resize upon the next insertion
+ * (and removal, if \r{su_CS_DICT_AUTO_SHRINK} is set).
+ * Returns -1 if no action was performed, \ERR{NONE} upon successful resize,
+ * or a \r{su_err_number} (including, also depending on the setting of
+ * \r{su_CS_DICT_ERR_PASS}, a corresponding \r{su_state_err()}).
+ * In the latter case no action has been performed. */
+EXPORT s32 su_cs_dict_resize(struct su_cs_dict *self, u32 xcount);
 
 /*! Thaw and balance \a{self}.
- * Thaw \SELF from (a possible) \r{su_CS_DICT_FROZEN} state, recalculate the
- * perfect size of the management table for the current number of managed
- * elements, and rebalance \SELF as necessary.
+ * Thaw \SELF from (a possible) \r{su_CS_DICT_FROZEN} state that may have been
+ * set via \r{su_cs_dict_add_flags()}, and call \r{su_cs_dict_resize()}.
  * \remarks{If memory failures occur the balancing is simply not performed.} */
 EXPORT struct su_cs_dict *su_cs_dict_balance(struct su_cs_dict *self);
 
@@ -333,15 +385,21 @@ INLINE s32 su_cs_dict_replace(struct su_cs_dict *self, char const *key,
 /*! Returns the false boolean if \a{key} cannot be found. */
 EXPORT boole su_cs_dict_remove(struct su_cs_dict *self, char const *key);
 
-/*! With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} this will
- * \r{su_log_write()} statistics about \SELF. */
+/*! Via \r{su_DVLDBG()} it will \r{su_log_write()} statistics about \SELF.
+ * If not too large, a visualization is shown: \c{0} denotes an empty slot,
+ * or one with less than 50% of the average number of elements per slot,
+ * \c{_} less than average, \c{~} the average, \c{=} more than average, but
+ * less than \c{/}, used for half the distance in between average and maximum;
+ * \c{^} finally denotes the maximum number of elements. */
 INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
    UNUSED(self);
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    su__cs_dict_stats(self);
 #endif
 }
+/* }}} */
 
+/* view {{{ */
 /*!
  * \defgroup CS_DICT_VIEW View of and for su_cs_dict
  * \ingroup CS_DICT
@@ -349,6 +407,7 @@ INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
  *
  * This implements an associative unidirectional view type.
  * Whereas it documents C++ interfaces, \r{su/view.h} also applies to C views.
+ *@{
  */
 
 enum su__cs_dict_view_move_types{
@@ -359,17 +418,17 @@ enum su__cs_dict_view_move_types{
 
 /*! \_ */
 struct su_cs_dict_view{
-   struct su_cs_dict *csdv_parent;     /*!< We are \fn{is_setup()} with it. */
+   /* *_next_* only valid after _move(..HAS_NEXT) */
+   struct su_cs_dict *csdv_parent; /*!< We are \fn{is_setup()} with it. */
    struct su__cs_dict_node *csdv_node;
    u32 csdv_index;
-   /* Those only valid after _move(..HAS_NEXT) */
    u32 csdv_next_index;
    struct su__cs_dict_node *csdv_next_node;
 };
 
 /* "The const is preserved logically" */
 EXPORT struct su_cs_dict_view *su__cs_dict_view_move(
-      struct su_cs_dict_view *self, u8 type);
+      struct su_cs_dict_view *self, /*_view_move_types*/ u8 type);
 
 /*! Easy iteration support; \a{SELF} must be \r{su_cs_dict_view_setup()}. */
 #define su_CS_DICT_VIEW_FOREACH(SELF) \
@@ -436,7 +495,8 @@ INLINE void *su_cs_dict_view_data(struct su_cs_dict_view const *self){
 }
 
 /*! Replace the data of a \r{su_cs_dict_view_is_valid()} view.
- * Behaves like \r{su_cs_dict_replace()}. */
+ * If the parent \r{su_CS_DICT_OWNS} its values this behaves like
+ * \r{su_cs_dict_replace()}, otherwise it returns \ERR{NONE}. */
 EXPORT s32 su_cs_dict_view_set_data(struct su_cs_dict_view *self, void *value);
 
 /*! Move a setup view to the first position, if there is one.
@@ -501,8 +561,10 @@ INLINE sz su_cs_dict_view_cmp(struct su_cs_dict_view const *self,
    ASSERT_RET(t, 1);
    return (self->csdv_node == t->csdv_node);
 }
+/*! @} *//* }}} */
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -514,6 +576,7 @@ NSPC_BEGIN(su)
 
 template<class T,boole OWNS> class cs_dict;
 
+/* cs_dict {{{ */
 /*!
  * \ingroup CS_DICT
  * C++ variant of \r{CS_DICT} (\r{su/cs-dict.h})
@@ -565,18 +628,20 @@ class cs_dict : private su_cs_dict{
 
 public:
    /*! \copydoc{su_cs_dict_flags} */
-   enum flags{
+   enum flags{ // owns is template arg
       f_none, /*!< This is 0. */
-      /*! \copydoc{su_CS_DICT_POW2_SPACED} */
-      f_pow2_spaced = su_CS_DICT_POW2_SPACED,
-      /*! \copydoc{su_CS_DICT_CASE} */
-      f_case = su_CS_DICT_CASE,
-      /*! \copydoc{su_CS_DICT_HEAD_RESORT} */
-      f_head_resort = su_CS_DICT_HEAD_RESORT,
+      /*! \copydoc{su_CS_DICT_PRIME_SPACED} */
+      f_prime_spaced = su_CS_DICT_PRIME_SPACED,
       /*! \copydoc{su_CS_DICT_AUTO_SHRINK} */
       f_auto_shrink = su_CS_DICT_AUTO_SHRINK,
       /*! \copydoc{su_CS_DICT_FROZEN} */
       f_frozen = su_CS_DICT_FROZEN,
+      /*! \copydoc{su_CS_DICT_HEAD_RESORT} */
+      f_head_resort = su_CS_DICT_HEAD_RESORT,
+      /*! \copydoc{su_CS_DICT_STRONG} */
+      f_strong = su_CS_DICT_STRONG,
+      /*! \copydoc{su_CS_DICT_CASE} */
+      f_case = su_CS_DICT_CASE,
       /*! \copydoc{su_CS_DICT_ERR_PASS} */
       f_err_pass = su_CS_DICT_ERR_PASS,
       /*! \copydoc{su_CS_DICT_NIL_IS_VALID_OBJECT} */
@@ -616,7 +681,7 @@ public:
    /*! \copydoc{su_cs_dict_create()} */
    cs_dict(type_toolbox const *ttbox=NIL, u16 flags=f_none){
       ASSERT(!OWNS || (ttbox != NIL && ttbox->ttb_clone != NIL &&
-         ttbox->ttb_delete != NIL && ttbox->ttb_assign != NIL));
+         ttbox->ttb_del != NIL && ttbox->ttb_assign != NIL));
       flags &= su__CS_DICT_CREATE_MASK & ~su_CS_DICT_OWNS;
       if(OWNS)
          flags |= su_CS_DICT_OWNS;
@@ -649,7 +714,25 @@ public:
    /*! \copydoc{su_cs_dict_swap()} */
    cs_dict &swap(cs_dict &t) {SELFTHIS_RET(su_cs_dict_swap(this, &t));}
 
-   /*! \copydoc{su_cs_dict_flags()} */
+   /*! \copydoc{su_cs_dict_count()} */
+   u32 count(void) const {return csd_count;}
+
+   /*! Whether \r{count()} is 0. */
+   boole is_empty(void) const {return (count() == 0);}
+
+   /*! \copydoc{su_cs_dict_size()} */
+   u32 size(void) const {return csd_size;}
+
+   /*! \copydoc{su_cs_dict_min_size()} */
+   u32 min_size(void) const {return csd_min_size;}
+
+   /*! \copydoc{su_cs_dict_set_min_size()} */
+   cs_dict &set_min_size(u32 nmsize){
+      SELFTHIS_RET(su_cs_dict_set_min_size(this, nmsize));
+   }
+
+   /*! \copydoc{su_cs_dict_flags()}
+    * \remarks{Since \c{OWNS} is a template argument that flag is stripped.} */
    u16 flags(void) const {return (su_cs_dict_flags(this) & ~su_CS_DICT_OWNS);}
 
    /*! \copydoc{su_cs_dict_add_flags()} */
@@ -681,11 +764,8 @@ public:
          R(su_toolbox const*,tbox_or_nil)));
    }
 
-   /*! \copydoc{su_cs_dict_count()} */
-   u32 count(void) const {return csd_count;}
-
-   /*! Whether \r{count()} is 0. */
-   boole is_empty(void) const {return (count() == 0);}
+   /*! \copydoc{su_cs_dict_resize()} */
+   s32 resize(u32 xcount) {return su_cs_dict_resize(this, xcount);}
 
    /*! \copydoc{su_cs_dict_balance()} */
    cs_dict &balance(void) {SELFTHIS_RET(su_cs_dict_balance(this));}
@@ -736,9 +816,10 @@ public:
    /*! \copydoc{su_cs_dict_statistics()} */
    void statistics(void) const {su_cs_dict_statistics(this);}
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_CS_DICT_H */
 /* s-it-mode */

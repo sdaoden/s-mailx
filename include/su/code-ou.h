@@ -30,7 +30,7 @@
 #undef NSPC_USE
 #undef NSPC
 
-#if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
+#ifdef __cplusplus
 # undef CLASS_NO_COPY
 # undef SELFTHIS_RET
 
@@ -74,6 +74,9 @@
 
 /* SUPPORT MACROS+ */
 
+#undef SU
+#undef MX
+
 #undef ABS
 #undef CLIP
 #undef IS_POW2
@@ -108,6 +111,8 @@
 #undef ASSERT_NYD
 #undef ASSERT_NYD_LOC
 
+#undef ATOMIC
+
 #undef BITENUM_IS
 #undef BITENUM_MASK
 
@@ -117,11 +122,20 @@
 #undef DVL
 #undef NDVL
 #undef DVLOR
+#undef DVLDBG
+#undef NDVLDBG
+#undef DVLDBGOR
 
+#undef FALLTHRU
+#undef FIELD_DISTANCEOF
 #undef FIELD_INITN
+#undef FIN
 #undef FIELD_INITI
+#undef FII
 #undef FIELD_OFFSETOF
 #undef FIELD_RANGEOF
+#undef FIELD_RANGE_COPY
+#undef FIELD_RANGE_ZERO
 #undef FIELD_SIZEOF
 
 #undef MT
@@ -158,6 +172,11 @@
 #endif
 
 #undef SMP
+
+#undef STRING
+#undef CONCAT
+
+#undef STRUCT_ZERO
 
 #undef UCMP
 
@@ -234,6 +253,9 @@
 #undef SZ_MAX
 #undef UZ_BITS
 
+/* state_gut */
+#undef su__STATE_ON_GUT_FUN
+
 /* MEMORY */
 
 #undef su_ALLOCATE
@@ -288,6 +310,9 @@
 # undef su_CNEW
 # undef su_CNEW_LOC
 # undef su_CNEW_LOCOR
+# undef su_NEWF_BLK
+# undef su_NEWF_BLK_LOC
+# undef su_NEWF_BLK_LOCOR
 # undef su_NEW_HEAP
 # undef su_NEW_HEAP_LOC
 # undef su_NEW_HEAP_LOCOR

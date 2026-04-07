@@ -30,8 +30,10 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* Forwards */
 struct su_timespec;
 
+/* path {{{ */
 /*!
  * \defgroup PATH Operations on (file-) paths
  * \ingroup IO
@@ -82,11 +84,14 @@ INLINE boole su_path_is_dir(char const *path, boole check_access){
    return su__path_is(path, su_PATH_TYPE_DIR, check_access);
 }
 
+/*! Change current working directory. */
+EXPORT boole su_path_chdir(char const *path);
+
 /*! Create directory \a{path}, possibly \a{recursive}ly.
  * A \c{su_ERR_EXIST} error results in success if \a{path} is a directory.
- * \remarks{In \a{recursive} operation mode heap memory may be needed: errors
- * as via \r{su_state_err_type} can thus occur.} */
-EXPORT boole su_path_mkdir(char const *path, boole recursive);
+ * In \a{recursive} operation mode heap memory may be needed: errors
+ * as via \r{su_state_err_type} can thus occur; \ESTATE. */
+EXPORT boole su_path_mkdir(char const *path, boole recursive, u32 estate);
 
 /*! Rename (\c{rename(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_rename(char const *dst, char const *src);
@@ -102,7 +107,8 @@ EXPORT boole su_path_rmdir(char const *path);
  * \remarks{\c{su/time.h} is not included.} */
 EXPORT boole su_path_touch(char const *path, struct su_timespec const *tsp);
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -114,6 +120,7 @@ NSPC_BEGIN(su)
 
 class path;
 
+/* path {{{ */
 /*!
  * \ingroup PATH
  * C++ variant of \r{PATH} (\r{su/path.h})
@@ -121,6 +128,7 @@ class path;
  * \remarks{In difference, for C++, \c{su/time.h} is included.}
  */
 class EXPORT path{
+   // friend of time::spec
    su_CLASS_NO_COPY(path);
 public:
    /*! \copydoc{su_PATH_DEV_NULL} */
@@ -147,9 +155,10 @@ public:
    }
 
    /*! \copydoc{su_path_mkdir()} */
-   static boole mkdir(char const *path, boole recursive=FAL0){
+   static boole mkdir(char const *path, boole recursive=FAL0,
+         u32 estate=state::none){
       ASSERT_RET(path != NIL, FAL0);
-      return su_path_mkdir(path, recursive);
+      return su_path_mkdir(path, recursive, estate);
    }
 
    /*! \copydoc{su_path_rename()} */
@@ -171,9 +180,10 @@ public:
       return su_path_touch(path, S(struct su_timespec const*,tsp));
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_PATH_H */
 /* s-it-mode */

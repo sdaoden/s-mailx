@@ -1,5 +1,5 @@
 /*@ Implementation of mem.h: utility funs.
- *@ The implementations are in ./x-mem-tools.h:
+ *@ The implementations are in ./y-mem-tools.h:
  *@ - a_memt_FUN().
  *@ - Data is asserted, length cannot be 0.
  *
@@ -25,13 +25,15 @@
 #include "su/code.h"
 
 #include "su/mem.h"
-#include "su/x-mem-tools.h" /* $(SU_SRCDIR) */
+#include "su/y-mem-tools.h" /* $(SU_SRCDIR) */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-void * (* volatile su_mem_set_volatile)(void*, int, uz) = &su_mem_set;
+NSPC_USE(su)
+
+#include <su/y-mem-tools.h> /* 2. */
 
 void *
 su_mem_find(void const *vp, s32 what, uz len){
@@ -64,7 +66,8 @@ su_mem_cmp(void const *vpa, void const *vpb, uz len){
    ASSERT_NYD_EXEC(len == 0 || vpa != NIL, rv = (vpb == NIL) ? 0 : -1);
    ASSERT_NYD_EXEC(len == 0 || vpb != NIL, rv = 1);
 
-   rv = LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0;
+   rv = UNLIKELY(vpa == vpb) ? 0
+         : LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0;
 
    NYD_OU;
    return rv;
@@ -76,8 +79,14 @@ su_mem_copy(void *vp, void const *src, uz len){
    ASSERT_NYD(len == 0 || vp != NIL);
    ASSERT_NYD(len == 0 || src != NIL);
 
-   if(LIKELY(len > 0))
+   if(LIKELY(vp != src && len > 0)){
+      /* dalias: if((up)s-(up)d-n <= -2*n) return memcpy(d, s, n); */
+      ASSERT_NYD_EXEC(
+         (R(up,src) < R(up,vp) && R(up,src) + len <= R(up,vp)) ||
+         (R(up,src) > R(up,vp) && R(up,src) - len >= R(up,vp)),
+         su_mem_move(vp, src, len));
       a_memt_copy(vp, src, len);
+   }
 
    NYD_OU;
    return vp;
@@ -89,7 +98,7 @@ su_mem_move(void *vp, void const *src, uz len){
    ASSERT_NYD(len == 0 || vp != NIL);
    ASSERT_NYD(len == 0 || src != NIL);
 
-   if(LIKELY(len > 0))
+   if(LIKELY(vp != src && len > 0))
       a_memt_move(vp, src, len);
 
    NYD_OU;
@@ -107,6 +116,8 @@ su_mem_set(void *vp, s32 what, uz len){
    NYD_OU;
    return vp;
 }
+
+#include <su/y-mem-tools.h> /* 3. */
 
 #include "su/code-ou.h"
 #undef su_FILE

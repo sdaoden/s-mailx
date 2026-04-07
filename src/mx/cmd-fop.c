@@ -410,7 +410,8 @@ a_fop__mkdir(struct a_fop_ctx *fcp){
       goto jleave;
    }
 
-   if(!su_path_mkdir(fcp->fc_varres, n_boolify(a1, UZ_MAX, FAL0))){
+   if(!su_path_mkdir(fcp->fc_varres, n_boolify(a1, UZ_MAX, FAL0),
+         su_STATE_ERR_NOPASS)){
       n_pstate_err_no = su_err_no();
       fcp->fc_flags |= a_FOP_ERR;
       fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
@@ -822,7 +823,7 @@ c_fop(void *vp){
    u32 f;
    NYD_IN;
 
-   /*DVL(*/ su_mem_set(&fc, 0xAA, sizeof fc); /*)*/
+   /*DVLDBG(*/ su_mem_set(&fc, 0xAA, sizeof fc); /*)*/
    fc.fc_flags = a_FOP_ERR;
    fc.fc_cmderr = a_FOP_ERR_SUBCMD;
    fc.fc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
@@ -881,7 +882,7 @@ jestr:
 
    if(fc.fc_varname == NIL){
       if(fc.fc_varres != NIL && fprintf(n_stdout, "%s\n", fc.fc_varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          f |= a_FOP_ERR;
       }
    }else if(!n_var_vset(fc.fc_varname, R(up,fc.fc_varres), fc.fc_cm_local)){

@@ -1,63 +1,137 @@
-#@ .makefile, solely for creating the C++ .main.cc test program
-#@ With CC=tcc, AR=tcc ARFLAGS=-ar!
+#@ .makefile, solely for creating the C++ .main.cxx test program
+#@ - Does not work with smake(1).
 
 su_USECASE_MX_DISABLED =
 
 awk?=awk
 getconf?=getconf
+rm?=rm
+CC?=cc
+CXX?=c++
+# Elder BSD make use rl!
+ARFLAGS=rv
 
-SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG \
+SUFLVLC=#-std=c2x
+SUFLVLCXX=#-std=c++2b
+SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL #-Dsu_NYD_ENABLE
+SUFOPT=-O1 -g
+#SUFOPT=-O2 -DNDEBUG
+
+# standalone: -Dsu_RANDOM_SEED=su_RANDOM_SEED_URANDOM
+SUF=$(SUFDEVEL) \
 	-Dsu_HAVE_CLOCK_GETTIME \
 	-Dsu_HAVE_NANOSLEEP \
 	-Dsu_HAVE_PATHCONF \
-	-Dsu_HAVE_UTIMENSAT
+	-Dsu_HAVE_UTIMENSAT \
 
-CXXFLAGS+=-Wall -pedantic $(SUF)
-CFLAGS+=-Wall -pedantic $(SUF)
+SUFWW=-Weverything -W -Wall -pedantic \
+	-Wno-atomic-implicit-seq-cst \
+	-Wno-c++98-compat \
+	-Wno-documentation-unknown-command \
+	-Wno-duplicate-enum \
+	-Wno-reserved-identifier \
+	-Wno-reserved-macro-identifier \
+	-Wno-unused-macros
 
-CSRC = avopt.c \
-	core-code.c core-errors.c \
-		cs-alloc.c cs-ctype.c cs-dict.c cs-find.c cs-misc.c \
-		cs-rfind.c cs-tbox.c cs-tools.c \
-	icodec-dec.c icodec-enc.c \
-	mem-alloc.c mem-bag.c mem-tools.c \
-	path.c prime.c \
-	re.c \
+SUFW=-W -Wall -pedantic
+
+SUFS=-fPIE \
+	-fno-common \
+	-fstrict-aliasing -fstrict-overflow \
+	-fstack-protector-strong \
+	-D_FORTIFY_SOURCE=2 \
+	#-fsanitize=undefined \
+	#-fsanitize=address \
+
+CFLAGS+=$(SUFLVLC) $(SUF) $(SUFWW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
+CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFWW) $(SUFS) $(SUFOPT)
+
+LDFLAGS+=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed \
+	-Wl,--enable-new-dtags \
+	-fpie
+
+CSRC = atomic.c \
+		avopt.c \
+	core-code.c \
+			core-create.c \
+			core-errors.c \
+			core-on-gut.c \
+		cs-alloc.c \
+			cs-ctype.c \
+			cs-hash.c \
+				cs-hash-strong.c \
+			cs-find.c \
+				cs-rfind.c \
+			cs-tbox.c \
+			cs-tools.c \
+		cs-dict.c \
+	icodec-dec.c \
+			icodec-enc.c \
+	md.c \
+			md-siphash.c \
+		mem-alloc.c \
+			mem-tools.c \
+		mem-bag.c \
+		mutex.c \
+	path.c \
+		prime.c \
+	random.c \
+		re.c \
 	sort.c \
-	time-sleep.c time-spec.c time-utils.c
+		spinlock.c \
+	thread.c \
+		time-sleep.c \
+			time-spec.c \
+			time-utils.c \
 	utf.c
-CXXSRC = cxx-core.cc \
-	.main.cc
+
+CXXSRC = cxx-core.cxx
+
+PROGSRC = .main.cxx
 
 ## 8< >8
 
-.SUFFIXES: .o .c .cc .y
-.cc.o:
-	$(CXX) -Dsu_USECASE_SU -I../../src -I../../include \
-		$(CXXFLAGS) -o $(@) -c $(<)
-.c.o:
-	$(CC) -Dsu_USECASE_SU -I../../src -I../../include \
-		$(CFLAGS) -o $(@) -c $(<)
-.cc .c .y: ;
-
+CONFIG = ../../include/su/gen-config.h
 COBJ = $(CSRC:.c=.o)
-CXXOBJ = $(CXXSRC:.cc=.o)
-OBJ = $(COBJ) $(CXXOBJ)
+CXXOBJ = $(CXXSRC:.cxx=.o)
+PROGOBJ = $(PROGSRC:.cxx=.o)
+OBJ = $(COBJ) $(CXXOBJ) $(PROGOBJ)
+
+.SUFFIXES: .o .c .cxx .y # .y for smake
+.cxx.o:
+	$(CXX) -I../../src -I../../include $(CXXFLAGS) -o $(@) -c $(<)
+.c.o:
+	$(CC) -I../../src -I../../include $(CFLAGS) -o $(@) -c $(<)
+.cxx .c .y: ;
 
 all: .main
 clean:
-	rm -f ../../include/su/gen-config.h .main .tmp* .clib.a $(OBJ)
+	$(rm) -f $(CONFIG) .main .tmp*  .clib.a .cxxlib.a $(OBJ)
 
-$(COBJ): $(CSRC) ../../include/su/gen-config.h
+$(COBJ): $(CONFIG) $(CSRC)
 .clib.a: $(COBJ)
 	$(AR) $(ARFLAGS) $(@) $(COBJ)
-$(CXXOBJ): $(CLIB) ../../include/su/gen-config.h
-.main: $(CXXOBJ) .clib.a
-	$(CXX) $(LDFLAGS) -o $(@) $(CXXOBJ) .clib.a
 
-../../include/su/gen-config.h:
+$(CXXOBJ): $(CXXSRC)
+.cxxlib.a: $(CXXOBJ)
+	$(AR) $(ARFLAGS) $(@) $(CXXOBJ)
+
+$(PROGOBJ): $(PROGSRC)
+.main: .clib.a .cxxlib.a $(PROGOBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(@) $(PROGOBJ) .cxxlib.a .clib.a
+
+$(CONFIG):
 	CC="$(CC)" SRCDIR=`dirname \`pwd\``/ TARGET="$(@)" awk="$(awk)" \
-		$(SHELL) ../../mk/su-make-errors.sh compile_time &&\
+		$(SHELL) ../../mk/su-make-errors.sh compile_time
 	echo '#define su_PAGE_SIZE '"`$(getconf) PAGESIZE`" >> $(@)
+	xxx="$(SUF)";\
+	if [ "$${xxx##*su_HAVE_DEBUG}" != "$$xxx" ]; then \
+	printf '#ifndef su_HAVE_DEBUG\n#define su_HAVE_DEBUG\n#endif\n' \
+	>> $(@);\
+	fi; \
+	if [ "$${xxx##*su_HAVE_DEVEL}" != "$$xxx" ]; then \
+	printf '#ifndef su_HAVE_DEVEL\n#define su_HAVE_DEVEL\n#endif\n' \
+	>> $(@);\
+	fi
 
 # s-mk-mode

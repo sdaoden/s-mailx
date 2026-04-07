@@ -1,6 +1,6 @@
 /*@ Shared implementation of associative map-alike containers.
  *@ Include once, define a_TYPE correspondingly, include again.
- *@ XXX "Unroll" more.
+ *@ xxx Can be optimized, some functions be made inline wrappers.
  *
  * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -88,12 +88,12 @@ struct a_LA{
    uz la_khash;
 };
 
-/* force: ignore FROZEN state.  Return -1 if we did resize, successfully */
+/* force: ignore FROZEN state.  Return resize() result, -1 done nothing */
 SINLINE s32 a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount);
-static s32 a_FUN(resize)(struct a_T *self, u32 xcount);
 
 /* */
-static s32 a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags);
+static s32 a_FUN(assign)(struct a_T *self, struct a_T const *t,
+      boole flags_and_tbox);
 
 /* */
 static s32 a_FUN(node_new)(struct a_T *self, struct a_N **res,
@@ -111,14 +111,14 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
    u64 s;
    NYD2_IN;
 
-   rv = su_ERR_NONE;
+   rv = -1;
 
    if(force || !(self->a_T_F(flags) & a_T_PUBNAME(FROZEN))){
       s = self->a_T_F(size);
 
       if(xcount > (s << self->a_T_F(tshift)) || (xcount < (s >>= 1) &&
              (self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK))))
-         rv = a_FUN(resize)(self, xcount);
+         rv = a_T_PUBSYM(resize)(self, xcount);
    }else
       ASSERT(xcount == 0 || self->a_T_F(size) > 0);
 
@@ -127,102 +127,7 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
 }
 
 static s32
-a_FUN(resize)(struct a_T *self, u32 xcount){
-   s32 rv;
-   struct a_N **narr, **arr;
-   boole pow2;
-   u32 size, nsize;
-   NYD_IN;
-
-   size = self->a_T_F(size);
-   pow2 = ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0);
-
-   /* Calculate new size */
-   /* C99 */{
-      u32 onsize;
-      boole grow;
-
-      /* >= to catch initial 0 size */
-      grow = ((xcount >> self->a_T_F(tshift)) >= size);
-      nsize = size;
-
-      for(;;){
-         onsize = nsize;
-
-         if(pow2){
-            ASSERT(nsize == 0 || nsize == 1 || IS_POW2(nsize));
-            if(grow){
-               if(nsize == 0)
-                  nsize = 1u << 1;
-               else if(UCMP(32, nsize, <, S32_MIN))
-                  nsize <<= 1;
-            }else if(nsize > (1u << 1))
-               nsize >>= 1;
-         }else
-            nsize = grow ? su_prime_lookup_next(nsize)
-                  : su_prime_lookup_former(nsize);
-
-         /* Refuse to excess storage bounds, but do not fail for this: simply
-          * keep on going and place more nodes in the slots.
-          * Because of the numbers we are talking about this is a theoretical
-          * issue (at the time of this writing). */
-         if(nsize == onsize)
-            break;
-         if(grow){
-            /* (Again, shift 64-bit to avoid overflow) */
-            if((S(u64,nsize) << self->a_T_F(tshift)) >= xcount)
-               break;
-         }else if((nsize >> 1) <= xcount)
-            break;
-      }
-
-      if(size == nsize){
-         rv = su_ERR_NONE;
-         goto jleave;
-      }
-   }
-
-   /* Try to allocate new array, give up on failure */
-   narr = su_TCALLOCF(struct a_N*, nsize,
-         (self->a_T_F(flags) & su_STATE_ERR_MASK));
-   if(UNLIKELY(narr == NIL)){
-      rv = su_err_no();
-      goto jleave;
-   }
-
-   /* We will succeed: move pointers over */
-   self->a_T_F(size) = nsize;
-
-   arr = self->a_T_F(array);
-   self->a_T_F(array) = narr;
-
-   if((xcount = self->a_T_F(count)) > 0){
-      struct a_N *np, **npos, *xnp;
-
-      do for(np = arr[--size]; np != NIL; --xcount){
-         uz i;
-
-         i = np->a_N_F(khash);
-         i= pow2 ? i & (nsize - 1) : i % nsize;
-         npos = &narr[i];
-         xnp = np;
-         np = np->a_N_F(next);
-         xnp->a_N_F(next) = *npos;
-         *npos = xnp;
-      }while(xcount > 0 && size > 0);
-   }
-
-   if(arr != NIL)
-      su_FREE(arr);
-
-   rv = -1;
-jleave:
-   NYD_OU;
-   return rv;
-}
-
-static s32
-a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags){
+a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags_and_tbox){
    s32 rv;
    NYD_IN;
    ASSERT(self);
@@ -235,13 +140,14 @@ jerr:
       self->a_T_F(count) = 0;
    }
 
-   ASSERT_NYD_EXEC(t != NIL, rv = su_ERR_FAULT);
+   ASSERT_NYD_EXEC(t != NIL, rv = -su_ERR_FAULT);
 
-   if(flags){
+   if(flags_and_tbox){
       self->a_T_F(flags) = t->a_T_F(flags);
       self->a_T_F(tbox) = t->a_T_F(tbox);
    }
 
+   /* If coming here after jerr: */
    if(rv != 0)
       goto jleave;
 
@@ -256,7 +162,7 @@ jerr:
 
    /* C99 */{
       struct a_LA la;
-      boole pow2;
+      boole prime;
       u32 size, tsize, tcnt;
       struct a_N **arr, **tarr, *np, *tnp;
 
@@ -265,14 +171,14 @@ jerr:
       size = self->a_T_F(size);
       tsize = t->a_T_F(size);
       tcnt = t->a_T_F(count);
-      pow2 = ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0);
+      prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
 
       while(tcnt != 0){
          for(tnp = tarr[--tsize]; tnp != NIL; --tcnt, tnp = tnp->a_N_F(next)){
             uz i;
 
             la.la_khash = i = tnp->a_N_F(khash);
-            la.la_slotidx = S(u32,i = pow2 ? i & (size - 1) : i % size);
+            la.la_slotidx = S(u32,i = prime ? i % size : i & (size - 1));
             la.la_slot = &arr[i];
 # if a_TYPE_IS_DICT
             la.la_klen = tnp->a_N_F(klen);
@@ -320,7 +226,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap,
    np = a_N_ALLOC(self, lap->la_klen, flags);
    if(UNLIKELY(np == NIL)){
       if(xvalue != NIL)
-         (*self->a_T_F(tbox)->tb_delete)(xvalue);
+         (*self->a_T_F(tbox)->tb_del)(xvalue);
       rv = su_ERR_NOMEM; /* (Cannot be overflow error) */
       goto jleave;
    }
@@ -338,7 +244,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap,
       a_TK *nckey;
 
       for(nckey = np->a_N_F(key); *nckey != '\0'; ++nckey)
-         *nckey = su_cs_to_lower(*nckey);
+         *nckey = S(a_TK,su_cs_to_lower(*nckey));
    }
 # else
 #  error
@@ -385,7 +291,7 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
          ASSERT(flags & a_T_PUBNAME(NILISVALO));
 
       if(ndat != NIL)
-         (*self->a_T_F(tbox)->tb_delete)(ndat);
+         (*self->a_T_F(tbox)->tb_del)(ndat);
    }
 
    np->a_N_F(data) = value;
@@ -401,7 +307,7 @@ a_FUN(remove)(struct a_T *self, struct a_N *np, struct a_LA *lap){
    --self->a_T_F(count);
 
    if(np->a_N_F(data) != NIL && (self->a_T_F(flags) & a_T_PUBNAME(OWNS)))
-      (*self->a_T_F(tbox)->tb_delete)(np->a_N_F(data));
+      (*self->a_T_F(tbox)->tb_del)(np->a_N_F(data));
    if(lap->la_last != NIL)
       lap->la_last->a_N_F(next) = np->a_N_F(next);
    else
@@ -420,29 +326,42 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
 # else
    u32 klen;
 # endif
-   u32 cnt, slotidx;
    uz khash;
+   u32 cnt, slotidx;
    struct a_N *rv, **arr, *last;
    NYD_IN;
    ASSERT(self);
 
    rv = NIL;
+   cnt = self->a_T_F(count);
+
+   if(UNLIKELY(cnt == 0) && UNLIKELY(lookarg_or_nil == NIL))
+      goto jleave;
 
 # if a_TYPE == a_TYPE_CSDICT
    khash = su_cs_len(key);
    klen = S(u32,khash);
-   if(khash != klen)
+   if(khash != klen) /* error? */
       goto jleave;
-   khash = ((self->a_T_F(flags) & a_T_PUBNAME(CASE)) ? su_cs_hash_case_cbuf
-         : su_cs_hash_cbuf)(key, klen);
+   if(self->a_T_F(flags) & a_T_PUBNAME(STRONG))
+      khash = ((self->a_T_F(flags) & a_T_PUBNAME(CASE))
+            ? su_cs_hash_strong_case_cbuf : su_cs_hash_strong_cbuf)(key, klen);
+   else
+      khash = ((self->a_T_F(flags) & a_T_PUBNAME(CASE))
+            ? su_cs_hash_case_cbuf : su_cs_hash_cbuf)(key, klen);
 # else
 #  error
 # endif
 
-   if(LIKELY((slotidx = self->a_T_F(size)) > 0))
-      slotidx = (self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED))
-            ? khash & (slotidx - 1) : khash % slotidx;
-   arr = self->a_T_F(array) + slotidx;
+   if(LIKELY((slotidx = self->a_T_F(size)) > 0)){
+      boole prime;
+
+      prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
+
+      slotidx = prime ? khash % slotidx : khash & (slotidx - 1);
+   }
+
+   arr = &self->a_T_F(array)[slotidx];
 
    if(lookarg_or_nil != NIL){
       struct a_LA *lap;
@@ -455,10 +374,10 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
       lap->la_klen = klen;
 # endif
       lap->la_khash = khash;
-   }
 
-   if(UNLIKELY((cnt = self->a_T_F(count)) == 0))
-      goto jleave;
+      if(UNLIKELY(cnt == 0))
+         goto jleave;
+   }
 
    for(last = rv, rv = *arr; rv != NIL; last = rv, rv = rv->a_N_F(next)){
       if(khash != rv->a_N_F(khash))
@@ -496,15 +415,16 @@ s32
 a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
       up replace_and_view_or_nil){
    struct a_LA la;
-   struct a_N *np;
    s32 rv;
+   struct a_N *np;
    struct a_V *viewp;
    u16 flags;
    NYD_IN;
    ASSERT(self);
 
    flags = self->a_T_F(flags);
-   viewp = R(struct a_V*,replace_and_view_or_nil & ~TRU1);
+   viewp = R(struct a_V*,replace_and_view_or_nil & ~S(up,TRU1));
+   UNINIT(np, NIL);
 
    /* Ensure this basic precondition */
    if(value == NIL &&
@@ -516,7 +436,7 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
    /* But on error we will put new node in case we are empty, so create some
     * array space right away */
    if(UNLIKELY(self->a_T_F(size) == 0) &&
-         (rv = a_FUN(resize)(self, 1)) > su_ERR_NONE)
+         (rv = a_T_PUBSYM(resize)(self, 1)) > su_ERR_NONE)
       goto jleave;
 
    /* Try to find a yet existing key */
@@ -542,9 +462,11 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
        * ignoring ENOMEM++ */
       if(UNLIKELY(np->a_N_F(next) != NIL)){
          /* If we did resize and we have to know the node location, it seems
-          * easiest and most efficient to simply perform another lookup */
+          * easiest to simply perform another lookup */
+         /* TODO This is the most expensive thinkable approach!
+          * TODO Instead check_resize could take &la and update a non-NIL */
          if(a_FUN(check_resize)(self, FAL0, self->a_T_F(count)
-               ) < su_ERR_NONE && viewp != NIL)
+               ) == su_ERR_NONE && viewp != NIL)
             np = a_T_PRISYM(lookup)(self, key, &la);
       }
    }else{
@@ -567,17 +489,16 @@ jleave:
    return rv;
 }
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 void
 a_T_PRISYM(stats)(struct a_T const *self){
-   ul size, empties, multies, maxper, i, j;
+   ul size, empties, multies, maxper, avg, i, j;
    struct a_N **arr, *np;
    NYD_IN;
    ASSERT(self);
 
    su_log_lock();
-   su_log_write(su_LOG_INFO,
-      "----------\n>>> " a_TYPE_NAME "(%p): statistics\n",
+   su_log_write(su_LOG_INFO, "----------\n>>> " a_TYPE_NAME "(%p): statistics",
       self);
 
    arr = self->a_T_F(array);
@@ -597,73 +518,97 @@ a_T_PRISYM(stats)(struct a_T const *self){
          maxper = MAX(maxper, j);
       }
    }
-   j = (multies != 0) ? multies : size - empties;
-   if(j != 0)
-      j = self->a_T_F(count) / j;
+
+   avg = (multies != 0) ? multies : size - empties;
+   if(avg != 0)
+      avg = self->a_T_F(count) / avg;
 
    su_log_write(su_LOG_INFO,
       "* Overview\n"
-      "  - POW2_SPACED=%d "
+      "  - OWNS=%d "
 # if a_TYPE != a_TYPE_CSDICT
          "OWNS_KEYS=%d "
 # endif
+         "PRIME_SPACED=%d "
+         "AUTO_SHRINK=%d "
+         "FROZEN=%d "
+         "\n"
+      "  - HEAD_RESORT=%d "
 # if a_TYPE == a_TYPE_CSDICT
+         "STRONG=%d "
          "CASE=%d "
 # endif
-         "OWNS=%d "
+         "ERR_PASS=%d "
+         "NILISVALO=%d"
          "\n"
-      "  - HEAD_RESORT=%d AUTO_SHRINK=%d FROZEN=%d ERR_PASS=%d NILISVALO=%d\n"
-      "  - Array size : %lu\n"
-      "  - Elements   : %lu\n"
-      "  - Tresh-Shift: %u\n"
+      "  - treshold=%lu size=%lu (min-size=%lu) entries=%lu\n"
       "* Distribution\n"
-      "  - Slots: empty: %lu, multiple: %lu, maximum: %lu, avg/multi: ~%lu\n"
-      "* Distribution, visual\n"
+      "  - slots: 0=%lu max=%lu multi=%lu avg/multi=~%lu"
       ,
-      ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0),
+      ((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
 # if a_TYPE != a_TYPE_CSDICT
          ((self->a_T_F(flags) & a_T_PUBNAME(OWNS_KEYS)) != 0),
 # endif
-# if a_TYPE == a_TYPE_CSDICT
-         ((self->a_T_F(flags) & a_T_PUBNAME(CASE)) != 0),
-# endif
-         ((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
-      ((self->a_T_F(flags) & a_T_PUBNAME(HEAD_RESORT)) != 0),
+         ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(FROZEN)) != 0),
+      ((self->a_T_F(flags) & a_T_PUBNAME(HEAD_RESORT)) != 0),
+# if a_TYPE == a_TYPE_CSDICT
+         ((self->a_T_F(flags) & a_T_PUBNAME(STRONG)) != 0),
+         ((self->a_T_F(flags) & a_T_PUBNAME(CASE)) != 0),
+# endif
          ((self->a_T_F(flags) & a_T_PUBNAME(ERR_PASS)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(NILISVALO)) != 0),
-      (ul)self->a_T_F(size),
-      (ul)self->a_T_F(count),
-      (ui)self->a_T_F(tshift),
-      (ul)empties, (ul)multies, (ul)maxper, (ul)j
+      S(ul,self->a_T_F(tshift)), S(ul,self->a_T_F(size)),
+         S(ul,self->a_T_F(min_size)), S(ul,self->a_T_F(count)),
+      S(ul,empties), S(ul,maxper), S(ul,multies), S(ul,avg)
    );
 
    /* Second pass: visual distribution */
-   for(i = 0; i < size; ++i){
-      char buf[50], *cp;
+   if(self->a_T_F(size) > 60 * 60)
+      su_log_write(su_LOG_INFO, "    Array too large for visual display");
+   else{
+      boole lnl;
 
-      cp = buf;
-      for(j = 0, np = arr[i]; np != NIL; np = np->a_N_F(next)){
-         if(++j >= sizeof(buf) - 1 -1){
-            *cp++ = '@';
-            break;
+      for(lnl = TRU1, i = 0; i < size;){
+         char d, fmt_buf[sizeof("\030%c\030")], *fmt;
+
+         for(j = 0, np = arr[i]; np != NIL; np = np->a_N_F(next))
+            ++j;
+         d = '0';
+         if(j > 0 && j >= avg >> 1){
+            d = '_';
+            if(j >= avg){
+               d = (j == avg) ? '~' : '=';
+               if(j >= avg + ((maxper - avg) >> 1)){
+                  d = '/';
+                  if(j == maxper)
+                     d = '^';
+               }
+            }
          }
-         *cp++ = '*';
-      }
-      *cp = '\0';
 
-      su_log_write(su_LOG_INFO, "%5lu |%s\n", (ul)i, buf);
+         su_mem_copy(fmt = fmt_buf, "\030%c\030", sizeof("\030%c\030"));
+         if(++i == size || i % 60 == 0){
+            fmt[sizeof("\030%c\030") - 1 -1] = '\0';
+            if(lnl)
+               ++fmt;
+            lnl = TRU1;
+         }else if(lnl){
+            lnl = FAL0;
+            ++fmt;
+         }
+         su_log_write(su_LOG_INFO, fmt, d);
+      }
    }
 
-   su_log_write(su_LOG_INFO,
-      "<<<" a_TYPE_NAME "(%p): statistics\n----------\n",
+   su_log_write(su_LOG_INFO, "<<< " a_TYPE_NAME "(%p): statistics\n----------",
       self);
    su_log_unlock();
 
    NYD_OU;
 }
-#endif /* DVLOR(1, 0) */
+#endif /* DVLDBGOR(1, 0) */
 
 struct a_T *
 a_T_PUBSYM(create)(struct a_T *self, u16 flags,
@@ -671,11 +616,11 @@ a_T_PUBSYM(create)(struct a_T *self, u16 flags,
    NYD_IN;
    ASSERT(self);
 
-   su_mem_set(self, 0, sizeof *self);
+   STRUCT_ZERO(struct a_T, self);
 
    ASSERT_NYD(!(flags & a_T_PUBNAME(OWNS)) ||
       (tbox_or_nil != NIL && tbox_or_nil->tb_clone != NIL &&
-       tbox_or_nil->tb_delete != NIL && tbox_or_nil->tb_assign != NIL));
+       tbox_or_nil->tb_del != NIL && tbox_or_nil->tb_assign != NIL));
 
    self->a_T_F(flags) = (flags &= a_T_PRINAME(CREATE_MASK));
    self->a_T_F(tshift) = 2;
@@ -690,7 +635,7 @@ a_T_PUBSYM(create_copy)(struct a_T *self, struct a_T const *t){
    NYD_IN;
    ASSERT(self);
 
-   su_mem_set(self, 0, sizeof *self);
+   STRUCT_ZERO(struct a_T, self);
 
    ASSERT_NYD(t != NIL);
    (void)a_FUN(assign)(self, t, TRU1);
@@ -756,7 +701,7 @@ struct a_T *
 a_T_PUBSYM(clear_elems)(struct a_T *self){
    void *vp;
    struct a_N **arr, *np, *tmp;
-   su_delete_fun delfun;
+   su_del_fun delfun;
    u32 cnt, size;
    NYD_IN;
    ASSERT(self);
@@ -765,7 +710,7 @@ a_T_PUBSYM(clear_elems)(struct a_T *self){
    self->a_T_F(count) = 0;
    size = self->a_T_F(size);
    delfun = (self->a_T_F(flags) & a_T_PUBNAME(OWNS))
-         ? self->a_T_F(tbox)->tb_delete : S(su_delete_fun,NIL);
+         ? self->a_T_F(tbox)->tb_del : S(su_del_fun,NIL);
    arr = self->a_T_F(array);
 
    while(cnt > 0){
@@ -802,6 +747,115 @@ a_T_PUBSYM(swap)(struct a_T *self, struct a_T *t){
 
    NYD_OU;
    return self;
+}
+
+s32
+a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
+   s32 rv;
+   struct a_N **narr, **arr;
+   boole prime;
+   u32 size, nsize;
+   NYD_IN;
+   ASSERT(self);
+
+   size = self->a_T_F(size);
+   prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
+
+   /* Calculate new size, a bit complicated task */
+   /* C99 */{
+      u32 onsize;
+      boole grow;
+
+      /* >= to catch initial 0 size */
+      grow = ((xcount >> self->a_T_F(tshift)) >= size);
+      nsize = size;
+
+      for(;;){
+         onsize = nsize;
+
+         if(!prime){
+            ASSERT(nsize == 0 || IS_POW2(nsize));
+            if(grow){
+               if(UNLIKELY(nsize == 0)){
+                  nsize = 1u << 1;
+                  while(nsize < self->a_T_F(min_size))
+                     nsize <<= 1;
+               }else if(UCMP(32, nsize, <, S32_MIN))
+                  nsize <<= 1;
+            }else if(nsize > (1u << 1)){
+               u32 i = nsize >> 1;
+               if(i >= self->a_T_F(min_size))
+                  nsize = i;
+            }
+         }else if(grow){
+            for(;;){
+               nsize = su_prime_lookup_next(nsize);
+               if(nsize >= self->a_T_F(min_size))
+                  break;
+            }
+         }else{
+            u32 i = su_prime_lookup_former(nsize);
+            if(i >= self->a_T_F(min_size))
+               nsize = i;
+         }
+
+         /* Refuse to excess storage bounds, but do not fail for this: simply
+          * keep on going and place more nodes in the slots.
+          * Because of the numbers we are talking about this is a theoretical
+          * issue (at the time of this writing). */
+         if(nsize == onsize)
+            break;
+         if(grow){
+            /* (Again, shift 64-bit to avoid overflow) */
+            if((S(u64,nsize) << self->a_T_F(tshift)) >= xcount)
+               break;
+         }else if((nsize >> 1) <= xcount)
+            break;
+      }
+
+      if(size == nsize){
+         rv = -1;
+         goto jleave;
+      }
+   }
+
+   /* Try to allocate new array, give up on failure */
+   narr = su_TCALLOCF(struct a_N*, nsize,
+         (self->a_T_F(flags) & su_STATE_ERR_MASK));
+   if(UNLIKELY(narr == NIL)){
+      rv = su_err_no();
+      goto jleave;
+   }
+
+   /* We will succeed: move pointers over */
+   self->a_T_F(size) = nsize;
+
+   arr = self->a_T_F(array);
+   self->a_T_F(array) = narr;
+
+   if((xcount = self->a_T_F(count)) > 0){
+      struct a_N *np, **npos, *xnp;
+
+      do for(np = arr[--size]; np != NIL; --xcount){
+         uz i;
+
+         i = np->a_N_F(khash);
+         i= prime ? i % nsize : i & (nsize - 1);
+         npos = &narr[i];
+         xnp = np;
+         np = np->a_N_F(next);
+         xnp->a_N_F(next) = *npos;
+         *npos = xnp;
+      }while(xcount > 0 && size > 0);
+   }
+
+   if(arr != NIL)
+      su_FREE(arr);
+
+   rv = su_ERR_NONE;
+jleave:
+   NYD_OU;
+   return rv;
 }
 
 struct a_T *
@@ -876,27 +930,25 @@ jset:
 s32
 a_V_PUBSYM(set_data)(struct a_V *self, void *value){
    s32 rv;
+   u16 flags;
    struct a_T *parent;
    NYD_IN;
    ASSERT(self);
    ASSERT_NYD_EXEC(a_V_PUBSYM(is_valid)(self), rv = su_ERR_INVAL);
 
    parent = self->a_V_F(parent);
+   flags = parent->a_T_F(flags);
 
-   if(value == NIL){
-      u16 flags;
-
-      flags = parent->a_T_F(flags);
-
-      if((flags & a_T_PUBNAME(OWNS)) && !(flags & a_T_PUBNAME(NILISVALO))){
+   if(flags & a_T_PUBNAME(OWNS)){
+      if(UNLIKELY(value == NIL) && UNLIKELY(!(flags & a_T_PUBNAME(NILISVALO))))
          rv = su_ERR_INVAL;
-         goto jleave;
-      }
+      else
+         rv = a_FUN(replace)(parent, self->a_V_F(node), value);
+   }else{
+      self->a_V_F(node)->a_N_F(data) = value;
+      rv = su_ERR_NONE;
    }
 
-   rv = a_FUN(replace)(parent, self->a_V_F(node), value);
-
-jleave:
    NYD_OU;
    return rv;
 }
@@ -908,9 +960,10 @@ a_V_PUBSYM(find)(struct a_V *self, a_TK const *key){
    NYD_IN;
    ASSERT(self);
 
-   self->a_V_F(node) =
-   np = a_T_PRISYM(lookup)(self->a_V_F(parent), key, &la);
-   if(np != NIL){
+   np = (LIKELY(self->a_V_F(parent)->a_T_F(count) > 0)
+         ? a_T_PRISYM(lookup)(self->a_V_F(parent), key, &la) : NIL);
+
+   if((self->a_V_F(node) = np) != NIL){
       self->a_V_F(index) = la.la_slotidx;
       self->a_V_F(next_node) = NIL;
    }
@@ -957,7 +1010,7 @@ a_V_PUBSYM(remove)(struct a_V *self){
       self->a_V_F(node) = mynp;
       self->a_V_F(index) = idx;
    }
-   self->a_V_F(next_node) = NIL;
+   self->a_V_F(next_node) = NIL; /* xxx superfluous?!? */
 
    NYD_OU;
    return self;

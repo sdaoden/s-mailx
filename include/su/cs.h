@@ -1,4 +1,5 @@
 /*@ Anything (locale agnostic: ASCII only) around char and char*.
+ *@ TODO optimization option like atomic.h
  *
  * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -30,12 +31,20 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* Forwards */
+#ifdef su_HAVE_MD
+struct su_siphash;
+#endif
+
+/* cs {{{ */
 /*!
  * \defgroup CS Byte character data
  * \ingroup TEXT
  * \brief Byte character data, locale agnostic: ASCII only (\r{su/cs.h})
  *
- * Oh, the vivid part this is!
+ * \remarks{Functions that include \c{cbuf} in their name are capable to work
+ * on buffers with include \c{NUL}s unless the length parameter was given as
+ * \r{su_UZ_MAX}, since that enforces search for the terminating \c{NUL}.}
  * @{
  */
 
@@ -53,22 +62,25 @@ enum su_cs_ctype{
    su_CS_CTYPE_PUNCT = 1u<<8, /*!< \_ */
    su_CS_CTYPE_SPACE = 1u<<9, /*!< \_ */
    su_CS_CTYPE_UPPER = 1u<<10, /*!< \_ */
-   su_CS_CTYPE_WHITE = 1u<<11, /*!< SPACE, HT or LF */
-   su_CS_CTYPE_XDIGIT = 1u<<12,  /*!< \_ */
+   su_CS_CTYPE_WHITE = 1u<<11, /*!< SPACE, HT or LF. */
+   su_CS_CTYPE_XDIGIT = 1u<<12, /*!< \_ */
 
    su__CS_CTYPE_MAXSHIFT = 13u,
    su__CS_CTYPE_MASK = (1u<<su__CS_CTYPE_MAXSHIFT) - 1
 };
 
-EXPORT_DATA u16 const su__cs_ctype[S8_MAX + 1];
-EXPORT_DATA u8 const su__cs_tolower[S8_MAX + 1];
-EXPORT_DATA u8 const su__cs_toupper[S8_MAX + 1];
+EXPORT_DATA u16 const su__cs_ctype[1u + S8_MAX];
+EXPORT_DATA u8 const su__cs_tolower[1u + S8_MAX];
+EXPORT_DATA u8 const su__cs_toupper[1u + S8_MAX];
 
 /*! \_ */
 EXPORT_DATA struct su_toolbox const su_cs_toolbox;
 
 /*! \_ */
 EXPORT_DATA struct su_toolbox const su_cs_toolbox_case;
+
+EXPORT uz su__cs_first_x_of_cbuf_cbuf(boole x, char const *cp, uz cplen,
+   char const *xp, uz xplen);
 
 /*! This actually tests for 7-bit cleanliness. */
 INLINE boole su_cs_is_ascii(s32 x) {return (S(u32,x) <= S8_MAX);}
@@ -120,7 +132,7 @@ INLINE boole su_cs_is_xdigit(s32 x) {a_X(x, XDIGIT);}
 #undef a_X
 
 /*! Test \a{x} for any of the \r{su_cs_ctype} bits given in \a{csct}. */
-INLINE boole su_cs_is_ctype(s32 x, u32 csct){
+INLINE boole su_cs_is_ctype(s32 x, BITENUM_IS(u32,ctype) csct){
    return (su_cs_is_ascii(x) && (su__cs_ctype[x] & csct) != 0);
 }
 
@@ -147,17 +159,14 @@ EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
 /*! Duplicate a buffer into a \r{su_MEM_TALLOC()}ated duplicate.
  * Unless \a{len} was \r{su_UZ_MAX} and thus detected by searching NUL,
  * embedded NUL bytes will be included in the result.
- *
- * \copydoc{su_clone_fun}. */
+ * \ESTATE. */
 EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 
 /*! \r{su_cs_dup_cbuf()}. */
 EXPORT char *su_cs_dup(char const *cp, u32 estate);
 
-#if 0
 /*! Is \a{x} the ending (sub)string of \a{cp}? */
 EXPORT boole su_cs_ends_with_case(char const *cp, char const *x);
-#endif
 
 /*! Search \a{xp} within \a{cp}, return pointer to location or \NIL.
  * Returns \a{cp} if \a{xp} is the empty buffer. */
@@ -169,22 +178,42 @@ EXPORT char *su_cs_find_c(char const *cp, char xc);
 /*! Like \r{su_cs_find()}, but case-insensitive. */
 EXPORT char *su_cs_find_case(char const *cp, char const *xp);
 
-/*! Returns offset to first character of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
+/*! Return offset to first byte of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
  * \remarks{Will not find NUL.} */
-EXPORT uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen,
-      char const *xp, uz xlen);
+INLINE uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen,
+      char const *xp, uz xplen){
+   ASSERT_RET(cplen == 0 || cp != NIL, UZ_MAX);
+   ASSERT_RET(xplen == 0 || xp != NIL, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(TRU1, cp, cplen, xp, xplen);
+}
 
 /*! \_ */
 INLINE uz su_cs_first_of(char const *cp, char const *xp){
    ASSERT_RET(cp != NIL, UZ_MAX);
    ASSERT_RET(xp != NIL, UZ_MAX);
-   return su_cs_first_of_cbuf_cbuf(cp, UZ_MAX, xp, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(TRU1, cp, UZ_MAX, xp, UZ_MAX);
+}
+
+/*! Return offset to first byte not of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
+ * \remarks{Will not find NUL.} */
+INLINE uz su_cs_first_not_of_cbuf_cbuf(char const *cp, uz cplen,
+      char const *xp, uz xplen){
+   ASSERT_RET(cplen == 0 || cp != NIL, UZ_MAX);
+   ASSERT_RET(xplen == 0 || xp != NIL, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(FAL0, cp, cplen, xp, xplen);
+}
+
+/*! \_ */
+INLINE uz su_cs_first_not_of(char const *cp, char const *xp){
+   ASSERT_RET(cp != NIL, UZ_MAX);
+   ASSERT_RET(xp != NIL, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(FAL0, cp, UZ_MAX, xp, UZ_MAX);
 }
 
 /*! Hash a string (buffer).
  * This should be considered an attackable hash, for now Chris Torek's hash
  * algorithm is used, the resulting hash is stirred as shown by Bret Mulvey.
- * TODO Add _strong_hash (with, e.g., siphash algo)
+ * For more attack-proof hashing see \r{su_cs_hash_strong_cbuf()} or \r{MD}.
  * Also see \r{su_cs_hash_case_cbuf()}. */
 EXPORT uz su_cs_hash_cbuf(char const *buf, uz len);
 
@@ -204,6 +233,51 @@ INLINE uz su_cs_hash_case(char const *cp){
    ASSERT_RET(cp != NIL, 0);
    return su_cs_hash_case_cbuf(cp, UZ_MAX);
 }
+
+#if defined su_HAVE_MD || defined DOXYGEN
+/*! Strong hash creators (like \r{su_cs_hash_strong_cbuf()}) that are
+ * (more) proof against algorithmic complexity attacks on hashes use
+ * a random-seeded built-in \r{MD} template that is created once needed first.
+ * By giving a non-\NIL \a{tp} one can instead set the template explicitly:
+ * \a{tp} must be fully setup in order to be usable for copy-assignment,
+ * and the object backing \a{tp} must remain accessible.
+ *
+ * \remarks{The built-in template is setup only once, but which may fail since
+ * the used \r{su_random_builtin_generate()} can: implicit lazy initialization
+ * via the hash creators themselve pass \r{su_STATE_ERR_NOPASS} as \a{estate}!
+ * \ESTATE_RV; setup is incomplete unless this returns \r{su_STATE_NONE}.}
+ *
+ * \remarks{Only available with \r{su_HAVE_MD}.
+ * As of today this uses \r{MD_SIPHASH} with endianess-adjusted 64-bit output;
+ * if \r{su_UZ_BITS} is 32 the 64-bit output is mixed down to 32-bit.
+ * The type backing \a{tp} is only forward-declared, no header is included.} */
+EXPORT s32 su_cs_hash_strong_setup(struct su_siphash const *tp, u32 estate);
+
+/*! Hash a string (buffer) with a strong algorithm,
+ * see \r{su_cs_hash_strong_setup()} for the complete picture,
+ * and \r{su_cs_hash_strong_case_cbuf()} for case-insensitivity.
+ * \remarks{Only available with \r{su_HAVE_MD}.}
+ * \remarks{May abort the program unless initialization was successfully
+ * asserted via \r{su_cs_hash_strong_setup()}.} */
+EXPORT uz su_cs_hash_strong_cbuf(char const *buf, uz len);
+
+/*! \r{su_cs_hash_strong_cbuf()}. */
+INLINE uz su_cs_hash_strong(char const *cp){
+   ASSERT_RET(cp != NIL, 0);
+   return su_cs_hash_strong_cbuf(cp, UZ_MAX);
+}
+
+/*! Hash a string (buffer) with a strong algorithm, case-insensitively,
+ * otherwise identical to \r{su_cs_hash_strong_cbuf()}, see there for more.
+ * As usual, if \a{len} is 0 \a{buf} may be \NIL. */
+EXPORT uz su_cs_hash_strong_case_cbuf(char const *buf, uz len);
+
+/*! \r{su_cs_hash_strong_case_cbuf()}. */
+INLINE uz su_cs_hash_strong_case(char const *cp){
+   ASSERT_RET(cp != NIL, 0);
+   return su_cs_hash_strong_case_cbuf(cp, UZ_MAX);
+}
+#endif /* su_HAVE_MD || DOXYGEN */
 
 /*! \_ */
 EXPORT uz su_cs_len(char const *cp);
@@ -260,13 +334,14 @@ INLINE s32 su_cs_to_lower(s32 x){
 INLINE s32 su_cs_to_upper(s32 x){
    return (S(u32,x) <= S8_MAX ? su__cs_toupper[x] : x);
 }
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
 # define su_A_T_T_DECL_ONLY
 # include <su/a-t-t.h>
+# include <su/md-siphash.h>
 
 # define su_CXX_HEADER
 # include <su/code-in.h>
@@ -274,11 +349,17 @@ NSPC_BEGIN(su)
 
 class cs;
 
+/* CS {{{ */
 /*!
  * \ingroup CS
  * C++ variant of \r{CS} (\r{su/cs.h})
+ *
+ * \remarks{Debug assertions are performed in the C base only.}
+ *
+ * \remarks{In difference, for C++, \c{su/md-siphash.h} is included.}
  */
 class EXPORT cs{
+   // friend of siphash
    su_CLASS_NO_COPY(cs);
 public:
    /*! \copydoc{su_cs_ctype} */
@@ -367,7 +448,9 @@ public:
    static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
    /*! \copydoc{su_cs_is_ctype()} */
-   static boole is_ctype(s32 x, u32 ct) {return su_cs_is_ctype(x, ct);}
+   static boole is_ctype(s32 x, BITENUM_IS(u32,ctype) ct){
+      return su_cs_is_ctype(x, ct);
+}
 
    /*! \copydoc{su_cs_cmp()} */
    static sz cmp(char const *cp1, char const *cp2){
@@ -404,11 +487,41 @@ public:
       return su_cs_dup(cp, estate);
    }
 
+   /*! \copydoc{su_cs_ends_with_case()} */
+   static boole ends_with_case(char const *cp, char const *x){
+      return su_cs_ends_with_case(cp, x);
+   }
+
    /*! \copydoc{su_cs_find()} */
    static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}
 
    /*! \copydoc{su_cs_find_c()} */
    static char *find(char const *cp, char x) {return su_cs_find_c(cp, x);}
+
+   /*! \copydoc{su_cs_find_case()} */
+   static char *find_case(char const *cp, char const *x){
+      return su_cs_find_case(cp, x);
+   }
+
+   /*! \copydoc{su_cs_find_first_of()} */
+   static uz first_of(char const *cp, char const *xp){
+      return su_cs_first_of(cp, xp);
+   }
+
+   /*! \copydoc{su_cs_find_first_of_cbuf_cbuf()} */
+   static uz first_of(char const *cp, uz cplen, char const *xp, uz xplen){
+      return su_cs_first_of_cbuf_cbuf(cp, cplen, xp, xplen);
+   }
+
+   /*! \copydoc{su_cs_find_first_not_of()} */
+   static uz first_not_of(char const *cp, char const *xp){
+      return su_cs_first_not_of(cp, xp);
+   }
+
+   /*! \copydoc{su_cs_find_first_not_of_cbuf_cbuf()} */
+   static uz first_not_of(char const *cp, uz cplen, char const *xp, uz xplen){
+      return su_cs_first_not_of_cbuf_cbuf(cp, cplen, xp, xplen);
+   }
 
    /*! \copydoc{su_cs_hash_cbuf()} */
    static uz hash(char const *buf, uz len) {return su_cs_hash_cbuf(buf, len);}
@@ -423,6 +536,31 @@ public:
 
    /*! \copydoc{su_cs_hash_case()} */
    static uz hash_case(char const *cp) {return su_cs_hash_case(cp);}
+
+#ifdef su_HAVE_MD
+   /*! \copydoc{su_cs_hash_strong_setup()} */
+   static s32 hash_strong_setup(siphash const *tp, u32 estate=state::none){
+      return su_cs_hash_strong_setup(S(struct su_siphash const*,tp), estate);
+   }
+
+   /*! \copydoc{su_cs_hash_strong_cbuf()} */
+   static uz hash_strong(char const *buf, uz len){
+      return su_cs_hash_strong_cbuf(buf, len);
+   }
+
+   /*! \copydoc{su_cs_hash_strong()} */
+   static uz hash_strong(char const *cp) {return su_cs_hash_strong(cp);}
+
+   /*! \copydoc{su_cs_hash_strong_case_cbuf()} */
+   static uz hash_strong_case(char const *buf, uz len){
+      return su_cs_hash_strong_case_cbuf(buf, len);
+   }
+
+   /*! \copydoc{su_cs_hash_strong_case()} */
+   static uz hash_strong_case(char const *cp){
+      return su_cs_hash_strong_case(cp);
+   }
+#endif /* su_HAVE_MD */
 
    /*! \copydoc{su_cs_len()} */
    static uz len(char const *cp) {return su_cs_len(cp);}
@@ -455,12 +593,28 @@ public:
       return su_cs_starts_with(cp, x);
    }
 
+   /*! \copydoc{su_cs_starts_with_n()} */
+   static boole starts_with(char const *cp, char const *x, uz n){
+      return su_cs_starts_with_n(cp, x, n);
+   }
+
+   /*! \copydoc{su_cs_starts_with_case()} */
+   static boole starts_with_case(char const *cp, char const *x){
+      return su_cs_starts_with_case(cp, x);
+   }
+
+   /*! \copydoc{su_cs_starts_with_case_n()} */
+   static boole starts_with_case(char const *cp, char const *x, uz n){
+      return su_cs_starts_with_case_n(cp, x, n);
+   }
+
    /*! \copydoc{su_cs_to_lower()} */
    static s32 to_lower(s32 c) {return su_cs_to_lower(c);}
 
    /*! \copydoc{su_cs_to_upper()} */
    static s32 to_upper(s32 c) {return su_cs_to_upper(c);}
 };
+/* }}} */
 
 /*!
  * \ingroup CS
@@ -490,6 +644,6 @@ public:
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_CS_H */
 /* s-it-mode */

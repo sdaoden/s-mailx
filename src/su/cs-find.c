@@ -1,5 +1,6 @@
 /*@ Implementation of cs.h: finding related things.
  *@ TODO Optimize (even asm hooks?)
+ *@ TODO (last)_(not_)?of
  *
  * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -30,6 +31,45 @@
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
+
+NSPC_USE(su)
+
+uz
+su__cs_first_x_of_cbuf_cbuf(boole x, char const *cp, uz cplen,
+      char const *xp, uz xplen){
+   uz rv, bs[su_BITS_TO_UZ(U8_MAX + 1)];
+   char c;
+   NYD_IN;
+   ASSERT_NYD_EXEC(cplen == 0 || cp != NIL, rv = UZ_MAX);
+   ASSERT_NYD_EXEC(xplen == 0 || xp != NIL, rv = UZ_MAX);
+
+   su_mem_set(bs, 0, sizeof bs);
+
+   /* For all bytes in x, set the bit of value */
+   for(rv = P2UZ(xp);; ++xp){
+      if(xplen-- == 0 || (c = *xp) == '\0')
+         break;
+      su_bits_array_set(bs, S(u8,c));
+   }
+   if(UNLIKELY(rv == P2UZ(xp)))
+      goto jnope;
+
+   /* For all bytes in cp, test whether the value bit is set */
+   for(xp = cp;; ++cp){
+      if(cplen-- == 0 || (c = *cp) == '\0')
+         break;
+      if(x == su_bits_array_test(bs, S(u8,c))){
+         rv = P2UZ(cp - xp);
+         goto jleave;
+      }
+   }
+
+jnope:
+   rv = UZ_MAX;
+jleave:
+   NYD_OU;
+   return rv;
+}
 
 char *
 su_cs_find(char const *cp, char const *xp){
@@ -74,7 +114,7 @@ su_cs_find_c(char const *cp, char xc){
 
 char *
 su_cs_find_case(char const *cp, char const *xp){
-   char xc, c;
+   s32 xc, c;
    NYD_IN;
    ASSERT_NYD(cp != NIL);
    ASSERT_NYD_EXEC(xp != NIL, cp = NIL);
@@ -93,43 +133,6 @@ su_cs_find_case(char const *cp, char const *xp){
 jleave:
    NYD_OU;
    return UNCONST(char*,cp);
-}
-
-uz
-su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen, char const *xp, uz xlen){
-   /* TODO (first|last)_(not_)?of: */
-   uz rv, bs[su_BITS_TO_UZ(U8_MAX + 1)];
-   char c;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cplen == 0 || cp != NIL, rv = UZ_MAX);
-   ASSERT_NYD_EXEC(xlen == 0 || xp != NIL, rv = UZ_MAX);
-
-   su_mem_set(bs, 0, sizeof bs);
-
-   /* For all bytes in x, set the bit of value */
-   for(rv = P2UZ(xp);; ++xp){
-      if(xlen-- == 0 || (c = *xp) == '\0')
-         break;
-      su_bits_array_set(bs, S(u8,c));
-   }
-   if(UNLIKELY(rv == P2UZ(xp)))
-      goto jnope;
-
-   /* For all bytes in cp, test whether the value bit is set */
-   for(xp = cp;; ++cp){
-      if(cplen-- == 0 || (c = *cp) == '\0')
-         break;
-      if(su_bits_array_test(bs, S(u8,c))){
-         rv = P2UZ(cp - xp);
-         goto jleave;
-      }
-   }
-
-jnope:
-   rv = UZ_MAX;
-jleave:
-   NYD_OU;
-   return rv;
 }
 
 boole
@@ -189,7 +192,7 @@ su_cs_starts_with_case(char const *cp, char const *xp){
 
    if(LIKELY(*xp != '\0'))
       for(rv = TRU1;; ++cp, ++xp){
-         char xc, c;
+         s32 xc, c;
 
          if((xc = *xp) == '\0')
             goto jleave;
@@ -213,7 +216,7 @@ su_cs_starts_with_case_n(char const *cp, char const *xp, uz n){
 
    if(LIKELY(n > 0 && *xp != '\0'))
       for(rv = TRU1;; ++cp, ++xp){
-         char xc, c;
+         s32 xc, c;
 
          if((xc = *xp) == '\0')
             goto jleave;
