@@ -55,6 +55,17 @@ struct su_imf_shtok;
  * Some remarks:
  *
  * \list{\li{
+ * "Postel's parser".
+ * It is assumed that there is a desire to parse the message, if at all possible.
+ * The parser(s) cannot be used to formally verify whether something is valid,
+ * even more so with \r{su_IMF_MODE_RELAX}!
+ * For example, (long) obsolete syntax is supported,
+ * \c{CFWS} is accepted almost everywhere,
+ * and where the ABNF syntax says "a OR b OR c" more often than not "a", "b" and "c" can occur intermixed,
+ * to accommodate certain misuses seen in the wild.
+ * (Low level parsers like su_imf_c_WSP() are available,
+ * which can be used to build strict parsers.
+ * }\li{
  * The parser is meant to be used "as a second stage" that is fed in superficially preparsed content.
  * For example it does not handle follow-up header lines: whereas it removes the \c{CRLF},
  * it does neither verify a following \c{WSP}, nor does it simply discard that
@@ -63,12 +74,10 @@ struct su_imf_shtok;
  * It uses the rules of RFC 5322 (and, practically, incorporates the updates of RFC 6854).
  * It also includes some erratas, like 3135, in order to not allow effectively empty \c{local-part}s,
  * as well as empty (DNS) sublabels in local-parts.
+ * (In parts affected by \r{su_IMF_MODE_RELAX}.)
  * }\li{
  * Deviating from the standard \c{FWS} includes single \c{LF} and \c{CR} bytes in addition to \c{CRLF}.
  * (This for example eases working with \c{sendmail(1)}-style milters which only use \c{LF}.)
- * }\li{
- * "Postel's parser" as for example \c{CFWS} is accepted almost everywhere.
- * It is assumed that there is a desire to parse the message, if at all possible.
  * }\li{
  * Further verifications may be necessary.
  * A successful parse guarantees that only correct(able) tokens have been seen,
@@ -252,7 +261,7 @@ enum su_imf_mode{
 	 * For \r{su_imf_parse_struct_header()}. */
 	su_IMF_MODE_TOK_EMPTY = 1u<<8,
 
-	/*! Ignore certain unambiguous \r{su_imf_err}ors which would otherwise cause hard failures.
+	/*! Ignore certain \r{su_imf_err}ors which would otherwise cause hard failures.
 	 * Such a condition is then reported via \r{su_IMF_STATE_RELAX} (and an error) via \r{su_imf_addr::imfa_mse}.
 	 * Some notes:
 	 * \list{\li{
@@ -514,7 +523,7 @@ SINLINE boole su_imf_c_SP(char c) {return a_X(c, su_IMF_C_SP);}
 
 /*! (RFC 5234, B.1. Core Rules; \r{su_imf_c_SP()} or \r{su_imf_c_HT()}.) */
 SINLINE boole su_imf_c_WSP(char c) {return (a_X(c, su_IMF_C_SP | su_IMF_C_HT));}
-/*! Any of \r{su_imf_c_SP()},, \r{su_imf_c_HT()}, \r{su_imf_c_LF()} or \r{su_imf_c_CR()}. */
+/*! Any of \r{su_imf_c_SP()}, \r{su_imf_c_HT()}, \r{su_imf_c_LF()} or \r{su_imf_c_CR()}. */
 SINLINE boole su_imf_c_ANY_WSP(char c) {return (a_X(c, su_IMF_C_SP | su_IMF_C_HT | su_IMF_C_LF | su_IMF_C_CR));}
 
 /*! Is \a{c2} a valid second byte of a RFC 5322 quoted-pair? */

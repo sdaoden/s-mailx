@@ -49,58 +49,67 @@ C_DECL_BEGIN
 /*! \_ */
 enum su_idec_mode{
 	su_IDEC_MODE_NONE, /*!< \_ */
-	su_IDEC_MODE_SIGNED_TYPE = 1u<<0, /*!< Will be used to choose limits, error constants, etc. */
+	/*! Parse a signed integer; Will be used to choose minimum/maximum limits, error constants, etc. */
+	su_IDEC_MODE_SIGNED_TYPE = 1u<<0,
 	/*! If a power-of-two is used explicitly, or if a \a{base} of 0 is used and a known standard prefix is seen,
 	 * enforce interpretation as unsigned.
 	 * This only makes a difference in conjunction with \r{su_IDEC_MODE_SIGNED_TYPE}, and in respect to the
 	 * overflow cutlimit calculation;
 	 * overflow constants are (still) based upon whether a leading hyphen-minus was seen, or not. */
 	su_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
+
+	/*! Neither silently skip whitespace first (\r{su_IDEC_STATE_EINVAL} if seen),
+	 * nor suppress \r{su_IDEC_STATE_EBASE} if parsing later stops due to it. */
+	su_IDEC_MODE_WSP_DISABLE = 1u<<2,
+	/*! Do not recognize plus or minus signs (\r{su_IDEC_STATE_EINVAL} if seen). */
+	su_IDEC_MODE_SIGN_DISABLE = 1u<<3,
+
 	/*! Disable recognition of the \c{BASE#number} number sign base notation in \a{base} 0 mode. */
-	su_IDEC_MODE_BASE0_NUMSIG_DISABLE = 1u<<2,
+	su_IDEC_MODE_BASE0_NUMSIG_DISABLE = 1u<<10,
 	/*! Relaxed \a{base} 0 convenience: if the input used \c{BASE#number} number sign syntax,
 	 * then the scan will be restarted anew with the given base.
 	 * Like this an UI can be permissive and support \c{s='  -008'; eval 10#\$s} out of the box
-	 * (it would require a lot of logic otherwise). */
-	su_IDEC_MODE_BASE0_NUMSIG_RESCAN = 1u<<3,
-#if 0
-	su_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<4,
-#endif
-	su_IDEC_MODE_LIMIT_8BIT = 1u<<5, /*!< Assume input is an 8-bit integer (limits, saturation, etc.). */
-	su_IDEC_MODE_LIMIT_16BIT = 2u<<5, /*!< Assume input is an 16-bit integer (limits, saturation, etc.). */
-	su_IDEC_MODE_LIMIT_32BIT = 3u<<5, /*!< Assume input is an 32-bit integer (limits, saturation, etc.). */
-	su__IDEC_MODE_LIMIT_MASK = 3u<<5,
+	 * (it would require a lot of logic otherwise).
+	 *
+	 * \remarks{In case scanning is restarted anew, \r{su_IDEC_MODE_WSP_DISABLE} is ignored.} */
+	su_IDEC_MODE_BASE0_NUMSIG_RESCAN = 1u<<11,
+
+	su_IDEC_MODE_LIMIT_8BIT = 1u<<12, /*!< Assume input is an 8-bit integer (limits, saturation, etc.). */
+	su_IDEC_MODE_LIMIT_16BIT = 2u<<12, /*!< Assume input is an 16-bit integer (limits, saturation, etc.). */
+	su_IDEC_MODE_LIMIT_32BIT = 3u<<12, /*!< Assume input is an 32-bit integer (limits, saturation, etc.). */
+	su__IDEC_MODE_LIMIT_MASK = 3u<<12,
 	/*! Do not treat it as an error if the limit is excessed!
-	 * Like this saturated (and bit-limited) results can be created
+	 * Like this saturated (properly bit-limited) results, that is minimum and maximum, can be created
 	 * (in that \r{su_IDEC_STATE_EOVERFLOW} is suppressed). */
-	su_IDEC_MODE_LIMIT_NOERROR = 1u<<7,
-	/*! \_ */
+	su_IDEC_MODE_LIMIT_NOERROR = 1u<<15,
+
 	/* These bits are duplicated in the _state result bits! */
-	su__IDEC_MODE_MASK = (1u<<8) - 1
+	su__IDEC_MODE_MASK = (1u<<16) - 1
 };
 
 /*! \_ */
 enum su_idec_state{
 	su_IDEC_STATE_NONE, /*!< \_*/
-	su_IDEC_STATE_EINVAL = 1u<<8, /*!< Malformed input, no usable result has been stored. */
+	su_IDEC_STATE_EINVAL = 1u<<16, /*!< Malformed input, no usable result has been stored. */
 	/*! Bad character according to base, but we have seen some good ones before,
 	 * otherwise \r{su_IDEC_STATE_EINVAL} would have been used.
-	 * This error is suppressed if the failing character is \r{su_cs_is_space()} or the ASCII terminator \c{NUL}.
+	 * This error is suppressed if the failing character is the ASCII terminator \c{NUL},
+	 * or, except with \r{su_IDEC_MODE_WSP_DISABLE}, whitespace (\r{su_cs_is_space()}).
 	 *
 	 * \remarks{After "OpenBSD-specific" operational errors occurred in the tor software, parts of the software
 	 * world which had to (\SU did) turned to an interpretation of the C standard which says that "the prefix may
 	 * optionally precede an otherwise valid sequence", which means that "0x" is not a STATE_INVAL error,
 	 * but instead results in "0" with a STATE_BASE error and a rest of "x".
 	 * Likewise number sign base notation "3#" is "3" with a rest of "#".} */
-	su_IDEC_STATE_EBASE = 2u<<8,
-	su_IDEC_STATE_EOVERFLOW = 3u<<8, /*!< Result too large. */
-	su_IDEC_STATE_EMASK = 3u<<8, /*!< All errors, that is. */
-	su_IDEC_STATE_SEEN_MINUS = 1u<<16, /*!< Seen hyphen-minus in the input? */
-	su_IDEC_STATE_REMAINS = 1u<<17, /*!< Not all input was consumed by processing. */
+	su_IDEC_STATE_EBASE = 2u<<16,
+	su_IDEC_STATE_EOVERFLOW = 3u<<16, /*!< Result too large, type-specific minimum/maximum used as result value. */
+	su_IDEC_STATE_EMASK = 3u<<16, /*!< All errors, that is. */
+	su_IDEC_STATE_SEEN_MINUS = 1u<<20, /*!< Seen hyphen-minus in the input? */
+	su_IDEC_STATE_REMAINS = 1u<<21, /*!< Not all input was consumed by processing. */
 	su__IDEC_PRIVATE_SHIFT1 = 24u
 };
 #ifdef su_SOURCE_ICODEC_DEC
-CTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps");
+CTA(su__IDEC_MODE_MASK <= (1u<<16) - 1, "Shared bit range overlaps");
 #endif
 
 /*! Decode \a{clen} (or \r{su_cs_len()} if \r{su_UZ_MAX}) bytes of \a{cbuf} into an integer according to the
@@ -286,10 +295,15 @@ public:
 		mode_none = su_IDEC_MODE_NONE, /*!< \cd{su_IDEC_MODE_NONE} */
 		mode_signed_type = su_IDEC_MODE_SIGNED_TYPE, /*!< \cd{su_IDEC_MODE_SIGNED_TYPE} */
 		mode_pow2base_unsigned = su_IDEC_MODE_POW2BASE_UNSIGNED, /*!< \cd{su_IDEC_MODE_POW2BASE_UNSIGNED} */
+
+		mode_wsp_disable = su_IDEC_MODE_WSP_DISABLE, /*!< \cd{su_IDEC_MODE_WSP_DISABLE} */
+		mode_sign_disable = su_IDEC_MODE_SIGN_DISABLE, /*!< \cd{su_IDEC_MODE_SIGN_DISABLE} */
+
 		/*! \cd{su_IDEC_MODE_BASE0_NUMSIG_DISABLE} */
 		mode_base0_numsig_disable = su_IDEC_MODE_BASE0_NUMSIG_DISABLE,
 		/*! \cd{su_IDEC_MODE_BASE0_NUMSIG_RESCAN} */
 		mode_base0_numsig_rescan = su_IDEC_MODE_BASE0_NUMSIG_RESCAN,
+
 		mode_limit_8bit = su_IDEC_MODE_LIMIT_8BIT, /*!< \cd{su_IDEC_MODE_LIMIT_8BIT} */
 		mode_limit_16bit = su_IDEC_MODE_LIMIT_16BIT, /*!< \cd{su_IDEC_MODE_LIMIT_16BIT} */
 		mode_limit_32bit = su_IDEC_MODE_LIMIT_32BIT, /*!< \cd{su_IDEC_MODE_LIMIT_32BIT} */

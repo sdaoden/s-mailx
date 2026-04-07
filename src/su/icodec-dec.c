@@ -109,21 +109,25 @@ su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM(u32,su_idec_mode
 	if(base == 1 || base > 64)
 		goto jeinval;
 
+	if(LIKELY(!(rv & su_IDEC_MODE_WSP_DISABLE))){
 jnumsig_rescan:
-	/* Leading WS */
-	while(su_cs_is_space(*cbuf))
-		if(*++cbuf == '\0' || --clen == 0)
-			goto jeinval;
+		/* Leading WS */
+		while(su_cs_is_space(*cbuf))
+			if(*++cbuf == '\0' || --clen == 0)
+				goto jeinval;
+	}
 
 	/* Check sign */
-	switch(*cbuf){
-	case '-':
-		rv |= su_IDEC_STATE_SEEN_MINUS;
-		FALLTHRU
-	case '+':
-		if(*++cbuf == '\0' || --clen == 0)
-			goto jeinval;
-		break;
+	if(LIKELY(!(rv & su_IDEC_MODE_SIGN_DISABLE))){
+		switch(*cbuf){
+		case '-':
+			rv |= su_IDEC_STATE_SEEN_MINUS;
+			FALLTHRU
+		case '+':
+			if(*++cbuf == '\0' || --clen == 0)
+				goto jeinval;
+			break;
+		}
 	}
 
 	/* Base detection/skip. {{{
@@ -133,7 +137,7 @@ jnumsig_rescan:
 	 * a STATE_INVAL error but gives a "0" result with a "STATE_BASE" error and a rest of "x" */
 #undef a_PREFIX_NEW_WAY
 #define a_PREFIX_NEW_WAY
-	if(UNLIKELY(*cbuf != '0')){
+	if(LIKELY(*cbuf != '0')){
 		if(UNLIKELY(base == 0)){
 			base = 10;
 
@@ -339,6 +343,7 @@ jleave:
 		rv |= su_IDEC_STATE_REMAINS;
 
 	rv &= (1u << su__IDEC_PRIVATE_SHIFT1) - 1;
+
 	NYD_OU;
 	return rv;
 
@@ -347,9 +352,12 @@ jeinval:
 	goto j_maxval;
 
 jebase:
-	/* Not a base error for terminator and whitespace! */
-	if(*cbuf != '\0' && !su_cs_is_space(*cbuf))
-		rv |= su_IDEC_STATE_EBASE;
+	/* Not a base error for terminator and optionally whitespace! */
+	if(*cbuf == '\0')
+		goto jleave;
+	if(!(rv & su_IDEC_MODE_WSP_DISABLE) && su_cs_is_space(*cbuf))
+		goto jleave;
+	rv |= su_IDEC_STATE_EBASE;
 	goto jleave;
 
 jeover:

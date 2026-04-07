@@ -35,8 +35,8 @@ NSPC_USE(su)
 static char const a_pucs_root2[3] = "//";
 #endif
 
-char const su_path_sep[2] = {su_PATH_SEP_C, '\0'};
-char const su_path_list_sep[2] = {su_PATH_LIST_SEP_C, '\0'};
+char const su_path_sep[2] = su_PATH_SEP_CP;
+char const su_path_list_sep[2] = su_PATH_LIST_SEP_CP;
 
 char const su_path_current[sizeof su_PATH_CURRENT] = su_PATH_CURRENT;
 char const su_path_null[sizeof su_PATH_NULL] = su_PATH_NULL;

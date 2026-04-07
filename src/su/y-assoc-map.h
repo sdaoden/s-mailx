@@ -428,38 +428,48 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key, void *lookarg_or_nil
 			goto jleave;
 	}
 
-	for(last = rv, rv = *arr; rv != NIL; last = rv, rv = rv->a_N_F(next)){
-		if(khash != rv->a_N_F(khash))
-			continue;
+	/* C99 */{
+		sz (*cptf)(void const *p1, void const *p2
+# if a_TYPE == a_TYPE_CSDICT
+				, uz l
+# endif
+			);
 
 # if a_TYPE == a_TYPE_CSDICT
-		if(klen != rv->a_N_F(klen))
-			continue;
-		else{
-			sz (*cptf)(void const *p1, void const *p2, uz l);
-
-			if(self->a_T_F(flags) & a_T_PUBNAME(CASE))
-				cptf = R(sz(*)(void const*,void const*,uz),&su_cs_cmp_case_n);
-			else
-				cptf = &su_mem_cmp;
-
-			if((*cptf)(key, rv->a_N_F(key), klen))
-				continue;
-		}
+		if(self->a_T_F(flags) & a_T_PUBNAME(CASE))
+			cptf = R(sz(*)(void const*,void const*,uz),&su_cs_cmp_case_n);
+		else
+			cptf = &su_mem_cmp;
 # else
 #  error
 # endif
 
-		/* Match! */
-		if(last != NIL){
-			if(self->a_T_F(flags) & a_T_PUBNAME(HEAD_RESORT)){
-				last->a_N_F(next) = rv->a_N_F(next);
-				rv->a_N_F(next) = *arr;
-				*arr = rv;
-			}else if(lookarg_or_nil != NIL)
-				S(struct a_LA*,lookarg_or_nil)->la_last = last;
+		for(last = rv, rv = *arr; rv != NIL; last = rv, rv = rv->a_N_F(next)){
+			if(khash != rv->a_N_F(khash))
+				continue;
+
+# if a_TYPE == a_TYPE_CSDICT
+			if(klen != rv->a_N_F(klen))
+				continue;
+# endif
+			if((*cptf)(key, rv->a_N_F(key)
+# if a_TYPE == a_TYPE_CSDICT
+					, klen
+# endif
+					))
+				continue;
+
+			/* Match! */
+			if(last != NIL){
+				if(self->a_T_F(flags) & a_T_PUBNAME(HEAD_RESORT)){
+					last->a_N_F(next) = rv->a_N_F(next);
+					rv->a_N_F(next) = *arr;
+					*arr = rv;
+				}else if(lookarg_or_nil != NIL)
+					S(struct a_LA*,lookarg_or_nil)->la_last = last;
+			}
+			break;
 		}
-		break;
 	}
 
 jleave:
@@ -493,17 +503,17 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value, up replace_an
 	/* Try to find a yet existing key */
 	np = a_T_PRISYM(lookup)(self, key, &la);
 
-# if a_TYPE == a_TYPE_CSDICT
-	/* (Ensure documented maximum key length first) */
-	if(UNLIKELY(UCMP(z, la.la_klen, >, S32_MAX))){
-		rv = su_state_err(su_STATE_ERR_OVERFLOW, (flags & su_STATE_ERR_MASK),
-				_(a_TYPE_NAME ": insertion: key length excess"));
-		goto jleave;
-	}
-# endif
-
 	/* An insertion of something new? */
 	if(LIKELY(np == NIL)){
+# if a_TYPE == a_TYPE_CSDICT
+		/* (Ensure documented maximum key length first) */
+		if(UNLIKELY(UCMP(z, la.la_klen, >, S32_MAX))){
+			rv = su_state_err(su_STATE_ERR_OVERFLOW, (flags & su_STATE_ERR_MASK),
+					_(a_TYPE_NAME ": insertion: key length excess"));
+			goto jleave;
+		}
+# endif
+
 		if(UNLIKELY((rv = a_FUN(node_new)(self, &np, &la, key, value)) != su_ERR_NONE))
 			goto jleave;
 		/* Never grow array storage if no other node is in this slot.
