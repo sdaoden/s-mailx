@@ -46,8 +46,7 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok'
-   ARGS="${ARGS}"' -Smemdebug -Sstealthmua'
+ARGS='-:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok -Smemdebug -Sstealthmua'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
    ARGS="${ARGS}"' -Smailcap-disable -Smimetypes-load-control='
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
@@ -290,7 +289,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
                   \xit 0
                \end
                \if "${#}" -gt 0
-                  \wysh set LC_ALL=${1}
+                  \set LC_ALL=${1}
                   \shift
                   \xcall cset_test "${@}"
                \end
@@ -1405,14 +1404,14 @@ t_wysh() {
    check c 0 "${MBOX}" '1473887148 321'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
-   wysh set mager='\hey\'
+   set mager='\hey\'
    varshow mager
-   wysh set mager="\hey\\"
+   set mager="\hey\\"
    varshow mager
-   wysh set mager=$'\hey\\'
+   set mager=$'\hey\\'
    varshow mager
 	__EOT
-   check 3 0 "${MBOX}" '1289698238 69'
+   check 3 0 "${MBOX}" '380053216 54'
 
    t_epilog "${@}"
 }
@@ -1689,724 +1688,6 @@ t_shcodec() {
 
 t_ifelse() {
    t_prolog "${@}"
-
-   # v15compat: old and new tests share the same result files!
-   # v15compat: i.e., just throw away -old tests one day
-
-   # Nestable conditions test
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
-		if 0
-		   echo 1.err
-		else
-		   echo 1.ok
-		endif
-		if 1
-		   echo 2.ok
-		else
-		   echo 2.err
-		endif
-		if $dietcurd
-		   echo 3.err
-		else
-		   echo 3.ok
-		endif
-		set dietcurd=yoho
-		if $dietcurd
-		   echo 4.ok
-		else
-		   echo 4.err
-		endif
-		if $dietcurd == 'yoho'
-		   echo 5.ok
-		else
-		   echo 5.err
-		endif
-		if $dietcurd ==? 'Yoho'
-			echo 5-1.ok
-		else
-			echo 5-1.err
-		endif
-		if $dietcurd == 'Yoho'
-			echo 5-2.err
-		else
-			echo 5-2.ok
-		endif
-		if $dietcurd != 'yoho'
-		   echo 6.err
-		else
-		   echo 6.ok
-		endif
-		if $dietcurd !=?case 'Yoho'
-			echo 6-1.err
-		else
-			echo 6-1.ok
-		endif
-		if $dietcurd != 'Yoho'
-			echo 6-2.ok
-		else
-			echo 6-2.err
-		endif
-		# Nesting
-		if faLse
-		   echo 7.err1
-		   if tRue
-		      echo 7.err2
-		      if yEs
-		         echo 7.err3
-		      else
-		         echo 7.err4
-		      endif
-		      echo 7.err5
-		   endif
-		   echo 7.err6
-		else
-		   echo 7.ok7
-		   if YeS
-		      echo 7.ok8
-		      if No
-		         echo 7.err9
-		      else
-		         echo 7.ok9
-		      endif
-		      echo 7.ok10
-		   else
-		      echo 7.err11
-		      if yeS
-		         echo 7.err12
-		      else
-		         echo 7.err13
-		      endif
-		   endif
-		   echo 7.ok14
-		endif
-		if r
-		   echo 8.ok1
-		   if R
-		      echo 8.ok2
-		   else
-		      echo 8.err2
-		   endif
-		   echo 8.ok3
-		else
-		   echo 8.err1
-		endif
-		if s
-		   echo 9.err1
-		else
-		   echo 9.ok1
-		   if S
-		      echo 9.err2
-		   else
-		      echo 9.ok2
-		   endif
-		   echo 9.ok3
-		endif
-		# `elif'
-		if $dietcurd == 'yohu'
-		   echo 10.err1
-		elif $dietcurd == 'yoha'
-		   echo 10.err2
-		elif $dietcurd == 'yohe'
-		   echo 10.err3
-		elif $dietcurd == 'yoho'
-		   echo 10.ok1
-		   if $dietcurd == 'yohu'
-		      echo 10.err4
-		   elif $dietcurd == 'yoha'
-		      echo 10.err5
-		   elif $dietcurd == 'yohe'
-		      echo 10.err6
-		   elif $dietcurd == 'yoho'
-		      echo 10.ok2
-		      if $dietcurd == 'yohu'
-		         echo 10.err7
-		      elif $dietcurd == 'yoha'
-		         echo 10.err8
-		      elif $dietcurd == 'yohe'
-		         echo 10.err9
-		      elif $dietcurd == 'yoho'
-		         echo 10.ok3
-		      else
-		         echo 10.err10
-		      endif
-		   else
-		      echo 10.err11
-		   endif
-		else
-		   echo 10.err12
-		endif
-		# integer
-		set dietcurd=10
-		if $dietcurd -lt 11
-		   echo 11.ok1
-		   if $dietcurd -gt 9
-		      echo 11.ok2
-		   else
-		      echo 11.err2
-		   endif
-		   if $dietcurd -eq 10
-		      echo 11.ok3
-		   else
-		      echo 11.err3
-		   endif
-		   if $dietcurd -ge 10
-		      echo 11.ok4
-		   else
-		      echo 11.err4
-		   endif
-		   if $dietcurd -le 10
-		      echo 11.ok5
-		   else
-		      echo 11.err5
-		   endif
-		   if $dietcurd -ge 11
-		      echo 11.err6
-		   else
-		      echo 11.ok6
-		   endif
-		   if $dietcurd -le 9
-		      echo 11.err7
-		   else
-		      echo 11.ok7
-		   endif
-		else
-		   echo 11.err1
-		endif
-		set dietcurd=Abc
-		if $dietcurd < aBd
-		   echo 12.ok1
-		   if $dietcurd >? abB
-		      echo 12.ok2
-		   else
-		      echo 12.err2
-		   endif
-		   if $dietcurd ==?case aBC
-		      echo 12.ok3
-		   else
-		      echo 12.err3
-		   endif
-		   if $dietcurd >=?ca AbC
-		      echo 12.ok4
-		   else
-		      echo 12.err4
-		   endif
-		   if $dietcurd <=? ABc
-		      echo 12.ok5
-		   else
-		      echo 12.err5
-		   endif
-		   if $dietcurd >=?case abd
-		      echo 12.err6
-		   else
-		      echo 12.ok6
-		   endif
-		   if $dietcurd <=? abb
-		      echo 12.err7
-		   else
-		      echo 12.ok7
-		   endif
-		else
-		   echo 12.err1
-		endif
-		if $dietcurd < aBc
-		   echo 12-1.ok
-		else
-		   echo 12-1.err
-		endif
-		if $dietcurd <? aBc
-		   echo 12-2.err
-		else
-		   echo 12-2.ok
-		endif
-		if $dietcurd > ABc
-		   echo 12-3.ok
-		else
-		   echo 12-3.err
-		endif
-		if $dietcurd >? ABc
-		   echo 12-3.err
-		else
-		   echo 12-3.ok
-		endif
-		if $dietcurd =%?case aB
-		   echo 13.ok
-		else
-		   echo 13.err
-		endif
-		if $dietcurd =% aB
-		   echo 13-1.err
-		else
-		   echo 13-1.ok
-		endif
-		if $dietcurd =%? bC
-		   echo 14.ok
-		else
-		   echo 14.err
-		endif
-		if $dietcurd !% aB
-		   echo 15-1.ok
-		else
-		   echo 15-1.err
-		endif
-		if $dietcurd !%? aB
-		   echo 15-2.err
-		else
-		   echo 15-2.ok
-		endif
-		if $dietcurd !% bC
-		   echo 15-3.ok
-		else
-		   echo 15-3.err
-		endif
-		if $dietcurd !%? bC
-		   echo 15-4.err
-		else
-		   echo 15-4.ok
-		endif
-		if $dietcurd =% Cd
-		   echo 16.err
-		else
-		   echo 16.ok
-		endif
-		if $dietcurd !% Cd
-		   echo 17.ok
-		else
-		   echo 17.err
-		endif
-		set diet=abc curd=abc
-		if $diet == $curd
-		   echo 18.ok
-		else
-		   echo 18.err
-		endif
-		set diet=abc curd=abcd
-		if $diet != $curd
-		   echo 19.ok
-		else
-		   echo 19.err
-		endif
-		# 1. Shitty grouping capabilities as of today
-		unset diet curd ndefined
-		if [ [ false ] || [ false ] || [ true ] ] && \
-		      [ [ false ] || [ true ] ] && \
-		      [ yes ]
-		   echo 20.ok
-		else
-		   echo 20.err
-		endif
-		if [ [ [ [ 0 ] || [ 1 ] ] && [ [ 1 ] || [ 0 ] ] ] && [ 1 ] ] && [ yes ]
-		   echo 21.ok
-		else
-		   echo 21.err
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] ]
-		   echo 22.ok
-		else
-		   echo 22.err
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] ]
-		   echo 23.ok
-		else
-		   echo 23.err
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] && [ no ]
-		   echo 24.err
-		else
-		   echo 24.ok
-		endif
-		if [ [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] || [ [ 1 ] ] || [ 1 ] ] \
-		      && [ no ] || [ yes ]
-		   echo 25.ok
-		else
-		   echo 25.err
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
-		   echo 26.ok
-		else
-		   echo 26.err
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 0 ] ]
-		   echo 27.err
-		else
-		   echo 27.ok
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && [ 1 ] ] && [ 0 ] ] && [ 1 ] ] ] && [ 1 ] ]
-		   echo 28.err
-		else
-		   echo 28.ok
-		endif
-		if [ [ [ [ [ [ [ 0 ] ] && [ 1 ] ] && [ 1 ] ] && [ 1 ] ] ] && [ 1 ] ]
-		   echo 29.err
-		else
-		   echo 29.ok
-		endif
-		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 0 ]
-		   echo 30.err
-		else
-		   echo 30.ok
-		endif
-		if [ 1 ] || [ 0 ] || [ 0 ] || [ 0 ] && [ 1 ]
-		   echo 31.ok
-		else
-		   echo 31.err
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ]
-		   echo 32.err
-		else
-		   echo 32.ok
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 1 ]
-		   echo 33.ok
-		else
-		   echo 33.err
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 0 ]
-		   echo 34.err
-		else
-		   echo 34.ok
-		endif
-		if [ 0 ] || [ 0 ] || [ 0 ] || [ 1 ] && [ 0 ] || [ 1 ] && [ 1 ]
-		   echo 35.ok
-		else
-		   echo 35.err
-		endif
-		set diet=yo curd=ho
-		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && [ $ndefined ]
-		   echo 36.err
-		else
-		   echo 36.ok
-		endif
-		set ndefined
-		if [ [ $diet == 'yo' ] && [ $curd == 'ho' ] ] && [ $ndefined ]
-		   echo 37.ok
-		else
-		   echo 37.err
-		endif
-		# 2. Shitty grouping capabilities as of today
-		unset diet curd ndefined
-		if [ false || false || true ] && [ false || true ] && yes
-		   echo 40.ok
-		else
-		   echo 40.err
-		endif
-		if [ [ [ 0 || 1 ] && [ 1 || 0 ] ] && 1 ] && [ yes ]
-		   echo 41.ok
-		else
-		   echo 41.err
-		endif
-		if [ 1 || 0 || 0 || 0 ]
-		   echo 42.ok
-		else
-		   echo 42.err
-		endif
-		if [ 1 || 0 || 0 || 0 || [ 1 ] ]
-		   echo 43.ok
-		else
-		   echo 43.err
-		endif
-		if [ 1 || 0 || 0 || 0 || [ 1 ] || 1 ] && no
-		   echo 44.err
-		else
-		   echo 44.ok
-		endif
-		if [ 1 || 0 || 0 || 0 || 1 || [ 1 ] ] && no || [ yes ]
-		   echo 45.ok
-		else
-		   echo 45.err
-		endif
-		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && 1 ] ] && [ 1 ] ]
-		   echo 46.ok
-		else
-		   echo 46.err
-		endif
-		if [ [ [ [ [ [ 1 ] && 1 ] && 1 ] && [ 1 ] ] ] && 0 ]
-		   echo 47.err
-		else
-		   echo 47.ok
-		endif
-		if [ [ [ [ [ [ [ 1 ] ] && 1 ] && 0 ] && [ 1 ] ] ] && 1 ]
-		   echo 48.err
-		else
-		   echo 48.ok
-		endif
-		if [ [ [ [ [ [ 0 ] && 1 ] && 1 ] && 1 ] ] && 1 ]
-		   echo 49.err
-		else
-		   echo 49.ok
-		endif
-		if 1 || 0 || 0 || 0 && 0
-		   echo 50.err
-		else
-		   echo 50.ok
-		endif
-		if 1 || 0 || 0 || 0 && 1
-		   echo 51.ok
-		else
-		   echo 51.err
-		endif
-		if 0 || 0 || 0 || 1 && 0
-		   echo 52.err
-		else
-		   echo 52.ok
-		endif
-		if 0 || 0 || 0 || 1 && 1
-		   echo 53.ok
-		else
-		   echo 53.err
-		endif
-		if 0 || 0 || 0 || 1 && 0 || 1 && 0
-		   echo 54.err
-		else
-		   echo 54.ok
-		endif
-		if 0 || 0 || 0 || 1 && 0 || 1 && 1
-		   echo 55.ok
-		else
-		   echo 55.err
-		endif
-		set diet=yo curd=ho
-		if [ $diet == 'yo' && $curd == 'ho' ] && $ndefined
-		   echo 56.err
-		else
-		   echo 56.ok
-		endif
-		if $diet == 'yo' && $curd == 'ho' && $ndefined
-		   echo 57.err
-		else
-		   echo 57.ok
-		endif
-		set ndefined
-		if [ $diet == 'yo' && $curd == 'ho' ] && $ndefined
-		   echo 57.ok
-		else
-		   echo 57.err
-		endif
-		if $diet == 'yo' && $curd == 'ho' && $ndefined
-		   echo 58.ok
-		else
-		   echo 58.err
-		endif
-		if [ [ [ [ [ [ $diet == 'yo' && $curd == 'ho' && $ndefined ] ] ] ] ] ]
-		   echo 59.ok
-		else
-		   echo 59.err
-		endif
-		# Some more en-braced variables
-		set diet=yo curd=ho
-		if ${diet} == ${curd}
-		   echo 70.err
-		else
-		   echo 70.ok
-		endif
-		if ${diet} != ${curd}
-		   echo 71.ok
-		else
-		   echo 71.err
-		endif
-		if $diet == ${curd}
-		   echo 72.err
-		else
-		   echo 72.ok
-		endif
-		if ${diet} == $curd
-		   echo 73.err
-		else
-		   echo 73.ok
-		endif
-		# Unary !
-		if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
-		   echo 80.ok
-		else
-		   echo 80.err
-		endif
-		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ ! 2 ] ] ] && 3
-		   echo 81.ok
-		else
-		   echo 81.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
-		   echo 82.ok
-		else
-		   echo 82.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
-		   echo 83.err
-		else
-		   echo 83.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ [ ! [ ! [ ! [ 2 ] ] ] ] ] && ! 3
-		   echo 84.err
-		else
-		   echo 84.ok
-		endif
-		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
-		   echo 85.err
-		else
-		   echo 85.ok
-		endif
-		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] && 3
-		   echo 86.err
-		else
-		   echo 86.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ 2 ] ] ] ] ] || 3
-		   echo 87.ok
-		else
-		   echo 87.err
-		endif
-		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! ! [ 2 ] ] ] ] ]
-		   echo 88.ok
-		else
-		   echo 88.err
-		endif
-		# Unary !, odd
-		if ! 0 && ! ! 1 && ! ! ! 0 && 3
-		   echo 90.ok
-		else
-		   echo 90.err
-		endif
-		if ! 0 && ! [ ! 1 ] && ! [ ! [ ! [ 0 ] ] ] && 3
-		   echo 91.ok
-		else
-		   echo 91.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ [ 0 ] ] ] ] ] && 3
-		   echo 92.ok
-		else
-		   echo 92.err
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! ! [ ! [ ! 0 ] ] ] ] && ! 3
-		   echo 93.err
-		else
-		   echo 93.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && ! [ ! [ ! [ ! [ ! 0 ] ] ] ] && 3
-		   echo 94.ok
-		else
-		   echo 94.err
-		endif
-		if [ ! 0 ] && ! [ ! [ ! 1 ] ] && [ ! ! [ ! [ ! [ ! [ 0 ] ] ] ] ] && 3
-		   echo 95.err
-		else
-		   echo 95.ok
-		endif
-		if ! [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! ! 0 ] ] ] ] && 3
-		   echo 96.err
-		else
-		   echo 96.ok
-		endif
-		if [ ! 0 ] && [ ! [ ! 1 ] ] && [ ! [ ! [ ! [ ! [ ! 0 ] ] ] ] ] || 3
-		   echo 97.ok
-		else
-		   echo 97.err
-		endif
-		if [ ! 0 ] && [ ! ! [ ! ! 1 ] ] && [ ! ! [ ! ! [ ! ! [ ! [ 0 ] ] ] ] ]
-		   echo 98.ok
-		else
-		   echo 98.err
-		endif
-	__EOT
-
-   check normal-old 0 "${MBOX}" '1688759742 719' # pre v15compat
-
-   if have_feat regex; then
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
-			set dietcurd=yoho
-			if $dietcurd =~ '^yo.*'
-			   echo 1.ok
-			else
-			   echo 1.err
-			endif
-			if $dietcurd =~ '^Yo.*'
-			   echo 1-1.err
-			else
-			   echo 1-1.ok
-			endif
-			if $dietcurd =~?case '^Yo.*'
-			   echo 1-2.ok
-			else
-			   echo 1-2.err
-			endif
-			if $dietcurd =~ '^yOho.+'
-			   echo 2.err
-			else
-			   echo 2.ok
-			endif
-			if $dietcurd !~? '.*Ho$'
-			   echo 3.err
-			else
-			   echo 3.ok
-			endif
-			if $dietcurd !~ '.+yohO$'
-			   echo 4.ok
-			else
-			   echo 4.err
-			endif
-			if [ $dietcurd !~?cas '.+yoho$' ]
-			   echo 5.ok
-			else
-			   echo 5.err
-			endif
-			if ! [ $dietcurd =~?case '.+yoho$' ]
-			   echo 6.ok
-			else
-			   echo 6.err
-			endif
-			if ! ! [ $dietcurd !~? '.+yoho$' ]
-			   echo 7.ok
-			else
-			   echo 7.err
-			endif
-			if ! [ ! [ $dietcurd !~? '.+yoho$' ] ]
-			   echo 8.ok
-			else
-			   echo 8.err
-			endif
-			if [ ! [ ! [ $dietcurd !~? '.+yoho$' ] ] ]
-			   echo 9.ok
-			else
-			   echo 9.err
-			endif
-			if ! [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
-			   echo 10.err
-			else
-			   echo 10.ok
-			endif
-			if !  ! ! $dietcurd !~ '.+yoho$'
-			   echo 11.err
-			else
-			   echo 11.ok
-			endif
-			if !  ! ! $dietcurd =~ '.+yoho$'
-			   echo 12.ok
-			else
-			   echo 12.err
-			endif
-			if ! [ ! ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
-			   echo 13.ok
-			else
-			   echo 13.err
-			endif
-			set diet=abc curd='^abc$'
-			if $diet =~ $curd
-			   echo 14.ok
-			else
-			   echo 14.err
-			endif
-			set diet=abc curd='^abcd$'
-			if $diet !~ $curd
-			   echo 15.ok
-			else
-			   echo 15.err
-			endif
-		__EOT
-
-      check regex-old 0 "${MBOX}" '1115671789 95' # pre v15compat
-   else
-      t_echoskip 'regex-old:[no regex option]'
-   fi
-
-   ## post v15compat
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=X > "${MBOX}"
 	\if -N xyz; echo 1.err-1; \
@@ -3207,14 +2488,14 @@ t_localopts() {
       echo ll2=$x
    }
    define ll1 {
-      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set y=$1; shift; eval localopts $y; localopts $1; shift
       set x=1
       echo ll1.1=$x
       call ll2 $1
       echo ll1.2=$x
    }
    define ll0 {
-      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set y=$1; shift; eval localopts $y; localopts $1; shift
       set x=0
       echo ll0.1=$x
       call ll1 $y "$@"
@@ -3446,7 +2727,7 @@ t_macro_param_shift() {
 	   echo in: t2
 	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
 	   localopts on
-	   wysh set ignerr=$1
+	   set ignerr=$1
 	   shift
 	   localopts off
 	   echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
@@ -3980,7 +3261,7 @@ t_call_ret() {
 				echo .
 			end
 			call w1 $i
-			wysh set i=$? k=$!
+			set i=$? k=$!
 			vput vexpr j '&' $i 7
 			echon "<$1/$i/$k "
 			if [ $j -eq 7 ]
@@ -3997,7 +3278,7 @@ t_call_ret() {
 		vput vexpr i + $1 1
 		if [ $1 -lt 42 ]
 			call w2 $i
-			wysh set i=$? j=$! k=$^ERRNAME
+			set i=$? j=$! k=$^ERRNAME
 			echon "<$1/$i/$k "
 			return $i $j
 		else
@@ -4012,14 +3293,14 @@ t_call_ret() {
 		vput vexpr i + $1 1
 		if [ $1 -lt 42 ]
 			call w3 $i $2
-			wysh set i=$? j=$!
+			set i=$? j=$!
 			vput vexpr k - $1 $2
 			if [ $k -eq 21 ]
 				vput vexpr i + $1 1
 				vput vexpr j + $2 1
 				echo "# <$i/$j> .. "
 				call w3 $i $j
-				wysh set i=$? j=$!
+				set i=$? j=$!
 			end
 			eval echon "<\$1=\$i/\$^ERRNAME-$j "
 			return $i $j
@@ -4207,11 +3488,11 @@ t_vpospar() {
    eval vpospar set ${x};\
       unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
 
-   wysh set ifs=$',\t'
+   set ifs=$',\t'
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
    unset ifs; echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   wysh set ifs=$',\t'
+   set ifs=$',\t'
    vput vpospar x quote; echo x<$x>
    vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
    eval vpospar set ${x};\
@@ -4334,10 +3615,10 @@ t_read() {
 	commandalias x echo '$?/$^ERRNAME / <$d>'
    readctl create .tin
    readall d;x
-   wysh set d;readall d;x
+   set d;readall d;x
    readctl create .tin2
    readall d;x
-   wysh set d;readall d;x
+   set d;readall d;x
    readctl remove .tin;echo $?/$^ERRNAME;\
       readctl remove .tin2;echo $?/$^ERRNAME
    echo '### now with empty lines'
@@ -4412,7 +3693,7 @@ t_headerpick() {
 \echo --- $?/$^ERRNAME, 9
 \if "$features" =% +uistrings,
    \unheaderpick type ignore from_ ba:l
-   \wysh set x=$? y=$^ERRNAME
+   \set x=$? y=$^ERRNAME
 \else
    \echoerr reproducible_build: Field not ignored: from_
    \echoerr reproducible_build: Field not ignored: ba:l
@@ -4634,8 +3915,6 @@ xit
 t_reply() { # {{{
    # Alternates and ML related address massage etc. somewhere else
    t_prolog "${@}"
-   XARGS=${ARGS} # TODO v15-compat
-   ARGS="${ARGS} -Sv15-compat=y"
 
    t__gen_msg subject reply from 1 to 2 cc 2 > "${MBOX}"
 
@@ -4898,14 +4177,11 @@ b7
          ./.tmbox >./.tall 2>&1
    check 21 0 ./.tall "${ck}"
 
-   ARGS=${XARGS} # TODO v15-compat
    t_epilog "${@}"
 } # }}}
 
 t_forward() { # {{{
    t_prolog "${@}"
-   XARGS=${ARGS}
-   ARGS="${ARGS} -Sv15-compat=y"
 
    t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
    t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
@@ -5072,14 +4348,11 @@ b6
          ./.tmbox >./.tall 2>&1
    check 10 0 ./.tall '799103633 1250'
 
-   ARGS=${XARGS}
    t_epilog "${@}"
 } # }}}
 
 t_resend() { # {{{
    t_prolog "${@}"
-   XARGS=${ARGS}
-   ARGS="${ARGS} -Sv15-compat=y"
 
    t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
    t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
@@ -5153,7 +4426,6 @@ t_resend() { # {{{
    t_it resend 5 6 yes
    t_it Resend 7 8
 
-   ARGS=${XARGS}
    t_epilog "${@}"
 } # }}}
 # }}}
@@ -5739,7 +5011,7 @@ t_mbox() { # {{{
 
    printf \
       'define mboxfix {
-         \\localopts yes; \\wysh set mbox-rfc4155;\\wysh File "${1}";\\
+         \\localopts yes; \\set mbox-rfc4155;\\File "${1}";\\
             \\eval copy * "${2}"
       }
       call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>&1
@@ -5748,10 +5020,10 @@ t_mbox() { # {{{
    check 14 - ./.tall '739301109 616'
 
    printf \
-      'wysh file ./.tinv1 # ^From not repaired, but missing trailing NL is
-      wysh File ./.tok # Just move away to nowhere
+      'file ./.tinv1 # ^From not repaired, but missing trailing NL is
+      File ./.tok # Just move away to nowhere
       set mbox-rfc4155
-      wysh file ./.tinv2 # Fully repaired
+      file ./.tinv2 # Fully repaired
       File ./.tok' | ${MAILX} ${ARGS} >>${ERR} 2>&1
    check_ex0 15-estat
    # Equal since [Auto-fix when MBOX had From_ errors on read (Dr. Werner
@@ -7127,13 +6399,13 @@ t_e_H_L_opts() {
 
    printf 'm me1@exam.ple\n~s subject cab\nLine 1.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
-      -r '' -X 'wysh set from=pony1@$LOGNAME'
+      -r '' -X 'set from=pony1@$LOGNAME'
    printf 'm me2@exam.ple\n~s subject bac\nLine 12.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
-      -r '' -X 'wysh set from=pony2@$LOGNAME'
+      -r '' -X 'set from=pony2@$LOGNAME'
    printf 'm me3@exam.ple\n~s subject abc\nLine 123.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
-      -r '' -X 'wysh set from=pony3@$LOGNAME'
+      -r '' -X 'set from=pony3@$LOGNAME'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test size; set autosort=size showname showto
@@ -7885,7 +7157,7 @@ t_cmd_escapes() {
 !Q 1 3
 !:echo 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
-!:wysh set quote-inject-head=%%a quote-inject-tail=--%%r
+!:set quote-inject-head=%%a quote-inject-tail=--%%r
 32: ~Q
 !Q
 !:echo 32:$?/$^ERRNAME
@@ -7927,10 +7199,10 @@ unset fullnames, quote stuff
 and i ~w rite this out to ./.tmsg
 !w ./.tmsg
 !:echo i ~w:$?/$^ERRNAME
-!:wysh set x=$escape;set escape=~
+!:set x=$escape;set escape=~
 ~!echo shell command output
 ~:echo shell:$?/$^ERRNAME
-~:wysh set escape=$x
+~:set escape=$x
 50:F
 !F 6
 !:echo 50 was F:$?/$^ERRNAME
@@ -8378,7 +7650,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
    }
    define read_mline_res {
-      read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+      read hl; set len=$? es=$! en=$^ERRNAME;\
          echo $len/$es/$^ERRNAME: $hl
       if [ $es -ne $^ERR-NONE ]
          xcall bail read_mline_res
@@ -8387,7 +7659,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
    }
    define ins_addr {
-      wysh set xh=$1
+      set xh=$1
       echo "~^header list"; read hl; echo $hl;\
          call xerr "$hl" "in_addr ($xh) 0-1"
 
@@ -8499,7 +7771,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
    }
    define ins_ref {
-      wysh set xh=$1 mult=$2
+      set xh=$1 mult=$2
       echo "~^header list"; read hl; echo $hl;\
          call xerr "$hl" "ins_ref ($xh) 0-1"
 
@@ -8932,7 +8204,7 @@ t_compose_hooks() { # {{{ TODO monster
          digmsg - header list;readall x;echon $x;\
          digmsg remove -;echo $?/$!/$^ERRNAME
    }
-   wysh set on-compose-splice=t_ocs \
+   set on-compose-splice=t_ocs \
       on-compose-enter=t_oce on-compose-leave=t_ocl \
          on-compose-cleanup=t_occ
 __EOT__
@@ -8977,7 +8249,7 @@ __EOT__
             end
          }
          define read_mline_res {
-            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+            read hl; set len=$? es=$! en=$^ERRNAME;\
                echo $len/$es/$^ERRNAME: $hl
             if [ $es -ne $^ERR-NONE ]
                xcall bail read_mline_res
@@ -9002,7 +8274,7 @@ __EOT__
             return $i
          }
          define _read {
-            wysh set line; read line;wysh set es=$? en=$^ERRNAME ;\
+            set line; read line;set es=$? en=$^ERRNAME ;\
                echo read:$es/$en: $line
             if [ "${es}" -ne -1 ]
                xcall _read
@@ -9158,7 +8430,7 @@ __EOT__
                mailx-orig-to<$mailx-orig-to> \
                mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
-         wysh set on-compose-splice=t_ocs \
+         set on-compose-splice=t_ocs \
             on-compose-splice-shell="read ver;echo t_ocs-shell;\
                echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
@@ -9200,9 +8472,9 @@ this is content of Reply 1 2
 this is content of forward 1
 !.
       echo forward 1: $? $! $^ERRNAME;echo;echo
-      wysh set forward-inject-head=$'"'"'-- \\
+      set forward-inject-head=$'"'"'-- \\
          forward (%%a)(%%d)(%%f)(%%i)(%%n)(%%r) --\\n'"'"'
-      wysh set forward-inject-tail=$'"'"'-- \\
+      set forward-inject-tail=$'"'"'-- \\
          end of forward (%%i) --\\n'"'"'
       forward 2 fwdex@am.ple
 this is content of forward 2
@@ -9231,7 +8503,7 @@ this is content of forward 2, 2nd, with showname set
             end
          }
          define read_mline_res {
-            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+            read hl; set len=$? es=$! en=$^ERRNAME;\
                echo mline_res:$len/$es/$^ERRNAME: $hl
             if [ $es -ne $^ERR-NONE ]
                xcall bail read_mline_res
@@ -9294,7 +8566,7 @@ this is content of forward 2, 2nd, with showname set
                mailx-orig-to<$mailx-orig-to> \
                mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
-         wysh set on-compose-splice=t_ocs \
+         set on-compose-splice=t_ocs \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
                on-compose-cleanup=t_occ \
             on-resend-enter=t_oce on-resend-cleanup=t_occ
@@ -9320,7 +8592,7 @@ t_mass_recipients() {
       echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
    }
    define ins_addr {
-      wysh set nr=$1 hn=$2
+      set nr=$1 hn=$2
       echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
       if [ "$es" -ne 0 ]
         xcall bail "ins_addr $hn 1-$nr"
@@ -9331,7 +8603,7 @@ t_mass_recipients() {
       end
    }
    define bld_alter {
-      wysh set nr=$1 hn=$2
+      set nr=$1 hn=$2
       alternates $hn$nr@$hn
       vput vexpr nr + $nr 2
       if [ "$nr" -le "$maximum" ]
@@ -9449,7 +8721,7 @@ t_lreply_futh_rth_etc() {
    ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" \
          -Rf ./.tmbox >> "${MBOX}" 2>&1
 	define r {
-	   wysh set m="This is text of \"reply ${1}."
+	   set m="This is text of \"reply ${1}."
 	   reply 1 2 3
 	!I m
 	1".
@@ -9463,7 +8735,7 @@ t_lreply_futh_rth_etc() {
 	   echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
 	}
 	define R {
-	   wysh set m="This is text of \"Reply ${1}."
+	   set m="This is text of \"Reply ${1}."
 	   eval Reply $2
 	!I m
 	!I 2
@@ -9478,7 +8750,7 @@ t_lreply_futh_rth_etc() {
 	   echo '".'
 	}
 	define _Ls {
-	   wysh set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
+	   set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
 	   eval Lreply $2
 	}
 	define L {
@@ -9640,7 +8912,7 @@ t_pipe_handlers() {
    else
       # Let us fill in tmpfile, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
-'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+'eval set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
             -S 'pipe-image/jpeg=?=++?'\
@@ -9658,7 +8930,7 @@ t_pipe_handlers() {
 
       # Fill in ourselfs, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
-'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+'eval set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
             -S 'pipe-image/jpeg=?++?'\
@@ -9676,7 +8948,7 @@ t_pipe_handlers() {
 
       # And the same, via copiousoutput (fake)
       printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
-'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+'eval set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
             -S 'pipe-image/jpeg=?*++?'\
