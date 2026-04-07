@@ -38,11 +38,11 @@ su_cs_cmp(char const *cp1, char const *cp2){
 	ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
 	for(;;){
-		s32 c1, c2;
+		char c1;
 
-		c1 = *cp1++;
-		c2 = *cp2++;
-		if((rv = c1 - c2) != 0 || c1 == '\0')
+		rv = c1 = *cp1++;
+		rv -= *cp2++;
+		if(rv != 0 || c1 == '\0')
 			break;
 	}
 
@@ -58,11 +58,11 @@ su_cs_cmp_n(char const *cp1, char const *cp2, uz n){
 	ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
 	for(rv = 0; n != 0; --n){
-		s32 c1, c2;
+		char c1;
 
-		c1 = *cp1++;
-		c2 = *cp2++;
-		if((rv = c1 - c2) != 0 || c1 == '\0')
+		rv = c1 = *cp1++;
+		rv -= *cp2++;
+		if(rv != 0 || c1 == '\0')
 			break;
 	}
 
@@ -140,91 +140,46 @@ jleave:
 }
 
 char *
-su_cs_sep_c(char **iolist, char sep, boole ignore_empty){
-	char *base, c, *cp;
+su_cs_squeeze(char *cp){
+	uz wscnt;
+	char *cp_base, *dst, c;
 	NYD_IN;
-	ASSERT_NYD_EXEC(iolist != NIL, base = NIL);
+	ASSERT_NYD_EXEC(cp != NIL, cp_base = NIL);
 
-	for(base = *iolist; base != NIL; base = *iolist){
-		/* Skip WS */
-		while((c = *base) != '\0' && su_cs_is_space(c))
-			++base;
+	dst = cp_base = cp;
 
-		if((cp = su_cs_find_c(base, sep)) != NIL)
-			*iolist = &cp[1];
-		else{
-			*iolist = NIL;
-			cp = &base[su_cs_len(base)];
-		}
-
-		/* Chop WS */
-		while(cp > base && su_cs_is_space(cp[-1]))
-			--cp;
-		*cp = '\0';
-
-		if(*base != '\0' || !ignore_empty)
-			break;
+	for(wscnt = 0; (c = *cp++) != '\0';){
+		if(!su_cs_is_space(c))
+			wscnt = 0;
+		else if(wscnt++ != 0)
+			continue;
+		else
+			c = ' ';
+		*dst++ = c;
 	}
+	*dst = '\0';
 
 	NYD_OU;
-	return base;
+	return cp_base;
 }
 
 char *
-su_cs_sep_escable_c(char **iolist, char sep, boole ignore_empty){
-	char *cp, c, *base;
-	boole isesc, anyesc;
+su_cs_trim(char *cp){
+	char *cp_base;
 	NYD_IN;
-	ASSERT_NYD_EXEC(iolist != NIL, base = NIL);
+	ASSERT_NYD_EXEC(cp != NIL, cp_base = NIL);
 
-	for(base = *iolist; base != NIL; base = *iolist){
-		/* Skip WS */
-		while((c = *base) != '\0' && su_cs_is_space(c))
-			++base;
+	while(su_cs_is_space(*cp))
+		++cp;
 
-		/* Do not recognize escaped sep characters, keep track of whether we
-		 * have seen any such tuple along the way */
-		for(isesc = anyesc = FAL0, cp = base;; ++cp){
-			if(UNLIKELY((c = *cp) == '\0')){
-				*iolist = NIL;
-				break;
-			}else if(!isesc){
-				if(c == sep){
-					*iolist = &cp[1];
-					break;
-				}
-				isesc = (c == '\\');
-			}else{
-				isesc = FAL0;
-				anyesc |= (c == sep);
-			}
-		}
+	cp_base = cp;
 
-		/* Chop WS */
-		while(cp > base && su_cs_is_space(cp[-1]))
-			--cp;
+	cp += su_cs_len(cp);
+	while(cp > cp_base && su_cs_is_space(*--cp))
 		*cp = '\0';
 
-		/* Need to strip reverse solidus escaping sep's? */
-		if(*base != '\0' && anyesc){
-			char *ins;
-
-			for(ins = cp = base;; ++ins)
-				if((c = *cp) == '\\' && cp[1] == sep){
-					*ins = sep;
-					cp += 2;
-				}else if((*ins = c) == '\0')
-					break;
-				else
-					++cp;
-		}
-
-		if(*base != '\0' || !ignore_empty)
-			break;
-	}
-
 	NYD_OU;
-	return base;
+	return cp_base;
 }
 
 #include "su/code-ou.h"

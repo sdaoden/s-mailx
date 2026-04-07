@@ -97,6 +97,9 @@
  * \c{su-make-errors.sh}: either create src/su/gen-errors.h, or, at compile time, the \c{OS<>SU} map.
  * Needed in a shipout.
  * }\li{
+ * \c{su-make-signals.sh}: either create src/su/gen-signal.h, or, at compile time, the \c{OS<>SU} map.
+ * (TODO Needed in a shipout.)
+ * }\li{
  * \c{su-make-strip-cxx.sh}: \c{cd(1)}s into include/su and removes C++ code
  * (tagged \c{(SPACE)CXX_DOXYGEN..(SPACE)@CXX_DOXYGEN}) from all header files.
  * POSIX shell and tools.
@@ -134,22 +137,27 @@
 
  /*! Enables a few code check paths and debug-only structure content and function arguments: it creates additional
   * API, and even causes a different ABI.
-  * (Code assertions are disabled via the standardized NDEBUG compiler preprocessor variable.) */
+  * (Code assertions are disabled via the standardized \c{NDEBUG} compiler preprocessor variable.) */
 # define su_HAVE_DEBUG
  /*! Enable developer mode: it creates additional API, and even causes a different ABI.
   * Expensive in size and runtime development code paths, like extensive memory tracing and lingering, otherwise
   * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
+ /*! Regardless of \c{NDEBUG}, \r{su_HAVE_DEBUG} and \r{su_HAVE_DEVEL}: expand \r{su_UNINIT()}. */
+# define su_HAVE_UNINIT
+ /*! \r{IMF} support available?
+  * Requires \r{su_HAVE_MEM_BAG} (one of \r{su_HAVE_MEM_BAG_LOFI} or \r{su_HAVE_MEM_BAG_AUTO}). */
+# define su_HAVE_IMF
  /*! \r{MD} support available?
   * If so, always included are
   * \list{\li{
   * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
   * }} */
 # define su_HAVE_MD
- /* TODO \r{MD_BLAKE2B} support available?
-  * RFC 7693: BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
+ /* TODO \r{su_MD_SHA_3} support available?
+  * SHA-3 (Secure Hash Algorithm 3); \c{SPDX-License-Identifier: MIT}.
   * Subfeature of \r{su_HAVE_MD}. */
-/*#  define su_HAVE_MD_BLAKE2B*/
+/*#  define su_HAVE_MD_SHA_3*/
 # define su_HAVE_MEM_BAG_AUTO /*!< \r{MEM_BAG}. */
 # define su_HAVE_MEM_BAG_LOFI /*!< \r{MEM_BAG}. */
  /*! Normally the development library performs memory write boundary excess detection via canaries (see
@@ -530,7 +538,7 @@ do{\
 # define su_CC_MEM_ZERO(X,Y) do{\
 	su_uz su____l__ = Y;\
 	void *su____op__ = X;\
-	su_u8 *su____bp__ = su_S(su_u8*,su____op__);\
+	char *su____bp__ = su_S(char*,su____op__);\
 	while(su____l__-- > 0)\
 		*su____bp__++ = 0;\
 }while(0)
@@ -659,6 +667,9 @@ do{\
 #define su_ALIGN_P(DTYPE,OTYPE,MEM) \
 	su_R(DTYPE,su_IS_POW2(su_ALIGNOF(OTYPE)) ? su_ROUND_UP2(su_R(su_up,MEM), su_ALIGNOF(OTYPE))\
 			: su_ROUND_UP(su_R(su_up,MEM), su_ALIGNOF(OTYPE)))
+
+/*! Align to \r{su_PAGE_SIZE}. */
+#define su_ALIGN_PAGE(X) su_ROUND_UP2(su_S(su_uz,X), su_PAGE_SIZE)
 
 /* Roundup/align an integer;  Note: POW2 asserted in POD section below! */
 /*! Overalign an integer value so it cannot cause problems for anything not using special alignment directives. */
@@ -969,7 +980,7 @@ do{\
 #define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))
 
 /* Avoid "may be used uninitialized" warnings */
-#if (defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || defined DOXYGEN
+#if !defined su_HAVE_UNINIT && ((defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || defined DOXYGEN)
 # define su_UNINIT(N,V) su_S(void,0) /*!< \_ */
 # define su_UNINIT_DECL(V) /*!< \_ */
 #else
@@ -981,12 +992,14 @@ do{\
 #define su_UNUSED(X) ((void)(X))
 
 #if (su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
- /*! Variable-type size (with byte array at end). */
+ /*! Declare a variable-size array in a type (that is byte array as last field).
+  * If \a{X} is 0, \r{su_ALIGN_Z()} of 1 is used, if \a{X} is negative it is subtracted from that value,
+  * otherwise \a{X} is used as-is. */
 # define su_VFIELD_SIZE(X)
  /*! Variable-type size (with byte array at end). */
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
-# define su_VFIELD_SIZE(X) ((X) == 0 ? sizeof(su_uz) : (su_S(su_sz,X) < 0 ? sizeof(su_uz) - su_ABS(X) : su_S(su_uz,X)))
+# define su_VFIELD_SIZE(X) ((X) == 0 ? su_ALIGN_Z(1) : (su_S(su_sz,X) < 0 ? su_ALIGN_Z(1) - su_ABS(X) : su_S(su_uz,X)))
 # define su_VSTRUCT_SIZEOF(T,F) (sizeof(T) - su_FIELD_SIZEOF(T, F))
 #endif
 
@@ -1216,6 +1229,7 @@ MCTA(sizeof(su_uz) == sizeof(void*), "SU cannot handle sizeof(su_uz) != sizeof(v
 #endif
 
 /* Regardless of P2UZ provide this one; only use it rarely */
+#define su_UP_M1 su_UZ_MAX /*!< \_ */
 #if defined UINTPTR_MAX || defined DOXYGEN
 typedef uintptr_t su_up; /*!< \_ */
 typedef intptr_t su_sp; /*!< \_ */
@@ -1319,7 +1333,8 @@ enum su_state_err_flags{
 	 * set, an actual error causes a hard program abortion (via \r{su_LOG_EMERG}). */
 	su_STATE_ERR_NOPASS = 1u<<12,
 	/*! If this flag is set and no abortion is about to happen, a corresponding
-	 * \r{su_err_number} will not be assigned to \r{su_err()}. */
+	 * \r{su_err_number} will not be assigned to \r{su_err()}.
+	 * \remarks{Effectively results in an undefined error number state (changes are possible along code path).} */
 	su_STATE_ERR_NOERROR = 1u<<13,
 	/*! Special as it plays no role in the global state machine.
 	 * Yet many types or functions that use \a{estate} arguments and use (NOT) \r{su_STATE_ERR_MASK} to overload
@@ -1454,12 +1469,13 @@ enum su_err_number{
 /*! \SU exit status code constants.
  * They correspond in name, value and meaning the Berkely \c{sysexits.h} constants that are unchanged since the 1980s.
  * After \c{su_EX_ERR} there is a value hole that ends with the first Berkeley constant \c{su_EX_USAGE} (value 64),
- * the last is \c{su_EX_CONFIG} (78). */
+ * the last Berkeley constant is \c{su_EX_CONFIG} (78), our last is \c{su_EX_NOTFOUND} (79). */
 enum su_ex_status{
 	su_EX_OK = 0, /*!< Successful termination (this is 0). */
 	su_EX_SUCCESS = su_EX_OK, /*!< Alias for \r{su_EX_OK}. */
 	su_EX_ERR = 1, /*!< Failing termination, unspecified error (value 1). */
 	su_EX_FAILURE = su_EX_ERR, /*!< Alias for \r{su_EX_ERR}. */
+
 	su_EX_USAGE = 64, /*!< Command was used incorrectly. */
 	su_EX_DATAERR = 65, /*!< User input data format error. */
 	su_EX_NOINPUT = 66, /*!< Cannot open user input file / no user data. */
@@ -1474,7 +1490,9 @@ enum su_ex_status{
 	su_EX_TEMPFAIL = 75, /*!< Temporary failure; user is invited to retry. */
 	su_EX_PROTOCOL = 76, /*!< Remote error in protocol. */
 	su_EX_NOPERM = 77, /*!< Permission denied. */
-	su_EX_CONFIG = 78 /*!< Configuration error. */
+	su_EX_CONFIG = 78, /*!< Configuration error. */
+
+	su_EX_NOTFOUND = 79 /*!< Entry not found (Sun(OS) extension). */
 };
 
 #if DVLOR(1, 0) || defined DOXYGEN
@@ -1625,7 +1643,7 @@ INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
 	su__gnlck(su__GLCK_STATE);
 }
 
-/*! \copydoc{su_state_set()} */
+/*! \cd{su_state_set()} */
 INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
 	flags = ~flags;
@@ -1694,16 +1712,15 @@ INLINE boole su_log_would_write(enum su_log_level lvl){
 }
 
 /*! Log functions of various sort.
- * The global log "domain" protects itself with \r{su_log_lock()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
  * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}.
- * If \r{su_program} is set it will be included in the per-line prefix that prepended to messages, optionally
- * supplemented by \r{su_STATE_LOG_SHOW_PID}.
+ * If \r{su_program} is set it will be included in the per-line prefix that prepended to messages,
+ * optionally supplemented by \r{su_STATE_LOG_SHOW_PID}.
  * The log level will be part of the prefix with \r{su_STATE_LOG_SHOW_LEVEL}.
  *
- * Control characters within \a{fmt} (but horizontal tabulator HT) will be normalized to space (SPACE), and a line feed
- * (LF) will be appended automatically; if \a{fmt} consists of multiple lines, each line will be logged by itself
- * separately.
+ * Control characters within \a{fmt} (but horizontal tabulator HT) will be normalized to space (SPACE),
+ * and a line feed (LF) will be appended automatically;
+ * if \a{fmt} consists of multiple lines, each line will be logged by itself separately.
  *
  * Printing of the initial prefix (if any) can be cancelled by placing the ECMA-48 control character CAN(cel,
  * octal 030 aka hexadecimal 0x18) as the first byte in \a{fmt}.
@@ -1715,7 +1732,10 @@ INLINE boole su_log_would_write(enum su_log_level lvl){
  *	su_log_write(su_LOG_WARN, "\030No prefix.\nSecond line,\030");
  *	su_log_write(su_LOG_WARN, "\030 to be continued");
  *	su_log_unlock();
- * } */
+ * }
+ * \remarks{The \r{su_err_number} of the calling thread is saved.}
+ * \remarks{The global log "domain" protects itself with \r{su_log_lock()}.}
+ */
 EXPORT void su_log_write(u32 lvl_a_flags, char const *fmt, ...);
 
 /*! See \r{su_log_write()}.
@@ -1817,7 +1837,11 @@ typedef void (*su_del_fun)(void *self);
 typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 
 /*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is \e less \e than \a{b}, 0 on equality, and a
- * value greater than 0 if \a{a} is \e greater \e than \a{b}. */
+ * value greater than 0 if \a{a} is \e greater \e than \a{b}.
+ *
+ * \remarks{When comparing signed integers \c{a - b} subtraction will give wrong results if \c{a} is the type's
+ * minimum value, therefore using \c{(a < b) ? -1 : (a > b)} is advisable.}
+ */
 typedef sz (*su_cmp_fun)(void const *a, void const *b);
 
 /*! Create a hash that reproducibly represents \SELF. */
@@ -1827,11 +1851,11 @@ typedef uz (*su_hash_fun)(void const *self);
 /*! A toolbox provides object handling knowledge to \r{COLL}.
  * Also see \r{su_TOOLBOX_I9R()}. */
 struct su_toolbox{
-	su_clone_fun tb_clone; /*!< \copydoc{su_clone_fun}. */
-	su_del_fun tb_del; /*!< \copydoc{su_del_fun}. */
-	su_assign_fun tb_assign; /*!< \copydoc{su_assign_fun}. */
-	su_cmp_fun tb_cmp; /*!< \copydoc{su_cmp_fun}. */
-	su_hash_fun tb_hash; /*!< \copydoc{su_hash_fun}. */
+	su_clone_fun tb_clone; /*!< \cd{su_clone_fun}. */
+	su_del_fun tb_del; /*!< \cd{su_del_fun}. */
+	su_assign_fun tb_assign; /*!< \cd{su_assign_fun}. */
+	su_cmp_fun tb_cmp; /*!< \cd{su_cmp_fun}. */
+	su_hash_fun tb_hash; /*!< \cd{su_hash_fun}. */
 };
 
 /* Use C-style casts, not and ever su_R()! */
@@ -1906,27 +1930,27 @@ MCTA(IS_POW2(su__ZAL_L), "Must be power of two")
 /*! \_ */
 class min{
 public:
-	static NSPC(su)s8 const s8 = su_S8_MIN; /*!< \copydoc{su_S8_MIN} */
-	static NSPC(su)s16 const s16 = su_S16_MIN; /*!< \copydoc{su_S16_MIN} */
-	static NSPC(su)s32 const s32 = su_S32_MIN; /*!< \copydoc{su_S32_MIN} */
-	static NSPC(su)s64 const s64 = su_S64_MIN; /*!< \copydoc{su_S64_MIN} */
-	static NSPC(su)sz const sz = su_SZ_MIN; /*!< \copydoc{su_SZ_MIN} */
+	static NSPC(su)s8 const s8 = su_S8_MIN; /*!< \cd{su_S8_MIN} */
+	static NSPC(su)s16 const s16 = su_S16_MIN; /*!< \cd{su_S16_MIN} */
+	static NSPC(su)s32 const s32 = su_S32_MIN; /*!< \cd{su_S32_MIN} */
+	static NSPC(su)s64 const s64 = su_S64_MIN; /*!< \cd{su_S64_MIN} */
+	static NSPC(su)sz const sz = su_SZ_MIN; /*!< \cd{su_SZ_MIN} */
 };
 
 /*! \_ */
 class max{
 public:
-	static NSPC(su)s8 const s8 = su_S8_MAX; /*!< \copydoc{su_S8_MAX} */
-	static NSPC(su)s16 const s16 = su_S16_MAX; /*!< \copydoc{su_S16_MAX} */
-	static NSPC(su)s32 const s32 = su_S32_MAX; /*!< \copydoc{su_S32_MAX} */
-	static NSPC(su)s64 const s64 = su_S64_MAX; /*!< \copydoc{su_S64_MAX} */
-	static NSPC(su)sz const sz = su_SZ_MAX; /*!< \copydoc{su_SZ_MAX} */
+	static NSPC(su)s8 const s8 = su_S8_MAX; /*!< \cd{su_S8_MAX} */
+	static NSPC(su)s16 const s16 = su_S16_MAX; /*!< \cd{su_S16_MAX} */
+	static NSPC(su)s32 const s32 = su_S32_MAX; /*!< \cd{su_S32_MAX} */
+	static NSPC(su)s64 const s64 = su_S64_MAX; /*!< \cd{su_S64_MAX} */
+	static NSPC(su)sz const sz = su_SZ_MAX; /*!< \cd{su_SZ_MAX} */
 
-	static NSPC(su)u8 const u8 = su_U8_MAX; /*!< \copydoc{su_U8_MAX} */
-	static NSPC(su)u16 const u16 = su_U16_MAX; /*!< \copydoc{su_U16_MAX} */
-	static NSPC(su)u32 const u32 = su_U32_MAX; /*!< \copydoc{su_U32_MAX} */
-	static NSPC(su)u64 const u64 = su_U64_MAX; /*!< \copydoc{su_U64_MAX} */
-	static NSPC(su)uz const uz = su_UZ_MAX; /*!< \copydoc{su_UZ_MAX} */
+	static NSPC(su)u8 const u8 = su_U8_MAX; /*!< \cd{su_U8_MAX} */
+	static NSPC(su)u16 const u16 = su_U16_MAX; /*!< \cd{su_U16_MAX} */
+	static NSPC(su)u32 const u32 = su_U32_MAX; /*!< \cd{su_U32_MAX} */
+	static NSPC(su)u64 const u64 = su_U64_MAX; /*!< \cd{su_U64_MAX} */
+	static NSPC(su)uz const uz = su_UZ_MAX; /*!< \cd{su_UZ_MAX} */
 };
 
 /* POD TYPE SUPPORT }}} */
@@ -1942,23 +1966,23 @@ class ex;
 class log;
 class state;
 
-/*! \copydoc{su_bom} */
+/*! \cd{su_bom} */
 class bom{
 public:
-	/*! \copydoc{su_BOM} */
+	/*! \cd{su_BOM} */
 	static u16 host(void) {return su_BOM;}
 
-	/*! \copydoc{su_bom_little} */
+	/*! \cd{su_bom_little} */
 	static u16 little(void) {return su_bom_little;}
 
-	/*! \copydoc{su_bom_big} */
+	/*! \cd{su_bom_big} */
 	static u16 big(void) {return su_bom_big;}
 };
 
 /*! \_ */
 class err{ // {{{
 public:
-	/*! \copydoc{su_err_number}.
+	/*! \cd{su_err_number}.
 	 * \remarks{The C++ variant uses lowercased names; those with non-alphabetic first bytes gain an \c{e} prefix,
 	 * for example \c{su_ERR_2BIG} becomes \c{err::e2big}}. */
 	enum number{
@@ -1971,93 +1995,93 @@ public:
 #endif
 	};
 
-	/*! \copydoc{su_err()} */
+	/*! \cd{su_err()} */
 	static s32 get(void) {return su_err();}
-	/*! \copydoc{su_err()} */
+	/*! \cd{su_err()} */
 	static s32 no(void) {return su_err();}
 
-	/*! \copydoc{su_err_set()} */
+	/*! \cd{su_err_set()} */
 	static void set(s32 eno) {su_err_set(eno);}
 
-	/*! \copydoc{su_err_doc()} */
+	/*! \cd{su_err_doc()} */
 	static char const *doc(s32 eno=-1) {return su_err_doc(eno);}
 
-	/*! \copydoc{su_err_name()} */
+	/*! \cd{su_err_name()} */
 	static char const *name(s32 eno=-1) {return su_err_name(eno);}
 
-	/*! \copydoc{su_err_by_name()} */
+	/*! \cd{su_err_by_name()} */
 	static s32 by_name(char const *name) {return su_err_by_name(name);}
 
-	/*! \copydoc{su_err_by_errno()} */
+	/*! \cd{su_err_by_errno()} */
 	static s32 by_errno(void) {return su_err_by_errno();}
 }; // }}}
 
 /*! \_ */
 class ex{ // {{{
 public:
-	/*! \copydoc{su_ex_status} */
+	/*! \cd{su_ex_status} */
 	enum status{
-		ok = su_EX_OK, /*!< \copydoc{su_EX_OK} */
-		success = su_EX_SUCCESS, /*!< \copydoc{su_EX_SUCCESS} */
-		err = su_EX_ERR, /*!< \copydoc{su_EX_ERR} */
-		failure = su_EX_FAILURE, /*!< \copydoc{su_EX_FAILURE} */
-		usage = su_EX_USAGE, /*!< \copydoc{su_EX_USAGE} */
-		dataerr = su_EX_DATAERR, /*!< \copydoc{su_EX_DATAERR} */
-		noinput = su_EX_NOINPUT, /*!< \copydoc{su_EX_NOINPUT} */
-		nouser = su_EX_NOUSER, /*!< \copydoc{su_EX_NOUSER} */
-		nohost = su_EX_NOHOST, /*!< \copydoc{su_EX_NOHOST} */
-		unavailable = su_EX_UNAVAILABLE, /*!< \copydoc{su_EX_UNAVAILABLE} */
-		software = su_EX_SOFTWARE, /*!< \copydoc{su_EX_SOFTWARE} */
-		oserr = su_EX_OSERR, /*!< \copydoc{su_EX_OSERR} */
-		osfile = su_EX_OSFILE, /*!< \copydoc{su_EX_OSFILE} */
-		cantcreat = su_EX_CANTCREAT, /*!< \copydoc{su_EX_CANTCREAT} */
-		ioerr = su_EX_IOERR, /*!< \copydoc{su_EX_IOERR} */
-		tempfail = su_EX_TEMPFAIL, /*!< \copydoc{su_EX_TEMPFAIL} */
-		protocol = su_EX_PROTOCOL, /*!< \copydoc{su_EX_PROTOCOL} */
-		noperm = su_EX_NOPERM, /*!< \copydoc{su_EX_NOPERM} */
-		config = su_EX_CONFIG /*!< \copydoc{su_EX_CONFIG} */
+		ok = su_EX_OK, /*!< \cd{su_EX_OK} */
+		success = su_EX_SUCCESS, /*!< \cd{su_EX_SUCCESS} */
+		err = su_EX_ERR, /*!< \cd{su_EX_ERR} */
+		failure = su_EX_FAILURE, /*!< \cd{su_EX_FAILURE} */
+		usage = su_EX_USAGE, /*!< \cd{su_EX_USAGE} */
+		dataerr = su_EX_DATAERR, /*!< \cd{su_EX_DATAERR} */
+		noinput = su_EX_NOINPUT, /*!< \cd{su_EX_NOINPUT} */
+		nouser = su_EX_NOUSER, /*!< \cd{su_EX_NOUSER} */
+		nohost = su_EX_NOHOST, /*!< \cd{su_EX_NOHOST} */
+		unavailable = su_EX_UNAVAILABLE, /*!< \cd{su_EX_UNAVAILABLE} */
+		software = su_EX_SOFTWARE, /*!< \cd{su_EX_SOFTWARE} */
+		oserr = su_EX_OSERR, /*!< \cd{su_EX_OSERR} */
+		osfile = su_EX_OSFILE, /*!< \cd{su_EX_OSFILE} */
+		cantcreat = su_EX_CANTCREAT, /*!< \cd{su_EX_CANTCREAT} */
+		ioerr = su_EX_IOERR, /*!< \cd{su_EX_IOERR} */
+		tempfail = su_EX_TEMPFAIL, /*!< \cd{su_EX_TEMPFAIL} */
+		protocol = su_EX_PROTOCOL, /*!< \cd{su_EX_PROTOCOL} */
+		noperm = su_EX_NOPERM, /*!< \cd{su_EX_NOPERM} */
+		config = su_EX_CONFIG /*!< \cd{su_EX_CONFIG} */
 	};
 }; // }}}
 
 /*! \_ */
 class log{ // {{{
 public:
-	/*! \copydoc{su_log_level} */
+	/*! \cd{su_log_level} */
 	enum level{
-		emerg = su_LOG_EMERG, /*!< \copydoc{su_LOG_EMERG} */
-		alert = su_LOG_ALERT, /*!< \copydoc{su_LOG_ALERT} */
-		crit = su_LOG_CRIT, /*!< \copydoc{su_LOG_CRIT} */
-		err = su_LOG_ERR, /*!< \copydoc{su_LOG_ERR} */
-		warn = su_LOG_WARN, /*!< \copydoc{su_LOG_WARN} */
-		notice = su_LOG_NOTICE, /*!< \copydoc{su_LOG_NOTICE} */
-		info = su_LOG_INFO, /*!< \copydoc{su_LOG_INFO} */
-		debug = su_LOG_DEBUG /*!< \copydoc{su_LOG_DEBUG} */
+		emerg = su_LOG_EMERG, /*!< \cd{su_LOG_EMERG} */
+		alert = su_LOG_ALERT, /*!< \cd{su_LOG_ALERT} */
+		crit = su_LOG_CRIT, /*!< \cd{su_LOG_CRIT} */
+		err = su_LOG_ERR, /*!< \cd{su_LOG_ERR} */
+		warn = su_LOG_WARN, /*!< \cd{su_LOG_WARN} */
+		notice = su_LOG_NOTICE, /*!< \cd{su_LOG_NOTICE} */
+		info = su_LOG_INFO, /*!< \cd{su_LOG_INFO} */
+		debug = su_LOG_DEBUG /*!< \cd{su_LOG_DEBUG} */
 	};
 
-	/*! \copydoc{su_log_flags} */
+	/*! \cd{su_log_flags} */
 	enum flags{
-		f_core = su_LOG_F_CORE /*!< \copydoc{su_LOG_F_CORE} */
+		f_core = su_LOG_F_CORE /*!< \cd{su_LOG_F_CORE} */
 	};
 
 	/*! See \r{su_log_write_fun()}. */
 	typedef void (*write_fun)(u32 lvl_a_flags, char const *msg, uz len);
 
-	/*! \copydoc{su_log_get_write_fun()} */
+	/*! \cd{su_log_get_write_fun()} */
 	static write_fun get_write_fun(void) {return R(write_fun,su_log_get_write_fun());}
 
-	/*! \copydoc{su_log_set_write_fun()} */
+	/*! \cd{su_log_set_write_fun()} */
 	static void set_write_fun(write_fun fun) {su_log_set_write_fun(R(su_log_write_fun,fun));}
 
-	/*! \copydoc{su_log_get_level()} */
+	/*! \cd{su_log_get_level()} */
 	static level get_level(void) {return S(level,su_log_get_level());}
 
-	/*! \copydoc{su_log_set_level()} */
+	/*! \cd{su_log_set_level()} */
 	static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
 
-	/*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
+	/*! \cd{su_STATE_LOG_SHOW_LEVEL} */
 	static boole get_show_level(void) {return su_state_has(su_STATE_LOG_SHOW_LEVEL);}
 
-	/*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
+	/*! \cd{su_STATE_LOG_SHOW_LEVEL} */
 	static void set_show_level(boole on){
 		if(on)
 			su_state_set(su_STATE_LOG_SHOW_LEVEL);
@@ -2065,10 +2089,10 @@ public:
 			su_state_clear(su_STATE_LOG_SHOW_LEVEL);
 	}
 
-	/*! \copydoc{su_STATE_LOG_SHOW_PID} */
+	/*! \cd{su_STATE_LOG_SHOW_PID} */
 	static boole get_show_pid(void) {return su_state_has(su_STATE_LOG_SHOW_PID);}
 
-	/*! \copydoc{su_STATE_LOG_SHOW_PID} */
+	/*! \cd{su_STATE_LOG_SHOW_PID} */
 	static void set_show_pid(boole on){
 		if(on)
 			su_state_set(su_STATE_LOG_SHOW_PID);
@@ -2076,117 +2100,117 @@ public:
 			su_state_clear(su_STATE_LOG_SHOW_PID);
 	}
 
-	/*! \copydoc{su_log_would_write()} */
+	/*! \cd{su_log_would_write()} */
 	static boole would_write(level lvl) {return su_log_would_write(S(su_log_level,lvl));}
 
-	/*! \copydoc{su_log_write()} */
+	/*! \cd{su_log_write()} */
 	static void write(u32 lvl_a_flags, char const *fmt, ...);
 
-	/*! \copydoc{su_log_vwrite()} */
+	/*! \cd{su_log_vwrite()} */
 	static void vwrite(u32 lvl_a_flags, char const *fmt, void *valp) {su_log_vwrite(lvl_a_flags, fmt, valp);}
 
-	/*! \copydoc{su_perr()} */
+	/*! \cd{su_perr()} */
 	static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
 
-	/*! \copydoc{su_log_lock()} */
+	/*! \cd{su_log_lock()} */
 	static void lock(void) {su_log_lock();}
 
-	/*! \copydoc{su_log_unlock()} */
+	/*! \cd{su_log_unlock()} */
 	static void unlock(void) {su_log_unlock();}
 }; // }}}
 
 /*! \_ */
 class state{ // {{{
 public:
-	/*! \copydoc{su_state_err_type} */
+	/*! \cd{su_state_err_type} */
 	enum err_type{
-		err_nomem = su_STATE_ERR_NOMEM, /*!< \copydoc{su_STATE_ERR_NOMEM} */
-		err_overflow = su_STATE_ERR_OVERFLOW /*!< \copydoc{su_STATE_ERR_OVERFLOW} */
+		err_nomem = su_STATE_ERR_NOMEM, /*!< \cd{su_STATE_ERR_NOMEM} */
+		err_overflow = su_STATE_ERR_OVERFLOW /*!< \cd{su_STATE_ERR_OVERFLOW} */
 	};
 
-	/*! \copydoc{su_state_err_flags} */
+	/*! \cd{su_state_err_flags} */
 	enum err_flags{
-		err_none = su_STATE_ERR_NONE, /*!< \copydoc{su_STATE_ERR_NONE} */
-		err_type_mask = su_STATE_ERR_TYPE_MASK, /*!< \copydoc{su_STATE_ERR_TYPE_MASK} */
-		err_pass = su_STATE_ERR_PASS, /*!< \copydoc{su_STATE_ERR_PASS} */
-		err_nopass = su_STATE_ERR_NOPASS, /*!< \copydoc{su_STATE_ERR_NOPASS} */
-		err_noerror = su_STATE_ERR_NOERROR, /*!< \copydoc{su_STATE_ERR_NOERROR} */
-		err_mask = su_STATE_ERR_MASK /*!< \copydoc{su_STATE_ERR_MASK} */
+		err_none = su_STATE_ERR_NONE, /*!< \cd{su_STATE_ERR_NONE} */
+		err_type_mask = su_STATE_ERR_TYPE_MASK, /*!< \cd{su_STATE_ERR_TYPE_MASK} */
+		err_pass = su_STATE_ERR_PASS, /*!< \cd{su_STATE_ERR_PASS} */
+		err_nopass = su_STATE_ERR_NOPASS, /*!< \cd{su_STATE_ERR_NOPASS} */
+		err_noerror = su_STATE_ERR_NOERROR, /*!< \cd{su_STATE_ERR_NOERROR} */
+		err_mask = su_STATE_ERR_MASK /*!< \cd{su_STATE_ERR_MASK} */
 	};
 
-	/*! \copydoc{su_state_flags} */
+	/*! \cd{su_state_flags} */
 	enum flags{
-		none = su_STATE_NONE, /*!< \copydoc{su_STATE_NONE} */
-		debug = su_STATE_DEBUG, /*!< \copydoc{su_STATE_DEBUG} */
-		verbose = su_STATE_VERBOSE, /*!< \copydoc{su_STATE_VERBOSE} */
-		reproducible = su_STATE_REPRODUCIBLE /*!< \copydoc{su_STATE_REPRODUCIBLE} */
+		none = su_STATE_NONE, /*!< \cd{su_STATE_NONE} */
+		debug = su_STATE_DEBUG, /*!< \cd{su_STATE_DEBUG} */
+		verbose = su_STATE_VERBOSE, /*!< \cd{su_STATE_VERBOSE} */
+		reproducible = su_STATE_REPRODUCIBLE /*!< \cd{su_STATE_REPRODUCIBLE} */
 	};
 
-	/*! \copydoc{su_state_create_flags} */
+	/*! \cd{su_state_create_flags} */
 	enum create_flags{
-		create_random = su_STATE_CREATE_RANDOM, /*!< \copydoc{su_STATE_CREATE_RANDOM} */
-		create_random_mem_filler = su_STATE_CREATE_RANDOM_MEM_FILLER, /*!< \copydoc{su_STATE_CREATE_RANDOM_MEM_FILLER} */
-		create_md = su_STATE_CREATE_MD, /*!< \copydoc{su_STATE_CREATE_MD} */
+		create_random = su_STATE_CREATE_RANDOM, /*!< \cd{su_STATE_CREATE_RANDOM} */
+		create_random_mem_filler = su_STATE_CREATE_RANDOM_MEM_FILLER, /*!< \cd{su_STATE_CREATE_RANDOM_MEM_FILLER} */
+		create_md = su_STATE_CREATE_MD, /*!< \cd{su_STATE_CREATE_MD} */
 
-		create_v1 = su_STATE_CREATE_V1, /*!< \copydoc{su_STATE_CREATE_V1} */
-		create_all = su_STATE_CREATE_ALL /*!< \copydoc{su_STATE_CREATE_ALL} */
+		create_v1 = su_STATE_CREATE_V1, /*!< \cd{su_STATE_CREATE_V1} */
+		create_all = su_STATE_CREATE_ALL /*!< \cd{su_STATE_CREATE_ALL} */
 	};
 
-	/*! \copydoc{su_state_gut_flags} */
+	/*! \cd{su_state_gut_flags} */
 	enum gut_flags{
-		gut_act_norm = su_STATE_GUT_ACT_NORM, /*!< \copydoc{su_STATE_GUT_ACT_NORM} */
-		gut_act_quick = su_STATE_GUT_ACT_QUICK, /*!< \copydoc{su_STATE_GUT_ACT_QUICK} */
-		gut_act_care = su_STATE_GUT_ACT_CARE, /*!< \copydoc{su_STATE_GUT_ACT_CARE} */
+		gut_act_norm = su_STATE_GUT_ACT_NORM, /*!< \cd{su_STATE_GUT_ACT_NORM} */
+		gut_act_quick = su_STATE_GUT_ACT_QUICK, /*!< \cd{su_STATE_GUT_ACT_QUICK} */
+		gut_act_care = su_STATE_GUT_ACT_CARE, /*!< \cd{su_STATE_GUT_ACT_CARE} */
 #if defined su_HAVE_STATE_GUT_FORK || defined DOXYGEN
-		gut_act_fork = su_STATE_GUT_ACT_FORK, /*!< \copydoc{su_STATE_GUT_ACT_FORK} */
+		gut_act_fork = su_STATE_GUT_ACT_FORK, /*!< \cd{su_STATE_GUT_ACT_FORK} */
 #endif
-		gut_act_mask = su_STATE_GUT_ACT_MASK, /*!< \copydoc{su_STATE_GUT_ACT_MASK} */
+		gut_act_mask = su_STATE_GUT_ACT_MASK, /*!< \cd{su_STATE_GUT_ACT_MASK} */
 
-		gut_no_handlers = su_STATE_GUT_NO_HANDLERS, /*!< \copydoc{su_STATE_GUT_NO_HANDLERS} */
-		gut_no_final_handlers = su_STATE_GUT_NO_FINAL_HANDLERS, /*!< \copydoc{su_STATE_GUT_NO_FINAL_HANDLERS} */
-		gut_no_locks = su_STATE_GUT_NO_LOCKS, /*!< \copydoc{su_STATE_GUT_NO_LOCKS} */
-		gut_no_io = su_STATE_GUT_NO_IO, /*!< \copydoc{su_STATE_GUT_NO_IO} */
+		gut_no_handlers = su_STATE_GUT_NO_HANDLERS, /*!< \cd{su_STATE_GUT_NO_HANDLERS} */
+		gut_no_final_handlers = su_STATE_GUT_NO_FINAL_HANDLERS, /*!< \cd{su_STATE_GUT_NO_FINAL_HANDLERS} */
+		gut_no_locks = su_STATE_GUT_NO_LOCKS, /*!< \cd{su_STATE_GUT_NO_LOCKS} */
+		gut_no_io = su_STATE_GUT_NO_IO, /*!< \cd{su_STATE_GUT_NO_IO} */
 
-		gut_mem_trace = su_STATE_GUT_MEM_TRACE /*!< \copydoc{su_STATE_GUT_MEM_TRACE} */
+		gut_mem_trace = su_STATE_GUT_MEM_TRACE /*!< \cd{su_STATE_GUT_MEM_TRACE} */
 	};
 
 	/*! See \r{su_state_on_gut_fun()}. */
 	typedef void (*on_gut_fun)(BITENUM(u32,gut_flags) flags);
 
-	/*! \copydoc{su_state_create_core()} */
+	/*! \cd{su_state_create_core()} */
 	static s32 create_core(char const *program_or_nil, uz flags, u32 estate=none){
 		return su_state_create_core(program_or_nil, flags, estate);
 	}
 
-	/*! \copydoc{su_state_create()} */
+	/*! \cd{su_state_create()} */
 	static s32 create(BITENUM(u32,create_flags) create_flags, char const *program_or_nil, uz flags, u32 estate=none){
 		return su_state_create(create_flags, program_or_nil, flags, estate);
 	}
 
-	/*! \copydoc{su_state_gut()} */
+	/*! \cd{su_state_gut()} */
 	static void gut(BITENUM(u32,gut_flags) flags=gut_act_norm) {su_state_gut(S(enum su_state_gut_flags,flags));}
 
-	/*! \copydoc{su_state_get()} */
+	/*! \cd{su_state_get()} */
 	static u32 get(void) {return su_state_get();}
 
-	/*! \copydoc{su_state_has()} */
+	/*! \cd{su_state_has()} */
 	static boole has(uz state) {return su_state_has(state);}
 
-	/*! \copydoc{su_state_set()} */
+	/*! \cd{su_state_set()} */
 	static void set(uz state) {su_state_set(state);}
 
-	/*! \copydoc{su_state_clear()} */
+	/*! \cd{su_state_clear()} */
 	static void clear(uz state) {su_state_clear(state);}
 
-	/*! \copydoc{su_state_err()} */
+	/*! \cd{su_state_err()} */
 	static s32 err(s32 err, BITENUM(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
 		return su_state_err(err, state, msg_or_nil);
 	}
 
-	/*! \copydoc{su_program} */
+	/*! \cd{su_program} */
 	static char const *get_program(void) {return su_program;}
 
-	/*! \copydoc{su_program} */
+	/*! \cd{su_program} */
 	static void set_program(char const *name) {su_program = name;}
 }; // }}}
 
@@ -2353,16 +2377,16 @@ struct type_toolbox{
 	/*! \_ */
 	typedef NSPC(su)type_traits<T> type_traits;
 
-	/*! \copydoc{su_clone_fun} */
+	/*! \cd{su_clone_fun} */
 	typedef typename type_traits::tp (*clone_fun)(typename type_traits::tp_const t, u32 estate);
-	/*! \copydoc{su_del_fun} */
+	/*! \cd{su_del_fun} */
 	typedef void (*del_fun)(typename type_traits::tp self);
-	/*! \copydoc{su_assign_fun} */
+	/*! \cd{su_assign_fun} */
 	typedef typename type_traits::tp (*assign_fun
 		)(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate);
-	/*! \copydoc{su_cmp_fun} */
+	/*! \cd{su_cmp_fun} */
 	typedef sz (*cmp_fun)(typename type_traits::tp_const self, typename type_traits::tp_const t);
-	/*! \copydoc{su_hash_fun} */
+	/*! \cd{su_hash_fun} */
 	typedef uz (*hash_fun)(typename type_traits::tp_const self);
 
 	/*! \r{#clone_fun} */
@@ -2384,35 +2408,35 @@ struct type_toolbox{
 /*! \_ */
 template<class T> inline T get_abs(T const &a) {return su_ABS(a);}
 
-/*! \copydoc{su_CLIP()} */
+/*! \cd{su_CLIP()} */
 template<class T>
 inline T const &get_clip(T const &a, T const &min, T const &max) {return su_CLIP(a, min, max);}
 
-/*! \copydoc{su_MAX()} */
+/*! \cd{su_MAX()} */
 template<class T>
 inline T const &get_max(T const &a, T const &b) {return su_MAX(a, b);}
 
-/*! \copydoc{su_MIN()} */
+/*! \cd{su_MIN()} */
 template<class T>
 inline T const &get_min(T const &a, T const &b) {return su_MIN(a, b);}
 
-/*! \copydoc{su_ROUND_DOWN()} */
+/*! \cd{su_ROUND_DOWN()} */
 template<class T>
 inline T const &get_round_down(T const &a, T const &b) {return su_ROUND_DOWN(a, b);}
 
-/*! \copydoc{su_ROUND_DOWN2()} */
+/*! \cd{su_ROUND_DOWN2()} */
 template<class T>
 inline T const &get_round_down2(T const &a, T const &b) {return su_ROUND_DOWN2(a, b);}
 
-/*! \copydoc{su_ROUND_UP()} */
+/*! \cd{su_ROUND_UP()} */
 template<class T>
 inline T const &get_round_up(T const &a, T const &b) {return su_ROUND_UP(a, b);}
 
-/*! \copydoc{su_ROUND_UP2()} */
+/*! \cd{su_ROUND_UP2()} */
 template<class T>
 inline T const &get_round_up2(T const &a, T const &b) {return su_ROUND_UP2(a, b);}
 
-/*! \copydoc{su_IS_POW2()} */
+/*! \cd{su_IS_POW2()} */
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
 /* BASIC TYPE TOOLBOX AND TRAITS, SUPPORT }}} */
@@ -2427,7 +2451,9 @@ NSPC_END(su)
  * \brief Collections
  *
  * In \SU, and by default, collections learn how to deal with managed objects through \r{su_toolbox} objects.
- * (For behaviour peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
+ * When creating instances which own the objects they manage, the \r{su_toolbox} and at least its members
+ * \r{su_toolbox::tb_clone}, \r{su_toolbox::tb_del} and \r{su_toolbox::tb_assign} are asserted.
+ * (For general behaviour peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
  *
  * The C++ variants deduce many more things, and automatically, through (specializations of) \r{type_traits},
  * \r{type_toolbox}, and \r{auto_type_toolbox}.

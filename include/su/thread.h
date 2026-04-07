@@ -153,29 +153,29 @@ public:
 	s32 create( .. u32 estate);
 #endif
 
-	/*! \copydoc{su_thread_name()} */
+	/*! \cd{su_thread_name()} */
 	char const *name(void) const {return su_thread_name(this);}
 
-	/*! \copydoc{su_thread_err()} */
+	/*! \cd{su_thread_err()} */
 	s32 err(void) const {return su_thread_err(this);}
 
-	/*! \copydoc{su_thread_err_set()} */
+	/*! \cd{su_thread_err_set()} */
 	void err_set(s32 e) {su_thread_err_set(this, e);}
 
 #ifdef su_HAVE_MT
 # error
 #endif /* su_HAVE_MT */
 
-	/*! \copydoc{su_thread_self()} */
+	/*! \cd{su_thread_self()} */
 	static thread *self(void) {return R(thread*,su_thread_self());}
 
-	/*! \copydoc{su_thread_get_err()} */
+	/*! \cd{su_thread_get_err()} */
 	static s32 get_err(void) {return su_thread_get_err();}
 
-	/*! \copydoc{su_thread_set_err()} */
+	/*! \cd{su_thread_set_err()} */
 	static void set_err(s32 e) {su_thread_set_err(e);}
 
-	/*! \copydoc{su_thread_yield()} */
+	/*! \cd{su_thread_yield()} */
 	static void yield(void) {su_thread_yield();}
 };
 

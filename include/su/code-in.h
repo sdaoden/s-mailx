@@ -127,6 +127,7 @@
 #define ROUND_UP2 su_ROUND_UP2
 
 #define ALIGNOF su_ALIGNOF
+#define ALIGN_PAGE su_ALIGN_PAGE
 #define ALIGN_P su_ALIGN_P
 #define ALIGN_Z_OVER su_ALIGN_Z_OVER
 #define ALIGN_Z su_ALIGN_Z
@@ -344,6 +345,8 @@
 #define SZ_MIN su_SZ_MIN
 #define SZ_MAX su_SZ_MAX
 #define UZ_BITS su_UZ_BITS
+
+#define UP_M1 su_UP_M1
 
 /* state_gut */
 #if DVLOR(1, 0) || defined su_HAVE_STATE_GUT_FORK

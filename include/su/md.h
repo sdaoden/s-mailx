@@ -98,7 +98,7 @@ EXPORT struct su_md *su_md_new_by_algo(enum su_md_algo algo, u32 estate);
  * \ESTATE; \NIL if \a{name} is not supported or upon failure. */
 EXPORT struct su_md *su_md_new_by_name(char const *name, u32 estate);
 
-/*! \copydoc{su_md_vtbl::mdvtbl_del} */
+/*! \cd{su_md_vtbl::mdvtbl_del} */
 EXPORT void su_md_del(struct su_md *self);
 
 /*! Fetch the \r{su_md_prop}erty \a{prop}, or \c{(su_up)-1} on error.
@@ -184,63 +184,63 @@ class md;
 class md{
 	su_CLASS_NO_COPY(md);
 public:
-	/*! \copydoc{su_md_algo} */
+	/*! \cd{su_md_algo} */
 	enum algo{
-		algo_siphash = su_MD_ALGO_SIPHASH, /*!< \copydoc{su_MD_ALGO_SIPHASH} */
-		algo_extra = su_MD_ALGO_EXTRA /*!< \copydoc{su_MD_ALGO_EXTRA} */
+		algo_siphash = su_MD_ALGO_SIPHASH, /*!< \cd{su_MD_ALGO_SIPHASH} */
+		algo_extra = su_MD_ALGO_EXTRA /*!< \cd{su_MD_ALGO_EXTRA} */
 	};
 
-	/*! \copydoc{su_md_prop} */
+	/*! \cd{su_md_prop} */
 	enum prop{
-		prop_algo = su_MD_PROP_ALGO, /*!< \copydoc{su_MD_PROP_ALGO} */
-		prop_name = su_MD_PROP_NAME, /*!< \copydoc{su_MD_PROP_NAME} */
-		prop_display_name = su_MD_PROP_DISPLAY_NAME, /*!< \copydoc{su_MD_PROP_DISPLAY_NAME} */
-		prop_key_size_min = su_MD_PROP_KEY_SIZE_MIN, /*!< \copydoc{su_MD_PROP_KEY_SIZE_MIN} */
-		prop_key_size_max = su_MD_PROP_KEY_SIZE_MAX, /*!< \copydoc{su_MD_PROP_KEY_SIZE_MAX} */
-		prop_digest_size_min = su_MD_PROP_DIGEST_SIZE_MIN, /*!< \copydoc{su_MD_PROP_DIGEST_SIZE_MIN} */
-		prop_digest_size_max = su_MD_PROP_DIGEST_SIZE_MAX, /*!< \copydoc{su_MD_PROP_DIGEST_SIZE_MAX} */
-		prop_block_size = su_MD_PROP_BLOCK_SIZE /*!< \copydoc{su_MD_PROP_BLOCK_SIZE} */
+		prop_algo = su_MD_PROP_ALGO, /*!< \cd{su_MD_PROP_ALGO} */
+		prop_name = su_MD_PROP_NAME, /*!< \cd{su_MD_PROP_NAME} */
+		prop_display_name = su_MD_PROP_DISPLAY_NAME, /*!< \cd{su_MD_PROP_DISPLAY_NAME} */
+		prop_key_size_min = su_MD_PROP_KEY_SIZE_MIN, /*!< \cd{su_MD_PROP_KEY_SIZE_MIN} */
+		prop_key_size_max = su_MD_PROP_KEY_SIZE_MAX, /*!< \cd{su_MD_PROP_KEY_SIZE_MAX} */
+		prop_digest_size_min = su_MD_PROP_DIGEST_SIZE_MIN, /*!< \cd{su_MD_PROP_DIGEST_SIZE_MIN} */
+		prop_digest_size_max = su_MD_PROP_DIGEST_SIZE_MAX, /*!< \cd{su_MD_PROP_DIGEST_SIZE_MAX} */
+		prop_block_size = su_MD_PROP_BLOCK_SIZE /*!< \cd{su_MD_PROP_BLOCK_SIZE} */
 	};
 
 	/*! \NOOP; \r{setup()} is real constructor. */
 	md(void) {}
 
-	/*! \copydoc{su_md_del()} */
+	/*! \cd{su_md_del()} */
 	virtual ~md(void) {}
 
-	/*! \copydoc{su_md_property()} */
+	/*! \cd{su_md_property()} */
 	virtual up property(prop prop) const; // Default always (up)-1
 
-	/*! \copydoc{su_md_name()} */
+	/*! \cd{su_md_name()} */
 	char const *name(void) const {return R(char const*,property(prop_name));}
 
-	/*! \copydoc{su_md_display_name()} */
+	/*! \cd{su_md_display_name()} */
 	char const *display_name(void) const {return R(char const*,property(prop_display_name));}
 
-	/*! \copydoc{su_md_setup()}
-	 * For the implementation: \copydoc{su_md_vtbl::mdvtbl_setup} */
+	/*! \cd{su_md_setup()}
+	 * For the implementation: \cd{su_md_vtbl::mdvtbl_setup} */
 	virtual s32 setup(void const *key, uz key_len, uz digest_size) = 0;
 
-	/*! \copydoc{su_md_update()}
-	 * For the implementation: \copydoc{su_md_vtbl::mdvtbl_update} */
+	/*! \cd{su_md_update()}
+	 * For the implementation: \cd{su_md_vtbl::mdvtbl_update} */
 	virtual void update(void const *dat, uz dat_len) = 0;
 
-	/*! \copydoc{su_md_end()}
-	 * For the implementation: \copydoc{su_md_vtbl::mdvtbl_end} */
+	/*! \cd{su_md_end()}
+	 * For the implementation: \cd{su_md_vtbl::mdvtbl_end} */
 	virtual void end(void *store) = 0;
 
-	/*! \copydoc{su_md_new_by_algo()} */
+	/*! \cd{su_md_new_by_algo()} */
 	static md *new_by_algo(algo algo, u32 estate=state::none);
 
-	/*! \copydoc{su_md_new_by_name()} */
+	/*! \cd{su_md_new_by_name()} */
 	static md *new_by_name(char const *name, u32 estate=state::none);
 
-	/*! \copydoc{su_md_install()}
+	/*! \cd{su_md_install()}
 	 * The C++ implementation will be usable from C code, too;
 	 * and see \a{ctor} matches prototype of \r{su_new_fun}. */
 	static s32 install(char const *name, md *(*ctor)(u32 estate), u32 estate);
 
-	/*! \copydoc{su_md_uninstall()} */
+	/*! \cd{su_md_uninstall()} */
 	static boole uninstall(char const *name, md *(*ctor)(u32 estate));
 };
 /* }}} */

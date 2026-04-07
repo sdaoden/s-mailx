@@ -97,6 +97,10 @@ struct su_avopt;
  *
  * For example, the long option \c{account}, which can be specified as \c{--account myself} or \c{--account=myself} on
  * the command line, is then expected on a line on its own as \c{account myself} or \c{account=myself}.
+ *
+ * \remarks{The variant without equal-sign is possibly more user-friendly, because \c{x = y} is usally an error (value
+ * is \c{= y}), whereas \c{x  y} is not (value is \c{y}).
+ * Leading value whitespace is only possible in the former syntax, however.}
  * }\li{
  * With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} of short and long option strings are checked for notational errors.
  * If long options map to existing short options, it is verified their "takes argument" state is identical.
@@ -133,7 +137,7 @@ struct su_avopt;
  *				fprintf(n_stdout, "\nLong options:\n");
  *				su_avopt_dump_doc(&avo, &a_main_dump_doc, su_S(su_up,n_stdout));
  *			}
- *			 exit(0);
+ *			exit(0);
  *		case '#':
  *			n_var_setup_batch_mode();
  *			break;
@@ -249,24 +253,24 @@ class avopt;
 class EXPORT avopt : private su_avopt{
 	su_CLASS_NO_COPY(avopt);
 public:
-	/*! \copydoc{su_avopt_state} */
+	/*! \cd{su_avopt_state} */
 	enum state{
-		state_done = su_AVOPT_STATE_DONE, /*!< \copydoc{su_AVOPT_STATE_DONE} */
-		state_stop = su_AVOPT_STATE_STOP, /*!< \copydoc{su_AVOPT_STATE_STOP} */
-		state_err_arg = su_AVOPT_STATE_ERR_ARG, /*!< \copydoc{su_AVOPT_STATE_ERR_ARG} */
-		state_err_opt = su_AVOPT_STATE_ERR_OPT /*!< \copydoc{su_AVOPT_STATE_ERR_OPT} */
+		state_done = su_AVOPT_STATE_DONE, /*!< \cd{su_AVOPT_STATE_DONE} */
+		state_stop = su_AVOPT_STATE_STOP, /*!< \cd{su_AVOPT_STATE_STOP} */
+		state_err_arg = su_AVOPT_STATE_ERR_ARG, /*!< \cd{su_AVOPT_STATE_ERR_ARG} */
+		state_err_opt = su_AVOPT_STATE_ERR_OPT /*!< \cd{su_AVOPT_STATE_ERR_OPT} */
 	};
 
-	/*! \copydoc{su_avopt_fmt_err_arg} */
+	/*! \cd{su_avopt_fmt_err_arg} */
 	static char const * const fmt_err_arg;
 
-	/*! \copydoc{su_avopt_fmt_err_opt} */
+	/*! \cd{su_avopt_fmt_err_opt} */
 	static char const * const fmt_err_opt;
 
 	/*! \NOOP; \r{setup()} is real constructor. */
 	avopt(void) {DBGX( STRUCT_ZERO(su_avopt, this); )}
 
-	/*! \copydoc{su_avopt_setup()} */
+	/*! \cd{su_avopt_setup()} */
 	avopt(u32 argc, char const * const *argv, char const *opts_short, char const * const *opts_long=NIL){
 		su_avopt_setup(this, argc, argv, opts_short, opts_long);
 	}
@@ -274,39 +278,39 @@ public:
 	/*! \_ */
 	~avopt(void) {}
 
-	/*! \copydoc{su_avopt_setup()} */
+	/*! \cd{su_avopt_setup()} */
 	avopt &setup(u32 argc, char const * const *argv, char const *opts_short, char const * const *opts_long=NIL){
 		SELFTHIS_RET(su_avopt_setup(this, argc, argv, opts_short, opts_long));
 	}
 
-	/*! \copydoc{su_avopt_parse()} */
+	/*! \cd{su_avopt_parse()} */
 	s32 parse(void) {return su_avopt_parse(this);}
 
-	/*! \copydoc{su_avopt_parse_line()} */
+	/*! \cd{su_avopt_parse_line()} */
 	s32 parse_line(char const *cp) {return su_avopt_parse_line(this, cp);}
 
-	/*! \copydoc{su_avopt::avo_opts_short} */
+	/*! \cd{su_avopt::avo_opts_short} */
 	char const *opts_short(void) const {return avo_opts_short;}
 
-	/*! \copydoc{su_avopt::avo_opts_long} */
+	/*! \cd{su_avopt::avo_opts_long} */
 	char const * const *opts_long(void) const {return avo_opts_long;}
 
-	/*! \copydoc{su_avopt::avo_argv} */
+	/*! \cd{su_avopt::avo_argv} */
 	char const * const *argv(void) const {return avo_argv;}
 
-	/*! \copydoc{su_avopt::avo_argc} */
+	/*! \cd{su_avopt::avo_argc} */
 	u32 argc(void) const {return avo_argc;}
 
-	/*! \copydoc{su_avopt::avo_current_opt} */
+	/*! \cd{su_avopt::avo_current_opt} */
 	s32 current_opt(void) const {return avo_current_opt;}
 
-	/*! \copydoc{su_avopt::avo_current_arg} */
+	/*! \cd{su_avopt::avo_current_arg} */
 	char const *current_arg(void) const {return avo_current_arg;}
 
-	/*! \copydoc{su_avopt::avo_current_err_opt} */
+	/*! \cd{su_avopt::avo_current_err_opt} */
 	char const *current_err_opt(void) const {return avo_current_err_opt;}
 
-	/*! \copydoc{su_avopt_dump_doc()} */
+	/*! \cd{su_avopt_dump_doc()} */
 	boole dump_doc(boole (*ptf)(up cookie, boole has_arg, char const *sopt, char const *lopt, char const *doc), up cookie=0) const{
 		return su_avopt_dump_doc(this, ptf, cookie);
 	}

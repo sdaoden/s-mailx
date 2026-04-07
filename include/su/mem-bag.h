@@ -111,6 +111,8 @@ struct su_mem_bag{
 #endif
 };
 
+EXPORT struct su_mem_bag *su__mem_bag_reset(struct su_mem_bag *self, boole quiet);
+
 /*! \a{bsz} is a buffer size hint used to space memory chunk pool buffers,
  * which thus also defines the maximum size of chunks which are served (less some internal management overhead).
  * If \a{bsz} is 0 then two pages (\r{su_PAGE_SIZE}) are used (to accommodate the use case of page allocations),
@@ -136,8 +138,11 @@ EXPORT struct su_mem_bag *su_mem_bag_fixate(struct su_mem_bag *self);
  * If \SELF owns a stack of \r{su_mem_bag_push()}ed objects, these will be forcefully destructed.
  * The cleanup will release all LOFI memory, drop all the relaxation created by \r{su_mem_bag_auto_snap_create()}
  * and all auto-reclaimed and flux storage that is not covered by r{su_mem_bag_fixate()}.
- * \remarks{Possible \r{su_HAVE_DEBUG} logs via \r{su_LOG_DEBUG}.} */
-EXPORT struct su_mem_bag *su_mem_bag_reset(struct su_mem_bag *self);
+ * \remarks{Possible \r{su_HAVE_DEBUG} logs occur via \r{su_LOG_DEBUG}.} */
+INLINE struct su_mem_bag *su_mem_bag_reset(struct su_mem_bag *self){
+	ASSERT_RET(self != NIL, NIL);
+	return su__mem_bag_reset(self, FAL0);
+}
 
 /*! Push the initialized bag \a{that_one} onto the bag stack layer of \SELF.
  * \a{that_one} will be used to serve memory until \r{su_mem_bag_pop()} or \r{su_mem_bag_reset()} is called.
@@ -355,74 +360,77 @@ NSPC_BEGIN(su)
 class mem_bag;
 
 /* mem_bag {{{ */
+class imf;
+
 /*!
  * \ingroup MEM_BAG
  * C++ variant of \r{MEM_BAG} (\r{su/mem-bag.h})
  */
 class EXPORT mem_bag : private su_mem_bag{
+	friend class imf;
 	su_CLASS_NO_COPY(mem_bag);
 public:
-	/*! \copydoc{su_mem_bag_alloc_flags} */
+	/*! \cd{su_mem_bag_alloc_flags} */
 	enum alloc_flags{
-		alloc_none = su_MEM_BAG_ALLOC_NONE, /*!< \copydoc{su_MEM_BAG_ALLOC_NONE} */
-		alloc_zero = su_MEM_BAG_ALLOC_ZERO, /*!< \copydoc{su_MEM_BAG_ALLOC_ZERO} */
+		alloc_none = su_MEM_BAG_ALLOC_NONE, /*!< \cd{su_MEM_BAG_ALLOC_NONE} */
+		alloc_zero = su_MEM_BAG_ALLOC_ZERO, /*!< \cd{su_MEM_BAG_ALLOC_ZERO} */
 
-		alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK, /*!< \copydoc{su_MEM_BAG_ALLOC_OVERFLOW_OK} */
-		alloc_nomem_ok = su_MEM_BAG_ALLOC_NOMEM_OK, /*!< \copydoc{su_MEM_BAG_ALLOC_NOMEM_OK} */
-		alloc_mayfail = su_MEM_BAG_ALLOC_MAYFAIL, /*!< \copydoc{su_MEM_BAG_ALLOC_MAYFAIL} */
-		alloc_mustfail = su_MEM_BAG_ALLOC_MUSTFAIL /*!< \copydoc{su_MEM_BAG_ALLOC_MUSTFAIL} */
+		alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK, /*!< \cd{su_MEM_BAG_ALLOC_OVERFLOW_OK} */
+		alloc_nomem_ok = su_MEM_BAG_ALLOC_NOMEM_OK, /*!< \cd{su_MEM_BAG_ALLOC_NOMEM_OK} */
+		alloc_mayfail = su_MEM_BAG_ALLOC_MAYFAIL, /*!< \cd{su_MEM_BAG_ALLOC_MAYFAIL} */
+		alloc_mustfail = su_MEM_BAG_ALLOC_MUSTFAIL /*!< \cd{su_MEM_BAG_ALLOC_MUSTFAIL} */
 	};
 
-	/*! \copydoc{su_mem_bag_create()} */
+	/*! \cd{su_mem_bag_create()} */
 	mem_bag(uz bsz=0) {su_mem_bag_create(this, bsz);}
 
-	/*! \copydoc{su_mem_bag_gut()} */
+	/*! \cd{su_mem_bag_gut()} */
 	~mem_bag(void) {su_mem_bag_gut(this);}
 
-	/*! \copydoc{su_mem_bag_fixate()} */
+	/*! \cd{su_mem_bag_fixate()} */
 	mem_bag &fixate(void) {SELFTHIS_RET(su_mem_bag_fixate(this));}
 
-	/*! \copydoc{su_mem_bag_reset()} */
+	/*! \cd{su_mem_bag_reset()} */
 	mem_bag &reset(void) {SELFTHIS_RET(su_mem_bag_reset(this));}
 
-	/*! \copydoc{su_mem_bag_push()} */
+	/*! \cd{su_mem_bag_push()} */
 	mem_bag &push(mem_bag &that_one) {SELFTHIS_RET(su_mem_bag_push(this, &that_one));}
 
-	/*! \copydoc{su_mem_bag_pop()} */
+	/*! \cd{su_mem_bag_pop()} */
 	mem_bag &pop(mem_bag &that_one) {SELFTHIS_RET(su_mem_bag_pop(this, &that_one));}
 
-	/*! \copydoc{su_mem_bag_top()} */
+	/*! \cd{su_mem_bag_top()} */
 	mem_bag &top(void) {return (mb_top != NIL) ? *S(mem_bag*,mb_top) : *this;}
 
 #ifdef su_HAVE_MEM_BAG_AUTO
-	/*! \copydoc{su_mem_bag_auto_snap_create()} */
+	/*! \cd{su_mem_bag_auto_snap_create()} */
 	mem_bag &auto_snap_create(void) {SELFTHIS_RET(su_mem_bag_auto_snap_create(this));}
 
-	/*! \copydoc{su_mem_bag_auto_snap_gut()} */
+	/*! \cd{su_mem_bag_auto_snap_gut()} */
 	mem_bag &auto_snap_gut(void) {SELFTHIS_RET(su_mem_bag_auto_snap_gut(this));}
 
-	/*! \copydoc{su_mem_bag_auto_snap_unroll()} */
+	/*! \cd{su_mem_bag_auto_snap_unroll()} */
 	mem_bag &auto_snap_unroll(void) {SELFTHIS_RET(su_mem_bag_auto_snap_unroll(this));}
 
-	/*! \copydoc{su_mem_bag_auto_allocate()} */
+	/*! \cd{su_mem_bag_auto_allocate()} */
 	void *auto_allocate(uz size, uz no=1, BITENUM(u32,alloc_flags) af=alloc_none){
 		return su_mem_bag_auto_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
 	}
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-	/*! \copydoc{su_mem_bag_lofi_snap_create()} */
+	/*! \cd{su_mem_bag_lofi_snap_create()} */
 	void *lofi_snap_create(void) {return su_mem_bag_lofi_snap_create(this);}
 
-	/*! \copydoc{su_mem_bag_lofi_snap_gut()} */
+	/*! \cd{su_mem_bag_lofi_snap_gut()} */
 	mem_bag &lofi_snap_gut(void *cookie) {SELFTHIS_RET(su_mem_bag_lofi_snap_gut(this, cookie));}
 
-	/*! \copydoc{su_mem_bag_lofi_allocate()} */
+	/*! \cd{su_mem_bag_lofi_allocate()} */
 	void *lofi_allocate(uz size, uz no=1, BITENUM(u32,alloc_flags) af=alloc_none){
 		return su_mem_bag_lofi_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
 	}
 
-	/*! \copydoc{su_mem_bag_lofi_free()} */
+	/*! \cd{su_mem_bag_lofi_free()} */
 	mem_bag &lofi_free(void *ovp) {SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DVL_LOC_ARGS_INJ));}
 #endif /* su_HAVE_MEM_BAG_LOFI */
 };

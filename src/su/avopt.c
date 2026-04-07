@@ -97,7 +97,8 @@ jouter:
 
 			for(;; ++xcurr){
 				if((c = *xcurr) == '\0')
-					goto jerrarg;
+					/* In parse_line() mode, this is an empty argument, no error! */
+					break;/*goto jerrarg;*/
 				if(!su_cs_is_space(c))
 					break;
 			}

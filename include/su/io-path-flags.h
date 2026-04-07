@@ -120,69 +120,69 @@ NSPC_BEGIN(su)
  * @{
  */
 
-/*! \copydoc{su_iopf_access} */
+/*! \cd{su_iopf_access} */
 enum iopf_access{
-	iopf_exist = su_IOPF_EXIST, /*!< \copydoc{su_IOPF_EXIST} */
-	iopf_exec = su_IOPF_EXEC, /*!< \copydoc{su_IOPF_EXEC} */
-	iopf_write = su_IOPF_WRITE, /*!< \copydoc{su_IOPF_WRITE} */
-	iopf_read = su_IOPF_READ /*!< \copydoc{su_IOPF_READ} */
+	iopf_exist = su_IOPF_EXIST, /*!< \cd{su_IOPF_EXIST} */
+	iopf_exec = su_IOPF_EXEC, /*!< \cd{su_IOPF_EXEC} */
+	iopf_write = su_IOPF_WRITE, /*!< \cd{su_IOPF_WRITE} */
+	iopf_read = su_IOPF_READ /*!< \cd{su_IOPF_READ} */
 };
 enum{
-	iopf_access_mask = su_IOPF_ACCESS_MASK /*!< \copydoc{su_IOPF_ACCESS_MASK} */
+	iopf_access_mask = su_IOPF_ACCESS_MASK /*!< \cd{su_IOPF_ACCESS_MASK} */
 };
 
-/*! \copydoc{su_iopf_at} */
+/*! \cd{su_iopf_at} */
 enum iopf_at{
-	iopf_at_none = su_IOPF_AT_NONE, /*!< \copydoc{su_IOPF_AT_NONE} */
-	iopf_at_rmdir = su_IOPF_AT_RMDIR, /*!< \copydoc{su_IOPF_AT_RMDIR} */
-	iopf_at_eaccess = su_IOPF_AT_EACCESS, /*!< \copydoc{su_IOPF_AT_EACCESS} */
-	iopf_at_lnk_follow = su_IOPF_AT_LNK_FOLLOW, /*!< \copydoc{su_IOPF_AT_LNK_FOLLOW} */
-	iopf_at_lnk_nofollow = su_IOPF_AT_LNK_NOFOLLOW/*!< \copydoc{su_IOPF_AT_LNK_NOFOLLOW} */
+	iopf_at_none = su_IOPF_AT_NONE, /*!< \cd{su_IOPF_AT_NONE} */
+	iopf_at_rmdir = su_IOPF_AT_RMDIR, /*!< \cd{su_IOPF_AT_RMDIR} */
+	iopf_at_eaccess = su_IOPF_AT_EACCESS, /*!< \cd{su_IOPF_AT_EACCESS} */
+	iopf_at_lnk_follow = su_IOPF_AT_LNK_FOLLOW, /*!< \cd{su_IOPF_AT_LNK_FOLLOW} */
+	iopf_at_lnk_nofollow = su_IOPF_AT_LNK_NOFOLLOW/*!< \cd{su_IOPF_AT_LNK_NOFOLLOW} */
 };
 
-/*! \copydoc{su_iopf_permission} */
+/*! \cd{su_iopf_permission} */
 enum iopf_permission{
-	iopf_xoth = su_IOPF_XOTH, /*!< \copydoc{su_IOPF_XOTH} */
-	iopf_woth = su_IOPF_WOTH, /*!< \copydoc{su_IOPF_WOTH} */
-	iopf_roth = su_IOPF_ROTH, /*!< \copydoc{su_IOPF_ROTH} */
-	iopf_rwxoth = su_IOPF_RWXOTH, /*!< \copydoc{su_IOPF_RWXOTH} */
-	iopf_xgrp = su_IOPF_XGRP, /*!< \copydoc{su_IOPF_XGRP} */
-	iopf_wgrp = su_IOPF_WGRP, /*!< \copydoc{su_IOPF_WGRP} */
-	iopf_rgrp = su_IOPF_RGRP, /*!< \copydoc{su_IOPF_RGRP} */
-	iopf_rwxgrp = su_IOPF_RWXGRP, /*!< \copydoc{su_IOPF_RWXGRP} */
-	iopf_xusr = su_IOPF_XUSR, /*!< \copydoc{su_IOPF_XUSR} */
-	iopf_wusr = su_IOPF_WUSR, /*!< \copydoc{su_IOPF_WUSR} */
-	iopf_rusr = su_IOPF_RUSR, /*!< \copydoc{su_IOPF_RUSR} */
-	iopf_rwxusr = su_IOPF_RWXUSR /*!< \copydoc{su_IOPF_RWXUSR} */
+	iopf_xoth = su_IOPF_XOTH, /*!< \cd{su_IOPF_XOTH} */
+	iopf_woth = su_IOPF_WOTH, /*!< \cd{su_IOPF_WOTH} */
+	iopf_roth = su_IOPF_ROTH, /*!< \cd{su_IOPF_ROTH} */
+	iopf_rwxoth = su_IOPF_RWXOTH, /*!< \cd{su_IOPF_RWXOTH} */
+	iopf_xgrp = su_IOPF_XGRP, /*!< \cd{su_IOPF_XGRP} */
+	iopf_wgrp = su_IOPF_WGRP, /*!< \cd{su_IOPF_WGRP} */
+	iopf_rgrp = su_IOPF_RGRP, /*!< \cd{su_IOPF_RGRP} */
+	iopf_rwxgrp = su_IOPF_RWXGRP, /*!< \cd{su_IOPF_RWXGRP} */
+	iopf_xusr = su_IOPF_XUSR, /*!< \cd{su_IOPF_XUSR} */
+	iopf_wusr = su_IOPF_WUSR, /*!< \cd{su_IOPF_WUSR} */
+	iopf_rusr = su_IOPF_RUSR, /*!< \cd{su_IOPF_RUSR} */
+	iopf_rwxusr = su_IOPF_RWXUSR /*!< \cd{su_IOPF_RWXUSR} */
 };
 enum{
-	iopf_perm_mask = su_IOPF_PERM_MASK, /*!< \copydoc{su_IOPF_PERM_MASK} */
-	iopf_perm_def = su_IOPF_PERM_DEF /*!< \copydoc{su_IOPF_PERM_DEF} */
+	iopf_perm_mask = su_IOPF_PERM_MASK, /*!< \cd{su_IOPF_PERM_MASK} */
+	iopf_perm_def = su_IOPF_PERM_DEF /*!< \cd{su_IOPF_PERM_DEF} */
 };
 
-/*! \copydoc{su_iopf_protection} */
+/*! \cd{su_iopf_protection} */
 enum iopf_protection{
-	iopf_svtx = su_IOPF_SVTX, /*!< \copydoc{su_IOPF_SVTX} */
-	iopf_sgid = su_IOPF_SGID, /*!< \copydoc{su_IOPF_SGID} */
-	iopf_suid = su_IOPF_SUID /*!< \copydoc{su_IOPF_SUID} */
+	iopf_svtx = su_IOPF_SVTX, /*!< \cd{su_IOPF_SVTX} */
+	iopf_sgid = su_IOPF_SGID, /*!< \cd{su_IOPF_SGID} */
+	iopf_suid = su_IOPF_SUID /*!< \cd{su_IOPF_SUID} */
 };
 enum{
-	iopf_prot_mask = su_IOPF_PROT_MASK /*!< \copydoc{su_IOPF_PROT_MASK} */
+	iopf_prot_mask = su_IOPF_PROT_MASK /*!< \cd{su_IOPF_PROT_MASK} */
 };
 
-/*! \copydoc{su_iopf_type} */
+/*! \cd{su_iopf_type} */
 enum iopf_type{
-	iopf_fifo = su_IOPF_FIFO, /*!< \copydoc{su_IOPF_FIFO} */
-	iopf_chr = su_IOPF_CHR, /*!< \copydoc{su_IOPF_CHR} */
-	iopf_dir = su_IOPF_DIR, /*!< \copydoc{su_IOPF_DIR} */
-	iopf_blk = su_IOPF_BLK, /*!< \copydoc{su_IOPF_BLK} */
-	iopf_reg = su_IOPF_REG, /*!< \copydoc{su_IOPF_REG} */
-	iopf_lnk = su_IOPF_LNK, /*!< \copydoc{su_IOPF_LNK} */
-	iopf_sock = su_IOPF_SOCK, /*!< \copydoc{su_IOPF_SOCK} */
-	iopf_wht = su_IOPF_WHT /*!< \copydoc{su_IOPF_WHT} */
+	iopf_fifo = su_IOPF_FIFO, /*!< \cd{su_IOPF_FIFO} */
+	iopf_chr = su_IOPF_CHR, /*!< \cd{su_IOPF_CHR} */
+	iopf_dir = su_IOPF_DIR, /*!< \cd{su_IOPF_DIR} */
+	iopf_blk = su_IOPF_BLK, /*!< \cd{su_IOPF_BLK} */
+	iopf_reg = su_IOPF_REG, /*!< \cd{su_IOPF_REG} */
+	iopf_lnk = su_IOPF_LNK, /*!< \cd{su_IOPF_LNK} */
+	iopf_sock = su_IOPF_SOCK, /*!< \cd{su_IOPF_SOCK} */
+	iopf_wht = su_IOPF_WHT /*!< \cd{su_IOPF_WHT} */
 };
 enum{
-	iopf_type_mask = su_IOPF_TYPE_MASK /*!< \copydoc{su_IOPF_TYPE_MASK} */
+	iopf_type_mask = su_IOPF_TYPE_MASK /*!< \cd{su_IOPF_TYPE_MASK} */
 };
 
 /*! @} *//* }}} */

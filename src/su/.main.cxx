@@ -20,6 +20,7 @@ su_USECASE_MX_DISABLED
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
+#include <su/imf.h>
 #include <su/md.h>
 # include <su/md-siphash.h>
 #include <su/mem.h>
@@ -39,19 +40,24 @@ su_USECASE_MX_DISABLED
 NSPC_USE(su)
 
 #define a_ERR() do {log::write(log::alert, "%u\n", __LINE__); ++a_errors;} while(0)
+#define a_ERRI(I) do {log::write(log::alert, "%u (%lu)\n", __LINE__, S(ul,I)); ++a_errors;} while(0)
+#define a_ERRS(S) do {log::write(log::alert, "%u (%s)\n", __LINE__, S); ++a_errors;} while(0)
+#define a_ERRIS(I,S) do {log::write(log::alert, "%u %u (%s)\n", __LINE__, I, S); ++a_errors;} while(0)
 
+static char const *argv0;
 static uz a_errors;
 
 static void a_abc(void);
 static void a_atomic(void);
 static void a_avopt(void);
 static void a_boswap(void);
-//static void a_cs(void); FIXME
+static void a_cs(void);
 static void a_cs_dict(void);
 static void a_icodec(void);
+static void a_imf(void);
 static void a_md(void);
 static void a_mem_bag(void);
-static void a_path_cs(void);
+static void a_path(void);
 static void a_prime(void);
 static void a_random(void);
 static void a_re(void);
@@ -60,7 +66,10 @@ static void a_time(void);
 static void a_utf(void);
 
 int
-main(void){ // {{{
+main(int argc, char **argv){ // {{{
+	UNUSED(argc);
+	argv0 = argv[0];
+
 	state::create(state::create_all, "SU@C++", (S(u32,state::debug) | S(u32,log::debug)), state::err_nopass);
 
 	if(log::get_show_level())
@@ -84,10 +93,11 @@ main(void){ // {{{
 
 	a_atomic();
 
-	/// Basics (isolated)
+	/// Basics (isolated (but for mem))
 
 	a_avopt();
 	a_boswap();
+	a_cs();
 	a_md();
 	a_prime();
 	a_time();
@@ -97,7 +107,7 @@ main(void){ // {{{
 
 	a_icodec();
 	a_mem_bag();
-	a_path_cs();
+	a_path();
 	a_random();
 	a_re();
 	a_sort();
@@ -105,6 +115,10 @@ main(void){ // {{{
 	/// Extended
 
 	a_cs_dict();
+
+	/// Detached
+
+	a_imf();
 
 	///
 #endif // tests
@@ -232,8 +246,7 @@ a_avopt(void){
 		"-#A ",
 		"--",
 		"-#A",
-		"Hello, world",
-		NIL
+		"Hello, world"
 	}, * const a_lines[] = {
 		"resource-files=a-a",
 		"resource-files a-a",
@@ -251,7 +264,7 @@ a_avopt(void){
 	avox.setup(NELEM(a_argv), a_argv, a_sopts, a_lopts);
 
 	//
-	if(avox.argc() != 14)
+	if(avox.argc() != 13)
 		a_ERR();
 	for(s32 i = 0; (i = avox.parse()) != avox.state_done;){
 		switch(i){
@@ -260,7 +273,7 @@ a_avopt(void){
 			break;
 
 		case -3:
-			if(avox.argc() != 13 && avox.argc() != 11)
+			if(avox.argc() != 12 && avox.argc() != 10)
 				a_ERR();
 			if(avox.current_opt() != -3)
 				a_ERR();
@@ -269,17 +282,17 @@ a_avopt(void){
 			break;
 
 		case 'A':
-			if(avox.argc() != 10 && avox.argc() != 4)
+			if(avox.argc() != 9 && avox.argc() != 3)
 				a_ERR();
 			if(avox.current_opt() != 'A')
 				a_ERR();
-			if((avox.argc() == 9 && cs::cmp(avox.current_arg(), "a-b")) &&
-					(avox.argc() == 3 && cs::cmp(avox.current_arg(), " ")))
+			if((avox.argc() == 8 && cs::cmp(avox.current_arg(), "a-b")) &&
+					(avox.argc() == 2 && cs::cmp(avox.current_arg(), " ")))
 				a_ERR();
 			break;
 
 		case '#':
-			if(avox.argc() != 8 && avox.argc() != 4)
+			if(avox.argc() != 7 && avox.argc() != 3)
 				a_ERR();
 			if(avox.current_opt() != '#')
 				a_ERR();
@@ -288,7 +301,7 @@ a_avopt(void){
 			break;
 
 		case -10:
-			if(avox.argc() != 7)
+			if(avox.argc() != 6)
 				a_ERR();
 			if(avox.current_opt() != -10)
 				a_ERR();
@@ -298,22 +311,22 @@ a_avopt(void){
 
 		case avopt::state_err_opt:
 			{char const *emsg = avopt::fmt_err_opt; UNUSED(emsg);}
-			if(avox.argc() != 9 && avox.argc() != 6 && avox.argc() != 5)
+			if(avox.argc() != 8 && avox.argc() != 5 && avox.argc() != 4)
 				a_ERR();
-			if((avox.argc() == 9 && avox.current_err_opt() != a_argv[4]) &&
+			if((avox.argc() == 8 && avox.current_err_opt() != a_argv[4]) &&
 					(avox.argc() == 6 && avox.current_err_opt() != a_argv[7]) &&
 					(avox.argc() == 5 && avox.current_err_opt() != a_argv[8]))
 				a_ERR();
 			break;
 		}
 	}
-	if(avox.argc() != 3)
+	if(avox.argc() != 2)
+		a_ERR();
+	if(NELEM(a_argv) != 13)
 		a_ERR();
 	if(avox.argv()[0] != a_argv[11])
 		a_ERR();
 	if(avox.argv()[1] != a_argv[12])
-		a_ERR();
-	if(avox.argv()[2] != a_argv[13] || avox.argv()[2] != NIL)
 		a_ERR();
 	if(avox.current_opt() != avox.state_stop)
 		a_ERR();
@@ -335,11 +348,17 @@ a_avopt(void){
 			break;
 
 		case 'A':
-			if(la != &a_lines[2])
-				a_ERR();
-			if(avo.current_opt() != 'A')
-				a_ERR();
-			if(cs::cmp(avo.current_arg(), "a-b"))
+			if(la == &a_lines[2]){
+				if(avo.current_opt() != 'A')
+					a_ERR();
+				if(cs::cmp(avo.current_arg(), "a-b"))
+					a_ERR();
+			}else if(la == &a_lines[3]){
+				if(avo.current_opt() != 'A')
+					a_ERR();
+				if(avo.current_arg()[0] != '\0')
+					a_ERR();
+			}else
 				a_ERR();
 			break;
 
@@ -362,11 +381,7 @@ a_avopt(void){
 			break;
 
 		case avopt::state_err_arg:
-			{char const *emsg = avopt::fmt_err_arg; UNUSED(emsg);}
-			if(la != &a_lines[3])
-				a_ERR();
-			if(avo.current_err_opt() != *la)
-				a_ERR();
+			a_ERR(); /* empty arg allowed */
 			break;
 
 		case avopt::state_err_opt:
@@ -375,6 +390,67 @@ a_avopt(void){
 				a_ERR();
 			if(avo.current_err_opt() != *la)
 				a_ERR();
+			break;
+		}
+	}
+
+	//
+
+	static char const
+		* const a_lopts2[] = {"account:;A", NIL},
+		* const a_argv2[] = {"--account=A", "--account=B", "--account=", "--account", "C"},
+		* const a_lines2[] = {"account=A", "account B", "account", "account  ", NIL};
+
+	avox.setup(NELEM(a_argv2), a_argv2, NIL, a_lopts2);
+	avo.setup(0, NIL, NIL, a_lopts2);
+
+	//
+	if(avox.argc() != 5)
+		a_ERR();
+	for(s32 i = 0; (i = avox.parse()) != avox.state_done;){
+		switch(i){
+		case 'A':
+			if(avox.argc() == 4){
+				if(avox.current_arg()[0] != 'A' || avox.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(avox.argc() == 3){
+				if(avox.current_arg()[0] != 'B' || avox.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(avox.argc() == 2){
+				if(avox.current_arg()[0] != '\0')
+					a_ERR();
+			}else if(avox.argc() == 0){
+				if(avox.current_arg()[0] != 'C' || avox.current_arg()[1] != '\0')
+					a_ERR();
+			}else
+				a_ERR();
+			break;
+		default:
+			a_ERR();
+			break;
+		}
+	}
+
+	for(char const * const *la = a_lines2; *la != NIL; ++la){
+		switch(avo.parse_line(*la)){
+		case 'A':
+			if(la == &a_lines2[0]){
+				if(avo.current_arg()[0] != 'A' || avo.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(la == &a_lines2[1]){
+				if(avo.current_arg()[0] != 'B' || avo.current_arg()[1] != '\0')
+					a_ERR();
+			}else if(la == &a_lines2[2]){
+				if(avo.current_arg()[0] != '\0')
+					a_ERR();
+			}else if(la == &a_lines2[3]){
+				if(avo.current_arg()[0] != '\0')
+					a_ERR();
+			}else
+				a_ERR();
+			break;
+		default:
+			a_ERR();
 			break;
 		}
 	}
@@ -450,6 +526,259 @@ a_boswap(void){
 
 #undef a_X
 }
+// }}}
+
+// cs TODO only fewest things checked yet!! {{{
+static void a_cs__find(void);
+static void a_cs__find_n(void);
+static void a_cs__sep(void);
+static void a_cs__squeeze(void);
+static void a_cs__trim(void);
+
+#undef a_X
+#define a_X(S) mem::copy(buf, S, sizeof(S)); cp = buf;
+
+static void
+a_cs(void){
+	a_cs__find();
+	a_cs__find_n();
+	a_cs__sep();
+	a_cs__squeeze();
+	a_cs__trim();
+}
+
+static void
+a_cs__find(void){
+	char *cp, *cpx;
+
+	cp = cs::find(su_empty, su_empty);
+	if(cp == NIL)
+		a_ERR();
+	else if(*cp != '\0')
+		a_ERR();
+	else if(cp != su_empty)
+		a_ERR();
+
+	cp = cs::find((cpx = UNCONST(char*,"abc")), "");
+	if(cp == NIL)
+		a_ERR();
+	else if(cp != cpx)
+		a_ERR();
+
+	cp = cs::find("abcdef", "ab");
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "cd");
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "ef");
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "ef"))
+		a_ERR();
+}
+
+static void
+a_cs__find_n(void){
+	char *cp, *cpx;
+
+	cp = cs::find(su_empty, su_empty, 0);
+	if(cp == NIL)
+		a_ERR();
+	else if(*cp != '\0')
+		a_ERR();
+	else if(cp != su_empty)
+		a_ERR();
+
+	cp = cs::find((cpx = UNCONST(char*,"abc")), "", 0);
+	if(cp == NIL)
+		a_ERR();
+	else if(cp != cpx)
+		a_ERR();
+
+	cp = cs::find("abcdef", "ab", 6);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "ab", 2);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "aX", 1);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "abcdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "cd", 6);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "cd", 4);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+	cp = cs::find("abcdef", "d", 3);
+	if(cp != NIL)
+		a_ERR();
+	cp = cs::find("abcdef", "cX", 3);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "cdef"))
+		a_ERR();
+
+	cp = cs::find("abcdef", "ef", 6);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "ef"))
+		a_ERR();
+	cp = cs::find("abcdef", "eX", 5);
+	if(cp == NIL)
+		a_ERR();
+	else if(cs::cmp(cp, "ef"))
+		a_ERR();
+}
+
+static void
+a_cs__sep(void){
+	char *cp, *arg, buf[80];
+
+	u32 i;
+#undef a_Y
+#define a_Y(X) \
+	a_X("a,b,c");++i;\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "a")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "b")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "c")) a_ERRI(i);\
+	if(cp != NIL) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg != NIL) a_ERRI(i);\
+	\
+	a_X("  ,,,  a , , , , , ,   ,    b   , ,  c,,,,,        ,,,");++i;\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "a")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "b")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "c")) a_ERRI(i);\
+	if(cp == NIL) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg != NIL) a_ERRI(i);\
+	if(cp != NIL) a_ERRI(i);\
+	\
+	a_X("a,b,c,");++i;\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "a")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "b")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "c")) a_ERRI(i);\
+	arg = cs::X(&cp, ',', FAL0);++i;\
+	if(arg == NIL) a_ERRI(i);\
+	else if(cs::cmp(arg, "")) a_ERRI(i);\
+	if(cp != NIL) a_ERRI(i);\
+	arg = cs::X(&cp, ',', TRU1);++i;\
+	if(arg != NIL) a_ERRI(i);\
+
+	i = 0;
+	a_Y(sep);
+	i = 0;
+	a_Y(sep_escable);
+#undef a_Y
+
+	a_X("a,b\\,c");
+	arg = cs::sep_escable(&cp, ',', FAL0);
+	if(arg == NIL) a_ERR();
+	else if(cs::cmp(arg, "a")) a_ERR();
+	arg = cs::sep_escable(&cp, ',', FAL0);
+	if(arg == NIL) a_ERR();
+	else if(cs::cmp(arg, "b,c")) a_ERR();
+	if(cp != NIL) a_ERR();
+	arg = cs::sep_escable(&cp, ',', TRU1);
+	if(arg != NIL) a_ERR();
+}
+
+static void
+a_cs__squeeze(){
+	char *cp, buf[80];
+
+	a_X(" \t \t \n \t one\n\r two \t \n \t \r ");
+	if(cs::cmp(cs::squeeze(cp), " one two "))
+		a_ERR();
+
+	a_X("one two");
+	if(cs::cmp(cs::squeeze(cp), "one two"))
+		a_ERR();
+
+	a_X(" one two");
+	if(cs::cmp(cs::squeeze(cp), " one two"))
+		a_ERR();
+
+	a_X("  one two");
+	if(cs::cmp(cs::squeeze(cp), " one two"))
+		a_ERR();
+
+	a_X("one two ");
+	if(cs::cmp(cs::squeeze(cp), "one two "))
+		a_ERR();
+
+	a_X("one two  ");
+	if(cs::cmp(cs::squeeze(cp), "one two "))
+		a_ERR();
+}
+
+static void
+a_cs__trim(){
+	char *cp, buf[80];
+
+	a_X(" \t \t \n \t one\n\r \t \n \t \r ");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("one");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X(" one");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("  one");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("one ");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+
+	a_X("one  ");
+	if(cs::cmp(cs::trim(cp), "one"))
+		a_ERR();
+}
+
+#undef a_X
 // }}}
 
 // cs_dict {{{
@@ -566,6 +895,25 @@ a_cs_dict_(u16 addflags){ // {{{
 		k[2] = "K3";
 
 		a_cs_dict__case(&cd, k);
+
+		// And test min_size() / balance()!
+		cd.clear();
+		if(!cd.is_empty())
+			a_ERR();
+		if(cd.size() != 0)
+			a_ERR();
+		if(cd.balance().size() != 0)
+			a_ERR();
+
+		if(cd.set_min_size(3).min_size() != 3)
+			a_ERR();
+		cd.insert(k[0], "v1");
+		if(cd.is_empty())
+			a_ERR();
+		if(cd.clear().size() != 0)
+			a_ERR();
+		if(cd.balance().size() < 3)
+			a_ERR();
 	}
 
 	/// Let's do some flag stuff and "big data"
@@ -1769,6 +2117,1520 @@ a_icodec(void){
 }
 // }}}
 
+// imf {{{
+#ifdef su_HAVE_IMF
+C_DECL_BEGIN
+//void su_imf_table_dump(void);
+C_DECL_END
+
+static void a_imf_addr(void);
+static void a_imf_msgid(void);
+static void a_imf_tok(void);
+// TODO when there is a quoter, test: Dr  \\(  Dr  Dr  Z1 <x@y>
+#endif
+
+static void
+a_imf(void){
+#ifdef su_HAVE_IMF
+//	su_imf_table_dump(); return;
+	a_imf_addr();
+	a_imf_msgid();
+	a_imf_tok();
+
+	// rather only "symbol exists" for _c_*() series {{{
+	if(!imf::c_ALPHA('a'))
+		a_ERR();
+	if(!imf::c_DIGIT('1'))
+		a_ERR();
+	if(!imf::c_VCHAR('*'))
+		a_ERR();
+	if(!imf::c_atext('!'))
+		a_ERR();
+	if(!imf::c_ctext('!'))
+		a_ERR();
+	if(!imf::c_dtext('!'))
+		a_ERR();
+	if(!imf::c_qtext('!'))
+		a_ERR();
+	if(!imf::c_special('('))
+		a_ERR();
+	if(!imf::c_obs_NO_WS_CTL('\033'))
+		a_ERR();
+
+	if(!imf::c_CR('\015'))
+		a_ERR();
+	if(!imf::c_DQUOTE('"'))
+		a_ERR();
+	if(!imf::c_HT('\011'))
+		a_ERR();
+	if(!imf::c_LF('\012'))
+		a_ERR();
+	if(!imf::c_SP('\040'))
+		a_ERR();
+
+	if(!imf::c_WSP('\011'))
+		a_ERR();
+	if(!imf::c_ANY_WSP('\015'))
+		a_ERR();
+
+	if(!imf::c_quoted_pair_c2('\033'))
+		a_ERR();
+	// }}}
+#endif // su_HAVE_IMF
+}
+
+#ifdef su_HAVE_IMF
+# define a_IMF_DVL 0
+
+static void
+a_imf_addr(void){ // {{{
+	struct a_ha{
+		s32 rv;
+		u32 mode;
+		uz rno;
+		char const *dat;
+		char const *rp;
+		u32 rse[5]; // status/err
+	} const hat[] = { // {{{
+		// (xxx chaotic order, redundancy)
+# if 1
+		{-err::nodata, imf::mode_none, 0, "", "", {0,}},
+		{-err::nodata, imf::mode_none, 0, "         ", "", {0,}},
+
+		{0, imf::mode_none, 1,
+			"ba@by",
+			"\0\0ba\0by\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<boss@nil.test>",
+			"\0\0boss\0nil.test\0",
+			{0,}},
+
+		//
+		{0, imf::mode_none, 1, "b a @[]", "\0\0ba\0[]\0", {imf::state_domain_literal,}},
+		{0, imf::mode_none, 1, "b a @  [  \t  ] ", "\0\0ba\0[]\0", {imf::state_domain_literal,}},
+
+		{0, imf::mode_none, 1,
+			"ba@[127.0.0.1]",
+			"\0\0ba\0[127.0.0.1]\0\0",
+			{imf::state_domain_literal,}},
+		{0, imf::mode_none, 1,
+			"ba@   [ 1 \\2 7  \\.  0 . \t0 .\t\t\t1   ]   ",
+			"\0\0ba\0[1\\27\\.0.0.1]\0\0",
+			{imf::state_domain_literal,}},
+
+		{0, imf::mode_none, 1,
+			"ba@[ff02::3]",
+			"\0\0ba\0[ff02::3]\0\0",
+			{imf::state_domain_literal,}},
+		{0, imf::mode_none, 1,
+			"ba@  [ fF \t 02\\::\\3  \t ] ",
+			"\0\0ba\0[fF02\\::\\3]\0\0",
+			{imf::state_domain_literal,}},
+
+		//
+		{0, imf::mode_none, 1,
+			"ho.(hi)ha@x.y",
+			"\0\0ho.ha\0x.y\0hi\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"(bo) ho.(hi)ha@x.y",
+			"\0\0ho.ha\0x.y\0bo hi\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			" \t (bo) \t h \t o \t . \t (hi) \t h \t a \t @ \t x \t . \t y \t ",
+			"\0\0ho.ha\0x.y\0bo hi\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			" \t A \t (B) \t C \t (D) \t E \t < \t F \t @ \t G \t > \t ",
+			"\0A C E\0F\0G\0B D\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"Real Name ((comment)) <addr.a.b@ex.com>",
+			"\0Real Name\0addr.a.b\0ex.com\0comment\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			" \t Real \t Name \t \t ((comment)) \t < \t addr \t . \t a \t . \t b \t @ \t ex \t . \t com \t >",
+			"\0Real Name\0addr.a.b\0ex.com\0comment\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"John Doe <jdoe@(co(m)ment)mach(co(m)ment)ine(co(m)ment).(co(m)ment)ex(co(m)ment)>",
+			"\0John Doe\0jdoe\0machine.ex\0comment comment comment comment comment",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"John Doe <jdoe@machine(co(((m\\())((())))ment).  ex>",
+			"\0John Doe\0jdoe\0machine.ex\0com\\(ment",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"John Doe <jdoe@machine.  ex>",
+			"\0John Doe\0jdoe\0machine.ex\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"John Doe <jdoe@machine.(c)ex>",
+			"\0John Doe\0jdoe\0machine.ex\0c",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"John <jdoe@one.test> (my (dear (friend)))",
+			"\0John\0jdoe\0one.test\0my dear friend\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			" (Prof.) x@y (Dr. Z)",
+			"\0\0x\0y\0Prof. Dr. Z\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"Pete(A nice \\) chap) <pete(((his)) account)@silly.test(his host)>",
+			"\0Pete\0pete\0silly.test\0A nice \\) chap his account his host\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"Chris Jones <c@(Chris's host.)public.ex>",
+			"\0Chris Jones\0c\0public.ex\0Chris's host.\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"    Chris Jones     < c @ (Chris's   host.) public . ex>",
+			"\0Chris Jones\0c\0public.ex\0Chris's host.\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"jdoe@t1  . ex",
+			"\0\0jdoe\0t1.ex\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"jdoe  @   t2  . ex (johnny)  (be good) ",
+			"\0\0jdoe\0t2.ex\0johnny be good\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"jdoe  @   t3  . ex (johnny )  (be good) ",
+			"\0\0jdoe\0t3.ex\0johnny be good\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"jdoe  @   t4  . ex ( johnny )  (  be good\t) ",
+			"\0\0jdoe\0t4.ex\0johnny be good\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"j  doe  @   t5  . ex ( johnny )",
+			"\0\0jdoe\0t5.ex\0johnny\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"j ( GoOd ) d\to e\t@   t6  . ex ( johnny ) ",
+			"\0\0jdoe\0t6.ex\0GoOd johnny\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"j ( GoOd ) d\t\"o\" e\t@   t7  . ex ( johnny ) ",
+			"\0\0\"jdoe\"\0t7.ex\0GoOd johnny\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"j \t ( \t GoOd \t ) \t d \t \" \t o \t \\\"\t \" \t e \t @ \t  t8  . ex ( johnny ) ",
+			"\0\0\"jd \t o \t \\\"\t e\"\0t8.ex\0GoOd johnny\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"j \t ( \t GoOd \t ) \t d \t \" \t o \t \\\"\t \"e \t @ \t  t8  . ex ( johnny ) ",
+			"\0\0\"jd \t o \t \\\"\t e\"\0t8.ex\0GoOd johnny\0"
+			, {0,}},
+
+		{0, imf::mode_none, 1,
+			"\"Dr. Z\" <x@y>",
+			"\0\"Dr. Z\"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\" \t  Dr. \t Z \t \" <x@y>",
+			"\0\" \t  Dr. \t Z \t \"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Dr. Z    \" <x@y>",
+			"\0\"Dr. Z    \"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Dr \t . \t\n\r Z\" <x@y>",
+			"\0\"Dr \t . \t Z\"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"\n\rDr. Z\" <x@y>",
+			"\0\"Dr. Z\"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Dr.\n\rZ\n\r\" <x@y>",
+			"\0\"Dr.Z\"\0x\0y\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"\"\" Dr Z <x@y>",
+			"\0\"Dr Z\"\0x\0y\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"\" \"Dr. Z\" <x@y>",
+			"\0\"Dr. Z\"\0x\0y\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"Dr \t \"\" \t Dr \t \" \t Dr \t \" \t Z1 <x@y>",
+			"\0\"Dr  Dr  \t Dr \t  Z1\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\" \t Dr \t \"\" \t Dr \t \"\" \t Z2 <x@y>",
+			"\0\"Dr  Dr  Dr  Z2\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"  \" \t Dr \t \"\" \t Dr \t \"\" \t Z3 <x@y>",
+			"\0\"Dr    Dr  Dr  Z3\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\\ \\ \" \t Dr \t \"\" \t Dr \t \"\" \t Z4 <x@y>",
+			"\0\"Dr \\ \\  Dr  Dr  Z4\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\\\\ \" \t Dr \t \"\" \t Dr \t \"\" \t Z5 <x@y>",
+			"\0\"Dr \\\\  Dr  Dr  Z5\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\\\"\\\"\" \t Dr \t \"\" \t Dr \t \"\" \t Z6 <x@y>",
+			"\0\"Dr \\\"\\\" Dr  Dr  Z6\"\0x\0y\0\0"
+			,{0,}},
+		{0, imf::mode_none, 1,
+			"Dr \t \"\" \t Z7 <x@y>",
+			"\0\"Dr  Z7\"\0x\0y\0\0"
+			,{0,}},
+
+		{0, imf::mode_none, 1,
+			"\"Full Name\" <foo@ex.com>",
+			"\0\"Full Name\"\0foo\0ex.com\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Mary Smith: Personal Account\" \"At Home\" <smith@home.ex>",
+			"\0\"Mary Smith: Personal Account At Home\"\0smith\0home.ex\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Joe Q. Public\" <john.q.public@ex.com>",
+			"\0\"Joe Q. Public\"\0john.q.public\0ex.com\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"\"Giant;    \"    \"\\\"Big\\\"\"   \"   Box\" <sysservices@ex.net>",
+			"\0\"Giant;     \\\"Big\\\"    Box\"\0sysservices\0ex.net\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"\"Giant;      \"      Big    Box      <sysservices@ex.net>",
+			"\0\"Giant;       Big Box\"\0sysservices\0ex.net\0\0"
+			, {0,}},
+
+		{0, imf::mode_none, 1,
+			"Mary Smith\n \t\r\n  \t\n \r\n \t   \t   <mary@ex.net>",
+			"\0Mary Smith\0mary\0ex.net\0\0",
+			{0,}},
+
+		{imf::err_display_name_dot, imf::mode_none, 0,
+			"Joe Q. Public <john.q.public@ex.com>",
+			"",
+			{0,}},
+		{0, imf::mode_display_name_dot, 1,
+			"Joe Q. Public <john.q.public@ex.com>",
+			"\0\"Joe Q. Public\"\0john.q.public\0ex.com\0\0",
+			{imf::state_display_name_dot,}},
+		{imf::err_display_name_dot, imf::mode_none, 0,
+			"\"\" Dr.. . Z \"\" <x@y>",
+			"",
+			{0,}},
+		{0, imf::mode_display_name_dot, 1,
+			"\"\" Dr.. . Z \"\" <x@y>", // TODO could strip trail WS
+			"\0\"Dr.. . Z \"\0x\0y\0\0",
+			{imf::state_display_name_dot,}},
+		{0, imf::mode_display_name_dot, 1,
+			"\"\" Dr.. . Z  <x@y>",
+			"\0\"Dr.. . Z\"\0x\0y\0\0",
+			{imf::state_display_name_dot,}},
+		{0, imf::mode_display_name_dot, 1,
+			"\"\\ \\ \\ \" Dr.. . Z  <x@y>",
+			"\0\"\\ \\ \\  Dr.. . Z\"\0x\0y\0\0",
+			{imf::state_display_name_dot,}},
+		{imf::err_display_name_dot, imf::mode_none, 0,
+			"Dr \t \"\" \t Dr \t \"\" \t Dr. \t \"\" \t Z3 <x@y>",
+			"",
+			{0,}},
+		{0, imf::mode_display_name_dot, 1,
+			"Dr \t \"\" \t Dr \t \"\" \t Dr. \t \"\" \t Z3 <x@y>",
+			"\0\"Dr  Dr  Dr.  Z3\"\0x\0y\0\0"
+			, {imf::state_display_name_dot,}},
+
+		{0, imf::mode_none, 1,
+			"Mary Smith <@node.test:mary@ex.net>",
+			"\0Mary Smith\0mary\0ex.net\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			" John Doe <  @dsda.e  ,   @mda.je  :   jdoe@machine.ex  >  ",
+			"\0John Doe\0jdoe\0machine.ex\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 3,
+			"Mary Smith <mary@x.test>, jdoe@ex.org, Who? <one@y.test>",
+			"\0Mary Smith\0mary\0x.test\0\0"
+			"\0\0jdoe\0ex.org\0\0"
+			"\0Who?\0one\0y.test\0\0",
+			{0,}},
+		{0, imf::mode_none, 3,
+			"boss@nil.test (big boss)  ,,,,,(du ) (ba bu)du@a.a(bu ba)( du) , nova@b.os (sa)",
+			"\0\0boss\0nil.test\0big boss\0"
+			"\0\0du\0a.a\0du ba bu bu ba du\0"
+			"\0\0nova\0b.os\0sa\0",
+			{0,}},
+		{0, imf::mode_none, 2,
+			"\"Joe & J. Harvey\" <ddd @Org>, JJV @ BBN",
+			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0"
+			"\0\0JJV\0BBN\0\0",
+			{0,}},
+		{0, imf::mode_none, 2,
+			"\"Joe &\"\n \t \n\t\n\t\"J. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",//XXX
+			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0"//XXX &J.
+			"\0\0JJV\0BBN2\0\0",
+			{0,}},
+		{0, imf::mode_none, 2,
+			"\"Joe &\r\n J. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
+			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0"
+			"\0\0JJV\0BBN2\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"b\"a\"@by",
+			"\0\0\"ba\"\0by\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"b\" a\"@by",
+			"\0\0\"b a\"\0by\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"b\"a \"@by",
+			"\0\0\"ba \"\0by\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"bu\"d d\"y(c\"o\"m.m)<t(e)\"i(%;)@\"@(n)g(t)h(s).(su)t(ck)>(, right?)",
+			"\0\"bud dy\"\0\"ti(%;)@\"\0gh.t\0c\"o\"m.m e n t s su ck , right?\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"bu\"d  \t  d\"y <t    \"i \t(%;)\t \"\"@\"\"\"@gh.t>",
+			"\0\"bud  \t  dy\"\0\"ti \t(%;)\t @\"\0gh.t\0\0"
+			, {0,}},
+		{0, imf::mode_none, 1,
+			"bu\"d d\"y <t \" i (%;) \"\" @ \"\"\"@ g h  . t >",
+			"\0\"bud dy\"\0\"t i (%;)  @ \"\0gh.t\0\0"
+			, {0,}},
+
+		{0, imf::mode_none, 1,
+			"Undisclosed recipients:;",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 1,
+			"(Empty list)(start)Hidden recipients  :(nobody(that I know))  ;",
+			"Hidden recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{imf::err_content, imf::mode_none, 1,
+			"Undisclosed recipients:;x@y",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{imf::err_content, imf::mode_none, 1,
+			"Undisclosed recipients:;\tx\t@\ty",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;,x@y",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;\t,\tx\t@\ty",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{imf::err_content, imf::mode_none, 1,
+			"Undisclosed recipients:;< x @ y >",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{imf::err_content, imf::mode_none, 1,
+			"Undisclosed recipients:;\t<\tx\t@\ty\t>",
+			"Undisclosed recipients\0\0\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;,<x@y>",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;,\t<\tx\t@\ty>",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_none, 2,
+			"Undisclosed recipients:;   \t , \t <x@y>",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+
+		{0, imf::mode_none, 1,
+			"Mum:ba@by;",
+			"Mum\0\0ba\0by\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_none, 1,
+			"Mum:ba@by;,,\n ,,, \t ,\t, ,",
+			"Mum\0\0ba\0by\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_none, 1,
+			"Group:Mary Smith <@node.test:mary@ex.net>;,,,",
+			"Group\0Mary Smith\0mary\0ex.net\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
+
+		{0, imf::mode_none, 3,
+			"A \" \t Gr \t \t ou \t \" p :   ba   @   by     ;,B \" \t u \t u \t \" m <m@e.r>,r\"o\"se:l<o@v.e>;",
+			"\"A  \t Gr \t \t ou \t  p\"\0\0ba\0by\0\0"
+			"\0\"B  \t u \t u \t  m\"\0m\0e.r\0\0"
+			"\"rose\"\0l\0o\0v.e\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group, 0,
+			 imf::state_group_start | imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_none, 3,
+			"A Group:ba@by,Bum <m@e.r>;,x@y.z",
+			"A Group\0\0ba\0by\0\0"
+			"\0Bum\0m\0e.r\0\0"
+			"\0\0x\0y.z\0\0",
+			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_none, 3,
+			"A Group  :  ba@by , Bum < m @ e . r >(barmy) ;  , (ar )x @ y . z(my)",
+			"A Group\0\0ba\0by\0\0"
+			"\0Bum\0m\0e.r\0barmy\0"
+			"\0\0x\0y.z\0ar my\0",
+			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_none, 3,
+			"A Group:\tba\t@\tby\t, Bum <m@e.r>  ,,, \n\t , \n \n\t, , ; ,  , , x@y.z , , ,\n \n\t",
+			"A Group\0\0ba\0by\0\0"
+			"\0Bum\0m\0e.r\0\0"
+			"\0\0x\0y.z\0\0",
+			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
+
+		{0, imf::mode_none, 4,
+			"A Group(Some people)\n        :Chris Jones <c@public.ex(.host of Chris)>,\n \t\t  "
+				"Chris Jones2 <c@(Chris's host.)public.ex>,   (  void comment  ) , "
+				"\t \n\tjoe@ex.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
+				"(the end of the group)",
+			"A Group\0Chris Jones\0c\0public.ex\0.host of Chris\0"
+			"\0Chris Jones2\0c\0public.ex\0Chris's host.\0"
+			"\0\0joe\0ex.org\0\0"
+			"\0John\0jdoe\0one.test\0my dear friend\0",
+			{imf::state_group_start | imf::state_group, imf::state_group, imf::state_group,
+				imf::state_group_end | imf::state_group,}},
+
+		{0, imf::mode_none, 3,
+			"A Groups:ba@[1.2],Bum <m@[3.4]>;,x@[5.6]",
+			"A Groups\0\0ba\0[1.2]\0\0"
+			"\0Bum\0m\0[3.4]\0\0"
+			"\0\0x\0[5.6]\0\0",
+			{imf::state_group_start | imf::state_group | imf::state_domain_literal,
+			 imf::state_group_end | imf::state_group | imf::state_domain_literal,
+			 imf::state_domain_literal}},
+		{0, imf::mode_none, 3,
+			"A Groups:ba@[1.2], (Bum) m@[3.4];,x@[5.6]",
+			"A Groups\0\0ba\0[1.2]\0\0"
+			"\0\0m\0[3.4]\0Bum\0"
+			"\0\0x\0[5.6]\0\0",
+			{imf::state_group_start | imf::state_group | imf::state_domain_literal,
+			 imf::state_group_end | imf::state_group | imf::state_domain_literal,
+			 imf::state_domain_literal}},
+
+		//
+
+		{imf::err_content, imf::mode_none, 0, "<u1>", "", {0,}},
+		{0, imf::mode_addr_spec_no_domain, 1, "<u2>", "\0\0u2\0\0", {imf::state_addr_spec_no_domain,}},
+		{imf::err_content, imf::mode_none, 0, "<u3@>", "", {0,}},
+		{imf::err_content, imf::mode_addr_spec_no_domain, 0, "<u4@>", "", {0,}},
+		{imf::err_content, imf::mode_addr_spec_no_domain, 0, "u5", "", {0,}},
+		{imf::err_content, imf::mode_addr_spec_no_domain, 0, "u6@", "", {0,}},
+		{0, imf::mode_addr_spec_no_domain, 1, "<u7@U7>", "\0\0u7\0U7\0", {0,}},
+
+		// stop_early with some things from above
+		{0, imf::mode_stop_early, 2,
+			"Undisclosed recipients:;,<x@y>" /*test hack*/" ,,",
+			"Undisclosed recipients\0\0\0\0\0"
+			"\0\0x\0y\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group | imf::state_group_empty,}},
+		{0, imf::mode_stop_early, 1,
+			"A \"Group\":ba@by;,Bum <m@e.r>,rose:l<o@v.e>;",
+			"\"A Group\"\0\0ba\0by\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
+		{0, imf::mode_stop_early, 1,
+			"\"Joe &\"\n\r\t\n\r\t\"J. Harvey\" <ddd @ Org>, JJV \n\t @ \n\tBBN2",
+			"\0\"Joe & J. Harvey\"\0ddd\0Org\0\0",
+			{0,}},
+
+		// IETF RFC 5322 errata 3135 (why says invalid to latter three?)
+		{imf::err_content, imf::mode_none, 0, "\"\"@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "foo.\"\"@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "\"\".bar@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "foo.\"\".bar@by", "", {0,}},
+		{0, imf::mode_none, 1, "foo\"\"@by", "\0\0foo\0by\0", {0,}},
+		{0, imf::mode_none, 1, "\"\"bar@by", "\0\0bar\0by\0", {0,}},
+		{0, imf::mode_none, 1, "foo\"\"bar@by", "\0\0foobar\0by\0", {0,}},
+
+		{imf::err_content, imf::mode_none, 0, "<\"\"@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<foo.\"\"@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<\"\".bar@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<foo.\"\".bar@by>", "", {0,}},
+		{0, imf::mode_none, 1, "<foo\"\"@by>", "\0\0foo\0by\0", {0,}},
+		{0, imf::mode_none, 1, "<\"\"bar@by>", "\0\0bar\0by\0", {0,}},
+		{0, imf::mode_none, 1, "<foo\"\"bar@by>", "\0\0foobar\0by\0", {0,}},
+
+		// (adapt)
+		{imf::err_content, imf::mode_none, 0, "a.().b@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.().b@by>", "", {0,}},
+
+		// MODE_OK_DOMAIN_XLABEL
+		{imf::err_content, imf::mode_none, 0, "a@aä", "", {0,}},
+		{0, imf::mode_domain_xlabel, 1, "a@bä", "\0\0a\0bä\0\0", {imf::state_domain_xlabel,}},
+		{imf::err_content, imf::mode_none, 0, "<a@cä>", "", {0,}},
+		{0, imf::mode_domain_xlabel, 1, "<a@dä>", "\0\0a\0dä\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 1, "a@ e ä f  #  ", "\0\0a\0eäf#\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 1, "<a@ g ä h # >", "\0\0a\0gäh#\0\0", {imf::state_domain_xlabel,}},
+		{0, imf::mode_domain_xlabel, 2,
+			"a@ i ä j  #,k@ ø @ µ €  ",
+			"\0\0a\0iäj#\0\0"
+			"\0\0k\0ø@µ€\0\0",
+			{imf::state_domain_xlabel, imf::state_domain_xlabel,}},
+
+		// pure errors
+
+		{imf::err_content, imf::mode_none, 0, "A Group:", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "d", "", {0,}},
+
+		{imf::err_content, imf::mode_none, 0, "a..b@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a..b@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, ".a.b@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<.a.b@by>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b.@by", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b.@by>", "", {0,}},
+
+		{imf::err_content, imf::mode_none, 0, "a.b@b..y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@b..y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@ b . \t . y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@ b . \t . y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@.b.y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@.b.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "a.b@\t \t . \t b\t.\ty", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<a.b@\t \t . \t b\t.\ty>", "", {0,}},
+
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "a.b@b.y.", "", {0,}},
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "<a.b@b.y.>", "", {0,}},
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "a.b@\tb\t.\ty\t.\t ", "", {0,}},
+		{imf::err_relax | imf::err_content, imf::mode_none, 0, "<a.b@\tb\t.\ty\t.\t >", "", {0,}},
+
+		{0, imf::mode_relax, 1, "<a1@\tb\t.\ty\t.\t >", "\0\0a1\0b.y.\0", {imf::state_relax | imf::err_content,}},
+		{imf::err_content, imf::mode_relax, 0, "<a2@.\tb\t.\ty\t >", "", {0,}},
+		{imf::err_content, imf::mode_relax, 0, "<a3@. >", "", {0,}},
+
+		//
+		{imf::err_content, imf::mode_none, 1,
+			"(a) John (b) <e@s.t> ,(c) <joe@x.y (d)",
+			"\0John\0e\0s.t\0a b\0",
+			{0,}},
+		{imf::err_content, imf::mode_none, 1,
+			"(a) John (b) <e@s.t> ,(c) @x.y (d)",
+			"\0John\0e\0s.t\0a b\0",
+			{0,}},
+		{imf::err_content, imf::mode_none, 1,
+			"(a) John (b) <e@s.t> ,(c) <@x.y> (d)",
+			"\0John\0e\0s.t\0a b\0",
+			{0,}},
+		{imf::err_content, imf::mode_none, 2,
+			"(a) John (b) <e@s.t> ,<z@x.y>,@x.y",
+			"\0John\0e\0s.t\0a b\0"
+			"\0\0z\0x.y\0\0",
+			{0,}},
+
+		// double group start
+		{imf::err_content, imf::mode_none, 1,
+			"A Group(Some people)\n        :Chris Jones <c@public.ex(.host of Chris)>,\n \t\t  "
+				" : Chris Jones2 <c@(Chris's host.)public.ex>,   (  void comment  ) , "
+				"\t \n\tjoe@ex.org,\n John < @ y.z , @ x . z : jdoe @ one . test > (my dear friend); "
+				"(the end of the group)",
+			"A Group\0Chris Jones\0c\0public.ex\0.host of Chris\0",
+			{imf::state_group_start | imf::state_group,}},
+
+		// missing list sep
+		{imf::err_content, imf::mode_none, 0, "e@s.t joe@x.y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<e@s.t> joe@x.y", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "<e@s.t> <joe@x.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "John <e@s.t> <joe@x.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "John <e@s.t> (c) <joe@x.y>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "(c) John (c) <e@s.t> (c) <joe@x.y> (c)", "", {0,}},
+		// ok
+		{0, imf::mode_none, 2,
+			"(a) John (b) <e@s.t> (c), <joe@x.y> (d)",
+			"\0John\0e\0s.t\0a b c\0"
+			"\0\0joe\0x.y\0d\0",
+			{0,}},
+		{0, imf::mode_none, 2,
+			"(a) John (b) <e@s.t> ,(c) <joe@x.y> (d)",
+			"\0John\0e\0s.t\0a b\0"
+			"\0\0joe\0x.y\0c d\0",
+			{0,}},
+		{0, imf::mode_none, 2,
+			"(a) John (b) <e@s.t> ,(c) joe@x.y (d)",
+			"\0John\0e\0s.t\0a b\0"
+			"\0\0joe\0x.y\0c d\0",
+			{0,}},
+
+		// missing group list sep
+		{imf::err_content, imf::mode_none, 2,
+			"A Group:T <e@s.t>,joe@x.y; x@y.z",
+			"A Group\0T\0e\0s.t\0\0"
+			"\0\0joe\0x.y\0\0",
+			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
+		// same
+		{imf::err_content, imf::mode_none, 2,
+			"A Group:T <e@s.t>,joe@x.y,; x@y.z",
+			"A Group\0T\0e\0s.t\0\0"
+			"\0\0joe\0x.y\0\0",
+			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
+
+		// group close wrong place
+		{imf::err_content, imf::mode_none, 0,
+			"A Group:T <e@s.t;>   ,joe@x.y,; x@y.z",
+			"",
+			{0,}},
+
+		// incompl. addresses
+		{imf::err_content, imf::mode_none, 2,
+			"A Group:T <e@s.t>,joe@x.y  ;y, x@y.z",
+			"A Group\0T\0e\0s.t\0\0"
+			"\0\0joe\0x.y\0\0",
+			{imf::state_group_start | imf::state_group, imf::state_group_end | imf::state_group,}},
+
+		// some specifics (display_name_dot above)
+		{imf::err_group_open, imf::mode_none, 1,
+			"A Group:T <e@s.t>,joe@x.y  ",
+			"A Group\0T\0e\0s.t\0\0",
+			{imf::state_group_start | imf::state_group,
+				imf::state_group | imf::err_relax | imf::err_group_open}},
+		{0, imf::mode_relax, 2,
+			"A Group:T <e@s.t>,joe@x.y  ",
+			"A Group\0T\0e\0s.t\0\0"
+			"\0\0joe\0x.y\0\0",
+			{imf::state_group_start | imf::state_group,
+				imf::state_group | imf::state_relax | imf::err_group_open | imf::state_group_end,}},
+
+		{imf::err_relax | imf::err_group_display_name_empty, imf::mode_none, 0,
+			":T<e@s.t>",
+			"",
+			{0,}},
+		{0, imf::mode_relax, 1,
+			":T<e@s.t>",
+			"\0T\0e\0s.t\0\0",
+			{imf::state_group_start | imf::state_group | imf::state_group_end |
+				imf::state_relax | imf::err_group_display_name_empty | imf::err_group_open,}},
+		{0, imf::mode_relax, 1,
+			":T<e@s.t>;",
+			"\0T\0e\0s.t\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group |
+				imf::state_relax | imf::err_group_display_name_empty,}},
+		{0, imf::mode_none, 1,
+			"A:T<e@s.t>;",
+			"A\0T\0e\0s.t\0\0",
+			{imf::state_group_start | imf::state_group_end | imf::state_group,}},
+
+		{imf::err_relax | imf::err_group_display_name_empty, imf::mode_none, 0,
+			":",
+			"",
+			{0,}},
+		{0, imf::mode_relax, 1,
+			":",
+			"\0\0\0\0\0",
+			{imf::state_group_start | imf::state_group | imf::state_group_end | imf::state_group_empty |
+				imf::state_relax | imf::err_group_display_name_empty | imf::err_group_open,}},
+
+		//
+		{imf::err_content, imf::mode_none, 0,
+			"John <e@s.t",
+			"",
+			{0,}},
+
+		//
+		{imf::err_relax | imf::err_comment, imf::mode_none, 0,
+			"a@b(c",
+			"",
+			{0,}},
+		{0, imf::mode_relax, 1,
+			"a@b(c",
+			"\0\0a\0b\0c\0",
+			{imf::state_relax | imf::err_comment,}},
+
+		//
+		{imf::err_dquote, imf::mode_none, 0, "\"a b@c", "", {0,}},
+		{imf::err_dquote, imf::mode_relax, 0, "\"a b@c", "", {0,}},
+		{imf::err_dquote, imf::mode_relax, 0, "a \"b@c", "", {0,}},
+
+		// devilish
+		{imf::err_content, imf::mode_none, 0, "ma@li@cio.us", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "Boo <ma@li@cio.us>", "", {0,}},
+		{imf::err_content, imf::mode_none, 0, "Boo@m <a@d>", "", {0,}},
+		// ok
+		{0, imf::mode_none, 1,
+			"Boo\"@\"m <a@d>",
+			"\0\"Boo@m\"\0a\0d\0\0",
+			{0,}},
+
+		// LATER additions
+		{0, imf::mode_none, 1,
+			"da: \"d;u:#\"@du.com ;",
+			"da\0\0\"d;u:#\"\0du.com\0\0",
+			{imf::state_group_start | imf::state_group | imf::state_group_end,}},
+# endif
+	}; //}}}
+
+	mem_bag mb;
+
+	for(uz i = 0; i < NELEM(hat); ++i){
+		void *snap;
+		if(i & 1)
+			snap = imf::snap_create(*&mb);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			snap = mb.lofi_snap_create();
+# else
+			mb.auto_snap_create();
+# endif
+		}
+
+		char const *ep;
+		imf::addr *ap;
+
+		s32 se = imf::parse_addr_header(*&ap, hat[i].dat, hat[i].mode, *&mb, &ep);
+# if a_IMF_DVL
+		log::write(log::debug, "IMF %#X/%#X <%s>", se, hat[i].rv, hat[i].dat);
+# endif
+		if(se != hat[i].rv)
+			a_ERRIS(i, hat[i].dat);
+		else{
+			imf::addr *xap;
+			u32 j;
+
+			if(hat[i].rv == 0){
+				if(*ep != '\0'){
+					if(!(hat[i].mode & imf::mode_stop_early))
+						a_ERRIS(i, hat[i].dat);
+				}else if(hat[i].mode & imf::mode_stop_early)
+					a_ERRIS(i, hat[i].dat);
+			}
+
+			for(j = 0, xap = ap; xap != NIL; ++j, xap = xap->next()){
+			}
+			if(j != hat[i].rno)
+				a_ERRIS(i, hat[i].dat);
+
+			ep = hat[i].rp;
+			for(j = 0; ap != NIL; ++j, ap = ap->next()){
+# if a_IMF_DVL
+				log::write(log::debug, "\tIMF %zu %#X/%#X <%s> <%s> <%s> <%s> <%s>",
+					j, hat[i].rse[j], ap->mse(), ap->group_display_name(), ap->display_name(),
+					ap->locpar(), ap->domain(), ap->comm());
+# endif
+				if(hat[i].rse[j] != ap->mse())
+					a_ERRIS(i, ep);
+
+				uz l;
+
+				l = cs::len(ep);
+				if(l != ap->group_display_name_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, ap->group_display_name(), l))
+					a_ERRIS(i, ep);
+				else if(ap->group_display_name()[ap->group_display_name_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+				l = cs::len(ep);
+				if(l != ap->display_name_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, ap->display_name(), l))
+					a_ERRIS(i, ep);
+				else if(ap->display_name()[ap->display_name_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+				l = cs::len(ep);
+				if(l != ap->locpar_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, ap->locpar(), l))
+					a_ERRIS(i, ep);
+				else if(ap->locpar()[ap->locpar_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+				l = cs::len(ep);
+				if(l != ap->domain_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, ap->domain(), l))
+					a_ERRIS(i, ep);
+				else if(ap->domain()[ap->domain_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+				l = cs::len(ep);
+				if(l != ap->comm_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, ap->comm(), l))
+					a_ERRIS(i, ep);
+				else if(ap->comm()[ap->comm_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+			}
+		}
+
+		if(i & 1)
+			imf::snap_gut(*&mb, snap);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			mb.lofi_snap_gut(snap);
+# else
+			mb.auto_snap_gut();
+# endif
+		}
+	}
+
+	mb.reset(); // dtor DBG log..
+} // }}}
+
+static void
+a_imf_msgid(void){ // {{{
+	struct a_ha{
+		s32 rv;
+		u32 mode;
+		uz rno;
+		char const *dat;
+		char const *rp;
+		u32 rse[5]; // status/err
+	} const hat[] = { // {{{
+		// (xxx chaotic order, redundancy)
+# if 1
+		{-err::nodata, imf::mode_none, 0, "", "\0\0\0", {0,}},
+		{-err::nodata, imf::mode_none, 0, "      ", "\0\0\0", {0,}},
+
+		{0, imf::mode_none, 1,
+			"<ba@by>",
+			"ba\0by\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<149-67a2-2d-65d0@37406365>",
+			"149-67a2-2d-65d0\00037406365\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<bug-1757-nT0@http.bz.s.com/>",
+			"bug-1757-nT0\0http.bz.s.com/\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<\"HuuR6B.A._iE.eeOGSB\"@Ph.vpn.og.org>",
+			"\"HuuR6B.A._iE.eeOGSB\"\0Ph.vpn.og.org\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<HuuR6B.A\".\"_iE.eeOGSB@Ph.vpn.og.org>",
+			"\"HuuR6B.A._iE.eeOGSB\"\0Ph.vpn.og.org\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<CAFpi07zDWyV==-+D7Svm_etVADf-iKTG_wW9Q@m.g.c>",
+			"CAFpi07zDWyV==-+D7Svm_etVADf-iKTG_wW9Q\0m.g.c\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"</p/fg/s-s/10722/8f81fcc3.s-s@f.p.s.net>",
+			"/p/fg/s-s/10722/8f81fcc3.s-s\0f.p.s.net\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<k0eisn$fnc$1@d.ge.org>",
+			"k0eisn$fnc$1\0d.ge.org\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"< \t OF7\t.\tD2-ON . 02\t @ foo\t.\tbar . com \t \t>",
+			"OF7.D2-ON.02\0foo.bar.com\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<\"Hu\tu \\R6B.A._iE.\"eeOGSB@Ph.vpn.og.org>",
+			"\"Hu\tu \\R6B.A._iE.eeOGSB\"\0Ph.vpn.og.org\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			" (Bu Dy's msg) <206.403-cxoJ/w@p.g.org>",
+			"206.403-cxoJ/w\0p.g.org\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 1,
+			"<206.403-cxoJ/w@p.g.org> (Bu Dy's msg)",
+			"206.403-cxoJ/w\0p.g.org\0\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<206.403-cxoJ/w@p.g.org (Bu Dy's msg)>",
+			"206.403-cxoJ/w\0p.g.org\0Bu Dy's msg\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<206.403-cxoJ/w(Bu Dy's msg)@p.g.org >",
+			"206.403-cxoJ/w\0p.g.org\0Bu Dy's msg\0",
+			{0,}},
+		{0, imf::mode_none, 1,
+			"<(Bu)206.403-cxoJ/w(Dy's)@(m)p.(e)g.(s)org(g) >",
+			"206.403-cxoJ/w\0p.g.org\0Bu Dy's m e s g\0",
+			{0,}},
+
+		//
+		{0, imf::mode_none, 1, "<ba@[]>", "ba\0[]\0\0", {imf::state_domain_literal,}},
+		{0, imf::mode_none, 1, "<ba@ [ \t ] >", "ba\0[]\0\0", {imf::state_domain_literal,}},
+
+		{0, imf::mode_none, 1,
+			"<ba@[127.0.0.1]>",
+			"ba\0[127.0.0.1]\0\0",
+			{imf::state_domain_literal,}},
+		{0, imf::mode_none, 1,
+			"<ba@    [ 1 \\2 7  \\.  0 . \t0 .\t\t\t1   ]  >",
+			"ba\0[1\\27\\.0.0.1]\0\0",
+			{imf::state_domain_literal,}},
+
+		{0, imf::mode_none, 1,
+			"<ba@[ff02::3]>",
+			"ba\0[ff02::3]\0\0",
+			{imf::state_domain_literal,}},
+		{0, imf::mode_none, 1,
+			"<ba@  [ fF \t 02\\::\\3  \t ]  >",
+			"ba\0[fF02\\::\\3]\0\0",
+			{imf::state_domain_literal,}},
+
+		//
+
+		{0, imf::mode_none, 3,
+			"<a@b><c@d><e@f>",
+			"a\0b\0\0"
+			"c\0d\0\0"
+			"e\0f\0\0",
+			{0,}},
+		{0, imf::mode_stop_early, 1,
+			"<a@b><c@d><e@f>",
+			"a\0b\0\0",
+			{0,}},
+
+		{0, imf::mode_none, 3,
+			"<a@[1.2]><c@[3.4]><e@[5.6]>",
+			"a\0[1.2]\0\0"
+			"c\0[3.4]\0\0"
+			"e\0[5.6]\0\0",
+			{imf::state_domain_literal, imf::state_domain_literal, imf::state_domain_literal,}},
+		{0, imf::mode_stop_early, 1,
+			"<a@[1.2]><c@[3.4]><e@[5.6]>",
+			"a\0[1.2]\0\0",
+			{imf::state_domain_literal,}},
+
+		{0, imf::mode_none, 3,
+			"(1)<(2)a(3)@(4)b(5)>(6)<(7)c(8)@(9)[1.2](10)>(11)<(12)e(13)@(14)f(15)>(16)",
+			"a\0b\0002 3 4 5\0"
+			"c\0[1.2]\0007 8 9 10\0"
+			"e\0f\00012 13 14 15\0",
+			{0, imf::state_domain_literal,}},
+		{0, imf::mode_stop_early, 1,
+			"(x)<(C)a@b(i)>(j)<c@[1.2](t)>(z)<e@f(y)>(v)",
+			"a\0b\0C i\0",
+			{0,}},
+
+		{imf::err_content, imf::mode_id_single, 1,
+			"<a@b><c@d><e@f>",
+			"a\0b\0\0",
+			{0,}},
+		// assert triggers..
+#  ifdef su_HAVE_DEVEL
+		{imf::err_content, imf::mode_stop_early | imf::mode_id_single, 1,
+			"<a@b><c@d><e@f>",
+			"a\0b\0\0",
+			{0,}},
+#  endif
+
+		// bogus
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a@>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a@>", "a\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<@b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<@b>", "\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<.a@b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<.a@b>", ".a\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<..a@b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<..a@b>", "..a\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a.@b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a.@b>", "a.\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a..@b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a..@b>", "a..\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a@.b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a@.b>", "a\0.b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a@..b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a@..b>", "a\0..b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a@b.>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a@b.>", "a\0b.\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a@b..>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a@b..>", "a\0b..\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<a@b..c>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<a@b..c>", "a\0b..c\0\0", {imf::err_content | imf::state_relax,}},
+
+		//
+		{imf::err_content | imf::err_relax, imf::mode_none, 0,
+			"<cm-218.kplps%s@s.eu@bs.org>",
+			"\0\0\0",
+			{0,}},
+		{0, imf::mode_relax, 1,
+			"<cm-218.kplps%s@s.eu@bs.org>",
+			"cm-218.kplps%s@s.eu\0bs.org\0\0",
+			{imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0,
+			"<2032.szBlm%s@olook.com@ol.com>",
+			"\0\0\0",
+			{0,}},
+		{0, imf::mode_relax, 1,
+			"<2032.szBlm%s@olook.com@ol.com>",
+			"2032.szBlm%s@olook.com\0ol.com\0\0",
+			{imf::err_content | imf::state_relax,}},
+
+		// (to test we get 'em all, *then*)
+		{imf::err_content | imf::err_relax, imf::mode_none, 1,
+			"<a@b> <cm-218.kplps%s@s.eu@bs.org> <c@d> <2032.szBlm%s@olook.com@ol.com>",
+			"a\0b\0\0",
+			{0,}},
+		{0, imf::mode_relax, 5,
+			"<a@b> <cm-218.kplps%s@s.eu@bs.org> <c@d> <2032.szBlm%s@olook.com@ol.com> <e@f>",
+			"a\0b\0\0"
+			"cm-218.kplps%s@s.eu\0bs.org\0\0"
+			"c\0d\0\0"
+			"2032.szBlm%s@olook.com\0ol.com\0\0"
+			"e\0f\0\0",
+			{0, imf::err_content | imf::state_relax, 0, imf::err_content | imf::state_relax,}},
+
+		// super bogus / relax
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<3556.>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<3556.>", "3556.\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<:3556>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<:3556>", ":3556\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "<35@:56>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "<35@:56>", "35\0:56\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "</DASDSA/dasdsa>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "</DASDSA/dasdsa>", "/DASDSA/dasdsa\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		// ..and no <>
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "3556.", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "3556.", "3556.\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, ":3556", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, ":3556", ":3556\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "35@:56", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "35@:56", "35\0:56\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "/DASDSA/dasdsa", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "/DASDSA/dasdsa", "/DASDSA/dasdsa\0\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, " \t a \t @\t b", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, " \t a \t @\t b", "a\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "a@b c@d e@f", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "a@b c@d e@f", "a@bc@de\0f\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "a@b>", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 1, "a@b>", "a\0b\0\0", {imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "a@b><c@d>e@f", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 3, "a@b><c@d>e@f",
+			"a\0b\0\0"
+			"c\0d\0\0"
+			"e\0f\0\0",
+			{imf::err_content | imf::state_relax, 0, imf::err_content | imf::state_relax,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "a@b><c@d<e@f", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 3, "a@b><c@d<e@f",
+			"a\0b\0\0"
+			"c\0d\0\0"
+			"e\0f\0\0",
+			{imf::err_content | imf::state_relax, imf::err_content | imf::state_relax,
+				imf::err_content | imf::state_relax}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "a><c<e@f", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 3, "a><c<e@f",
+			"a\0\0\0"
+			"c\0\0\0"
+			"e\0f\0\0",
+			{imf::err_content | imf::state_relax, imf::err_content | imf::state_relax,
+				imf::err_content | imf::state_relax}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "(C)a@b>(i)<c@d(t)<e@f>(y)", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 3, "(C)a@b>(i)<c@d(t)<e@f>(y)",
+			"a\0b\0\0"
+			"c\0d\0t\0"
+			"e\0f\0\0",
+			{imf::err_content | imf::state_relax, imf::err_content | imf::state_relax, 0,}},
+
+		{imf::err_content | imf::err_relax, imf::mode_none, 0, "(C)a@b>(i)<(a)c@d>(o)e@f(!)>(.)", "\0\0\0", {0,}},
+		{0, imf::mode_relax, 3, "(C)a@b>(i)<(a)c@d>(o)e@f(!)>(.)",
+			"a\0b\0\0"
+			"c\0d\0a\0"
+			"e\0f\0!\0",
+			{imf::err_content | imf::state_relax, 0, imf::err_content | imf::state_relax,}},
+# endif
+	}; //}}}
+
+	mem_bag mb;
+
+	for(uz i = 0; i < NELEM(hat); ++i){
+		void *snap;
+		if(i & 1)
+			snap = imf::snap_create(*&mb);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			snap = mb.lofi_snap_create();
+# else
+			mb.auto_snap_create();
+# endif
+		}
+
+		char const *ep;
+		imf::msgid *mip;
+
+		s32 se = imf::parse_msgid_header(*&mip, hat[i].dat, hat[i].mode, *&mb, &ep);
+# if a_IMF_DVL
+		log::write(log::debug, "IMF %#X/%#X <%s>", se, hat[i].rv, hat[i].dat);
+# endif
+		if(se != hat[i].rv)
+			a_ERRIS(i, hat[i].dat);
+		else{
+			imf::msgid *xmip;
+			u32 j;
+
+			if(hat[i].rv == 0){
+				if(*ep != '\0'){
+					if(!(hat[i].mode & imf::mode_stop_early))
+						a_ERRIS(i, hat[i].dat);
+				}else if(hat[i].mode & imf::mode_stop_early)
+					a_ERRIS(i, hat[i].dat);
+			}
+
+			for(j = 0, xmip = mip; xmip != NIL; ++j, xmip = xmip->next()){
+			}
+			if(j != hat[i].rno)
+				a_ERRIS(i, hat[i].dat);
+
+			ep = hat[i].rp;
+			for(j = 0; mip != NIL; ++j, mip = mip->next()){
+# if a_IMF_DVL
+				log::write(log::debug, "\tIMF %zu %#X/%#X <%s> <%s> <%s>",
+					j, hat[i].rse[j], mip->mse(), mip->id_left(), mip->id_right(), mip->comm());
+# endif
+				if(hat[i].rse[j] != mip->mse())
+					a_ERRIS(i, ep);
+
+				uz l;
+
+				l = cs::len(ep);
+				if(l != mip->id_left_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, mip->id_left(), l))
+					a_ERRIS(i, ep);
+				else if(mip->id_left()[mip->id_left_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+				l = cs::len(ep);
+				if(l != mip->id_right_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, mip->id_right(), l))
+					a_ERRIS(i, ep);
+				else if(mip->id_right()[mip->id_right_len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+				l = cs::len(ep);
+				if(l != mip->comm_len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, mip->comm(), l))
+					a_ERRIS(i, ep);
+				else if(mip->comm()[mip->comm_len()] != '\0')
+					a_ERRIS(i, ep);
+				ep += ++l;
+			}
+		}
+
+		if(i & 1)
+			imf::snap_gut(*&mb, snap);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			mb.lofi_snap_gut(snap);
+# else
+			mb.auto_snap_gut();
+# endif
+		}
+	}
+
+	mb.reset(); // dtor DBG log..
+} // }}}
+
+static void
+a_imf_tok(void){ // {{{
+	struct a_ha{
+		s32 rv;
+		u32 mode;
+		u32 rno;
+		u32 msea[5];
+		char const *dat;
+		char const *rp;
+	} const hat[] = { // {{{
+# if 1
+		{-err::nodata, imf::mode_none, 0, {0,}, "", ""},
+		{-err::nodata, imf::mode_none, 0, {0,}, "            ", ""},
+
+		{0, imf::mode_none, 1, {0,},
+			"hello",
+			"hello\0"},
+		{0, imf::mode_none, 2, {0,},
+			"hello you",
+			"hello\0"
+			"you\0",},
+
+		{0, imf::mode_none, 1, {0,},
+			"(one)(two)hello(3)",
+			"hello\0"},
+		{0, imf::mode_tok_comment, 3, {imf::state_comment, 0, imf::state_comment,},
+			"(one)(two)hello(3)",
+			"one two\0" "hello\0" "3\0"},
+		{0, imf::mode_tok_comment, 3, {imf::state_comment, 0, imf::state_comment,},
+			"   ( one  ) \t (\ttwo \t\t)\t\thello\t\t(\t3\t)\t",
+			"one two\0" "hello\0" "3\0"},
+
+		{imf::err_content, imf::mode_none, 1, {0,},
+			"  (one) hello (two) ; au1 ",
+			"hello\0"},
+		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
+			"  (one) hello (two) ; au2 ",
+			"hello\0" "au2\0"},
+		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
+			"  (one) hello (two) ;;;; ;\t;  au3 \t  ",
+			"hello\0" "au3\0"},
+		{0, imf::mode_tok_semicolon, 3, {0, imf::state_semicolon,},
+			"  (one) hello (two) you;;;; ;\t;  au4 \t  ",
+			"hello\0" "you\0" "au4\0"},
+
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment, 4,
+				{imf::state_comment, 0, imf::state_comment | imf::state_semicolon, 0,},
+			"  (one) hello (two) ; au ",
+			"one\0" "hello\0" "two\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment, 5,
+				{imf::state_comment, 0, imf::state_comment, imf::state_semicolon, 0,},
+			"  (one) hello (two) you; au ",
+			"one\0" "hello\0" "two\0" "you\0" "au\0"},
+
+		{0, imf::mode_tok_semicolon, 2, {imf::state_semicolon,},
+			"  \"this is a long, \t  looong quoted one \"-/hey;au",
+			"\"this is a long, \t  looong quoted one -/hey\"\0"  "au\0"
+			},
+		{0, imf::mode_tok_semicolon, 3, {0, imf::state_semicolon,},
+			"  \"this is a long, looong quoted one\"-/ hey  ;   au",
+			"\"this is a long, looong quoted one-/\"\0"  "hey\0"  "au\0"},
+		{0, imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+			"  \"this is a long, looong \t quoted one \";hey;au",
+			"\"this is a long, looong \t quoted one \"\0"  "hey\0"  "au\0"
+			},
+		{0, imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+			"  \"this is a long, looong  quoted one\"    ;    hey      ;     au",
+			"\"this is a long, looong  quoted one\"\0"  "hey\0"  "au\0"},
+
+		{0, imf::mode_none, 1, {0,},
+			" \"\"\"\"\"\"hello\"\"",
+			"hello\0"},
+		{0, imf::mode_tok_empty, 1, {0,},
+			" \"\"\"\"hello\"\"",
+			"hello\0"},
+		{0, imf::mode_none, 1, {0,},
+			" \"\"\"\"\"\" hello \"\"  ",
+			"hello\0"},
+		{0, imf::mode_tok_empty, 3, {0,},
+			" \"\" hello \"\"    ",
+			"\0" "hello\0" "\0"},
+		{0, imf::mode_tok_empty, 3, {0,},
+			" \"\"\"\"\"\" hello \"\"    ",
+			"\0" "hello\0" "\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 4, {0, imf::state_semicolon, 0, 0},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0" "hello\0" "\0" "\"au\"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3, {imf::state_semicolon, 0, 0},
+			" \"\"hello ; \"\" \"au\" ",
+			"hello\0" "\0" "\"au\"\0"},
+
+		{imf::err_content, imf::mode_tok_semicolon, 1, {0,},
+			" \"quo\"te.\", baby\"-d'ya\"\\ \"know?;BUM  ;  MER",
+			"\"quote\"\0"},
+		{imf::err_content, imf::mode_tok_semicolon, 1, {0,},
+			" \"quo.\"te.",
+			"\"quo.te\"\0"},
+		{0, imf::mode_dot_atext | imf::mode_tok_semicolon, 3, {imf::state_semicolon, imf::state_semicolon,},
+			" \"quo.\"te.\", baby\"-d'ya\"\\ \"know?;BUM  ;  MER",
+			"\"quo.te., baby-d'ya\\ know?\"\0"  "BUM\0"  "MER\0"},
+
+		{0, imf::mode_tok_semicolon, 0, {0,},
+			" ; ; ; ",
+			""},
+		{0, imf::mode_tok_semicolon, 0, {0,},
+			" \"\"; () ; ; ",
+			""},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3,
+			{imf::state_semicolon, imf::state_semicolon, imf::state_semicolon,},
+			" ; ; ; ",
+			"\0"  "\0"  "\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3,
+			{imf::state_semicolon, imf::state_semicolon, imf::state_semicolon,},
+			" \"\"; () ; ; ",
+			"\0"  "\0"  "\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 5,
+				{imf::state_semicolon, imf::state_semicolon, imf::state_semicolon,
+					imf::state_semicolon,},
+			"  h1 ;; ;\t;  aux \t  ",
+			"h1\0" "\0" "\0" "\0" "aux\0"},
+
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment | imf::mode_stop_early, 1, {imf::state_comment,},
+			"  (c1) ha1 (two) you; au ",
+			"c1\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_stop_early, 1, {0,},
+			"  (c2) ha2 (two) you; au ",
+			"ha2\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_stop_early, 1, {imf::state_semicolon,},
+			"  (c3) ha3 (two) ; au ",
+			"ha3\0"},
+
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment | imf::mode_stop_early, 1,
+				{imf::state_comment | imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"c4\0"},
+		{0, imf::mode_tok_semicolon, 2,
+				{imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"ha4\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty, 3,
+				{imf::state_semicolon, imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"\0" "ha4\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_comment, 4,
+				{imf::state_comment | imf::state_semicolon, 0, imf::state_comment | imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"c4\0" "ha4\0" "two\0" "au\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_tok_comment, 4,
+				{imf::state_comment | imf::state_semicolon, 0, imf::state_comment | imf::state_semicolon,},
+			"  (c4); ha4 (two) ; au ",
+			"c4\0" "ha4\0" "two\0" "au\0"},
+
+		{0, imf::mode_stop_early, 1, {0,},
+			" \"\" hello \"\" ; \"au\" ",
+			"hello\0"},
+		{0, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0"},
+		{imf::err_content, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" ; hello \"\" \"au\" ",
+			"\0"},
+
+		{0, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" hello \"\" x",
+			"hello\0"},
+		{0, imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_stop_early, 1, {0,},
+			" \"\" hello ; \"\" \"au\" ",
+			"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_stop_early, 1, {imf::state_semicolon,},
+			" \"\"  ; hello \"\" \"au\" ",
+			"\0"},
+		{0, imf::mode_tok_semicolon | imf::mode_tok_empty | imf::mode_stop_early, 1, {imf::state_semicolon,},
+			" \"\"; hello \"\" \"au\" ",
+			"\0"},
+# endif
+	}; // }}}
+
+	mem_bag mb;
+
+	for(uz i = 0; i < NELEM(hat); ++i){
+		void *snap;
+		if(i & 1)
+			snap = imf::snap_create(*&mb);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			snap = mb.lofi_snap_create();
+# else
+			mb.auto_snap_create();
+# endif
+		}
+
+		char const *ep;
+		imf::shtok *tp;
+		s32 se = imf::parse_struct_header(*&tp, hat[i].dat, hat[i].mode, *&mb, &ep);
+		if(se != hat[i].rv)
+			a_ERRIS(i, hat[i].dat);
+		else{
+			imf::shtok *xtp;
+			u32 j;
+
+			if(hat[i].rv == 0){
+				if(*ep != '\0'){
+					if(!(hat[i].mode & imf::mode_stop_early))
+						a_ERRIS(i, hat[i].dat);
+				}else if(hat[i].mode & imf::mode_stop_early)
+					a_ERRIS(i, hat[i].dat);
+			}
+
+			for(j = 0, xtp = tp; xtp != NIL; ++j, xtp = xtp->next()){
+			}
+			if(j != hat[i].rno)
+				a_ERRIS(i, hat[i].dat);
+
+			ep = hat[i].rp;
+			for(j = 0; tp != NIL; ++j, tp = tp->next()){
+				uz l;
+
+				if(hat[i].msea[j] != tp->mse())
+					a_ERRIS(i, ep);
+
+				l = cs::len(ep);
+				if(l != tp->len())
+					a_ERRIS(i, ep);
+				else if(cs::cmp(ep, tp->dat(), l))
+					a_ERRIS(i, ep);
+				else if(tp->dat()[tp->len()] != '\0')
+					a_ERRIS(i, ep);
+
+				ep += ++l;
+			}
+		}
+
+		if(i & 1)
+			imf::snap_gut(*&mb, snap);
+		else{
+# ifdef su_HAVE_MEM_BAG_LOFI
+			mb.lofi_snap_gut(snap);
+# else
+			mb.auto_snap_gut();
+# endif
+		}
+	}
+
+	mb.reset(); // dtor DBG log..
+} // }}}
+#endif // su_HAVE_IMF
+// }}}
+
 // md {{{
 #ifdef su_HAVE_MD
 struct a_siphash_t64{
@@ -2308,9 +4170,43 @@ a_mem_bag(void){ // TODO only instantiation test yet
 }
 // }}}
 
-// path_cs {{{
+// path {{{
+static void a_path__info(void);
+static void a_path__string(void);
+
 static void
-a_path_cs(void){
+a_path(void){
+	a_path__info();
+	a_path__string();
+}
+
+static void
+a_path__info(void){
+	path::info pi;
+
+	if(!pi.stat(argv0))
+		a_ERR();
+	else if(!pi.lstat(argv0))
+		a_ERR();
+	else{
+		if(pi.descriptive_char() != '\0')
+			a_ERR();
+		if(!pi.is_reg())
+			a_ERR();
+		if(pi.size() > pi.blocks() * pi.blksize())
+			a_ERR();
+
+		if(!pi.atime().is_valid())
+			a_ERR();
+		if(!pi.mtime().is_valid())
+			a_ERR();
+		if(!pi.ctime().is_valid())
+			a_ERR();
+	}
+}
+
+static void
+a_path__string(void){
 	// Tests from POSIX manual
 	char buf[80];
 	char const *bp;

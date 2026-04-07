@@ -89,6 +89,7 @@
 
 #undef ALIGNOF
 #undef ALIGN_P
+#undef ALIGN_PAGE
 #undef ALIGN_Z_OVER
 #undef ALIGN_Z
 #undef ALIGN_Z_PZ
@@ -261,6 +262,8 @@
 #undef SZ_MIN
 #undef SZ_MAX
 #undef UZ_BITS
+
+#undef UP_M1
 
 /* state_gut */
 #undef su__STATE_ON_GUT_FUN

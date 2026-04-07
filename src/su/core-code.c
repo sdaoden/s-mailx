@@ -152,9 +152,10 @@ a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
 		++fmt;
 		xbuf = cursor;
 	}
-	vsnprintf(cursor, (sizeof(buf) - 1 - 1 - P2UZ(cursor - buf)), fmt, ap);
+	vsnprintf(cursor, (sizeof(buf) - 1 - 1 - P2UZ(cursor - buf)), fmt, ap);/* XXX fmtenc!! */
 
 	/* For each line in fmt, write out one line */
+	su_THREAD_ERR_SCOPE_IN();
 	SU( su_MUTEX_LOCK(&a_core_glck_log); )
 	for(;;){
 		char *cp, c;
@@ -199,6 +200,7 @@ jspace:
 		su_cs_pcopy(cursor, cp);
 	}
 	SU( su_MUTEX_UNLOCK(&a_core_glck_log); )
+	su_THREAD_ERR_SCOPE_OU();
 
 	if(lvl_a_flags == su_LOG_EMERG)
 		abort(); /* TODO configurable */
@@ -518,7 +520,7 @@ su_log_vwrite(u32 lvl_a_flags, char const *fmt, void *vp){
 void
 su_assert(char const *expr, char const *file, u32 line, char const *fun, boole crash){
 	su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
-		"SU assert failed: %.60s\n  File %.60s, line %" PRIu32 "\n  Function %.142s",
+		"SU assert failed: %.140s\n  File %.60s, line %" PRIu32 "\n  Function %.142s",
 		expr, file, line, fun);
 	su_err_set(su_ERR_FAULT);
 }
