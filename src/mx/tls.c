@@ -55,6 +55,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/mime-param.h"
 #include "mx/net-socket.h"
+#include "mx/time.h"
 #include "mx/tty.h"
 #include "mx/url.h"
 
@@ -392,16 +393,15 @@ mx_smime_decrypt_assemble(struct message *mp, FILE *hp, FILE *bp){
       goto jleave;
 
    /* C99 */{
-      struct time_current save;
+      struct mx_time_current save;
       int w;
 
-      save = time_current;
-      time_current_update(&time_current, TRU1);
-      if((w = mx_sendout_header_date(mb.mb_otf, "X-Decoding-Date", TRU1)
-            ) == -1)
+      save = mx_time_current;
+      mx_time_current_update(NIL, TRU1);
+      if((w = mx_sendout_header_date(mb.mb_otf, "X-Decoding-Date", TRU1)) == -1)
          goto jleave;
       octets += w;
-      time_current = save;
+      mx_time_current = save;
    }
    ++lns;
 

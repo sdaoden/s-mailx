@@ -37,19 +37,18 @@
 void
 su_thread_yield(void){
 # ifdef su_HAVE_SCHED_YIELD
-   sched_yield(); /* We _are_ single threaded */
+	sched_yield(); /* We _are_ single threaded */
 # elif defined su_HAVE_PTHREAD_YIELD
-   pthread_yield();
+	pthread_yield();
 # else
-   struct su_timespec ts;
+	struct su_timespec ts;
 
-   ts.ts_sec = 0;
-   ts.ts_nano = 0;
-   su_time_nsleep(&ts, NIL);
+	STRUCT_ZERO(struct su_timespec, &ts);
+	su_time_nsleep(&ts, NIL);
 # endif
 }
 
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */

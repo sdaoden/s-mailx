@@ -36,8 +36,8 @@
  */
 
 struct su_cs_dict;
+struct su_pathinfo;
 struct su_re_match;
-struct su_timespec;
 
 struct mx_attachment;
 struct mx_cmd_arg;
@@ -261,27 +261,12 @@ FL boole mx_pager_close(FILE *fp);
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, uz lines);
 
-/* Parse name and guess at the required protocol.
- * If check_stat is true then stat(2) will be consulted - a TODO c..p hack
- * TODO that together with *newfolders*=maildir adds Maildir support; sigh!
- * If try_hooks is set check_stat is implied and if the stat(2) fails all
- * file-hook will be tried in order to find a supported version of name.
- * If adjusted_or_null is not NULL it will be set to the final version of name
- * this function knew about: a %: FEDIT_SYSBOX prefix is forgotten, in case
- * a hook is needed the "real" filename will be placed.
- * TODO This c..p should be URL::from_string()->protocol() or something! */
-FL enum protocol  which_protocol(char const *name, boole check_stat,
-                     boole try_hooks, char const **adjusted_or_null);
-
 /* Hexadecimal itoa (NUL terminates) / atoi (-1 on error) */
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL s32      n_c_from_hex_base16(char const hex[2]);
 
 /* Return the name of the dead.letter file */
 FL char const * n_getdeadletter(void);
-
-/* Detect and query the hostname to use */
-FL char *n_nodename(boole mayoverride);
 
 /* Convert from / to *ttycharset* */
 #ifdef mx_HAVE_IDNA
@@ -306,30 +291,14 @@ FL boole n_quadify(char const *inbuf, uz inlen, char const *prompt,
 /* Is the argument "all" (case-insensitive) or "*" */
 FL boole n_is_all_or_aster(char const *name);
 
-/* Get seconds since epoch, return pointer to static struct.
- * Unless force_update is true we may use the event-loop tick time */
-FL struct su_timespec const *n_time_now(boole force_update);
-
-/* Update *tc* to now; only .tc_time updated unless *full_update* is true */
-FL void        time_current_update(struct time_current *tc,
-                  boole full_update);
-
-/* TZ difference in seconds.
- * secsepoch is only used if any of the tm's is NIL. */
-FL s32 n_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil,
-      struct tm const *localp_or_nil);
-
-/* ctime(3), but do ensure 26 byte limit, do not crash XXX static buffer.
- * NOTE: no trailing newline */
-FL char *n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil);
-
 /* Our error print series..  Note: these reverse scan format in order to know
  * whether a newline was included or not -- this affects the output!
+ * vlp is a va_list*, but stdarg.h.
  * xxx Prototype changes to be reflected in src/su/core-code. (for now) */
 FL void n_err(char const *format, ...);
 FL void n_errx(boole allow_multiple, char const *format, ...);
-FL void n_verr(char const *format, va_list ap);
-FL void n_verrx(boole allow_multiple, char const *format, va_list ap);
+FL void n_verr(char const *format, void *vlp);
+FL void n_verrx(boole allow_multiple, char const *format, void *vlp);
 /* Hook for SU */
 FL void n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len);
 
@@ -373,6 +342,25 @@ FL struct n_strlist *mx_xy_dump_dict_gen_ptf(char const *cmdname,
  * a trailing such is put as necessary */
 FL boole mx_page_or_print_strlist(char const *cmdname,
       struct n_strlist *slp, boole cnt_lines);
+
+/*
+ * auxlily-compat.c
+ */
+
+/* Parse name and guess at the required protocol.
+ * If check_stat is true then stat(2) will be consulted - a TODO c..p hack
+ * TODO that together with *newfolders*=maildir adds Maildir support; sigh!
+ * If try_hooks is set check_stat is implied and if the stat(2) fails all
+ * file-hook will be tried in order to find a supported version of name.
+ * If adjusted_or_null is not NULL it will be set to the final version of name
+ * this function knew about: a %: FEDIT_SYSBOX prefix is forgotten, in case
+ * a hook is needed the "real" filename will be placed.
+ * TODO This c..p should be URL::from_string()->protocol() or something! */
+FL enum protocol  which_protocol(char const *name, boole check_stat,
+                     boole try_hooks, char const **adjusted_or_null);
+
+/* Detect and query the hostname to use */
+FL char *n_nodename(boole mayoverride);
 
 /*
  * cmd-folder.c
@@ -592,13 +580,13 @@ FL void        initbox(char const *name);
 FL char const *n_folder_query(void);
 
 /* Prepare the seekable O_APPEND MBOX fout for appending of another message.
- * If st_or_null is not NULL it is assumed to point to an up-to-date status of
+ * If pip_or_nil is not NIL it is assumed to point to an up-to-date status of
  * fout, otherwise an internal fstat(2) is performed as necessary.
  * post defines whether a message was written out, ie whether it is a hard
  * error if preparation for another message fails.
  * Returns su_err_no() of error */
 FL int n_folder_mbox_prepare_append(FILE *fout, boole post,
-      struct stat *st_or_null);
+      struct su_pathinfo *pip_or_nil);
 
 /*
  * header.c
@@ -714,14 +702,15 @@ FL int         msgidcmp(char const *s1, char const *s2);
 /* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);
 
-/* From username Fri Jan  2 20:13:51 2004
+#if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
+/* From username Fri Jan  2 20:13:51 2004; else current time
  *               |    |    |    |    |
  *               0    5   10   15   20 */
-#if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
-FL time_t      unixtime(char const *from);
+FL s64 mx_header_unixtime(char const *from);
 #endif
 
-FL time_t      rfctime(char const *date);
+/* 0 for invalid times */
+FL s64 mx_header_rfctime(char const *date);
 
 /* Determine the date to print in faked 'From ' lines */
 FL void        substdate(struct message *m);
@@ -1358,7 +1347,7 @@ FL char *imap_path_decode(char const *path, boole *err_or_null);
 
 FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
-FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
+FL enum okay   imap_select(struct mailbox *mp, s64 *size, int *count,
                   const char *mbx, enum fedit_mode fm);
 FL int imap_setfile(char const *who, const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
@@ -1386,8 +1375,6 @@ FL int         c_cache(void *vp);
 FL int         disconnected(const char *file);
 FL void        transflags(struct message *omessage, long omsgCount,
                   int transparent);
-FL time_t      imap_read_date_time(const char *cp);
-FL const char * imap_make_date_time(time_t t);
 
 /* Extract the protocol base and return a duplicate */
 FL char *protbase(char const *cp  su_DVL_LOC_ARGS_DECL);

@@ -13,4 +13,4 @@ cd include/su || exit 1
 ${sed} -i'' -e '/ CXX_DOXYGEN/,/ @CXX_DOXYGEN/d' *.h
 ${git} add .
 
-# s-sh-mode
+# s-sht-mode

@@ -30,6 +30,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/sort.h>
 
 #include "mx/cmd-charsetalias.h"
@@ -45,7 +46,6 @@
 #include "mx/cmd-spam.h"
 #include "mx/cmd-vexpr.h"
 #include "mx/colour.h"
-#include "mx/compat.h"
 #include "mx/cred-netrc.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
@@ -68,9 +68,7 @@
 #include "su/code-in.h"
 
 /* Create a multiline info string about all known additional infos for lcp */
-#ifdef mx_HAVE_DOCSTRINGS
 static char const *a_cmd_cmdinfo(struct mx_cmd_desc const *cdp);
-#endif
 
 /* Print a list of all commands */
 static int a_cmd_c_list(void *vp);
@@ -87,276 +85,258 @@ static struct mx_cmd_desc const a_cmd_ctable[] = {
 /* And the indexes */
 #include "mx/gen-cmd-tab.h" /* $(MX_SRCDIR) */
 
-#ifdef mx_HAVE_DOCSTRINGS
 static char const *
 a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
-   struct n_string rvb, *rv;
-   char const *cp;
-   NYD2_IN;
+	struct n_string rvb, *rv;
+	char const *cp;
+	NYD2_IN;
 
-   rv = n_string_creat_auto(&rvb);
-   rv = n_string_reserve(rv, 80);
+	rv = n_string_creat_auto(&rvb);
+	rv = n_string_reserve(rv, 80);
 
-   switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
-   case mx_CMD_ARG_TYPE_MSGLIST:
-      cp = N_("message-list");
-      break;
-   case mx_CMD_ARG_TYPE_NDMLIST:
-      cp = N_("message-list (without default)");
-      break;
-   case mx_CMD_ARG_TYPE_STRING:
-   case mx_CMD_ARG_TYPE_RAWDAT:
-      cp = N_("string data");
-      break;
-   case mx_CMD_ARG_TYPE_RAWLIST:
-      cp = N_("old-style quoting");
-      break;
-   case mx_CMD_ARG_TYPE_WYRA:
-      cp = N_("`wysh' for sh(1)ell-style quoting");
-      break;
-   case mx_CMD_ARG_TYPE_WYSH:
-      cp = (cdp->cd_mflags_o_minargs == 0 && cdp->cd_mmask_o_maxargs == 0)
-            ? N_("sh(1)ell-style quoting (takes no arguments)")
-            : N_("sh(1)ell-style quoting");
-      break;
-   default:
-   case mx_CMD_ARG_TYPE_ARG:{
-      u32 flags, xflags;
-      uz i, ol;
-      struct mx_cmd_arg_desc const *cadp;
+	switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
+	case mx_CMD_ARG_TYPE_MSGLIST:
+		cp = N_("message-list");
+		break;
+	case mx_CMD_ARG_TYPE_NDMLIST:
+		cp = N_("message-list (without default)");
+		break;
+	case mx_CMD_ARG_TYPE_STRING:
+	case mx_CMD_ARG_TYPE_RAWDAT:
+		cp = N_("string data");
+		break;
+	case mx_CMD_ARG_TYPE_RAWLIST:
+		cp = N_("old-style quoting");
+		break;
+	case mx_CMD_ARG_TYPE_WYRA:
+		cp = N_("`wysh' for sh(1)ell-style quoting");
+		break;
+	case mx_CMD_ARG_TYPE_WYSH:
+		cp = (cdp->cd_mflags_o_minargs == 0 && cdp->cd_mmask_o_maxargs == 0)
+				? N_("sh(1)ell-style quoting (takes no arguments)")
+				: N_("sh(1)ell-style quoting");
+		break;
+	default:
+	case mx_CMD_ARG_TYPE_ARG:{
+		u32 flags, xflags;
+		uz i, ol;
+		struct mx_cmd_arg_desc const *cadp;
 
-      rv = n_string_push_cp(rv, _("argument tokens: "));
+		rv = n_string_push_cp(rv, _("argument tokens: "));
 
-      for(cadp = cdp->cd_cadp, ol = i = 0; i < cadp->cad_no; ++i){
-         xflags = flags = cadp->cad_ent_flags[i][0];
+		for(cadp = cdp->cd_cadp, ol = i = 0; i < cadp->cad_no; ++i){
+			xflags = flags = cadp->cad_ent_flags[i][0];
 jfakeent:
-         if(flags & mx_CMD_ARG_DESC_OPTION){
-            ++ol;
-            rv = n_string_push_c(rv, '[');
-         }
-         if(i != 0){
-            rv = n_string_push_c(rv, ',');
-            rv = n_string_push_c(rv, ' ');
-         }
-         if(flags & mx_CMD_ARG_DESC_GREEDY)
-            rv = n_string_push_c(rv, ':');
-         switch(flags & mx__CMD_ARG_DESC_TYPE_MASK){
-         default:
-         case mx_CMD_ARG_DESC_SHEXP:
-            rv = n_string_push_cp(rv, _("(shell-)token"));
-            break;
-         case mx_CMD_ARG_DESC_MSGLIST:
-            rv = n_string_push_cp(rv, _("(shell-)msglist"));
-            break;
-         case mx_CMD_ARG_DESC_NDMSGLIST:
-            rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
-            break;
-         case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
-            rv = n_string_push_cp(rv, _("(shell-)msglist"));
-            ++i;
-            xflags = mx_CMD_ARG_DESC_SHEXP;
-         }
-         if(flags & mx_CMD_ARG_DESC_GREEDY)
-            rv = n_string_push_c(rv, ':');
+			if(flags & mx_CMD_ARG_DESC_OPTION){
+				++ol;
+				rv = n_string_push_c(rv, '[');
+			}
+			if(i != 0){
+				rv = n_string_push_c(rv, ',');
+				rv = n_string_push_c(rv, ' ');
+			}
+			if(flags & mx_CMD_ARG_DESC_GREEDY)
+				rv = n_string_push_c(rv, ':');
+			switch(flags & mx__CMD_ARG_DESC_TYPE_MASK){
+			default:
+			case mx_CMD_ARG_DESC_SHEXP:
+				rv = n_string_push_cp(rv, _("(shell-)token"));
+				break;
+			case mx_CMD_ARG_DESC_MSGLIST:
+				rv = n_string_push_cp(rv, _("(shell-)msglist"));
+				break;
+			case mx_CMD_ARG_DESC_NDMSGLIST:
+				rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
+				break;
+			case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+				rv = n_string_push_cp(rv, _("(shell-)msglist"));
+				++i;
+				xflags = mx_CMD_ARG_DESC_SHEXP;
+			}
+			if(flags & mx_CMD_ARG_DESC_GREEDY)
+				rv = n_string_push_c(rv, ':');
 
-         if(xflags != flags){
-            flags = xflags;
-            goto jfakeent;
-         }
-      }
-      while(ol-- > 0)
-         rv = n_string_push_c(rv, ']');
-      cp = NIL;
-      }break;
-   }
-   if(cp != NIL)
-      rv = n_string_push_cp(rv, V_(cp));
+			if(xflags != flags){
+				flags = xflags;
+				goto jfakeent;
+			}
+		}
+		while(ol-- > 0)
+			rv = n_string_push_c(rv, ']');
+		cp = NIL;
+		}break;
+	}
+	if(cp != NIL)
+		rv = n_string_push_cp(rv, V_(cp));
 
-   /* Note: on updates, change the manual! */
-   if(cdp->cd_caflags & mx_CMD_ARG_G)
-      rv = n_string_push_cp(rv, _(" | `global'"));
-   if(cdp->cd_caflags & mx_CMD_ARG_L)
-      rv = n_string_push_cp(rv, _(" | `local'"));
-   if(cdp->cd_caflags & mx_CMD_ARG_U)
-      rv = n_string_push_cp(rv, _(" | `u'"));
+	/* Note: on updates, change the manual! */
+	if(cdp->cd_caflags & mx_CMD_ARG_G)
+		rv = n_string_push_cp(rv, _(" | `global'"));
+	if(cdp->cd_caflags & mx_CMD_ARG_L)
+		rv = n_string_push_cp(rv, _(" | `local'"));
+	if(cdp->cd_caflags & mx_CMD_ARG_U)
+		rv = n_string_push_cp(rv, _(" | `u'"));
 
-   if(cdp->cd_caflags & mx_CMD_ARG_V)
-      rv = n_string_push_cp(rv, _(" | `vput'"));
-   if(cdp->cd_caflags & mx_CMD_ARG_EM)
-      rv = n_string_push_cp(rv, _(" | *!*"));
+	if(cdp->cd_caflags & mx_CMD_ARG_V)
+		rv = n_string_push_cp(rv, _(" | `vput'"));
+	if(cdp->cd_caflags & mx_CMD_ARG_EM)
+		rv = n_string_push_cp(rv, _(" | *!*"));
 
 
-   if(cdp->cd_caflags & (mx_CMD_ARG_A | mx_CMD_ARG_I | mx_CMD_ARG_M |
-         mx_CMD_ARG_X | mx_CMD_ARG_NEEDMAC)){
-      rv = n_string_push_cp(rv, _(" | yay:"));
-      if(cdp->cd_caflags & mx_CMD_ARG_A)
-         rv = n_string_push_cp(rv, _(" active-mailbox"));
-      if(cdp->cd_caflags & mx_CMD_ARG_I)
-         rv = n_string_push_cp(rv, _(" batch/interactive"));
-      if(cdp->cd_caflags & mx_CMD_ARG_M)
-         rv = n_string_push_cp(rv, _(" send-mode"));
-      if(cdp->cd_caflags & mx_CMD_ARG_X)
-         rv = n_string_push_cp(rv, _(" subprocess"));
-      if(cdp->cd_caflags & mx_CMD_ARG_NEEDMAC)
-         rv = n_string_push_cp(rv, _(" macro/account"));
-   }
+	if(cdp->cd_caflags & (mx_CMD_ARG_A | mx_CMD_ARG_I | mx_CMD_ARG_M | mx_CMD_ARG_X | mx_CMD_ARG_NEEDMAC)){
+		rv = n_string_push_cp(rv, _(" | yay:"));
+		if(cdp->cd_caflags & mx_CMD_ARG_A)
+			rv = n_string_push_cp(rv, _(" active-mailbox"));
+		if(cdp->cd_caflags & mx_CMD_ARG_I)
+			rv = n_string_push_cp(rv, _(" batch/interactive"));
+		if(cdp->cd_caflags & mx_CMD_ARG_M)
+			rv = n_string_push_cp(rv, _(" send-mode"));
+		if(cdp->cd_caflags & mx_CMD_ARG_X)
+			rv = n_string_push_cp(rv, _(" subprocess"));
+		if(cdp->cd_caflags & mx_CMD_ARG_NEEDMAC)
+			rv = n_string_push_cp(rv, _(" macro/account"));
+	}
 
-   if(cdp->cd_caflags & (mx_CMD_ARG_R | mx_CMD_ARG_S)){
-      rv = n_string_push_cp(rv, _(" | nay:"));
-      if(cdp->cd_caflags & mx_CMD_ARG_R)
-         rv = n_string_push_cp(rv, _(" compose-mode"));
-      if(cdp->cd_caflags & mx_CMD_ARG_S)
-         rv = n_string_push_cp(rv, _(" startup"));
-      if(cdp->cd_caflags & mx_CMD_ARG_W)
-         rv = n_string_push_cp(rv, _(" read-only-mailbox"));
-   }
+	if(cdp->cd_caflags & (mx_CMD_ARG_R | mx_CMD_ARG_S)){
+		rv = n_string_push_cp(rv, _(" | nay:"));
+		if(cdp->cd_caflags & mx_CMD_ARG_R)
+			rv = n_string_push_cp(rv, _(" compose-mode"));
+		if(cdp->cd_caflags & mx_CMD_ARG_S)
+			rv = n_string_push_cp(rv, _(" startup"));
+		if(cdp->cd_caflags & mx_CMD_ARG_W)
+			rv = n_string_push_cp(rv, _(" read-only-mailbox"));
+	}
 
-   if(cdp->cd_caflags & mx_CMD_ARG_HGABBY)
-      rv = n_string_push_cp(rv, _(" | history:gabby"));
-   if(cdp->cd_caflags & mx_CMD_ARG_NO_HISTORY)
-      rv = n_string_push_cp(rv, _(" | history:ignored"));
+	if(cdp->cd_caflags & mx_CMD_ARG_HGABBY)
+		rv = n_string_push_cp(rv, _(" | history:gabby"));
+	if(cdp->cd_caflags & mx_CMD_ARG_NO_HISTORY)
+		rv = n_string_push_cp(rv, _(" | history:ignored"));
 
-   cp = n_string_cp(rv);
-   NYD2_OU;
-   return cp;
+	cp = n_string_cp(rv);
+	NYD2_OU;
+	return cp;
 }
-#endif /* mx_HAVE_DOCSTRINGS */
 
 static int
 a_cmd_c_list(void *vp){
-   FILE *fp;
-   struct mx_cmd_desc const *cdp, *cdp_max;
-   uz scrwid, i, l;
-   NYD_IN;
-   UNUSED(vp);
+	FILE *fp;
+	struct mx_cmd_desc const *cdp, *cdp_max;
+	uz scrwid, i, l;
+	NYD_IN;
+	UNUSED(vp);
 
-   if((fp = mx_fs_tmp_open(NIL, "list", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
-            ) == NIL)
-      fp = n_stdout;
+	if((fp = mx_fs_tmp_open(NIL, "list", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
+		fp = n_stdout;
 
-   fprintf(fp, _("Commands are:\n"));
+	fprintf(fp, _("Commands are:\n"));
 
-   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
-   i = 0;
-   l = 1;
+	scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
+	i = 0;
+	l = 1;
 
-   for(cdp = a_cmd_ctable, cdp_max = &cdp[NELEM(a_cmd_ctable)];
-         cdp < cdp_max; ++cdp){
-      char const *pre, *suf;
+	for(cdp = a_cmd_ctable, cdp_max = &cdp[NELEM(a_cmd_ctable)]; cdp < cdp_max; ++cdp){
+		char const *pre, *suf;
 
-      if(cdp->cd_func == NIL)
-         pre = "[", suf = "]";
-      else
-         pre = suf = n_empty;
+		if(cdp->cd_func == NIL)
+			pre = "[", suf = "]";
+		else
+			pre = suf = n_empty;
 
-#ifdef mx_HAVE_DOCSTRINGS
-      if(n_poption & n_PO_D_V){
-         fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
-         ++l;
-         fprintf(fp, "  : %s%s\n",
-            ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
-            V_(cdp->cd_doc));
-         ++l;
-         fprintf(fp, "  : %s\n", (cdp->cd_func != NIL ? a_cmd_cmdinfo(cdp)
-            : _("command is not compiled in")));
-         ++l;
-      }else
-#endif
-           {
-         uz j;
+		if(n_poption & n_PO_D_V){
+			fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
+			++l;
+			fprintf(fp, " : %s%s\n", ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty), V_(cdp->cd_doc));
+			++l;
+			fprintf(fp, " : %s\n", (cdp->cd_func != NIL ? a_cmd_cmdinfo(cdp) : _("command is not compiled in")));
+			++l;
+		}else{
+			uz j;
 
-         j = su_cs_len(cdp->cd_name);
-         if(*pre != '\0')
-            j += 2;
+			j = su_cs_len(cdp->cd_name);
+			if(*pre != '\0')
+				j += 2;
 
-         if((i += j + 2) > scrwid){
-            i = j;
-            fprintf(fp, "\n");
-            ++l;
-         }
-         fprintf(fp, (&cdp[1] != cdp_max ? "%s%s%s, " : "%s%s%s\n"),
-            pre, cdp->cd_name, suf);
-      }
-   }
+			if((i += j + 2) > scrwid){
+				i = j;
+				fprintf(fp, "\n");
+				++l;
+			}
+			fprintf(fp, (&cdp[1] != cdp_max ? "%s%s%s, " : "%s%s%s\n"), pre, cdp->cd_name, suf);
+		}
+	}
 
-   if(fp != n_stdout){
-      page_or_print(fp, l);
+	if(fp != n_stdout){
+		page_or_print(fp, l);
 
-      mx_fs_close(fp);
-   }else
-      clearerr(fp);
+		mx_fs_close(fp);
+	}else
+		clearerr(fp);
 
-   NYD_OU;
-   return su_EX_OK;
+	NYD_OU;
+	return su_EX_OK;
 }
 
 static int
 a_cmd_c_help(void *vp){
-   int rv;
-   char const *arg;
-   FILE *fp;
-   NYD_IN;
+	int rv;
+	char const *arg;
+	FILE *fp;
+	NYD_IN;
 
-   if((fp = mx_fs_tmp_open(NIL, "help", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
-            ) == NIL)
-      fp = n_stdout;
+	if((fp = mx_fs_tmp_open(NIL, "help", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
+		fp = n_stdout;
 
-   /* Help for a single command? */
-   if((arg = *S(char const**,vp)) != NIL){
-      struct mx_cmd_desc const *cdp, *cdp_max;
-      char const *alias_name, *alias_exp, *aepx;
+	/* Help for a single command? */
+	if((arg = *S(char const**,vp)) != NIL){
+		struct mx_cmd_desc const *cdp, *cdp_max;
+		char const *alias_name, *alias_exp, *aepx;
 
-      /* Aliases take precedence, unless disallowed.
-       * Avoid self-recursion; since a commandalias can shadow a command of
-       * equal name allow one level of expansion to return an equal result:
-       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
-      alias_name = NIL;
-      if(*arg == '\\')
-         ++arg;
-      else while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NIL &&
-            (alias_name == NIL || su_cs_cmp(alias_name, aepx))){
-         alias_name = aepx;
-         fprintf(fp, "%s -> ", arg);
-         arg = alias_exp;
-      }
+		/* Aliases take precedence, unless disallowed.
+		 * Avoid self-recursion; since a commandalias can shadow a command of
+		 * equal name allow one level of expansion to return an equal result:
+		 * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
+		alias_name = NIL;
+		if(*arg == '\\')
+			++arg;
+		else while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NIL &&
+				(alias_name == NIL || su_cs_cmp(alias_name, aepx))){
+			alias_name = aepx;
+			fprintf(fp, "%s -> ", arg);
+			arg = alias_exp;
+		}
 
-      cdp_max = &(cdp = a_cmd_ctable)[NELEM(a_cmd_ctable)];
-      cdp = &cdp[a_CMD_CIDX(*arg)];
+		cdp_max = &(cdp = a_cmd_ctable)[NELEM(a_cmd_ctable)];
+		cdp = &cdp[a_CMD_CIDX(*arg)];
 
-      for(; cdp < cdp_max; ++cdp){
-         if(cdp->cd_func == NIL || !su_cs_starts_with(cdp->cd_name, arg))
-            continue;
+		for(; cdp < cdp_max; ++cdp){
+			if(cdp->cd_func == NIL || !su_cs_starts_with(cdp->cd_name, arg))
+				continue;
 
-         fputs(arg, fp);
-         if(su_cs_cmp(arg, cdp->cd_name))
-            fprintf(fp, " (%s)", cdp->cd_name);
-#ifdef mx_HAVE_DOCSTRINGS
-         fprintf(fp, ": %s%s",
-            ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
-            V_(cdp->cd_doc));
-         if(n_poption & n_PO_D_V)
-            fprintf(fp, "\n  : %s", a_cmd_cmdinfo(cdp));
-#endif
-         putc('\n', fp);
-         rv = 0;
-         goto jleave;
-      }
+			fputs(arg, fp);
+			if(su_cs_cmp(arg, cdp->cd_name))
+				fprintf(fp, " (%s)", cdp->cd_name);
+			fprintf(fp, ": %s%s", ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty), V_(cdp->cd_doc));
+			if(n_poption & n_PO_D_V)
+				fprintf(fp, "\n  : %s", a_cmd_cmdinfo(cdp));
+			putc('\n', fp);
+			rv = 0;
+			goto jleave;
+		}
 
-      if(alias_name != NIL){
-         fprintf(fp, "%s\n", n_shexp_quote_cp(arg, TRU1));
-         rv = 0;
-      }else{
-         n_err(_("Unknown command: `%s'\n"), arg);
-         rv = 1;
-      }
-   }else{
-      /* Very ugly, but take care for compiler supported string lengths :( */
-#ifdef mx_HAVE_UISTRINGS
-      fputs(_(
-         "Commands -- <msglist> denotes message specification tokens, e.g.,\n"
-         "1-5, :n, @f@Ulf or . (current, the \"dot\"), separated by *ifs*:\n"),
-         fp);
-      fputs(_(
+		if(alias_name != NIL){
+			fprintf(fp, "%s\n", n_shexp_quote_cp(arg, TRU1));
+			rv = 0;
+		}else{
+			n_err(_("Unknown command: `%s'\n"), arg);
+			rv = 1;
+		}
+	}else{
+		/* Very ugly, but take care for compiler supported string lengths :( */
+		fputs(_(
+			"Commands -- <msglist> denotes message specification tokens, e.g.,\n"
+			"1-5, :n, @f@Cow or . (current, the \"dot\"), separated by *ifs*:\n"),
+			fp);
+		fputs(_(
 "\n"
 "type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
 "Type <msglist>         like `type' but always show all headers\n"
@@ -364,9 +344,9 @@ a_cmd_c_help(void *vp){
 "headers                header summary ... for messages surrounding \"dot\"\n"
 "search <msglist>       ... for the given expression list (alias for `from')\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
-         fp);
+			fp);
 
-      fputs(_(
+		fputs(_(
 "\n"
 "save <msglist> folder  append messages to folder and mark as saved\n"
 "copy <msglist> folder  like `save', but do not mark them (`move' moves)\n"
@@ -374,9 +354,9 @@ a_cmd_c_help(void *vp){
 "Reply <msglist>        reply to message sender(s) only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
 "Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
-         fp);
+			fp);
 
-      fputs(_(
+		fputs(_(
 "\n"
 "mail <recipients>      compose a mail for the given recipients\n"
 "file folder            change to another mailbox\n"
@@ -385,685 +365,663 @@ a_cmd_c_help(void *vp){
 "xit or exit            like `quit', but discard changes\n"
 "!shell command         shell escape\n"
 "list                   show all commands (*verbose*)\n"),
-         fp);
-#endif /* mx_HAVE_UISTRINGS */
+			fp);
 
-      rv = (ferror(fp) != 0);
-   }
+		rv = (ferror(fp) != 0);
+	}
 
 jleave:
-   if(fp != n_stdout){
-      page_or_print(fp, 0);
+	if(fp != n_stdout){
+		page_or_print(fp, 0);
 
-      mx_fs_close(fp);
-   }else
-      clearerr(fp);
+		mx_fs_close(fp);
+	}else
+		clearerr(fp);
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 char const *
 mx_cmd_isolate_name(char const *cmd){
-   NYD2_IN;
-   while(*cmd != '\0' &&
-         su_cs_find_c("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
-      ++cmd;
-   NYD2_OU;
-   return n_UNCONST(cmd);
+	NYD2_IN;
+
+	while(*cmd != '\0' && su_cs_find_c("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NIL)
+		++cmd;
+
+	NYD2_OU;
+	return cmd;
 }
 
 boole
 mx_cmd_is_valid_name(char const *cmd){
-   /* Mirrors things from go.c */
-   static char const a_prefixes[][8] =
-         {"global", "ignerr", "local", "wysh", "u", "vput"};
-   uz i;
-   NYD2_IN;
+	/* Mirrors things from go.c */
+	static char const a_prefixes[][8] = {"global", "ignerr", "local", "wysh", "u", "vput"};
+	uz i;
+	NYD2_IN;
 
-   i = 0;
-   do if(!su_cs_cmp_case(cmd, a_prefixes[i])){
-      cmd = NIL;
-      break;
-   }while(++i < NELEM(a_prefixes));
+	i = 0;
+	do if(!su_cs_cmp_case(cmd, a_prefixes[i])){
+		cmd = NIL;
+		break;
+	}while(++i < NELEM(a_prefixes));
 
-   NYD2_OU;
-   return (cmd != NIL);
+	NYD2_OU;
+	return (cmd != NIL);
 }
 
 struct mx_cmd_desc const *
 mx_cmd_by_arg_desc(struct mx_cmd_arg_desc const *cac_desc){
-   struct mx_cmd_desc const *cdp;
-   NYD2_IN;
+	struct mx_cmd_desc const *cdp;
+	NYD2_IN;
 
-   for(cdp = &a_cmd_ctable[a_CMD_CIDX(*cac_desc->cad_name)];
-         cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
-      if(cdp->cd_cadp == cac_desc)
-         goto jleave;
+	for(cdp = &a_cmd_ctable[a_CMD_CIDX(*cac_desc->cad_name)]; cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
+		if(cdp->cd_cadp == cac_desc)
+			goto jleave;
 
-   /* Should not happen though */
-   cdp = NIL;
+	/* Should not happen though */
+	cdp = NIL;
 jleave:
-   NYD2_OU;
-   return cdp;
+	NYD2_OU;
+	return cdp;
 }
 
 struct mx_cmd_desc const *
 mx_cmd_by_name_firstfit(char const *cmd){ /* TODO v15: by_arg_desc; but go.c */
-   struct mx_cmd_desc const *cdp;
-   char c, C, x;
-   NYD2_IN;
+	struct mx_cmd_desc const *cdp;
+	char c, C, x;
+	NYD2_IN;
 
-   C = su_cs_to_upper(c = *cmd);
-   cdp = &a_cmd_ctable[a_CMD_CIDX(c)];
-   c = su_cs_to_lower(c);
+	C = su_cs_to_upper(c = *cmd);
+	cdp = &a_cmd_ctable[a_CMD_CIDX(c)];
+	c = su_cs_to_lower(c);
 
-   for(; cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
-      if(cdp->cd_func != NIL && su_cs_starts_with(cdp->cd_name, cmd))
-         goto jleave;
-      else if((x = *cdp->cd_name) != c && x != C)
-         break;
+	for(; cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
+		if(cdp->cd_func != NIL && su_cs_starts_with(cdp->cd_name, cmd))
+			goto jleave;
+		else if((x = *cdp->cd_name) != c && x != C)
+			break;
 
-   cdp = NIL;
+	cdp = NIL;
 jleave:
-   NYD2_OU;
-   return cdp;
+	NYD2_OU;
+	return cdp;
 }
 
 struct mx_cmd_desc const *
 mx_cmd_get_default(void){
-   struct mx_cmd_desc const *cdp;
-   NYD2_IN;
+	struct mx_cmd_desc const *cdp;
+	NYD2_IN;
 
-   cdp = &a_cmd_ctable[a_CMD_DEFAULT_IDX];
-   NYD2_OU;
-   return cdp;
+	cdp = &a_cmd_ctable[a_CMD_DEFAULT_IDX];
+
+	NYD2_OU;
+	return cdp;
 }
 
 boole
 mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
-   char const *name, *doc;
-   boole rv;
-   NYD2_IN;
+	char const *name, *doc;
+	boole rv;
+	NYD2_IN;
 
-   rv = TRU1;
-   name = (cdp_or_nil != NIL) ? cdp_or_nil->cd_name : su_empty;
-   if((doc = mx_cmd_get_brief_doc(cdp_or_nil)) != NIL)
-      doc = V_(doc);
+	rv = TRU1;
+	name = (cdp_or_nil != NIL) ? cdp_or_nil->cd_name : su_empty;
+	if((doc = mx_cmd_get_brief_doc(cdp_or_nil)) != NIL)
+		doc = V_(doc);
 
-   if(*name != '\0'){
-      if(fp_or_nil == NIL)
-         n_err(_("Synopsis: %s: %s\n"), name, doc);
-      else
-         rv = (fprintf(fp_or_nil, _("Synopsis: %s: %s\n"), name, doc) >= 0);
-   }
+	if(*name != '\0'){
+		if(fp_or_nil == NIL)
+			n_err(_("Synopsis: %s: %s\n"), name, doc);
+		else
+			rv = (fprintf(fp_or_nil, _("Synopsis: %s: %s\n"), name, doc) >= 0);
+	}
 
-   NYD2_OU;
-   return rv;
+	NYD2_OU;
+	return rv;
 }
 
 boole
 mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
-   enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2};
+	enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2};
 
-   struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
-   struct str shin_orig, shin;
-   u8 f;
-   void const *cookie;
-   uz cad_idx, parsed_args;
-   struct mx_cmd_arg_desc const *cadp;
-   NYD_IN;
+	struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
+	struct str shin_orig, shin;
+	u8 f;
+	void const *cookie;
+	uz cad_idx, parsed_args;
+	struct mx_cmd_arg_desc const *cadp;
+	NYD_IN;
 
-   ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
-   ASSERT(cacp->cac_desc->cad_no > 0);
+	ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NIL);
+	ASSERT(cacp->cac_desc->cad_no > 0);
 #if DVLDBGOR(1, 0)
-   /* C99 */{
-      boole opt_seen = FAL0;
+	/* C99 */{
+		boole opt_seen = FAL0;
 
-      for(cadp = cacp->cac_desc, cad_idx = 0;
-            cad_idx < cadp->cad_no; ++cad_idx){
-         ASSERT(cadp->cad_ent_flags[cad_idx][0] & mx__CMD_ARG_DESC_TYPE_MASK);
+		for(cadp = cacp->cac_desc, cad_idx = 0; cad_idx < cadp->cad_no; ++cad_idx){
+			ASSERT(cadp->cad_ent_flags[cad_idx][0] & mx__CMD_ARG_DESC_TYPE_MASK);
 
-         /* TODO CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
-            cad_idx + 1 == cadp->cad_no);
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               mx_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
-            cad_idx + 1 == cadp->cad_no);
+			/* TODO CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
+				cad_idx + 1 == cadp->cad_no);
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
+					mx_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
+					mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+				cad_idx + 1 == cadp->cad_no);
 
-         ASSERT(!opt_seen ||
-            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
-         if(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION)
-            opt_seen = TRU1;
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY) ||
-            cad_idx + 1 == cadp->cad_no);
+			ASSERT(!opt_seen ||
+				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+			if(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION)
+				opt_seen = TRU1;
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY) ||
+				cad_idx + 1 == cadp->cad_no);
 
-         /* TODO CMD_ARG_DESC_MSGLIST+ can only be CMD_ARG_DESC_GREEDY.
-          * TODO And they may not be CMD_ARG_DESC_OPTION */
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
-            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               mx_CMD_ARG_DESC_NDMSGLIST) ||
-            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
-            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
+			/* TODO CMD_ARG_DESC_MSGLIST+ can only be CMD_ARG_DESC_GREEDY.
+			 * TODO And they may not be CMD_ARG_DESC_OPTION */
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
+				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
+					mx_CMD_ARG_DESC_NDMSGLIST) ||
+				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
+					mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
 
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
-            !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               mx_CMD_ARG_DESC_NDMSGLIST) ||
-            !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
-            !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
-      }
-   }
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
+				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
+					mx_CMD_ARG_DESC_NDMSGLIST) ||
+				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
+					mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+		}
+	}
 #endif /* DVLDBGOR(1,0) */
 
-   n_pstate_err_no = su_ERR_NONE;
-   shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
-   shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
-   shin_orig = shin;
-   cacp->cac_no = 0;
-   cacp->cac_cm_local = FAL0;
-   cacp->cac_arg = lcap = NIL;
-   cacp->cac_vput = NIL;
+	n_pstate_err_no = su_ERR_NONE;
+	shin.s = UNCONST(char*,cacp->cac_indat);
+	shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
+	shin_orig = shin;
+	cacp->cac_no = 0;
+	cacp->cac_cm_local = FAL0;
+	cacp->cac_arg = lcap = NIL;
+	cacp->cac_vput = NIL;
 
-   cookie = NULL;
-   parsed_args = 0;
-   f = a_NONE;
+	cookie = NIL;
+	parsed_args = 0;
+	f = a_NONE;
 
-   /* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
-    * TODO those use getmsglist() and that needs to deal with that situation.
-    * TODO In the future that should change; see jloop_break TODO below */
-   for(cadp = cacp->cac_desc, cad_idx = 0;
-         /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
+	/* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
+	 * TODO those use getmsglist() and that needs to deal with that situation.
+	 * TODO In the future that should change; see jloop_break TODO below */
+	for(cadp = cacp->cac_desc, cad_idx = 0; /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
 jredo:
-      su_mem_set(&ncap, 0, sizeof ncap);
-      ncap.ca_indat = shin.s;
-      /* >ca_inline once we know */
-      su_mem_copy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
-         sizeof ncap.ca_ent_flags);
-      target_argpp = NULL;
-      f &= ~a_STOPLOOP;
+		su_mem_set(&ncap, 0, sizeof ncap);
+		ncap.ca_indat = shin.s;
+		/* >ca_inline once we know */
+		su_mem_copy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0], sizeof ncap.ca_ent_flags);
+		target_argpp = NIL;
+		f &= ~a_STOPLOOP;
 
-      switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
-      default:
-      case mx_CMD_ARG_DESC_SHEXP:{
-         struct n_string shou, *shoup;
-         BITENUM_IS(u32,n_shexp_state) shs;
+		switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
+		default:
+		case mx_CMD_ARG_DESC_SHEXP:{
+			struct n_string shou, *shoup;
+			BITENUM_IS(u32,n_shexp_state) shs;
 
 jshexp_restart:
-         if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
+			if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
 
-         shoup = n_string_creat_auto(&shou);
+			shoup = n_string_creat_auto(&shou);
 
-         ncap.ca_arg_flags =
-         shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
-                  (skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
-                  n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
-               shoup, &shin,
-               (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY
-                  ? &cookie : NIL));
+			ncap.ca_arg_flags =
+			shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
+						(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
+						n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
+					shoup, &shin,
+					(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY ? &cookie : NIL));
 
-         if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
-            ASSERT(shs & n_SHEXP_STATE_STOP);
-            mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, shin.s, shin.l);
-            shin.l = 0;
-         }
+			if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
+				ASSERT(shs & n_SHEXP_STATE_STOP);
+				mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, shin.s, shin.l);
+				shin.l = 0;
+			}
 
-         ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
-         if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
-               n_SHEXP_STATE_OUTPUT){
-            ncap.ca_arg.ca_str.s = n_string_cp(shoup);
-            ncap.ca_arg.ca_str.l = shou.s_len;
-         }
+			ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
+			if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) == n_SHEXP_STATE_OUTPUT){
+				ncap.ca_arg.ca_str.s = n_string_cp(shoup);
+				ncap.ca_arg.ca_str.l = shou.s_len;
+			}
 
-         if(shs & n_SHEXP_STATE_ERR_MASK)
-            goto jerr;
-         if((shs & n_SHEXP_STATE_STOP) &&
-               (ncap.ca_ent_flags[0] & (mx_CMD_ARG_DESC_OPTION |
-                  mx_CMD_ARG_DESC_HONOUR_STOP))){
-            if(!(shs & n_SHEXP_STATE_OUTPUT)){
-               /* We would return FAL0 for bind in "bind;echo huhu" or
-                * "reply # comment", whereas we do not for "bind" or "reply"
-                * due to the "shin.l==0 goto jloop_break;" introductional
-                * quickshot; ensure we succeed */
-               if(shs & (n_SHEXP_STATE_STOP | n_SHEXP_STATE_META_SEMICOLON))
-                  goto jloop_break;
-               goto jleave;
-            }
+			if(shs & n_SHEXP_STATE_ERR_MASK)
+				goto jerr;
+			if((shs & n_SHEXP_STATE_STOP) &&
+					(ncap.ca_ent_flags[0] & (mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_HONOUR_STOP))){
+				if(!(shs & n_SHEXP_STATE_OUTPUT)){
+					/* We would return FAL0 for bind in "bind;echo huhu" or
+					 * "reply # comment", whereas we do not for "bind" or "reply"
+					 * due to the "shin.l==0 goto jloop_break;" introductional
+					 * quickshot; ensure we succeed */
+					if(shs & (n_SHEXP_STATE_STOP | n_SHEXP_STATE_META_SEMICOLON))
+						goto jloop_break;
+					goto jleave;
+				}
 
-            /* Succeed if we had any arg */
-            f |= a_STOPLOOP;
-         }else if(!(shs & n_SHEXP_STATE_OUTPUT)){
-            /* Can happen at least now that eval is a modifier, for "eval $1
-             * echo au" where $1 does not exist and thus expand to nothing.
-             * We simply treat it as if it was not given at all */
-            goto jshexp_restart;
-         }
-         }break;
-      case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
-         target_argpp = &target_argp;
-         /* FALLTHRU */
-      case mx_CMD_ARG_DESC_MSGLIST:
-      case mx_CMD_ARG_DESC_NDMSGLIST:
-         /* TODO _MSGLIST yet at end and greedy only (fast hack).
-          * TODO And consumes too much memory */
-         ASSERT(shin.s[shin.l] == '\0');
-         if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
-                  n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
-               ), cacp->cac_msgflag, skip_aka_dryrun, target_argpp) < 0){
-            goto jerr;
-         }
+				/* Succeed if we had any arg */
+				f |= a_STOPLOOP;
+			}else if(!(shs & n_SHEXP_STATE_OUTPUT)){
+				/* Can happen at least now that eval is a modifier, for "eval $1
+				 * echo au" where $1 does not exist and thus expand to nothing.
+				 * We simply treat it as if it was not given at all */
+				goto jshexp_restart;
+			}
+			}break;
+		case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+			target_argpp = &target_argp;
+			/* FALLTHRU */
+		case mx_CMD_ARG_DESC_MSGLIST:
+		case mx_CMD_ARG_DESC_NDMSGLIST:
+			/* TODO _MSGLIST yet at end and greedy only (fast hack).
+			 * TODO And consumes too much memory */
+			ASSERT(shin.s[shin.l] == '\0');
+			if(n_getmsglist(shin.s,
+					(ncap.ca_arg.ca_msglist = su_AUTO_CALLOC_N(sizeof *ncap.ca_arg.ca_msglist, msgCount +1)),
+					cacp->cac_msgflag, skip_aka_dryrun, target_argpp) < 0){
+				goto jerr;
+			}
 
-         if(ncap.ca_arg.ca_msglist[0] == 0){
-            u32 e;
+			if(ncap.ca_arg.ca_msglist[0] == 0){
+				u32 e;
 
-            switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
-            case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
-            case mx_CMD_ARG_DESC_MSGLIST:
-               if((ncap.ca_arg.ca_msglist[0] = first(cacp->cac_msgflag,
-                     cacp->cac_msgmask)) == 0){
-                  if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
-                        (n_poption & n_PO_D_V))
-                     n_err(_("No applicable messages\n"));
+				switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
+				case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+				case mx_CMD_ARG_DESC_MSGLIST:
+					if((ncap.ca_arg.ca_msglist[0] = first(cacp->cac_msgflag, cacp->cac_msgmask)) == 0){
+						if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+							n_err(_("No applicable messages\n"));
 
-                  e = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
-                  if(e == 0)
-                     e = su_ERR_NOMSG;
-                  n_pstate_err_no = e;
-                  goto jerr;
-               }
-               ncap.ca_arg.ca_msglist[1] = 0;
-               ASSERT(n_msgmark1 == NIL);
-               n_msgmark1 = &message[ncap.ca_arg.ca_msglist[0] - 1];
+						e = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
+						if(e == 0)
+							e = su_ERR_NOMSG;
+						n_pstate_err_no = e;
+						goto jerr;
+					}
+					ncap.ca_arg.ca_msglist[1] = 0;
+					ASSERT(n_msgmark1 == NIL);
+					n_msgmark1 = &message[ncap.ca_arg.ca_msglist[0] - 1];
 
-               /* TODO For the MSGLIST_AND_TARGET case an entirely empty input
-                * TODO results in no _TARGET argument: ensure it is there! */
-               if(target_argpp != NULL && (cap = *target_argpp) == NULL){
-                  cap = n_autorec_calloc(1, sizeof *cap);
-                  cap->ca_arg.ca_str.s = n_UNCONST(n_empty);
-                  *target_argpp = cap;
-               }
-               /* FALLTHRU */
-            default:
-               break;
-            }
-         }else if((ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE
-               ) && ncap.ca_arg.ca_msglist[1] != 0){
-            if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
-                  (n_poption & n_PO_D_V))
-               n_err(_("Cannot specify multiple messages at once\n"));
-            n_pstate_err_no = su_ERR_NOTSUP;
-            goto jerr;
-         }
-         shin.l = 0;
-         f |= a_STOPLOOP; /* XXX Asserted to be last above! */
-         break;
-      }
-      ++parsed_args;
+					/* TODO For the MSGLIST_AND_TARGET case an entirely empty input
+					 * TODO results in no _TARGET argument: ensure it is there! */
+					if(target_argpp != NIL && (cap = *target_argpp) == NIL){
+						cap = su_AUTO_CALLOC(sizeof *cap);
+						cap->ca_arg.ca_str.s = UNCONST(char*,n_empty);
+						*target_argpp = cap;
+					}
+					/* FALLTHRU */
+				default:
+					break;
+				}
+			}else if((ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE) &&
+					ncap.ca_arg.ca_msglist[1] != 0){
+				if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+					n_err(_("Cannot specify multiple messages at once\n"));
+				n_pstate_err_no = su_ERR_NOTSUP;
+				goto jerr;
+			}
+			shin.l = 0;
+			f |= a_STOPLOOP; /* XXX Asserted to be last above! */
+			break;
+		}
+		++parsed_args;
 
-      if(f & a_GREEDYJOIN){ /* TODO speed this up! */
-         char *cp;
-         uz i;
+		if(f & a_GREEDYJOIN){ /* TODO speed this up! */
+			char *cp;
+			uz i;
 
-         ASSERT((ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK
-            ) != mx_CMD_ARG_DESC_MSGLIST);
-         ASSERT(lcap != NULL);
-         ASSERT(target_argpp == NULL);
-         i = lcap->ca_arg.ca_str.l;
-         lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
-         cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
-         su_mem_copy(cp, lcap->ca_arg.ca_str.s, i);
-         lcap->ca_arg.ca_str.s = cp;
-         cp[i++] = ' ';
-         su_mem_copy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
-      }else{
-         cap = n_autorec_alloc(sizeof *cap);
-         su_mem_copy(cap, &ncap, sizeof ncap);
-         if(lcap == NULL)
-            cacp->cac_arg = cap;
-         else
-            lcap->ca_next = cap;
-         lcap = cap;
-         if(++cacp->cac_no == U32_MAX){
-            n_pstate_err_no = su_ERR_OVERFLOW;
-            goto jerr;
-         }
+			ASSERT((ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK) != mx_CMD_ARG_DESC_MSGLIST);
+			ASSERT(lcap != NIL);
+			ASSERT(target_argpp == NIL);
+			i = lcap->ca_arg.ca_str.l;
+			lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
+			cp = su_AUTO_ALLOC(lcap->ca_arg.ca_str.l +1);
+			su_mem_copy(cp, lcap->ca_arg.ca_str.s, i);
+			lcap->ca_arg.ca_str.s = cp;
+			cp[i++] = ' ';
+			su_mem_copy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
+		}else{
+			cap = su_AUTO_ALLOC(sizeof *cap);
+			su_mem_copy(cap, &ncap, sizeof ncap);
+			if(lcap == NIL)
+				cacp->cac_arg = cap;
+			else
+				lcap->ca_next = cap;
+			lcap = cap;
+			if(++cacp->cac_no == U32_MAX){
+				n_pstate_err_no = su_ERR_OVERFLOW;
+				goto jerr;
+			}
 
-         if(target_argpp != NIL){
-            lcap->ca_next = cap = *target_argpp;
-            if(cap != NIL){
-               lcap = cap;
-               if(++cacp->cac_no == U32_MAX){
-                  n_pstate_err_no = su_ERR_OVERFLOW;
-                  goto jerr;
-               }
-            }
-         }
-      }
+			if(target_argpp != NIL){
+				lcap->ca_next = cap = *target_argpp;
+				if(cap != NIL){
+					lcap = cap;
+					if(++cacp->cac_no == U32_MAX){
+						n_pstate_err_no = su_ERR_OVERFLOW;
+						goto jerr;
+					}
+				}
+			}
+		}
 
-      if(f & a_STOPLOOP)
-         goto jleave;
+		if(f & a_STOPLOOP)
+			goto jleave;
 
-      if((shin.l > 0 || cookie != NULL) &&
-            (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY)){
-         if(!(f & a_GREEDYJOIN) && ((ncap.ca_ent_flags[0] &
-                  mx_CMD_ARG_DESC_GREEDY_JOIN) &&
-               (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP)))
-            f |= a_GREEDYJOIN;
-         f |= a_REDID;
-         goto jredo;
-      }
-   }
+		if((shin.l > 0 || cookie != NIL) &&
+				(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY)){
+			if(!(f & a_GREEDYJOIN) && ((ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY_JOIN) &&
+					(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP)))
+				f |= a_GREEDYJOIN;
+			f |= a_REDID;
+			goto jredo;
+		}
+	}
 
 jloop_break:
-   ASSERT(cad_idx < cadp->cad_no || !(f & a_REDID) ||
-      ((f & a_REDID) && cad_idx + 1 == cadp->cad_no &&
-       (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY)));
-   if(!(f & a_REDID) && cad_idx < cadp->cad_no){
-      if(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
-         goto jerr;
-   }else if(!(f & a_STOPLOOP) && shin.l > 0){
-      n_pstate_err_no = su_ERR_2BIG;
-      goto jerr;
-   }
+	ASSERT(cad_idx < cadp->cad_no || !(f & a_REDID) ||
+		((f & a_REDID) && cad_idx + 1 == cadp->cad_no &&
+		 (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY)));
+	if(!(f & a_REDID) && cad_idx < cadp->cad_no){
+		if(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
+			goto jerr;
+	}else if(!(f & a_STOPLOOP) && shin.l > 0){
+		n_pstate_err_no = su_ERR_2BIG;
+		goto jerr;
+	}
 
-   lcap = (struct mx_cmd_arg*)-1;
+	lcap = (struct mx_cmd_arg*)-1;
 jleave:
-   NYD_OU;
-   return (lcap != NULL);
+	NYD_OU;
+	return (lcap != NIL);
 
 jerr:
-   if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
-            (n_poption & n_PO_D_V)){
-      if(n_pstate_err_no != su_ERR_NONE)
-         n_err(_("%s: %s\n"), cadp->cad_name, su_err_doc(n_pstate_err_no));
-      else{
-         uz i;
+	if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V)){
+		if(n_pstate_err_no != su_ERR_NONE)
+			n_err(_("%s: %s\n"), cadp->cad_name, su_err_doc(n_pstate_err_no));
+		else{
+			uz i;
 
-         for(i = 0; (i < cadp->cad_no &&
-               !(cadp->cad_ent_flags[i][0] & mx_CMD_ARG_DESC_OPTION)); ++i)
-            ;
+			for(i = 0; (i < cadp->cad_no && !(cadp->cad_ent_flags[i][0] & mx_CMD_ARG_DESC_OPTION)); ++i)
+				;
 
-         n_err(_("%s: parsing stopped after %" PRIuZ " arguments "
-               "(need %" PRIuZ "%s)\n"
-               "     Input: %.*s\n"
-               "   Stopped: %.*s\n"),
-            cadp->cad_name, parsed_args,
-               i, (i == cadp->cad_no ? su_empty : "+"),
-            S(int,shin_orig.l), shin_orig.s,
-            S(int,shin.l), shin.s);
-      }
+			n_err(_("%s: parsing stopped after %" PRIuZ " arguments (need %" PRIuZ "%s)\n"
+					"  Input: %.*s\n"
+					"  Stopped: %.*s\n"),
+				cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? su_empty : "+"),
+				S(int,shin_orig.l), shin_orig.s,
+				S(int,shin.l), shin.s);
+		}
 
-      if(!su_state_has(su_STATE_REPRODUCIBLE))
-         mx_cmd_print_synopsis(mx_cmd_by_name_firstfit(cadp->cad_name), NIL);
-   }
+		if(!su_state_has(su_STATE_REPRODUCIBLE))
+			mx_cmd_print_synopsis(mx_cmd_by_name_firstfit(cadp->cad_name), NIL);
+	}
 
-   if(n_pstate_err_no == su_ERR_NONE)
-      n_pstate_err_no = su_ERR_INVAL;
+	if(n_pstate_err_no == su_ERR_NONE)
+		n_pstate_err_no = su_ERR_INVAL;
 
-   lcap = NIL;
-   goto jleave;
+	lcap = NIL;
+	goto jleave;
 }
 
 void *
 mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
-   struct mx_cmd_arg *ncap;
-   struct mx_cmd_arg_ctx *ncacp;
-   char *buf;
-   struct mx_cmd_arg const *cap;
-   uz len, i;
-   struct su_mem_bag *mbp;
-   NYD2_IN;
+	struct mx_cmd_arg *ncap;
+	struct mx_cmd_arg_ctx *ncacp;
+	char *buf;
+	struct mx_cmd_arg const *cap;
+	uz len, i;
+	struct su_mem_bag *mbp;
+	NYD2_IN;
 
-   mbp = vp;
+	mbp = vp;
 
-   /* For simplicity, save it all in once chunk xxx no longer necessary! */
-   len = sizeof *cacp;
-   for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
-      i = cap->ca_arg.ca_str.l +1;
-      i = ALIGN_Z(i);
-      len += sizeof(*cap) + i;
-   }
-   if(cacp->cac_vput != NIL)
-      len += su_cs_len(cacp->cac_vput) +1;
+	/* For simplicity, save it all in once chunk xxx no longer necessary! */
+	len = sizeof *cacp;
+	for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
+		i = cap->ca_arg.ca_str.l +1;
+		i = ALIGN_Z(i);
+		len += sizeof(*cap) + i;
+	}
+	if(cacp->cac_vput != NIL)
+		len += su_cs_len(cacp->cac_vput) +1;
 
-   ncacp = su_MEM_BAG_AUTO_ALLOCATE(mbp, sizeof(char), len,
-         su_MEM_BAG_ALLOC_MUSTFAIL);
-   *ncacp = *cacp;
-   buf = R(char*,&ncacp[1]);
+	ncacp = su_MEM_BAG_AUTO_ALLOCATE(mbp, sizeof(char), len, su_MEM_BAG_ALLOC_MUSTFAIL);
+	*ncacp = *cacp;
+	buf = R(char*,&ncacp[1]);
 
-   for(ncap = NIL, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
-      vp = buf;
-      DVLDBG( su_mem_set(vp, 0, sizeof *ncap); )
+	for(ncap = NIL, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
+		vp = buf;
+		DVLDBG( su_mem_set(vp, 0, sizeof *ncap); )
 
-      if(ncap == NIL)
-         ncacp->cac_arg = vp;
-      else
-         ncap->ca_next = vp;
-      ncap = vp;
-      ncap->ca_next = NIL;
-      ncap->ca_ent_flags[0] = cap->ca_ent_flags[0];
-      ncap->ca_ent_flags[1] = cap->ca_ent_flags[1];
-      ncap->ca_arg_flags = cap->ca_arg_flags;
-      su_mem_copy(ncap->ca_arg.ca_str.s = R(char*,&ncap[1]),
-         cap->ca_arg.ca_str.s,
-         (i = (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1));
+		if(ncap == NIL)
+			ncacp->cac_arg = vp;
+		else
+			ncap->ca_next = vp;
+		ncap = vp;
+		ncap->ca_next = NIL;
+		ncap->ca_ent_flags[0] = cap->ca_ent_flags[0];
+		ncap->ca_ent_flags[1] = cap->ca_ent_flags[1];
+		ncap->ca_arg_flags = cap->ca_arg_flags;
+		su_mem_copy(ncap->ca_arg.ca_str.s = R(char*,&ncap[1]), cap->ca_arg.ca_str.s,
+			(i = (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1));
 
-      i = ALIGN_Z(i);
-      buf += sizeof(*ncap) + i;
-   }
+		i = ALIGN_Z(i);
+		buf += sizeof(*ncap) + i;
+	}
 
-   if(cacp->cac_vput != NIL){
-      ncacp->cac_vput = buf;
-      su_mem_copy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
-   }else
-      ncacp->cac_vput = NIL;
+	if(cacp->cac_vput != NIL){
+		ncacp->cac_vput = buf;
+		su_mem_copy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
+	}else
+		ncacp->cac_vput = NIL;
 
-   NYD2_OU;
-   return ncacp;
+	NYD2_OU;
+	return ncacp;
 }
 
 int
-getrawlist(boole wysh, boole skip_aka_dryrun, char **res_dat, uz res_size,
-      char const *line, uz linesize){
-   int res_no;
-   NYD_IN;
+getrawlist(boole wysh, boole skip_aka_dryrun, char **res_dat, uz res_size, char const *line, uz linesize){
+	int res_no;
+	NYD_IN;
 
-   n_pstate &= ~n_PS_MSGLIST_MASK;
+	n_pstate &= ~n_PS_MSGLIST_MASK;
 
-   if(res_size == 0){
-      res_no = -1;
-      goto jleave;
-   }else if(UCMP(z, res_size, >, INT_MAX))
-      res_size = INT_MAX;
-   else
-      --res_size;
-   res_no = 0;
+	if(res_size == 0){
+		res_no = -1;
+		goto jleave;
+	}else if(UCMP(z, res_size, >, INT_MAX))
+		res_size = INT_MAX;
+	else
+		--res_size;
+	res_no = 0;
 
-   if(!wysh){
-      /* And assuming result won't grow input */
-      char c2, c, quotec, *cp2, *linebuf;
+	if(!wysh){
+		/* And assuming result won't grow input */
+		char c2, c, quotec, *cp2, *linebuf;
 
-      linebuf = su_LOFI_ALLOC(linesize);
+		linebuf = su_LOFI_ALLOC(linesize);
 
-      for(;;){
-         for(; su_cs_is_blank(*line); ++line)
-            ;
-         if(*line == '\0')
-            break;
+		for(;;){
+			for(; su_cs_is_blank(*line); ++line)
+				;
+			if(*line == '\0')
+				break;
 
-         if(UCMP(z, res_no, >=, res_size)){
-            n_err(_("Too many input tokens for result storage\n"));
-            res_no = -1;
-            break;
-         }
+			if(UCMP(z, res_no, >=, res_size)){
+				n_err(_("Too many input tokens for result storage\n"));
+				res_no = -1;
+				break;
+			}
 
-         cp2 = linebuf;
-         quotec = '\0';
+			cp2 = linebuf;
+			quotec = '\0';
 
-         /* TODO v15: complete switch in order mirror known behaviour */
-         while((c = *line++) != '\0'){
-            if(quotec != '\0'){
-               if(c == quotec){
-                  quotec = '\0';
-                  continue;
-               }else if(c == '\\'){
-                  if((c2 = *line++) == quotec)
-                     c = c2;
-                  else
-                     --line;
-               }
-            }else if(c == '"' || c == '\''){
-               quotec = c;
-               continue;
-            }else if(c == '\\'){
-               if((c2 = *line++) != '\0')
-                  c = c2;
-               else
-                  --line;
-            }else if(su_cs_is_blank(c))
-               break;
-            *cp2++ = c;
-         }
+			/* TODO v15: complete switch in order mirror known behaviour */
+			while((c = *line++) != '\0'){
+				if(quotec != '\0'){
+					if(c == quotec){
+						quotec = '\0';
+						continue;
+					}else if(c == '\\'){
+						if((c2 = *line++) == quotec)
+							c = c2;
+						else
+							--line;
+					}
+				}else if(c == '"' || c == '\''){
+					quotec = c;
+					continue;
+				}else if(c == '\\'){
+					if((c2 = *line++) != '\0')
+						c = c2;
+					else
+						--line;
+				}else if(su_cs_is_blank(c))
+					break;
+				*cp2++ = c;
+			}
 
-         res_dat[res_no++] = savestrbuf(linebuf, P2UZ(cp2 - linebuf));
-         if(c == '\0')
-            break;
-      }
+			res_dat[res_no++] = savestrbuf(linebuf, P2UZ(cp2 - linebuf));
+			if(c == '\0')
+				break;
+		}
 
-      su_LOFI_FREE(linebuf);
-   }else{
-      /* sh(1) compat mode.  Prepare shell token-wise */
-      struct n_string store;
-      struct str input;
-      void const *cookie;
+		su_LOFI_FREE(linebuf);
+	}else{
+		/* sh(1) compat mode.  Prepare shell token-wise */
+		struct n_string store;
+		struct str input;
+		void const *cookie;
 
-      n_string_creat_auto(&store);
-      input.s = UNCONST(char*,line);
-      input.l = linesize;
-      cookie = NULL;
+		n_string_creat_auto(&store);
+		input.s = UNCONST(char*,line);
+		input.l = linesize;
+		cookie = NIL;
 
-      for(;;){
-         if(UCMP(z, res_no, >=, res_size)){
-            n_err(_("Too many input tokens for result storage\n"));
-            res_no = -1;
-            break;
-         }
+		for(;;){
+			if(UCMP(z, res_no, >=, res_size)){
+				n_err(_("Too many input tokens for result storage\n"));
+				res_no = -1;
+				break;
+			}
 
-         /* C99 */{
-            BITENUM_IS(u32,n_shexp_state) shs;
+			/* C99 */{
+				BITENUM_IS(u32,n_shexp_state) shs;
 
-            shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
-                  (cookie == NULL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
-                  (skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
-                  /* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
-                  n_SHEXP_PARSE_META_SEMICOLON),
-                  (skip_aka_dryrun ? NIL : &store), &input, &cookie);
+				shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+						(cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
+						(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
+						/* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
+						n_SHEXP_PARSE_META_SEMICOLON),
+						(skip_aka_dryrun ? NIL : &store), &input, &cookie);
 
-            if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
-               ASSERT(shs & n_SHEXP_STATE_STOP);
-               mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, input.s, input.l);
-            }
+				if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
+					ASSERT(shs & n_SHEXP_STATE_STOP);
+					mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, input.s, input.l);
+				}
 
-            if(shs & n_SHEXP_STATE_ERR_MASK){
-               /* Ignore Unicode error, just keep the normalized \[Uu] */
-               if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
-                  res_no = -1;
-                  break;
-               }
-            }
+				if(shs & n_SHEXP_STATE_ERR_MASK){
+					/* Ignore Unicode error, just keep the normalized \[Uu] */
+					if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
+						res_no = -1;
+						break;
+					}
+				}
 
-            if(shs & n_SHEXP_STATE_OUTPUT){
-               res_dat[res_no++] = n_string_cp(&store);
-               n_string_drop_ownership(&store);
-            }
+				if(shs & n_SHEXP_STATE_OUTPUT){
+					res_dat[res_no++] = n_string_cp(&store);
+					n_string_drop_ownership(&store);
+				}
 
-            if(shs & n_SHEXP_STATE_STOP)
-               break;
-         }
-      }
+				if(shs & n_SHEXP_STATE_STOP)
+					break;
+			}
+		}
 
-      n_string_gut(&store);
-   }
+		n_string_gut(&store);
+	}
 
-   if(res_no >= 0)
-      res_dat[(uz)res_no] = NULL;
+	if(res_no >= 0)
+		res_dat[(uz)res_no] = NIL;
 jleave:
-   NYD_OU;
-   return res_no;
+	NYD_OU;
+	return res_no;
 }
 
 boole
 mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil){
-   mx_CMD_ARG_DESC_SUBCLASS_DEF(eval, 1, a_cmd_cad_eval){
-      {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
-         mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
-   }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+	mx_CMD_ARG_DESC_SUBCLASS_DEF(eval, 1, a_cmd_cad_eval){
+		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+		 n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
+	}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-   static struct mx_cmd_desc const a_cmd_eval = {
-      "eval", R(int(*)(void*),-1), mx_CMD_ARG_TYPE_ARG, 0, 0,
-      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_eval), NIL
-   };
+	static struct mx_cmd_desc const a_cmd_eval = {
+		"eval", R(int(*)(void*),-1), mx_CMD_ARG_TYPE_ARG, 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_eval), NIL
+	};
 
-   struct mx_cmd_arg_ctx cac;
-   struct n_string as_b, *asp;
-   struct mx_cmd_arg *cap;
-   uz i, j;
-   boole rv;
-   NYD_IN;
+	struct mx_cmd_arg_ctx cac;
+	struct n_string as_b, *asp;
+	struct mx_cmd_arg *cap;
+	uz i, j;
+	boole rv;
+	NYD_IN;
 
-   rv = FAL0;
+	rv = FAL0;
 
-   while(cnt > 0){
-      su_STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
-      cac.cac_desc = a_cmd_eval.cd_cadp;
-      cac.cac_indat = io->s;
-      cac.cac_inlen = io->l;
-      if(!mx_cmd_arg_parse(&cac, FAL0))
-         goto jleave;
+	while(cnt > 0){
+		su_STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
+		cac.cac_desc = a_cmd_eval.cd_cadp;
+		cac.cac_indat = io->s;
+		cac.cac_inlen = io->l;
+		if(!mx_cmd_arg_parse(&cac, FAL0))
+			goto jleave;
 
-      for(i = 0, cap = cac.cac_arg; cap != NIL; cap = cap->ca_next)
-         i += cap->ca_arg.ca_str.l + 1;
-      if(prefix_or_nil != NIL)
-         i += (j = su_cs_len(prefix_or_nil) +1);
-      else
-         j = 0;
+		for(i = 0, cap = cac.cac_arg; cap != NIL; cap = cap->ca_next)
+			i += cap->ca_arg.ca_str.l + 1;
+		if(prefix_or_nil != NIL)
+			i += (j = su_cs_len(prefix_or_nil) +1);
+		else
+			j = 0;
 
-      asp = n_string_creat_auto(&as_b);
-      asp = n_string_reserve(asp, i);
+		asp = n_string_creat_auto(&as_b);
+		asp = n_string_reserve(asp, i);
 
-      for(cap = cac.cac_arg; cap != NIL; cap = cap->ca_next){
-         if(asp->s_len > 0)
-            asp = n_string_push_c(asp, ' ');
-         asp = n_string_push_buf(asp, cap->ca_arg.ca_str.s,
-               cap->ca_arg.ca_str.l);
-      }
+		for(cap = cac.cac_arg; cap != NIL; cap = cap->ca_next){
+			if(asp->s_len > 0)
+				asp = n_string_push_c(asp, ' ');
+			asp = n_string_push_buf(asp, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l);
+		}
 
-      if(--cnt == 0 && j > 0){
-         asp = n_string_unshift_buf(asp, prefix_or_nil, j);
-         asp->s_dat[--j] = ' ';
-      }
+		if(--cnt == 0 && j > 0){
+			asp = n_string_unshift_buf(asp, prefix_or_nil, j);
+			asp->s_dat[--j] = ' ';
+		}
 
-      io->s = n_string_cp(asp);
-      io->l = asp->s_len;
-      /* n_string_gut(n_string_drop_ownership(asp)); */
-   }
+		io->s = n_string_cp(asp);
+		io->l = asp->s_len;
+		/* n_string_gut(n_string_drop_ownership(asp)); */
+	}
 
-   rv = TRU1;
+	rv = TRU1;
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef mx_SOURCE
 #undef mx_SOURCE_CMD
-/* s-it-mode */
+/* s-itt-mode */

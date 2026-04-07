@@ -30,8 +30,8 @@
 #endif
 
 #ifdef su_USECASE_MX
-   /* In this case we get our config, error maps etc., all from here.
-    * We must take care not to break OPT_AMALGAMATION though */
+	/* In this case we get our config, error maps etc., all from here.
+	 * We must take care not to break OPT_AMALGAMATION though */
 # ifndef mx_HAVE_AMALGAMATION
 #  include <mx/gen-config.h>
 # endif
@@ -51,7 +51,6 @@
 # define su_HAVE_NSPC
 /*# define su_HAVE_DEBUG*/
 /*# define su_HAVE_DEVEL*/
-# define su_HAVE_DOCSTRINGS
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
 /*# define su_HAVE_MEM_CANARIES_DISABLE*/
@@ -75,9 +74,6 @@
 #  define su_HAVE_DEVEL
 #  define su_NYD_ENABLE
 #  define su_NYD2_ENABLE
-# endif
-# ifdef mx_HAVE_DOCSTRINGS
-#  define su_HAVE_DOCSTRINGS
 # endif
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
@@ -113,4 +109,4 @@ extern struct mx_go_data_ctx *mx_go_data;
 #endif
 
 #endif /* !su_CONFIG_H */
-/* s-it-mode */
+/* s-itt-mode */

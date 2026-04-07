@@ -40,20 +40,11 @@
 #define su_USECASE_MX
 #include <mx/gen-config.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include <errno.h>
 #include <fcntl.h>
-#include <inttypes.h>
-#include <limits.h>
 #include <setjmp.h>
-#include <signal.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <su/code.h>
@@ -974,13 +965,6 @@ struct n_strlist{
    su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
 
-struct time_current{ /* TODO s64, etc. */
-   time_t tc_time;
-   struct tm tc_gm;
-   struct tm tc_local;
-   char tc_ctime[32];
-};
-
 struct mailbox{
    enum{
       MB_NONE = 0, /* no reply expected */
@@ -1104,7 +1088,7 @@ struct mimepart{
    uz m_xsize; /* Bytes in the full part */
    long m_lines; /* Lines in the message; wire format! */
    long m_xlines; /* Lines in the full message; ditto */
-   time_t m_time; /* Time the message was sent */
+   s64 m_time; /* Time the message was sent */
    char const *m_from; /* Message sender */
    struct mimepart *m_nextpart; /* Next part at same level */
    struct mimepart *m_multipart; /* Parts of multipart */
@@ -1137,8 +1121,8 @@ struct message{
    uz m_xsize; /* Bytes in the full message */
    long m_lines; /* Lines in the message */
    long m_xlines; /* Lines in the full message */
-   time_t m_time; /* time the message was sent */
-   time_t m_date; /* time in the 'Date' field */
+   s64 m_time; /* time the message was sent */
+   s64 m_date; /* time in the 'Date' field */
 #ifdef mx_HAVE_IMAP
    u64 m_uid; /* IMAP unique identifier */
 #endif
@@ -1308,9 +1292,7 @@ struct cw{
 #define n_empty su_empty
 #ifndef mx_HAVE_AMALGAMATION
 VL char const n_uagent[sizeof VAL_UAGENT];
-# ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR];
-# endif
 VL char const n_0[2];
 VL char const n_1[2];
 VL char const n_m1[3]; /* -1 */
@@ -1360,8 +1342,6 @@ VL u32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
  * TODO Like this we could use $^ERR-SUBNO or so to access these from outer
  * TODO space, and could perform much better testing; e.g., too many failures
  * TODO simply result in _INVAL, but what has it been exactly?
- * TODO This will furthermore allow better testing, in that even without
- * TODO uistrings we can test error conditions _exactly_!
  * TODO And change the tests accordingly, even support a mode where our
  * TODO error output is entirely suppressed, so that we _really_ can test
  * TODO and only based upon the subnumber!! */
@@ -1374,7 +1354,7 @@ VL struct mailbox mb; /* Current mailbox */
 VL char mailname[PATH_MAX]; /* Name of current file TODO URL/object*/
 VL char displayname[80 - 16]; /* Prettyfied for display TODO URL/obj*/
 VL char prevfile[PATH_MAX]; /* Name of previous file TODO URL/obj */
-VL off_t mailsize; /* Size of system mailbox */
+VL s64 mailsize; /* Size of system mailbox */
 VL struct message *dot; /* Pointer to current message */
 VL struct message *prevdot; /* Previous current message */
 VL struct message *message; /* The actual message structure */
@@ -1387,8 +1367,6 @@ VL int imap_created_mailbox; /* hack to get feedback from imap */
 #endif
 
 VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
-
-VL struct time_current time_current; /* time(3); send: mail1() XXXcarrier */
 
 #ifdef mx_HAVE_TLS
 VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */

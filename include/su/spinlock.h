@@ -80,104 +80,100 @@ struct su_spinlock;
 
 #ifdef su__SPINLOCK_DBG
 enum su__spinlock_xfn{
-   su__SPIN_DTOR,
-   su__SPIN_LOCK,
-   su__SPIN_TRYLOCK,
-   su__SPIN_UNLOCK
+	su__SPIN_DTOR,
+	su__SPIN_LOCK,
+	su__SPIN_TRYLOCK,
+	su__SPIN_UNLOCK
 };
 #endif
 
 /*! \_ */
 struct su_spinlock{
 #ifdef su__SPINLOCK_IS
-   up ATOMIC sl_lck; /* With __SPINLOCK_DBG a thread*, otherwise a bool */
-   DVLDBG( char const *sl_name; )
+	up ATOMIC sl_lck; /* With __SPINLOCK_DBG a thread*, otherwise a bool */
+	DVLDBG( char const *sl_name; )
 #else
-   struct su_mutex sl_mtx;
+	struct su_mutex sl_mtx;
 #endif
 };
 
 #if defined su__SPINLOCK_IS || defined DOXYGEN
-   /*! Please see \r{SMP} for consequences of initializing objects like so. */
-# define su_SPINLOCK_I9R(DBG_NAME_OR_NIL) \
-   {0 su_DVLDBG(su_COMMA DBG_NAME_OR_NIL)}
+	/*! Please see \r{SMP} for consequences of initializing objects like so. */
+# define su_SPINLOCK_I9R(DBG_NAME_OR_NIL) {0 su_DVLDBG(su_COMMA DBG_NAME_OR_NIL)}
 #else
 # define su_SPINLOCK_I9R(DBG_NAME_OR_NIL) su_MUTEX_FLAT_I9R(DBG_NAME_OR_NIL)
 #endif
 
 #ifdef su__SPINLOCK_DBG
-EXPORT boole su__spinlock_check(struct su_spinlock *self,
-      enum su__spinlock_xfn slf, up v);
+EXPORT boole su__spinlock_check(struct su_spinlock *self, enum su__spinlock_xfn slf, up v);
 #endif
 
 #include <su/x-spinlock.h> /* 2. */
 
 /*! \_ */
-INLINE s32 su_spinlock_create(struct su_spinlock *self,
-      char const *dbg_name_or_nil, u32 estate){
-   s32 rv;
-   ASSERT(self);
-   UNUSED(dbg_name_or_nil);
-   UNUSED(estate);
+INLINE s32 su_spinlock_create(struct su_spinlock *self, char const *dbg_name_or_nil, u32 estate){
+	s32 rv;
+	ASSERT(self);
+	UNUSED(dbg_name_or_nil);
+	UNUSED(estate);
 #ifdef su__SPINLOCK_IS
-   self->sl_lck = 0;
-   DVLDBG( self->sl_name = dbg_name_or_nil; )
-   rv = su_STATE_NONE;
+	self->sl_lck = 0;
+	DVLDBG( self->sl_name = dbg_name_or_nil; )
+	rv = su_STATE_NONE;
 #else
-   rv = su_mutex_create(&self->sl_mtx, dbg_name_or_nil, estate);
+	rv = su_mutex_create(&self->sl_mtx, dbg_name_or_nil, estate);
 #endif
-   return rv;
+	return rv;
 }
 
 /*! \_ */
 INLINE void su_spinlock_gut(struct su_spinlock *self){
-   ASSERT(self);
+	ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   UNUSED(self);
-   DVLDBG( su__spinlock_check(self, su__SPIN_DTOR, 0); )
+	UNUSED(self);
+	DVLDBG( su__spinlock_check(self, su__SPIN_DTOR, 0); )
 #else
-   su_mutex_gut(&self->sl_mtx);
+	su_mutex_gut(&self->sl_mtx);
 #endif
 }
 
 /*! \_ */
 INLINE void su_spinlock_lock(struct su_spinlock *self){
-   ASSERT(self);
+	ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   /* C99 */{
-      up v = DVLDBGOR(R(up,su_thread_self()), 1);
-      DVLDBG( if(!su__spinlock_check(self, su__SPIN_LOCK, v)) return; )
-      su__spinlock_lock(self, v);
-   }
+	/* C99 */{
+		up v = DVLDBGOR(R(up,su_thread_self()), 1);
+		DVLDBG( if(!su__spinlock_check(self, su__SPIN_LOCK, v)) return; )
+		su__spinlock_lock(self, v);
+	}
 #else
-   su_mutex_lock(&self->sl_mtx);
+	su_mutex_lock(&self->sl_mtx);
 #endif
 }
 
-/*! Try to lock the spinlock once, but do not spin but instead return if it
- * cannot be taken immediately.
+/*! Try to lock the spinlock once, but do not spin but instead return if it cannot be taken immediately.
  * Return whether the calling thread owns the lock. */
 INLINE boole su_spinlock_trylock(struct su_spinlock *self){
-   ASSERT(self);
+	ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   /* C99 */{
-      up v = DVLDBGOR(R(up,su_thread_self()), 1);
-      DVLDBG( if(!su__spinlock_check(self, su__SPIN_TRYLOCK, v)) return FAL0; )
-      return su__spinlock_trylock(self, v);
-   }
+	/* C99 */{
+		up v = DVLDBGOR(R(up,su_thread_self()), 1);
+		DVLDBG( if(!su__spinlock_check(self, su__SPIN_TRYLOCK, v)) return FAL0; )
+		return su__spinlock_trylock(self, v);
+	}
 #else
-   return su_mutex_trylock(&self->sl_mtx);
+	return su_mutex_trylock(&self->sl_mtx);
 #endif
 }
 
 /*! \_ */
 INLINE void su_spinlock_unlock(struct su_spinlock *self){
-   ASSERT(self);
+	ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   DVLDBG( if(!su__spinlock_check(self, su__SPIN_UNLOCK, 0)) return; )
-   su__spinlock_unlock(self);
+	DVLDBG( if(!su__spinlock_check(self, su__SPIN_UNLOCK, 0)) return; )
+	su__spinlock_unlock(self);
 #else
-   su_mutex_unlock(&self->sl_mtx);
+	su_mutex_unlock(&self->sl_mtx);
 #endif
 }
 /*! @} *//* }}} */
@@ -204,28 +200,28 @@ class spinlock;
  * C++ variant of \r{SPINLOCK} (\r{su/spinlock.h})
  */
 class spinlock : private su_spinlock{
-   // friend of thread
-   su_CLASS_NO_COPY(spinlock);
+	// friend of thread
+	su_CLASS_NO_COPY(spinlock);
 public:
-   /*! \remarks{As documented in \r{SMP} \r{create()} is real constructor!} */
-   spinlock(void) {STRUCT_ZERO(su_spinlock, this);}
+	/*! \remarks{As documented in \r{SMP} \r{create()} is real constructor!} */
+	spinlock(void) {STRUCT_ZERO(su_spinlock, this);}
 
-   /*! \copydoc{su_spinlock_gut()} */
-   ~spinlock(void) {su_spinlock_gut(this);}
+	/*! \copydoc{su_spinlock_gut()} */
+	~spinlock(void) {su_spinlock_gut(this);}
 
-   /*! \copydoc{su_spinlock_create()} */
-   s32 create(char const *dbg_name_or_nil=NIL, u32 estate=state::none){
-      return su_spinlock_create(this, dbg_name_or_nil, estate);
-   }
+	/*! \copydoc{su_spinlock_create()} */
+	s32 create(char const *dbg_name_or_nil=NIL, u32 estate=state::none){
+		return su_spinlock_create(this, dbg_name_or_nil, estate);
+	}
 
-   /*! \copydoc{su_spinlock_lock()} */
-   void lock(void) {su_spinlock_lock(this);}
+	/*! \copydoc{su_spinlock_lock()} */
+	void lock(void) {su_spinlock_lock(this);}
 
-   /*! \copydoc{su_spinlock_trylock()} */
-   boole trylock(void) {return su_spinlock_trylock(this);}
+	/*! \copydoc{su_spinlock_trylock()} */
+	boole trylock(void) {return su_spinlock_trylock(this);}
 
-   /*! \copydoc{su_spinlock_unlock()} */
-   void unlock(void) {su_spinlock_unlock(this);}
+	/*! \copydoc{su_spinlock_unlock()} */
+	void unlock(void) {su_spinlock_unlock(this);}
 };
 /* }}} */
 
@@ -233,4 +229,4 @@ NSPC_END(su)
 # include <su/code-ou.h>
 #endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_SPINLOCK_H */
-/* s-it-mode */
+/* s-itt-mode */

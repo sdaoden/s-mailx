@@ -30,8 +30,7 @@
 
 /* Parse the according *smtp-config* (-alike), and fill in credp accordingly.
  * Return whether we have found a valid configuration. */
-EXPORT boole mx_smtp_parse_config(struct mx_cred_ctx *credp,
-      struct mx_url *urlp);
+EXPORT boole mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp);
 
 /* Send a message via SMTP (unless *debug*, then dump only) */
 EXPORT boole mx_smtp_mta(struct mx_send_ctx *scp);
@@ -39,4 +38,4 @@ EXPORT boole mx_smtp_mta(struct mx_send_ctx *scp);
 #include <su/code-ou.h>
 #endif /* mx_HAVE_SMTP */
 #endif /* mx_NET_SMTP_H */
-/* s-it-mode */
+/* s-itt-mode */

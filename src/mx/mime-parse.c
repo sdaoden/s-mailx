@@ -352,7 +352,7 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
 
       /* XXX linelen includes LF */
       if(!((lines > 0 || part == 0) && linelen > boundlen &&
-            !strncmp(line, boundary, boundlen))){
+            !su_cs_cmp_n(line, boundary, boundlen))){
          ++lines;
          continue;
       }

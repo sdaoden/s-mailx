@@ -384,4 +384,4 @@
 #undef mx_HEADER
 #undef rf_HEADER
 
-/* s-it-mode */
+/* s-itt-mode */

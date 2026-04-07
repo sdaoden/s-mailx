@@ -31,20 +31,20 @@
 struct mx_srch_ctx;
 
 struct mx_srch_ctx{
-   /* XXX Type of search should not be evaluated but be enum */
-   boole sc_field_exists; /* Only check whether field spec. exists */
-   boole sc_skin; /* Shall work on (skin()ned) addresses */
-   u8 sc__pad[6];
-   char const *sc_field; /* Field spec. where to search (not always used) */
-   char const *sc_body; /* Field body search expression */
+	/* XXX Type of search should not be evaluated but be enum */
+	boole sc_field_exists; /* Only check whether field spec. exists */
+	boole sc_skin; /* Shall work on (skin()ned) addresses */
+	u8 sc__pad[6];
+	char const *sc_field; /* Field spec. where to search (not always used) */
+	char const *sc_body; /* Field body search expression */
 #ifdef mx_HAVE_REGEX
-   struct su_re *sc_fieldre; /* Could be instead of .sc_field */
-   struct su_re *sc_bodyre; /* Ditto, .sc_body */
-   struct su_re sc_fieldre__buf;
-   struct su_re sc_bodyre__buf;
+	struct su_re *sc_fieldre; /* Could be instead of .sc_field */
+	struct su_re *sc_bodyre; /* Ditto, .sc_body */
+	struct su_re sc_fieldre__buf;
+	struct su_re sc_bodyre__buf;
 #endif
 };
 
 #include <su/code-ou.h>
 #endif /* mx_SRCH_CTX_H */
-/* s-it-mode */
+/* s-itt-mode */

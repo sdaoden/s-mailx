@@ -13,129 +13,127 @@ LC_ALL=C
 export LC_ALL OUT
 
 create() {
-   # Note this may be ISO C89, so we cannot
-   cat <<__EOT__
-   #include <ctype.h>
-   #include <stdint.h>
-   #include <stdio.h>
-   #include <stdlib.h>
-   #define su_S(T,I) ((T)(I))
-   #define u8 uint8_t
-   #define S8_MAX INT8_MAX
-   static void
-   a_csc_init(FILE *fp){
-      u8 i, any;
-      char const *xpre, *pre;
+	# Note this may be ISO C89, so we cannot
+	cat <<__EOT__
+	#include <ctype.h>
+	#include <stdint.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#define su_S(T,I) ((T)(I))
+	#define u8 uint8_t
+	#define S8_MAX INT8_MAX
+	static void
+	a_csc_init(FILE *fp){
+		u8 i, any;
+		char const *xpre, *pre;
 
-      fprintf(fp, "CTAV(su_CS_CTYPE_NONE == 0);\n"
-         "#undef a_X\n"
-         "#define a_X(X) su_CONCAT(su_CS_CTYPE_,X)\n"
-         "u16 const su__cs_ctype[S8_MAX + 1] = {\n");
-      xpre = $VERB ? " | " : "|";
-      i = 0;
-      do{
-         any = 0, pre = "";
-         if($VERB)
-            fprintf(fp, "   /* 0x%02X=%c */ ",
-               (unsigned)i, (isprint(i) ? (char)i : '?'));
-         if(isalnum(i))
-            fprintf(fp, "%sa_X(ALNUM)", pre), any = 1, pre = xpre;
-         if(isalpha(i))
-            fprintf(fp, "%sa_X(ALPHA)", pre), any = 1, pre = xpre;
-         if(isblank(i))
-            fprintf(fp, "%sa_X(BLANK)", pre), any = 1, pre = xpre;
-         if(iscntrl(i))
-            fprintf(fp, "%sa_X(CNTRL)", pre), any = 1, pre = xpre;
-         if(isdigit(i))
-            fprintf(fp, "%sa_X(DIGIT)", pre), any = 1, pre = xpre;
-         if(isgraph(i))
-            fprintf(fp, "%sa_X(GRAPH)", pre), any = 1, pre = xpre;
-         if(islower(i))
-            fprintf(fp, "%sa_X(LOWER)", pre), any = 1, pre = xpre;
-         if(isprint(i))
-            fprintf(fp, "%sa_X(PRINT)", pre), any = 1, pre = xpre;
-         if(ispunct(i))
-            fprintf(fp, "%sa_X(PUNCT)", pre), any = 1, pre = xpre;
-         if(isspace(i))
-            fprintf(fp, "%sa_X(SPACE)", pre), any = 1, pre = xpre;
-         if(isupper(i))
-            fprintf(fp, "%sa_X(UPPER)", pre), any = 1, pre = xpre;
-         if(isblank(i) || i == '\n')
-            fprintf(fp, "%sa_X(WHITE)", pre), any = 1, pre = xpre;
-         if(isxdigit(i))
-            fprintf(fp, "%sa_X(XDIGIT)", pre), any = 1, pre = xpre;
-         if(!any)
-            fprintf(fp, "a_X(NONE)");
-         fprintf(fp, ",\n");
-      }while(i++ != S8_MAX);
-      fprintf(fp, "};\n#undef a_X\n");
-      if($VERB)
-         fprintf(fp, "\n");
+		fprintf(fp, "CTAV(su_CS_CTYPE_NONE == 0);\n"
+			"#undef a_X\n"
+			"#define a_X(X) su_CONCAT(su_CS_CTYPE_,X)\n"
+			"u16 const su__cs_ctype[S8_MAX + 1] = {\n");
+		xpre = $VERB ? " | " : "|";
+		i = 0;
+		do{
+			any = 0, pre = "";
+			if($VERB)
+				fprintf(fp, "\t/* 0x%02X=%c */ ", (unsigned)i, (isprint(i) ? (char)i : '?'));
+			if(isalnum(i))
+				fprintf(fp, "%sa_X(ALNUM)", pre), any = 1, pre = xpre;
+			if(isalpha(i))
+				fprintf(fp, "%sa_X(ALPHA)", pre), any = 1, pre = xpre;
+			if(isblank(i))
+				fprintf(fp, "%sa_X(BLANK)", pre), any = 1, pre = xpre;
+			if(iscntrl(i))
+				fprintf(fp, "%sa_X(CNTRL)", pre), any = 1, pre = xpre;
+			if(isdigit(i))
+				fprintf(fp, "%sa_X(DIGIT)", pre), any = 1, pre = xpre;
+			if(isgraph(i))
+				fprintf(fp, "%sa_X(GRAPH)", pre), any = 1, pre = xpre;
+			if(islower(i))
+				fprintf(fp, "%sa_X(LOWER)", pre), any = 1, pre = xpre;
+			if(isprint(i))
+				fprintf(fp, "%sa_X(PRINT)", pre), any = 1, pre = xpre;
+			if(ispunct(i))
+				fprintf(fp, "%sa_X(PUNCT)", pre), any = 1, pre = xpre;
+			if(isspace(i))
+				fprintf(fp, "%sa_X(SPACE)", pre), any = 1, pre = xpre;
+			if(isupper(i))
+				fprintf(fp, "%sa_X(UPPER)", pre), any = 1, pre = xpre;
+			if(isblank(i) || i == '\n')
+				fprintf(fp, "%sa_X(WHITE)", pre), any = 1, pre = xpre;
+			if(isxdigit(i))
+				fprintf(fp, "%sa_X(XDIGIT)", pre), any = 1, pre = xpre;
+			if(!any)
+				fprintf(fp, "a_X(NONE)");
+			fprintf(fp, ",\n");
+		}while(i++ != S8_MAX);
+		fprintf(fp, "};\n#undef a_X\n");
+		if($VERB)
+			fprintf(fp, "\n");
 
-      fprintf(fp, "u8 const su__cs_tolower[S8_MAX + 1] = {\n");
-      i = any = 0;
-      do{
-         if(any + 7 >= 78){
-            fprintf(fp, "\n");
-            any = 0;
-         }
-         if(any == 0 && $VERB)
-               fprintf(fp, "   "), any = 3;
-         fprintf(fp, "'\\\x%02X',", (u8)tolower((char)i));
-         any += 7;
-      }while(i++ != S8_MAX);
-      fprintf(fp, "\n};\n");
-      if($VERB)
-         fprintf(fp, "\n");
+		fprintf(fp, "u8 const su__cs_tolower[S8_MAX + 1] = {\n");
+		i = any = 0;
+		do{
+			if(any + 7 >= 78){
+				fprintf(fp, "\n");
+				any = 0;
+			}
+			if(any == 0 && $VERB)
+					fprintf(fp, "\t"), any = 8;
+			fprintf(fp, "'\\\x%02X',", (u8)tolower((char)i));
+			any += 7;
+		}while(i++ != S8_MAX);
+		fprintf(fp, "\n};\n");
+		if($VERB)
+			fprintf(fp, "\n");
 
-      fprintf(fp, "u8 const su__cs_toupper[S8_MAX + 1] = {\n");
-      i = any = 0;
-      do{
-         if(any + 7 >= 78){
-            fprintf(fp, "\n");
-            any = 0;
-         }
-         if(any == 0 && $VERB)
-               fprintf(fp, "   "), any = 3;
-         fprintf(fp, "'\\\x%02X',", (u8)toupper((char)i));
-         any += 7;
-      }while(i++ != S8_MAX);
-      fprintf(fp, "\n};\n");
-      if($VERB)
-         fprintf(fp, "\n");
-   }
-   int main(void){
-      FILE *ofp = fopen("${OUT}", "a");
-      if(ofp == NULL){
-         fprintf(stderr, "ERROR: cannot open output\n");
-         return 1;
-      }
-      fprintf(ofp, "/*@ ${OUT}, generated by su-make-cs-ctype.sh.\n"
-         " *@ See cs-ctype.c for more */\n\n");
-      a_csc_init(ofp);
-      fclose(ofp);
-      return 0;
-   }
+		fprintf(fp, "u8 const su__cs_toupper[S8_MAX + 1] = {\n");
+		i = any = 0;
+		do{
+			if(any + 7 >= 78){
+				fprintf(fp, "\n");
+				any = 0;
+			}
+			if(any == 0 && $VERB)
+					fprintf(fp, "\t"), any = 8;
+			fprintf(fp, "'\\\x%02X',", (u8)toupper((char)i));
+			any += 7;
+		}while(i++ != S8_MAX);
+		fprintf(fp, "\n};\n");
+		if($VERB)
+			fprintf(fp, "\n");
+	}
+	int main(void){
+		FILE *ofp = fopen("${OUT}", "a");
+		if(ofp == NULL){
+			fprintf(stderr, "ERROR: cannot open output\n");
+			return 1;
+		}
+		fprintf(ofp, "/*@ ${OUT}, generated by su-make-cs-ctype.sh.\n *@ See cs-ctype.c for more */\n\n");
+		a_csc_init(ofp);
+		fclose(ofp);
+		return 0;
+	}
 __EOT__
 }
 
 if [ ${#} -ne 0 ]; then
-   if [ "${1}" = noverbose ]; then
-      shift
-      VERB=0
-      export VERB
-   fi
+	if [ "${1}" = noverbose ]; then
+		shift
+		VERB=0
+		export VERB
+	fi
 fi
 
 if [ ${#} -eq 0 ]; then
-   create > "${TMPDIR}"/su-mk-cs-ctype.c || exit 2
-   ${CC} -o "${TMPDIR}"/su-mk-cs-ctype "${TMPDIR}"/su-mk-cs-ctype.c || exit 3
-   rm -f src/su/gen-cs-ctype.h
-   "${TMPDIR}"/su-mk-cs-ctype || exit 4
-   rm -f "${TMPDIR}"/su-mk-cs-ctype "${TMPDIR}"/su-mk-cs-ctype.c || exit 5
-   exit 0
+	create > "${TMPDIR}"/su-mk-cs-ctype.c || exit 2
+	${CC} -o "${TMPDIR}"/su-mk-cs-ctype "${TMPDIR}"/su-mk-cs-ctype.c || exit 3
+	rm -f src/su/gen-cs-ctype.h
+	"${TMPDIR}"/su-mk-cs-ctype || exit 4
+	rm -f "${TMPDIR}"/su-mk-cs-ctype "${TMPDIR}"/su-mk-cs-ctype.c || exit 5
+	exit 0
 fi
 echo >&2 'Invalid usage'
 exit 1
 
-# s-it-mode
+# s-itt-mode

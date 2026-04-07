@@ -31,37 +31,36 @@
 struct quoteflt;
 
 struct quoteflt{
-   FILE *qf_os; /* Output stream */
-   char const *qf_pfix;
-   u32 qf_pfix_len; /* Length of prefix: 0: bypass */
-   u32 qf_qfold_min; /* Simple way: wrote prefix? */
-   boole qf_bypass; /* Simply write to .qf_os TODO BYPASS, then! */
-   /* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
-    * TODO finally can gracefully place a newline last in the visual display.
-    * TODO I.e., for cases where quoteflt shouldn't be used at all  */
-   boole qf_nl_last; /* Last thing written/seen was NL */
+	FILE *qf_os; /* Output stream */
+	char const *qf_pfix;
+	u32 qf_pfix_len; /* Length of prefix: 0: bypass */
+	u32 qf_qfold_min; /* Simple way: wrote prefix? */
+	boole qf_bypass; /* Simply write to .qf_os TODO BYPASS, then! */
+	/* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
+	 * TODO finally can gracefully place a newline last in the visual display.
+	 * TODO I.e., for cases where quoteflt shouldn't be used at all  */
+	boole qf_nl_last; /* Last thing written/seen was NL */
 #ifndef mx_HAVE_FILTER_QUOTE_FOLD
-   u8 qf__dummy[6];
+	u8 qf__dummy[6];
 #else
-   u8 qf_state; /* *quote-fold* state machine */
-   boole qf_brk_isws; /* Breakpoint is at WS */
-   u32 qf_qfold_max; /* Otherwise: line lengths */
-   u32 qf_qfold_maxnws;
-   u32 qf_wscnt; /* Whitespace count */
-   char const *qf_quote_chars; /* *quote-chars* */
-   u32 qf_brkl; /* Breakpoint */
-   u32 qf_brkw; /* Visual width, breakpoint */
-   u32 qf_datw; /* Current visual output line width */
-   u8 qf__dummy2[4];
-   struct str qf_dat; /* Current visual output line */
-   struct str qf_currq; /* Current quote, compressed */
-   mbstate_t qf_mbps[2];
+	u8 qf_state; /* *quote-fold* state machine */
+	boole qf_brk_isws; /* Breakpoint is at WS */
+	u32 qf_qfold_max; /* Otherwise: line lengths */
+	u32 qf_qfold_maxnws;
+	u32 qf_wscnt; /* Whitespace count */
+	char const *qf_quote_chars; /* *quote-chars* */
+	u32 qf_brkl; /* Breakpoint */
+	u32 qf_brkw; /* Visual width, breakpoint */
+	u32 qf_datw; /* Current visual output line width */
+	u8 qf__dummy2[4];
+	struct str qf_dat; /* Current visual output line */
+	struct str qf_currq; /* Current quote, compressed */
+	mbstate_t qf_mbps[2];
 #endif
 };
 
 EXPORT struct quoteflt *quoteflt_dummy(void); /* TODO LEGACY */
-EXPORT void quoteflt_init(struct quoteflt *self, char const *prefix,
-      boole bypass);
+EXPORT void quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass);
 EXPORT void quoteflt_destroy(struct quoteflt *self);
 EXPORT void quoteflt_reset(struct quoteflt *self, FILE *f);
 EXPORT sz quoteflt_push(struct quoteflt *self, char const *dat, uz len);
@@ -69,4 +68,4 @@ EXPORT sz quoteflt_flush(struct quoteflt *self);
 
 #include <su/code-ou.h>
 #endif /* mx_FILTER_QUOTE_H */
-/* s-it-mode */
+/* s-itt-mode */

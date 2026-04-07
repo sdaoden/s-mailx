@@ -25,8 +25,8 @@ LC_ALL=C
       return s
    }
 
-   /^[ 	]*#/{next}
-   /^[ 	]*$/{next}
+   /^[	 ]*#/{next}
+   /^[	 ]*$/{next}
    /\\$/{
       sub("^[[:space:]]*", "")
       sub("\\\\$", "")
@@ -44,4 +44,4 @@ LC_ALL=C
    END{print "#define a_GO_BLTIN_RC_LINES_CNT " lines}
 '
 
-# s-sh-mode
+# s-sht-mode
