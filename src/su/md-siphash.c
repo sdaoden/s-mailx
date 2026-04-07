@@ -54,7 +54,7 @@ su_siphash_setup_custom(struct su_siphash *self, void const *key,
 	self->sh_compress_rounds = crounds;
 	self->sh_finalize_rounds = drounds;
 
-	ASSERT_NYD_EXEC(key != NIL, rv = -su_ERR_FAULT);
+	ASSERT_NYD_EXEC(key != NIL, rv = su_ERR_FAULT);
 
 	rv = a_md_siphash_setup(self, key);
 

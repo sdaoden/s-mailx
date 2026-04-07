@@ -171,13 +171,13 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \list{\li{
  * \fn{s32 reset_insert(void const *key, void *dat)}:
  * Insert a new \a{key} / \a{value} pair in the parent.
- * If \a{key} already exists -1 is returned, but \fn{is_valid()} is true just
- * as for a successful insertion.
+ * Return \ERR{NONE} upon success, -1 if \a{key} already exists;
+ * \fn{is_valid()} shall be true in both cases.
  * }\li{
  * \fn{s32 reset_replace(void const *key, void *dat)}:
  * Insert a new, or update an existing \a{key} / \a{value} pair in the parent.
- * If an existing \a{key} has been updated -1 is returned, but \fn{is_valid()}
- * is true just as for insertion of a new \a{key}.
+ * Return \ERR{NONE} upon success, -1 if \a{key} already exists;
+ * \fn{is_valid()} shall be true in both cases.
  * }}
  *
  * \head2{Additions for non-associative unidirectional views}
@@ -400,7 +400,7 @@ public:\
 		return type_traits::to_tp(m_view.data());\
 	}\
 	s32 set_data(tp dat){\
-		ASSERT_RET(is_valid(), err::einval);\
+		ASSERT_RET(is_valid(), err::inval);\
 		return m_view.set_data(type_traits::to_vp(dat));\
 	}\
 	tp operator*(void) {return data();}\
@@ -437,15 +437,15 @@ public:\
 #define su__VIEW_IMPL_NONASSOC
 
 #define su__VIEW_IMPL_NONASSOC_NONCONST /*{{{*/\
-	/* err::enone or error */\
+	/* err::none or error */\
 	s32 insert(tp dat){\
-		ASSERT_RET(is_setup(), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
 		return m_view.insert(type_traits::to_vp(dat));\
 	}\
 	s32 insert(base &startpos, base const &endpos){\
-		ASSERT_RET(is_setup(), err::einval);\
-		ASSERT_RET(startpos.is_valid(), err::einval);\
-		ASSERT_RET(!endpos.is_valid() || startpos.is_same_parent(endpos), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
+		ASSERT_RET(startpos.is_valid(), err::inval);\
+		ASSERT_RET(!endpos.is_valid() || startpos.is_same_parent(endpos), err::inval);\
 		if(DVLDBGOR(1, 0)){\
 			if(is_same_parent(startpos)){\
 				myself v(startpos);\
@@ -454,11 +454,11 @@ public:\
 						if(v == endpos)\
 							break;\
 						else if(!v || v == *this)\
-							return err::einval;\
+							return err::inval;\
 				}else{\
 					for(; v; ++v)\
 						if(v == *this)\
-							return err::einval;\
+							return err::inval;\
 				}\
 			}\
 		}\
@@ -483,14 +483,14 @@ public:\
 /*}}}*/
 
 #define su__VIEW_IMPL_ASSOC_NONCONST /*{{{*/\
-	/* err::enone or error */\
+	/* err::none or error */\
 	s32 reset_insert(key_tp_const key, tp dat){\
-		ASSERT_RET(is_setup(), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
 		return m_view.reset_insert(key_type_traits::to_const_vp(key), type_traits::to_vp(dat));\
 	}\
-	/* err::enone or error */\
+	/* err::none or error */\
 	s32 reset_replace(key_tp_const key, tp dat){\
-		ASSERT_RET(is_setup(), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
 		return m_view.reset_replace(key_type_traits::to_const_vp(key), type_traits::to_vp(dat));\
 	}\
 /*}}}*/

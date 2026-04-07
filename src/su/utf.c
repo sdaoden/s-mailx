@@ -29,6 +29,7 @@
 
 NSPC_USE(su)
 
+char const su_utf8_name[sizeof su_UTF8_NAME] = su_UTF8_NAME;
 char const su_utf8_replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
 
 u32
@@ -133,6 +134,8 @@ jerr:
 	c = U32_MAX;
 	goto jleave;
 }
+
+char const su_utf32_name[sizeof su_UTF32_NAME] = su_UTF32_NAME;
 
 uz
 su_utf32_to_8(u32 c, char *bp){

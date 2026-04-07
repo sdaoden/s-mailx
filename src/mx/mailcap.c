@@ -53,7 +53,7 @@ su_EMPTY_FILE()
 
 /* Dictionary stores a_mailcap_hdl* list, not owned */
 #define a_MAILCAP_CSD_FLAGS (su_CS_DICT_CASE | su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS)
-#define a_MAILCAP_CSD_THRESHOLD_SHIFT 3
+#define a_MAILCAP_CSD_THRESHOLD 3
 
 /* Must be alphabetical */
 enum a_mailcap_sfields{
@@ -160,8 +160,8 @@ a_mailcap_create(void){
 	char *cp_base, *cp;
 	NYD_IN;
 
-	a_mailcap_dp = su_cs_dict_set_threshold_shift(su_cs_dict_create(&a_mailcap__d, a_MAILCAP_CSD_FLAGS, NIL),
-			a_MAILCAP_CSD_THRESHOLD_SHIFT);
+	a_mailcap_dp = su_cs_dict_set_threshold(su_cs_dict_create(&a_mailcap__d, a_MAILCAP_CSD_FLAGS, NIL),
+			a_MAILCAP_CSD_THRESHOLD);
 	DVL( su_state_on_gut_install(&a_mailcap__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 
 	if(*(cp_base = UNCONST(char*,ok_vlook(MAILCAPS))) == '\0')
@@ -179,7 +179,7 @@ a_mailcap_create(void){
 		if((mcls.mcls_fp = mx_fs_open(mcls.mcls_name = cp, mx_FS_O_RDONLY)) == NIL){
 			s32 eno;
 
-			if((eno = su_err_no()) != su_ERR_NOENT)
+			if((eno = su_err()) != su_ERR_NOENT)
 				n_err(_("$MAILCAPS: cannot open %s: %s\n"), mcls.mcls_name_quoted, su_err_doc(eno));
 			continue;
 		}
@@ -300,7 +300,7 @@ jenomem:
 	emsg = N_("out of memory");
 	goto jerr;
 jetoolong:
-	su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERRNO), _("$MAILCAPS: line too long"));
+	su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERROR), _("$MAILCAPS: line too long"));
 	emsg = N_("line too long");
 jerr:
 	n_err(_("$MAILCAPS: %s while loading %s\n"), V_(emsg), mclsp->mcls_name_quoted);
@@ -748,7 +748,7 @@ a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp, struct a_mailcap
 
 	if(ins_or_nil != NIL)
 		*ins_or_nil = mchp;
-	else if(su_cs_dict_insert(a_mailcap_dp, mclsp->mcls_type_subtype, mchp) > 0)
+	else if(su_cs_dict_insert(a_mailcap_dp, mclsp->mcls_type_subtype, mchp) > su_ERR_NONE)
 		rv = TRUM1;
 
 jleave:

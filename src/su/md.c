@@ -54,7 +54,7 @@ static struct a_md_list *a_md_list;
 
 /* su__md_init() */
 #ifdef su__STATE_ON_GUT_FUN
-static void a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+static void a_md__on_gut(BITENUM(u32,su_state_gut_flags) flags);
 #endif
 
 static void a_md_del(void *self);
@@ -74,7 +74,7 @@ static struct su_md_vtbl const a_md_siphash = {
 
 #ifdef su__STATE_ON_GUT_FUN
 static void
-a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_md__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 	UNUSED(flags);
 
@@ -161,14 +161,13 @@ su__md_init(u32 estate){
 	s32 rv;
 	NYD2_IN;
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	su__glck_gi9r();
 
-	if(a_md_lock == NIL &&
-			(rv = su_mutex_create(&a_md__lockbuf, "SU M(essage) D(igest) DB", estate)) == su_STATE_NONE){
+	if(a_md_lock == NIL && (rv = su_mutex_create(&a_md__lockbuf, "SU M(essage) D(igest) DB", estate)) == su_ERR_NONE){
 #ifdef su__STATE_ON_GUT_FUN
-		if((rv = su_state_on_gut_install(&a_md__on_gut, TRU1, estate)) != su_STATE_NONE)
+		if((rv = su_state_on_gut_install(&a_md__on_gut, TRU1, estate)) != su_ERR_NONE)
 			su_mutex_gut(&a_md__lockbuf);
 		else
 #endif
@@ -187,9 +186,9 @@ su__md_install(char const *name, struct su_md_vtbl const *vtblp, su_new_fun cxx_
 	s32 rv;
 	NYD_IN;
 
-	if(a_md_lock == NIL && (rv = su__md_init(estate)) != su_STATE_NONE){
+	if(a_md_lock == NIL && (rv = su__md_init(estate)) != su_ERR_NONE){
 	}else if((mdlp = su_TALLOCF(struct a_md_list, 1, su_MEM_ALLOC_MAYFAIL)) == NIL)
-		rv = -su_err_no();
+		rv = su_err();
 	else{
 		su_MUTEX_LOCK(a_md_lock);
 		mdlp->mdl_last = a_md_list;
@@ -198,7 +197,7 @@ su__md_install(char const *name, struct su_md_vtbl const *vtblp, su_new_fun cxx_
 		mdlp->mdl_cxx_it = cxx_it;
 		a_md_list = mdlp;
 		su_MUTEX_UNLOCK(a_md_lock);
-		rv = su_STATE_NONE;
+		rv = su_ERR_NONE;
 	}
 
 	NYD_OU;
@@ -250,14 +249,14 @@ su_md_new_by_algo(enum su_md_algo algo, u32 estate){
 	}
 
 	if(UNLIKELY(vtblp == NIL)){
-		su_err_set_no(su_ERR_NOTSUP);
+		su_err_set(su_ERR_NOTSUP);
 		self = NIL;
 	}else if((self = su_TALLOCF(struct su_md, 1, estate)) != NIL){
 		self->md_vtbl = vtblp;
 		if((self->md_vp = (*vtblp->mdvtbl_new)(estate)) == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_FREE(self);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 			self = NIL;
 		}
 	}
@@ -299,15 +298,15 @@ su_md_new_by_name(char const *name, u32 estate){
 
 	if(vtblp == NIL){
 jno:
-		su_err_set_no(su_ERR_NOTSUP);
+		su_err_set(su_ERR_NOTSUP);
 		self = NIL;
 	}else if((self = su_TALLOCF(struct su_md, 1, estate)) != NIL){
 		ASSERT(newptf != NIL);
 		self->md_vtbl = vtblp;
 		if((self->md_vp = (*newptf)(estate)) == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_FREE(self);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 			self = NIL;
 		}
 	}

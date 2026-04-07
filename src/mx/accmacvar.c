@@ -2817,7 +2817,7 @@ a_amv_var_obsolete(char const *name){
 
 	if(!su_state_has(su_STATE_REPRODUCIBLE)){
 		if(UNLIKELY(a_amv_var_obsol == NIL))
-			a_amv_var_obsol = su_cs_dict_set_threshold_shift(su_cs_dict_create(&a_amv_var__obsol,
+			a_amv_var_obsol = su_cs_dict_set_threshold(su_cs_dict_create(&a_amv_var__obsol,
 						(su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
 
 		if(UNLIKELY(!su_cs_dict_has_key(a_amv_var_obsol, name))){
@@ -3998,7 +3998,7 @@ c_environ(void *vp){
 				if(fprintf(n_stdout, "%s\n", ev) > 0)
 					rv = su_EX_OK;
 				else
-					n_pstate_err_no = su_err_no_by_errno();
+					n_pstate_err_no = su_err_by_errno();
 			}else if(!n_var_vset(vp, R(up,ev), ((avscf & a_AMV_VSETCLR_LOCAL) != 0)))
 				n_pstate_err_no = su_ERR_NOTSUP;
 			else
@@ -4256,7 +4256,7 @@ jeover:
 
 		if(cacp->cac_vput == NIL){
 			if(fprintf(n_stdout, "%s\n", varres) < 0){
-				n_pstate_err_no = su_err_no_by_errno();
+				n_pstate_err_no = su_err_by_errno();
 				f |= a_ERR;
 			}
 		}else if(!n_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_cm_local)){

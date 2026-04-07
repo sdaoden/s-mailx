@@ -805,10 +805,10 @@ n_perr(char const *msg, int errval){
 	}else
 		fmt = "%s: %s\n";
 
-	e = (errval == 0) ? su_err_no() : errval;
+	e = (errval == 0) ? su_err() : errval;
 	n_errx(FAL0, fmt, msg, su_err_doc(e));
 	if(errval == 0)
-		su_err_set_no(e);
+		su_err_set(e);
 
 	NYD2_OU;
 }

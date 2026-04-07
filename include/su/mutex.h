@@ -47,6 +47,7 @@ struct su_mutex;
  * Without \r{su_HAVE_MT} this is a "checking" no-op wrapper.
  * Dependent upon \r{su_DVLDBGOR()} the debug-enabled functions simply ignore their debug-only arguments.
  * Please see \r{SMP} for peculiarities of \SU lock types.
+ * Error numbers (\r{su_err()}, \r{su_err_number}) are not used but for \r{su_mutex_create()}.
  * @{
  */
 
@@ -98,12 +99,12 @@ struct su_mutex{
 
 /* */
 #ifdef DOXYGEN
-	/*! Please see \r{SMP} for consequences of initializing objects like so. */
+  /*! Please see \r{SMP} for consequences of initializing objects like so. */
 # define su_MUTEX_I9R(NAME_OR_NIL)
 
   /*! Non-recursive initializer.
-	* A flat mutex can (should) be locked once only, a condition that is verified by debug-enabled code.
-	* Please see \r{SMP} for consequences of initializing objects like so. */
+   * A flat mutex can (should) be locked once only, a condition that is verified by debug-enabled code.
+   * Please see \r{SMP} for consequences of initializing objects like so. */
 # define su_MUTEX_FLAT_I9R(NAME_OR_NIL)
 #else
 # ifdef su_HAVE_MT
@@ -172,9 +173,9 @@ INLINE s32 su_mutex_create(struct su_mutex *self, char const *name_or_nil, u32 e
 	UNUSED(estate);
 	FIELD_RANGE_ZERO(struct su_mutex, self, mtx_.lck, mtx_.file);
 	self->mtx_.name = name_or_nil;
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 	MT(
-		if((rv = su__mutex_os_create(self, estate)) == su_STATE_NONE)
+		if((rv = su__mutex_os_create(self, estate)) == su_ERR_NONE)
 			self->mtx_.flags |= su_MUTEX_INIT;
 	)
 	return rv;

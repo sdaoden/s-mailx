@@ -50,7 +50,7 @@ STA char const * const avopt::fmt_err_opt = su_avopt_fmt_err_opt;
 // code.h
 
 STA void
-log::write(BITENUM_IS(u32,level) lvl, char const *fmt, ...){ // XXX unroll
+log::write(BITENUM(u32,level) lvl, char const *fmt, ...){ // XXX unroll
 	va_list va;
 	NYD_IN;
 
@@ -82,7 +82,9 @@ STA char const path::root[sizeof su_PATH_ROOT] = su_PATH_ROOT;
 
 // utf.h
 
+STA char const utf8::name[sizeof su_UTF8_NAME] = su_UTF8_NAME;
 STA char const utf8::replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
+STA char const utf32::name[sizeof su_UTF32_NAME] = su_UTF32_NAME;
 
 //
 // Conditionalized
@@ -147,7 +149,7 @@ namespace{
 		OVRX(s32 setup(void const *key, uz key_len, uz digest_size)){
 			s32 rv;
 			NYD_IN;
-			ASSERT_NYD_EXEC(key_len == 0 || key != NIL, rv = err::efault);
+			ASSERT_NYD_EXEC(key_len == 0 || key != NIL, rv = err::fault);
 
 			rv = su_md_setup(m_md, key, key_len, digest_size);
 
@@ -191,9 +193,9 @@ md::new_by_algo(algo algo, u32 estate){
 	else{
 		su_NEWF_BLK(rv, a_md, estate, (mdp));
 		if(rv == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_md_del(mdp);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 		}
 	}
 
@@ -217,9 +219,9 @@ md::new_by_name(char const *name, u32 estate){
 	else{
 		su_NEWF_BLK(rv, a_md, estate, (mdp));
 		if(rv == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_md_del(mdp);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 		}
 	}
 
@@ -237,8 +239,8 @@ STA s32
 md::install(char const *name, md *(*ctor)(u32 estate), u32 estate){
 	s32 rv;
 	NYD_IN;
-	ASSERT_NYD_EXEC(name != NIL, rv = -err::efault);
-	ASSERT_NYD_EXEC(ctor != NIL, rv = -err::efault);
+	ASSERT_NYD_EXEC(name != NIL, rv = err::fault);
+	ASSERT_NYD_EXEC(ctor != NIL, rv = err::fault);
 
 	rv = su__md_install(name, &a_md_marshal_vtbl, R(su_new_fun,ctor), estate);
 

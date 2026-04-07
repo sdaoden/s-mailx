@@ -8,6 +8,7 @@
  *@ - Some macros require su_FILE to be defined to a literal.
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
+ *@ TODO Better describe the state() bitmix
  *
  * Copyright (c) 2001 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -49,7 +50,7 @@
  * The counterpart \r{su_state_gut()} will optionally notify \r{su_state_on_gut_install()}ed handlers.
  * These functions are always in scope.
  * }\li{
- * Overflow and out-of-memory errors are usually detected and result in abortions (via \r{su_LOG_EMERG} logs).
+ * Overflow and out-of-memory errors are usually detected and result in abortions (via \r{su_LOG_EMERG}).
  * Alternatively all or individual \r{su_state_err_type}s will not cause hard-failures.
  *
  * The actual global mode of operation can be queried via \r{su_state_get()} (presence checks with \r{su_state_has()},
@@ -85,7 +86,8 @@
  * \list{\li{
  * \c{su-doc-strip.pl}: simple \c{perl(1)} program which strips \c{doxygen(1)}-style comments from all the given files.
  * }\li{
- * \c{su-doxygen.rc}: \c{doxygen(1)} configuration for \SU.  \c{doxygen mk/su-doxygen.rc} should generate documentation.
+ * \c{su-doxygen.rc}: \c{doxygen(1)} configuration for \SU.
+ * \c{doxygen mk/su-doxygen.rc} should generate documentation.
  * }\li{
  * \c{su-find-command.sh}: find an executable command within a POSIX shell.
  * Needed in a shipout.
@@ -125,54 +127,54 @@
  */
 
 #ifdef DOXYGEN
-	/* Features */
-	/*! Whether the \SU namespace exists.
-	 * If not, facilities exist in the global namespace. */
+ /* Features */
+ /*! Whether the \SU namespace exists.
+  * If not, facilities exist in the global namespace. */
 # define su_HAVE_NSPC
 
-	 /*! Enables a few code check paths and debug-only structure content and function arguments: it creates additional
-	  * API, and even causes a different ABI.
-	  * (Code assertions are disabled via the standardized NDEBUG compiler preprocessor variable.) */
+ /*! Enables a few code check paths and debug-only structure content and function arguments: it creates additional
+  * API, and even causes a different ABI.
+  * (Code assertions are disabled via the standardized NDEBUG compiler preprocessor variable.) */
 # define su_HAVE_DEBUG
-	/*! Enable developer mode: it creates additional API, and even causes a different ABI.
-	 * Expensive in size and runtime development code paths, like extensive memory tracing and lingering, otherwise
-	 * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
+ /*! Enable developer mode: it creates additional API, and even causes a different ABI.
+  * Expensive in size and runtime development code paths, like extensive memory tracing and lingering, otherwise
+  * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
-	/*! \r{MD} support available?
-	 * If so, always included are
-	 * \list{\li{
-	 * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
-	 * }} */
+ /*! \r{MD} support available?
+  * If so, always included are
+  * \list{\li{
+  * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
+  * }} */
 # define su_HAVE_MD
-	/* TODO \r{MD_BLAKE2B} support available?
-	 * RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
-	 * Subfeature of \r{su_HAVE_MD}. */
+ /* TODO \r{MD_BLAKE2B} support available?
+  * RFC 7693: BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
+  * Subfeature of \r{su_HAVE_MD}. */
 /*#  define su_HAVE_MD_BLAKE2B*/
 # define su_HAVE_MEM_BAG_AUTO /*!< \r{MEM_BAG}. */
 # define su_HAVE_MEM_BAG_LOFI /*!< \r{MEM_BAG}. */
-	/*! Normally the development library performs memory write boundary excess detection via canaries (see
-	 * \r{MEM_CACHE_ALLOC}, \r{su_MEM_ALLOC_DEBUG}).
-	 * Since this counteracts external memory checkers like \c{valgrind(1)} or the ASAN (address sanitizer) compiler
-	 * extensions, the \SU checkers can be disabled explicitly. */
+ /*! Normally the development library performs memory write boundary excess detection via canaries (see
+  * \r{MEM_CACHE_ALLOC}, \r{su_MEM_ALLOC_DEBUG}).
+  * Since this counteracts external memory checkers like \c{valgrind(1)} or the ASAN (address sanitizer) compiler
+  * extensions, the \SU checkers can be disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
-	/*! The seed source for the built-in \r{RANDOM} seed object.
-	 * Inspected during \SU build time, and must be either \c{su_RANDOM_SEED_BUILTIN} (the default),
-	 * \c{su_RANDOM_SEED_GETENTROPY} for \c{gentropy(3p)} seeding,
-	 * \c{su_RANDOM_SEED_GETRANDOM} for \c{getrandom(2/3)} seeding
-	 * (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
-	 * and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
-	 * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
-	 * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
-	 * the latter only in special builds, of course. */
+ /*! The seed source for the built-in \r{RANDOM} seed object.
+  * Inspected during \SU build time, and must be either \c{su_RANDOM_SEED_BUILTIN} (the default),
+  * \c{su_RANDOM_SEED_GETENTROPY} for \c{gentropy(3p)} seeding,
+  * \c{su_RANDOM_SEED_GETRANDOM} for \c{getrandom(2/3)} seeding
+  * (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
+  * and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
+  * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
+  * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
+  * the latter only in special builds, of course. */
 # define su_RANDOM_SEED
 # define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
-	/*! Multithreading support available?
-	 * This is a subfeature of \r{su_HAVE_SMP}. */
+ /*! Multithreading support available?
+  * This is a subfeature of \r{su_HAVE_SMP}. */
 #  define su_HAVE_MT
 # define su_HAVE_STATE_GUT_FORK /*!< \r{su_STATE_GUT_ACT_FORK} code path. */
 
-	/* Values */
+ /* Values */
 # define su_PAGE_SIZE /*!< \_ */
 #endif
 
@@ -219,8 +221,10 @@
 #define su_OS_DRAGONFLY 0 /*!< \_ */
 #define su_OS_EMX 0 /*!< \_ */
 #define su_OS_FREEBSD 0 /*!< \_ */
+#define su_OS_HAIKU 0 /*!< \_ */
 #define su_OS_LINUX 0 /*!< \_ */
 #define su_OS_MINIX 0 /*!< \_ */
+#define su_OS_MACOS 0 /*!< \_ */
 #define su_OS_MSDOS 0 /*!< \_ */
 #define su_OS_NETBSD 0 /*!< \_ */
 #define su_OS_OPENBSD 0 /*!< \_ */
@@ -247,12 +251,18 @@
 #elif defined __FreeBSD__
 # undef su_OS_FREEBSD
 # define su_OS_FREEBSD 1
+#elif defined __HAIKU__
+# undef su_OS_HAIKU
+# define su_OS_HAIKU 1
 #elif defined __linux__ || defined __linux
 # undef su_OS_LINUX
 # define su_OS_LINUX 1
 #elif defined __minix
 # undef su_OS_MINIX
 # define su_OS_MINIX 1
+#elif defined __APPLE__
+# undef su_OS_MACOS
+# define su_OS_MACOS 1
 #elif defined __MSDOS__
 # undef su_OS_MSDOS
 # undef su_OS_POSIX
@@ -292,7 +302,7 @@
 # define su_NSPC_USE(X)
 # define su_NSPC(X)
 
-	/* Casts */
+/* Casts */
 # define su_S(T,I) ((T)(I)) /*!< \_ */
 # define su_R(T,I) ((T)(I)) /*!< \_ */
 # define su_C(T,I) ((T)su_R(su_up,I)) /*!< \_ */
@@ -314,27 +324,27 @@
 #  define su_NSPC(X) /**/::
 # endif
 
-	/* Disable copy-construction and assignment of class */
+ /* Disable copy-construction and assignment of class */
 # define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &)
-	/* If C++ class inherits from a C class, and the C class "return self", we
-	 * have to waste a return register even if self==this */
+ /* If C++ class inherits from a C class, and the C class "return self", we
+  * have to waste a return register even if self==this */
 # define su_SELFTHIS_RET(X) /* return *(X); */ X; return *this
 
-	/* C++ only allows those at the declaration, not the definition */
+ /* C++ only allows those at the declaration, not the definition */
 # define su_PUB
 # define su_PRO
 # define su_PRI
 # define su_STA
 # define su_VIR
 # define su_OVR
-	/* This is for the declarator only */
+ /* This is for the declarator only */
 # if __cplusplus +0 < 201103l /* XXX override ?? */
 #  define su_OVRX(X) virtual X
 # else
 #  define su_OVRX(X) X override
 # endif
 
-	/* Casts */
+ /* Casts */
 # define su_S(T,I) static_cast<T>(I)
 # define su_R(T,I) reinterpret_cast<T>(I)
 # define su_C(T,I) const_cast<T>(I)
@@ -373,7 +383,7 @@
 #ifdef DOXYGEN
 # define su_CTA(T,M) /*!< \_ */
 # define su_LCTA(T,M) /*!< \remarks{Introduces a block scope.} */
-  /* ISO C variant unusable pre-C23! */
+/* ISO C variant unusable pre-C23! */
 #elif (!su_C_LANG && __cplusplus +0 >= 201103l) || \
 	(su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 202311l)
 # define su_CTA(T,M) static_assert(T, M)
@@ -428,16 +438,6 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&  defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
-
 # if su_CC_VCHECK_CLANG(13,0) /* XXX not "real" */
 #  define su_CC_FALLTHRU __attribute__((fallthrough));
 # endif
@@ -453,16 +453,6 @@ do{\
 # define su_CC_EXTEN __extension__
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
-
-# if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
 
 #elif defined __SUNPRO_C /* __PCC__ */
 # undef su_CC_SUNPROC
@@ -488,17 +478,7 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
-
-	/* Dunno; unused due to gcc 11.2.0: a label can only be part of a statement and a declaration is not a statement */
+  /* Dunno; unused due to gcc 11.2.0: "a label can only be part of a statement and a declaration is not a statement" */
 # if su_CC_VCHECK_GCC(7,0)
 #  define su_CC_FALLTHRU UNUSED(0); __attribute__ ((fallthrough));
 # endif
@@ -515,8 +495,26 @@ do{\
 #endif
 
 #ifndef su_CC_ALIGNED
-	/*! Structure alignment; will be \c{_Alignas()} (C 2011) if possible. */
+ /*! Structure alignment; will be \c{_Alignas()} (C 2011) if possible. */
 # define su_CC_ALIGNED(X) TODO: ALIGNED not supported for this compiler
+#endif
+
+#if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && defined __ORDER_BIG_ENDIAN__
+# if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#  define su_CC_BOM su_CC_BOM_LITTLE
+# elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#  define su_CC_BOM su_CC_BOM_BIG
+# else
+#  error Unsupported __BYTE_ORDER__
+# endif
+#endif
+#if defined su_CC_BOM || defined DOXYGEN
+# ifdef DOXYGEN
+  /*! Only if the CC offers \r{su_BOM} macros, defined to either \r{su_CC_BOM_LITTLE} or \r{su_CC_BOM_BIG}. */
+#  define su_CC_BOM
+# endif
+# define su_CC_BOM_LITTLE 1234 /*!< Only if there is \r{su_CC_BOM}. */
+# define su_CC_BOM_BIG 4321 /*!< Only if there is \r{su_CC_BOM}. */
 #endif
 
 #ifndef su_CC_EXTEN
@@ -525,11 +523,6 @@ do{\
 
 #ifndef su_CC_FALLTHRU
 # define su_CC_FALLTHRU /* FALLTHRU */
-#endif
-
-#ifndef su_CC_PACKED
-	/*! Structure packing. */
-# define su_CC_PACKED TODO: PACKED attribute not supported for this compiler
 #endif
 
 #if !defined su_CC_MEM_ZERO || defined su_HAVE_DEVEL
@@ -543,16 +536,9 @@ do{\
 }while(0)
 #endif
 
-#if defined su_CC_BOM || defined DOXYGEN
-# ifdef DOXYGEN
-	/*! Only if the CC offers \r{su_BOM} macros, defined to either \r{su_CC_BOM_LITTLE} or \r{su_CC_BOM_BIG}. */
-#  define su_CC_BOM
-# endif
-# define su_CC_BOM_LITTLE 1234 /*!< Only if there is \r{su_CC_BOM}. */
-# define su_CC_BOM_BIG 4321 /*!< Only if there is \r{su_CC_BOM}. */
-#endif
-#if !defined su_CC_UZ_TYPE && defined __SIZE_TYPE__
-# define su_CC_UZ_TYPE __SIZE_TYPE__
+#ifndef su_CC_PACKED
+  /*! Structure packing. */
+# define su_CC_PACKED TODO: PACKED attribute not supported for this compiler
 #endif
 
 /* Function name */
@@ -576,7 +562,7 @@ do{\
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
 #   else
-	/* clang does not like inline with <-O2 */
+     /* clang does not like inline with <-O2 */
 #    define su_INLINE inline __attribute__((always_inline))
 #    define su_SINLINE static inline __attribute__((always_inline))
 #   endif
@@ -663,9 +649,9 @@ do{\
 # i5e <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
-	/*! Power-of-two alignment for \a{X}.
-	 * \remarks{Not \c{_Alignof()} even if available because
-	 * \c{_Alignof()} applied to an expression is a GNU extension}. */
+ /*! Power-of-two alignment for \a{X}.
+  * \remarks{Not \c{_Alignof()} even if available because
+  * \c{_Alignof()} applied to an expression is a GNU extension}. */
 # define su_ALIGNOF(X) su_ROUND_UP2(sizeof(X), su__ZAL_L)
 #endif
 
@@ -774,13 +760,17 @@ do if(!(X)){\
  * Since compilers expect enumerations to represent a single value, a normal integer is often used to store the bit
  * flags that are, effectively, part of a bit enumeration.
  * This macro awaits a future ISO C bit-enumeration: \a{X} is the pod used until then, \a{Y} the name of the
- * enumeration that is really meant. */
-#define su_BITENUM_IS(X,Y) X /* enum Y */
+ * enumeration that is really meant.
+ * \remarks{Also (mis)used to ensure a certain integer type(-size) is actually used for \c{enum} storage.} */
+#define su_BITENUM(X,Y) X /* enum Y */
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
  * \remarks{Identical to \r{su_BITS_RANGE_MASK()}.} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
+
+/*! It is not possible to enforce a type size for enumerations, thus enforce \a{X}, but mean \a{Y}. */
+#define su_PADENUM(X,Y) X /* enum Y */
 
 /*! For injection macros like \r{su_DBG()}, NDBG, DBGOR, 64, 32, 6432. */
 #define su_COMMA ,
@@ -919,6 +909,9 @@ do{\
  * Instrumented functions will always have one label for goto: purposes. */
 #define su_NYD_OU_LABEL su__nydou
 
+/*! Byte character to size_t cast. */
+#define su_C2UZ(C) su_S(su_uz,su_S(su_u8,C))
+
 /*! Pointer to size_t cast. */
 #define su_P2UZ(X) su_S(su_uz,/*not R(): avoid same-type++ warns*/(su_up)(X))
 
@@ -947,9 +940,9 @@ do{\
 #define su_STRUCT_ZERO(T,P) su_CC_MEM_ZERO(P, sizeof(T))
 
 #if su_C_LANG || defined DOXYGEN
-	/*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned, \a{T} is one of our homebrew integers,
-	 * for example, \c{UCMP(32, su_ABS(n), >, wleft)}.
-	 * \remarks{Does not sign-extend correctly, this is up to the caller.} */
+ /*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned, \a{T} is one of our homebrew integers,
+  * for example, \c{UCMP(32, su_ABS(n), >, wleft)}.
+  * \remarks{Does not sign-extend correctly, this is up to the caller.} */
 # define su_UCMP(T,A,C,B) (su_S(su_ ## u ## T,A) C su_S(su_ ## u ## T,B))
 #else
 # define su_UCMP(T,A,C,B) (su_S(su_NSPC(su) u ## T,A) C su_S(su_NSPC(su) u ## T,B))
@@ -976,9 +969,9 @@ do{\
 #define su_UNUSED(X) ((void)(X))
 
 #if (su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
-	/*! Variable-type size (with byte array at end). */
+ /*! Variable-type size (with byte array at end). */
 # define su_VFIELD_SIZE(X)
-	/*! Variable-type size (with byte array at end). */
+ /*! Variable-type size (with byte array at end). */
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
 # define su_VFIELD_SIZE(X) ((X) == 0 ? sizeof(su_uz) : (su_S(su_sz,X) < 0 ? sizeof(su_uz) - su_ABS(X) : su_S(su_uz,X)))
@@ -1161,8 +1154,7 @@ typedef size_t su_uz; /*!< \_ */
 # define PRIdZ "zd"
 # define su_UZ_MAX SIZE_MAX /*!< \_ */
 #elif defined SIZE_MAX
-	/* UnixWare has size_t as unsigned as required but uses a signed limit
-	 * constant (which is thus false!) */
+ /* UnixWare has size_t as unsigned as required but uses a signed limit constant (which is thus false!) */
 # if SIZE_MAX == su_U64_MAX || SIZE_MAX == su_S64_MAX
 #  define PRIuZ PRIu64
 #  define PRIdZ PRId64
@@ -1268,7 +1260,7 @@ enum su_log_flags{
 /*! Adjustment possibilities for the global log domain (for example, \r{su_log_write()}),
  * to be set via \r{su_state_set()}, to be queried via \r{su_state_has()}. */
 enum su_state_log_flags{
-	su_STATE_LOG_SHOW_LEVEL = 1u<<4, /*!< Prepend a messages \r{su_log_level}. */
+	su_STATE_LOG_SHOW_LEVEL = 1u<<4, /*!< Prepend a message's \r{su_log_level}. */
 	/*! Show the PID (Process IDentification number).
 	 * This flag is only honoured if \r{su_program} set to non-\NIL. */
 	su_STATE_LOG_SHOW_PID = 1u<<5
@@ -1281,13 +1273,13 @@ enum su_state_log_flags{
  * datatype overflow result in \r{su_LOG_EMERG}s, and thus program abortion.
  *
  * This global default can be changed by including the corresponding \c{su_state_err_type} (\r{su_STATE_ERR_NOMEM} and
- * \r{su_STATE_ERR_OVERFLOW}, respectively), in the global \SU state machine via \r{su_state_set()}, in which case
- * logging uses \r{su_LOG_ALERT} level, a corresponding \r{su_err_number} will be assigned for \r{su_err_no()}, and
- * the failed function will return error.
+ * \r{su_STATE_ERR_OVERFLOW}, respectively), in the global \SU state machine via \r{su_state_set()}, as well as by
+ * setting \r{su_STATE_ERR_PASS} generally, in which case logging uses \r{su_LOG_ALERT} level, a corresponding
+ * \r{su_err_number} will be assigned for \r{su_err()}, and the failed function will return error.
  *
- * Often functions and object allow additional control over the global on a by-call or by-object basis, taking a state
- * argument which consists of \c{su_state_err_type} and \r{su_state_err_flags} bits.
- * In order to support this these values do not form an enumeration, but rather are combinable bits. */
+ * Often functions and objects allow additional control over the global on a by-call or by-object basis,
+ * taking a state argument which consists of \c{su_state_err_type} and \r{su_state_err_flags} bits.
+ * These are combinable bits in the second byte (bits 9 to 16, value 256 to 32768, inclusive). */
 enum su_state_err_type{
 	su_STATE_ERR_NOMEM = 1u<<8, /*!< Out-of-memory. */
 	su_STATE_ERR_OVERFLOW = 1u<<9 /*!< Integer/xy domain overflow. */
@@ -1305,22 +1297,20 @@ enum su_state_err_flags{
 	su_STATE_ERR_NONE, /*!< 0. */
 	/*! A mask containing all \r{su_state_err_type} bits. */
 	su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
-	/*! Allow passing of all errors.
-	 * This is just a better name alias for \r{su_STATE_ERR_TYPE_MASK}. */
-	su_STATE_ERR_PASS = su_STATE_ERR_TYPE_MASK,
+	/*! Allow passing of all errors. */
+	su_STATE_ERR_PASS = su_STATE_ERR_TYPE_MASK, /* .. but also includes custom */
 	/*! Regardless of global (and additional local) policy, if this flag is
-	 * set, an actual error causes a hard program abortion. */
+	 * set, an actual error causes a hard program abortion (via \r{su_LOG_EMERG}). */
 	su_STATE_ERR_NOPASS = 1u<<12,
 	/*! If this flag is set and no abortion is about to happen, a corresponding
-	 * \r{su_err_number} will not be assigned to \r{su_err_no()}. */
-	su_STATE_ERR_NOERRNO = 1u<<13,
-	/*! This is special in that it plays no role in the global state machine.
-	 * However, many types or functions which provide \a{estate} arguments and
-	 * use (NOT) \r{su_STATE_ERR_MASK} to overload that with meaning, adding
-	 * support for owning \r{COLL} (for \r{su_toolbox} users, to be exact)
-	 * actually made sense: if this bit is set it indicates that \NIL values
-	 * returned by \r{su_toolbox} members are acceptable values (and thus do not
-	 * cause actions like insertion, replacement etc. to fail). */
+	 * \r{su_err_number} will not be assigned to \r{su_err()}. */
+	su_STATE_ERR_NOERROR = 1u<<13,
+	/*! Special as it plays no role in the global state machine.
+	 * Yet many types or functions that use \a{estate} arguments and use (NOT) \r{su_STATE_ERR_MASK} to overload
+	 * that with meaning, adding support for owning \r{COLL} aka \r{su_toolbox} users, actually made sense:
+	 * if set \NIL values are acceptable, and do not cause actions like insertion or removals to fail;
+	 * with it, \NIL user pointers are not passed to \r{su_toolbox} members,
+	 * and \r{su_toolbox} members may return \NIL, too. */
 	su_STATE_ERR_NIL_IS_VALID_OBJECT = 1u<<14,
 	/*! Alias for \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
 	su_STATE_ERR_NILISVALO = su_STATE_ERR_NIL_IS_VALID_OBJECT,
@@ -1333,7 +1323,7 @@ enum su_state_err_flags{
 	 * \remarks{This mask itself is covered by the mask \c{0xFF00}.
 	 * This condition is compile-time asserted.} */
 	su_STATE_ERR_MASK = su_STATE_ERR_TYPE_MASK |
-			su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO |
+			su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERROR |
 			su_STATE_ERR_NIL_IS_VALID_OBJECT
 };
 
@@ -1360,7 +1350,8 @@ enum su__state_flags{
 	su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
 	su__STATE_CREATED = 1u<<24,
 	/* What is not allowed in the global state machine */
-	su__STATE_GLOBAL_MASK = (su__STATE_CREATED - 1) & ~(su__STATE_LOG_MASK | (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
+	su__STATE_GLOBAL_MASK = (su__STATE_CREATED - 1) &
+			~(su__STATE_LOG_MASK | (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
 #ifndef DOXYGEN
 MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK), "Bit ranges may not overlap")
@@ -1369,9 +1360,9 @@ MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00u) == 0, "Bits excess documented bounds")
 
 /*! Argument bits for \r{su_state_create()}. */
 enum su_state_create_flags{
-	su_STATE_CREATE_RANDOM = 1u<<0, /*!< (V1) Initialize \r{RANDOM}. */
+	su_STATE_CREATE_RANDOM = 1u<<0, /*!< (V1) Initialize \r{RANDOM}, and seed its internal seeder object. */
 	su__STATE_CREATE_RANDOM_MEM_FILLER = 1u<<1,
-	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET}.
+	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET} (only with \r{su_MEM_ALLOC_DEBUG}).
 	 * It favours \c{0x00} and \c{0xFF} over other random numbers.
 	 * Implies \c{CREATE_RANDOM}.
 	 * \remarks{As this creates a random number, a \r{su_RANDOM_SEED} of \c{su_RANDOM_SEED_HOOK} must be carefully
@@ -1485,7 +1476,7 @@ union su__bom_union{
 };
 
 /*! See \r{su_state_on_gut_install()}. */
-typedef void (*su_state_on_gut_fun)(BITENUM_IS(u32,su_state_gut_flags) flags);
+typedef void (*su_state_on_gut_fun)(BITENUM(u32,su_state_gut_flags) flags);
 
 /*! See \r{su_log_set_write_fun()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
@@ -1551,8 +1542,8 @@ EXPORT void su__gnlck(enum su__glck_type gt);
 /*! Initialize the \SU core (a more pleasant variant is \r{su_state_create()}).
  * If \a{name_or_nil} is given it will undergo a \c{basename(3)} operation and then be assigned to \r{su_program}.
  * \a{flags} may be a bitmix of what is allowed for \r{su_state_set()} and \r{su_log_set_level()}.
- * \ESTATE_RV, \r{su_STATE_ERR_NOPASS} might be of interest in particular.
- * Note \SU is not usable unless this returns \r{su_STATE_NONE}!
+ * \ESTATE_RV; \r{su_STATE_ERR_NOPASS} might be of interest in particular.
+ * Note \SU is not usable unless this returns \r{su_ERR_NONE}!
  * The following example initializes the library and emergency exits on error:
  *
  * \cb{
@@ -1561,7 +1552,7 @@ EXPORT void su__gnlck(enum su__glck_type gt);
  * }
  *
  * \remarks{This \b{must} be called \b{first}.
- * In threaded applications it must be called from the main thread of execution and before starting (non-\SU) threads,
+ * In threaded applications it must be called from the main thread of execution and before starting (\b{any}) threads,
  * even if, for example, \SU is only used in one specific worker thread.
  * For real MT \r{su_STATE_MT} is a required precondition.}
  *
@@ -1572,16 +1563,17 @@ EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
 /*! Like \r{su_state_create_core()}, but initializes many more subsystems according to \a{create_flags}.
  * Many subsystems need internal machineries which are initialized when needed first, an operation that may fail.
  * Because of this the public interface may generate errors that need to be handled, which may be undesireable.
- * If this function is used instead of \r{su_state_create_core()} then internals of a desired subset of subsystems
- * is initialized immediately, so that it can be asserted that these errors cannot occur. */
-EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags, u32 estate);
+ * If this function is used instead of \r{su_state_create_core()}, then internals of a desired subset of subsystems
+ * is initialized immediately, which asserts these errors cannot occur. */
+EXPORT s32 su_state_create(BITENUM(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags,
+		u32 estate);
 
 /*! Tear down \SU according to \a{flags}.
  * This should be called upon normal program termination, from within the main and single thread of execution,
  * but \a{flags} can be used for configuration.
  * \SU needs to be reinitialized after this has been called.
  * Also see \r{su_state_on_gut_install()}. */
-EXPORT void su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+EXPORT void su_state_gut(BITENUM(u32,su_state_gut_flags) flags);
 
 /*! Install an \a{is_final} \a{hdl} to be called upon \r{su_state_gut()} time in last-in first-out order.
  * Final handlers execute after all (normal) handlers have been processed.
@@ -1603,15 +1595,13 @@ INLINE u32 su_state_get(void){
 }
 
 /*! Interaction with the SU library (global) state machine:
- * test whether all (not any) of \a{flags} are set in \r{su_state_get()}.
- * \a{flags} can be a bitmix of (a subset of) \r{su_state_err_flags} and \r{su_state_flags}. */
+ * test whether all (not any) of \a{flags} are set in \r{su_state_get()}. */
 INLINE boole su_state_has(uz flags){
 	flags &= su__STATE_GLOBAL_MASK;
 	return ((su__state & flags) == flags);
 }
 
-/*! A bitmix of (\r{su_state_err_type} and a subset of)
- * \r{su_state_err_flags}, as well as \r{su_state_flags}. */
+/*! Adjustments of the SU library (global) state machine, see \r{su_state_get()}. */
 INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
 	su__glck(su__GLCK_STATE);
@@ -1622,29 +1612,32 @@ INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
 /*! \copydoc{su_state_set()} */
 INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
-	flags &= ~flags;
+	flags = ~flags;
 	su__glck(su__GLCK_STATE);
 	su__state &= flags;
 	su__gnlck(su__GLCK_STATE);
 }
 
 /*! Notify an error to the \SU (global) state machine.
- * Report \a{err}or and use the \r{su_state_err_flags} \a{state} to evaluate what to do.
- * If the function is allowd to return a corresponding \r{su_err_number} will be returned. */
-EXPORT s32 su_state_err(enum su_state_err_type err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil);
+ * Either \a{err}or is a \r{su_state_err_type}, or a negative \r{su_err_number}.
+ * The \r{su_state_err_flags} \a{state} is evaluated in conjunction with \r{su_state_get()} to decide what to do.
+ * Since individual (non-\r{su_state_err_type}) errors cannot be suppressed via states, either of \a{state} or
+ * \r{su_state_get()} must flag \r{su_STATE_ERR_PASS} to make such errors non-fatal.
+ * If this function returns, then with an according \r{su_err_number} (aka non-negated \a{err} itself). */
+EXPORT s32 su_state_err(s32 err, BITENUM(uz,su_state_err_flags) state, char const *msg_or_nil);
 
 /*! Get the \SU error number of the calling thread.
  * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
-EXPORT s32 su_err_no(void);
+EXPORT s32 su_err(void);
 
 /*! Set the \SU error number of the calling thread. */
-EXPORT void su_err_set_no(s32 eno);
+EXPORT void su_err_set(s32 eno);
 
-/*! Return string(s) describing C error number \a{eno}, or \r{su_err_no()} if that is \c{-1}.
+/*! Return string(s) describing C error number \a{eno}, or \r{su_err()} if that is \c{-1}.
  * Effectively identical to \r{su_err_name()} if \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
-/*! Return the name of the given error number \a{eno}, or \r{su_err_no()} if that is \c{-1}.  */
+/*! Return the name of the given error number \a{eno}, or \r{su_err()} if that is \c{-1}.  */
 EXPORT char const *su_err_name(s32 eno);
 
 /*! Try to (case-insensitively) map an error name to an error number.
@@ -1652,7 +1645,7 @@ EXPORT char const *su_err_name(s32 eno);
 EXPORT s32 su_err_by_name(char const *name);
 
 /*! Set the \SU error number of the calling thread to the value of the ISO C \c{errno} variable, and return it. */
-EXPORT s32 su_err_no_by_errno(void);
+EXPORT s32 su_err_by_errno(void);
 
 /*! Get the currently installed \r{su_log_write_fun}.
  * The default is \NIL. */
@@ -1669,7 +1662,8 @@ INLINE enum su_log_level su_log_get_level(void){
 	return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
 }
 
-/*! \_ */
+/*! \_
+ * Also see \r{su_state_get()}. */
 INLINE void su_log_set_level(enum su_log_level nlvl){ /* XXX maybe not state */
 	uz lvl;
 	su__glck(su__GLCK_STATE);
@@ -1727,7 +1721,7 @@ INLINE void su_log_unlock(void){
 
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 /*! With a \FAL0 crash this only logs.
- * If it survives it will \r{su_err_set_no()} \ERR{FAULT}.
+ * If it survives it will \r{su_err_set()} \ERR{FAULT}.
  * \remarks{Define \c{su_ASSERT_EXPAND_NOTHING} in order to get rid of linkage and make it expand to a no-op macro.} */
 EXPORT void su_assert(char const *expr, char const *file, u32 line, char const *fun, boole crash);
 #else
@@ -1779,11 +1773,12 @@ typedef void *(*su_new_fun)(u32 estate);
  * \r{su_err_number}s, of course.
  * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}.
  *
- * Many \SU functions take an \a{estate} parameter that has the same meaning as for this function.
- * However, many return a \r{su_s32}, which then either is \r{su_STATE_NONE} upon success, one of the
- * \r{su_state_err_type}s for hardening errors, or a negative \r{su_err_number} for "normal" errors.
- * (In \r{su_ASSERT()} enabled code even \c{-su_ERR_FAULT} may happen.)
- * Those which do not usually set \r{su_err_no()}. */
+ * Many \SU functions take an \a{estate} parameter with the same meaning as here.
+ * Yet, many of those return a \r{su_s32}, which will be \r{su_ERR_NONE} upon success,
+ * or a \r{su_err_number} (maybe \r{su_state_err()} mapped \r{su_state_err_type}) on error
+ * (in \r{su_ASSERT()} enabled code even \ERR{FAULT} may happen);
+ * The negative value range may have meaning on a use-case base.
+ * Those which do not usually set \r{su_err()}. */
 typedef void *(*su_clone_fun)(void const *t, u32 estate);
 
 /*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or \r{su_assign_fun}). */
@@ -1807,10 +1802,10 @@ typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 
 /*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is \e less \e than \a{b}, 0 on equality, and a
  * value greater than 0 if \a{a} is \e greater \e than \a{b}. */
-typedef su_sz (*su_cmp_fun)(void const *a, void const *b);
+typedef sz (*su_cmp_fun)(void const *a, void const *b);
 
 /*! Create a hash that reproducibly represents \SELF. */
-typedef su_uz (*su_hash_fun)(void const *self);
+typedef uz (*su_hash_fun)(void const *self);
 
 /* Needs to be binary compatible with \c{su::{toolbox,type_toolbox<T>}}! */
 /*! A toolbox provides object handling knowledge to \r{COLL}.
@@ -1947,22 +1942,26 @@ public:
 /*! \_ */
 class err{ // {{{
 public:
-	/*! \copydoc{su_err_number} */
+	/*! \copydoc{su_err_number}.
+	 * \remarks{The C++ variant uses lowercased names; those with non-alphabetic first bytes gain an \c{e} prefix,
+	 * for example \c{su_ERR_2BIG} becomes \c{err::e2big}}. */
 	enum number{
 #ifdef DOXYGEN
-		enone, /*!< No error. */
-		enotobacco /*!< No such errno, fallback: no mapping exists. */
+		none, /*!< No error. */
+		notobacco /*!< No such errno, fallback: no mapping exists. */
 #else
 		su__CXX_ERR_NUMBER_ENUM
 # undef su__CXX_ERR_NUMBER_ENUM
 #endif
 	};
 
-	/*! \copydoc{su_err_no()} */
-	static s32 no(void) {return su_err_no();}
+	/*! \copydoc{su_err()} */
+	static s32 get(void) {return su_err();}
+	/*! \copydoc{su_err()} */
+	static s32 no(void) {return su_err();}
 
-	/*! \copydoc{su_err_set_no()} */
-	static void set_no(s32 eno) {su_err_set_no(eno);}
+	/*! \copydoc{su_err_set()} */
+	static void set(s32 eno) {su_err_set(eno);}
 
 	/*! \copydoc{su_err_doc()} */
 	static char const *doc(s32 eno=-1) {return su_err_doc(eno);}
@@ -1973,8 +1972,8 @@ public:
 	/*! \copydoc{su_err_by_name()} */
 	static s32 by_name(char const *name) {return su_err_by_name(name);}
 
-	/*! \copydoc{su_err_no_by_errno()} */
-	static s32 no_by_errno(void) {return su_err_no_by_errno();}
+	/*! \copydoc{su_err_by_errno()} */
+	static s32 by_errno(void) {return su_err_by_errno();}
 }; // }}}
 
 /*! \_ */
@@ -2095,7 +2094,7 @@ public:
 		err_type_mask = su_STATE_ERR_TYPE_MASK, /*!< \copydoc{su_STATE_ERR_TYPE_MASK} */
 		err_pass = su_STATE_ERR_PASS, /*!< \copydoc{su_STATE_ERR_PASS} */
 		err_nopass = su_STATE_ERR_NOPASS, /*!< \copydoc{su_STATE_ERR_NOPASS} */
-		err_noerrno = su_STATE_ERR_NOERRNO, /*!< \copydoc{su_STATE_ERR_NOERRNO} */
+		err_noerror = su_STATE_ERR_NOERROR, /*!< \copydoc{su_STATE_ERR_NOERROR} */
 		err_mask = su_STATE_ERR_MASK /*!< \copydoc{su_STATE_ERR_MASK} */
 	};
 
@@ -2136,7 +2135,7 @@ public:
 	};
 
 	/*! See \r{su_state_on_gut_fun()}. */
-	typedef void (*on_gut_fun)(BITENUM_IS(u32,gut_flags) flags);
+	typedef void (*on_gut_fun)(BITENUM(u32,gut_flags) flags);
 
 	/*! \copydoc{su_state_create_core()} */
 	static s32 create_core(char const *program_or_nil, uz flags, u32 estate=none){
@@ -2144,12 +2143,12 @@ public:
 	}
 
 	/*! \copydoc{su_state_create()} */
-	static s32 create(BITENUM_IS(u32,create_flags) create_flags, char const *program_or_nil, uz flags, u32 estate=none){
+	static s32 create(BITENUM(u32,create_flags) create_flags, char const *program_or_nil, uz flags, u32 estate=none){
 		return su_state_create(create_flags, program_or_nil, flags, estate);
 	}
 
 	/*! \copydoc{su_state_gut()} */
-	static void gut(BITENUM_IS(u32,gut_flags) flags=gut_act_norm) {su_state_gut(S(enum su_state_gut_flags,flags));}
+	static void gut(BITENUM(u32,gut_flags) flags=gut_act_norm) {su_state_gut(S(enum su_state_gut_flags,flags));}
 
 	/*! \copydoc{su_state_get()} */
 	static u32 get(void) {return su_state_get();}
@@ -2164,8 +2163,8 @@ public:
 	static void clear(uz state) {su_state_clear(state);}
 
 	/*! \copydoc{su_state_err()} */
-	static s32 err(err_type err, BITENUM_IS(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
-		return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
+	static s32 err(s32 err, BITENUM(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
+		return su_state_err(err, state, msg_or_nil);
 	}
 
 	/*! \copydoc{su_program} */
@@ -2343,7 +2342,8 @@ struct type_toolbox{
 	/*! \copydoc{su_del_fun} */
 	typedef void (*del_fun)(typename type_traits::tp self);
 	/*! \copydoc{su_assign_fun} */
-	typedef typename type_traits::tp (*assign_fun)(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate);
+	typedef typename type_traits::tp (*assign_fun
+		)(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate);
 	/*! \copydoc{su_cmp_fun} */
 	typedef sz (*cmp_fun)(typename type_traits::tp_const self, typename type_traits::tp_const t);
 	/*! \copydoc{su_hash_fun} */
@@ -2456,8 +2456,7 @@ NSPC_END(su)
  * Since \SU offers initialization macros like \r{su_MUTEX_I9R()} true resource aquisition might be performed upon
  * first object functionality usage (for example, mutex locking).
  * If initialization macros are used a resource aquisition failure results in abortion via \r{su_LOG_EMERG} log.
- * If that is not acceptable the normal object \c{_create()} (see \r{index})
- * function has to be used.
+ * If that is not acceptable the normal object \c{_create()} (see \r{index}) function has to be used.
  */
 
 /*!

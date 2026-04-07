@@ -313,7 +313,7 @@ jislocal:
 
 jleave:
 	if(res == NIL){
-		su_err_set_no(eno);
+		su_err_set(eno);
 		snecp->snec_res = NIL;
 	}else{
 		uz l;
@@ -605,7 +605,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 	if((dp = opendir(myp)) == NIL){
 		int err;
 
-		switch((err = su_err_no_by_errno())){
+		switch((err = su_err_by_errno())){
 		case su_ERR_NOTDIR:
 			ccp = N_("cannot access paths under non-directory");
 			goto jerr;
@@ -2229,7 +2229,7 @@ c_shcodec(void *vp){
 		in.l = soup->s_len;
 		mx_makeprint(&in, &out);
 		if(fprintf(n_stdout, "%s\n", out.s) < 0){
-			nerrn = su_err_no_by_errno();
+			nerrn = su_err_by_errno();
 			vp = NIL;
 		}
 		su_FREE(out.s);

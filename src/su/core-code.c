@@ -130,7 +130,7 @@ a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
 			char const *cp;
 
 			*cursor++ = '[';
-			cp = su_ienc_u32(ibuf, getpid(), 10); /* XXX getpid()->process_id() */
+			cp = su_ienc_uz(ibuf, S(uz,getpid()), 10); /* XXX getpid()->process_id() */
 			cursor = su_cs_pcopy(cursor, cp);
 			*cursor++ = ']';
 		}
@@ -284,7 +284,7 @@ su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
 	s32 rv;
 	UNUSED(estate);
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	flags &= (su__STATE_GLOBAL_MASK | su__STATE_LOG_MASK);
 	su__state = flags;
@@ -305,17 +305,17 @@ su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
 #endif
 
 #ifdef su_USECASE_SU
-	if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)))
+	if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)) != su_ERR_NONE)
 		goto jerr;
-	if((rv = su_mutex_create(&a_core_glck_gi9r, "SU: GLCK_GI9R", estate)))
+	if((rv = su_mutex_create(&a_core_glck_gi9r, "SU: GLCK_GI9R", estate)) != su_ERR_NONE)
 		goto jerr;
-	if((rv = su_mutex_create(&a_core_glck_log, "SU: GLCK_LOG", estate)))
+	if((rv = su_mutex_create(&a_core_glck_log, "SU: GLCK_LOG", estate)) != su_ERR_NONE)
 		goto jerr;
 
 # if !su_ATOMIC_IS_REAL
-	if((rv = su_mutex_create(&su__atomic_cas_mtx, "SU: atomic CAS", estate)))
+	if((rv = su_mutex_create(&su__atomic_cas_mtx, "SU: atomic CAS", estate)) != su_ERR_NONE)
 		goto jerr;
-	if((rv = su_mutex_create(&su__atomic_xchg_mtx, "SU: atomic XCHG", estate)))
+	if((rv = su_mutex_create(&su__atomic_xchg_mtx, "SU: atomic XCHG", estate)) != su_ERR_NONE)
 		goto jerr;
 # endif
 #endif
@@ -340,16 +340,24 @@ jleave:
 
 #ifdef su_USECASE_SU
 jerr:
-	if(!(estate & su_STATE_ERR_PASS) &&
-			((estate & su_STATE_ERR_NOPASS) || !(S(u32,rv) & estate) || !(su__state & S(u32,rv)))){
-		abort(); /* TODO configurable; NO ERROR LOG WHATSOEVER HERE!! */
+	if(!(estate & su_STATE_ERR_NOPASS)){
+		u32 s;
+
+		if((estate & su_STATE_ERR_PASS) == su_STATE_ERR_PASS)
+			goto jleave;
+		/* That "backward mapping" is a bit disappointing */
+		s = (rv == su_ERR_NOMEM) ? su_STATE_ERR_NOMEM : su_STATE_ERR_OVERFLOW;
+		if(estate & s)
+			goto jleave;
+		if(su__state & s)
+			goto jleave;
 	}
-	goto jleave;
+	abort(); /* TODO configurable; NO ERROR LOG WHATSOEVER HERE!! */
 #endif
 }
 
 void
-su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+su_state_gut(BITENUM(u32,su_state_gut_flags) flags){
 	struct su__state_on_gut *sogp;
 	NYD_IN;
 
@@ -395,68 +403,71 @@ su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 }
 
 s32
-su_state_err(enum su_state_err_type err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil){
-	static char const intro_nomem[] = N_("Out of memory: %s"), intro_overflow[] = N_("Datatype overflow: %s");
-
+su_state_err(s32 err, BITENUM(uz,su_state_err_flags) state, char const *msg_or_nil){
 	enum su_log_level lvl;
-	char const *introp;
-	s32 eno;
 	u32 xerr;
+	char const *introp;
 	NYD2_IN;
 
-	if(msg_or_nil == NIL)
-		msg_or_nil = N_("(no error information)");
 	state &= su_STATE_ERR_MASK;
 
-	xerr = err;
-	switch(xerr &= su_STATE_ERR_TYPE_MASK){
-	default:
-		ASSERT(0);
-		FALLTHRU
-	case su_STATE_ERR_NOMEM:
-		eno = su_ERR_NOMEM;
-		introp = intro_nomem;
-		break;
-	case su_STATE_ERR_OVERFLOW:
-		eno = su_ERR_OVERFLOW;
-		introp = intro_overflow;
-		break;
+	if(err < 0){
+		err = -err;
+		introp = su_err_doc(err);
+		xerr = 0;
+	}else{
+		xerr = S(u32,err & su_STATE_ERR_TYPE_MASK);
+		switch(xerr){
+		default:
+			ASSERT(0);
+			FALLTHRU
+		case su_STATE_ERR_NOMEM:
+			err = su_ERR_NOMEM;
+			introp = N_("Out of memory");
+			break;
+		case su_STATE_ERR_OVERFLOW:
+			err = su_ERR_OVERFLOW;
+			introp = N_("Datatype overflow");
+			break;
+		}
 	}
 
 	lvl = su_LOG_EMERG;
 	if(state & su_STATE_ERR_NOPASS)
 		goto jdolog;
-	if(state & su_STATE_ERR_PASS)
-		lvl = su_LOG_DEBUG;
-	else if((state & xerr) || su_state_has(xerr))
+	if((state & su_STATE_ERR_PASS) == su_STATE_ERR_PASS || su_state_has(su_STATE_ERR_PASS) ||
+			(xerr != 0 && ((state & xerr) || su_state_has(xerr))))
 		lvl = su_LOG_ALERT;
 
-	if(su_log_would_write(lvl))
+	if(su_log_would_write(lvl)){
 jdolog:
-		su_log_write(lvl, V_(introp), V_(msg_or_nil));
+		if(msg_or_nil == NIL)
+			msg_or_nil = _("(no error detail)");
+		su_log_write(lvl, _("State error: %s: %s"), V_(introp), msg_or_nil);
+	}
 
-	if(!(state & su_STATE_ERR_NOERRNO))
-		su_err_set_no(eno);
+	if(!(state & su_STATE_ERR_NOERROR))
+		su_err_set(err);
 
 	NYD2_OU;
-	return eno;
+	return err;
 }
 
 s32
-su_err_no(void){ /* xxx INLINE? */
-	return su_thread_get_err_no();
+su_err(void){ /* xxx INLINE? */
+	return su_thread_get_err();
 }
 
 void
-su_err_set_no(s32 eno){ /* xxx INLINE? */
-	su_thread_set_err_no(su_thread_self(), eno);
+su_err_set(s32 eno){ /* xxx INLINE? */
+	su_thread_set_err(eno);
 }
 
 s32
-su_err_no_by_errno(void){
+su_err_by_errno(void){
 	s32 rv;
 
-	su_thread_set_err_no(su_thread_self(), rv = errno);
+	su_thread_set_err(rv = errno);
 	return rv;
 }
 
@@ -509,7 +520,7 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun, boole c
 	su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
 		"SU assert failed: %.60s\n  File %.60s, line %" PRIu32 "\n  Function %.142s",
 		expr, file, line, fun);
-	su_err_set_no(su_ERR_FAULT);
+	su_err_set(su_ERR_FAULT);
 }
 
 #if DVLOR(1, 0)

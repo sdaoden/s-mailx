@@ -22,17 +22,17 @@
 
 #include "su/code.h"
 
-su_USECASE_CONFIG_CHECKS(su_HAVE_PATHCONF su_HAVE_UTIMENSAT)
+su_USECASE_CONFIG_CHECKS(su_HAVE_PATH_RM_AT  su__HAVE_PATHCONF su__HAVE_UTIMENSAT)
 
 #include <sys/stat.h>
 
 #include <stdio.h> /* XXX use renameat etc. */
 #include <unistd.h>
 
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 # include <errno.h>
 #endif
-#ifdef su_HAVE_UTIMENSAT
+#if defined su_HAVE_PATH_RM_AT || defined su__HAVE_UTIMENSAT
 # include <fcntl.h> /* For AT_* */
 #else
 # include <utime.h>
@@ -84,13 +84,13 @@ NSPC_USE(su)
 #endif
 
 boole
-su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode){
+su_path_access(char const *path, BITENUM(u32,su_iopf_access) mode){
 	boole rv;
 	NYD_IN;
 	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
 	if(UNLIKELY(mode & ~S(u32,su_IOPF_ACCESS_MASK))){
-		su_err_set_no(su_ERR_INVAL);
+		su_err_set(su_ERR_INVAL);
 		rv = FAL0;
 	}else{
 		if(su_IOPF_EXIST != F_OK || su_IOPF_EXEC != X_OK || su_IOPF_WRITE != W_OK || su_IOPF_READ != R_OK){
@@ -108,7 +108,7 @@ su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode){
 
 		rv = (access(path, S(int,mode)) == 0);
 		if(!rv)
-			su_err_no_by_errno();
+			su_err_by_errno();
 	}
 
 	NYD_OU;
@@ -122,7 +122,7 @@ su_path_chdir(char const *path){
 	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
 	if(!(rv = (chdir(path) == 0)))
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -135,7 +135,7 @@ su_path_fchmod(sz fd, u32 permprot){
 
 	permprot &= su_IOPF_PERM_MASK | su_IOPF_PROT_MASK;
 
-	while(!(rv = (fchmod(S(s32,fd), S(mode_t,permprot)) == 0)) && su_err_no_by_errno() == su_ERR_INTR){
+	while(!(rv = (fchmod(S(s32,fd), S(mode_t,permprot)) == 0)) && su_err_by_errno() == su_ERR_INTR){
 	}
 
 	NYD_OU;
@@ -161,7 +161,7 @@ su_path_link(char const *dst, char const *src){
 	ASSERT_NYD_EXEC(src != NIL, rv = FAL0);
 
 	if(!(rv = (link(src, dst) == 0)))
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -170,7 +170,7 @@ su_path_link(char const *dst, char const *src){
 uz
 su_path_max_filename(char const *path){
 	uz rv;
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	long sr;
 #endif
 	NYD_IN;
@@ -178,11 +178,11 @@ su_path_max_filename(char const *path){
 	if(path == NIL)
 		path = ".";
 
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	errno = 0;
 	if((sr = pathconf(path, _PC_NAME_MAX)) != -1)
 		rv = S(uz,sr);
-	else if(su_err_no_by_errno() == 0)
+	else if(su_err_by_errno() == 0)
 		rv = UZ_MAX;
 	else
 #endif
@@ -195,7 +195,7 @@ su_path_max_filename(char const *path){
 uz
 su_path_max_pathname(char const *path){
 	uz rv;
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	long sr;
 #endif
 	NYD_IN;
@@ -203,11 +203,11 @@ su_path_max_pathname(char const *path){
 	if(path == NIL)
 		path = ".";
 
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	errno = 0;
 	if((sr = pathconf(path, _PC_PATH_MAX)) != -1)
 		rv = S(uz,sr);
-	else if(su_err_no_by_errno() == 0)
+	else if(su_err_by_errno() == 0)
 		rv = UZ_MAX;
 	else
 #endif
@@ -242,7 +242,7 @@ jredo:
 	if(mkdir(path, S(mode_t,mode)) == 0)
 		rv = TRU1;
 	else{
-		e = su_err_no_by_errno();
+		e = su_err_by_errno();
 
 		/* Try it recursively? */
 		if(recursive && e == su_ERR_NOENT && buf == NIL){
@@ -298,7 +298,7 @@ jredo:
 		a_FREE(buf);
 
 	if(!rv)
-		su_err_set_no(e);
+		su_err_set(e);
 
 	NYD_OU;
 	return rv;
@@ -315,11 +315,31 @@ su_path_rename(char const *dst, char const *src){
 	ASSERT_NYD_EXEC(src != NIL, rv = FAL0);
 
 	if(!(rv = (rename(src, dst) == 0)))
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
 }
+
+#ifdef su_HAVE_PATH_RM_AT
+boole
+su_path_rm_at(sz dirfd, char const *path, BITENUM(u32,su_iopf_at) flags){
+	boole rv;
+	int dfd, f;
+	NYD_IN;
+	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC((flags & ~S(u32,su_IOPF_AT_RMDIR)) == 0, rv = FAL0);
+
+	dfd = (dirfd == su_PATH_AT_FDCWD) ? S(int,AT_FDCWD) : S(int,dirfd);
+	f = (flags & su_IOPF_AT_RMDIR) ? AT_REMOVEDIR : 0;
+
+	if(!(rv = (unlinkat(dfd, path, f) == 0)))
+		su_err_by_errno();
+
+	NYD_OU;
+	return rv;
+}
+#endif
 
 boole
 su_path_rm(char const *path){
@@ -328,7 +348,7 @@ su_path_rm(char const *path){
 	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
 	if(!(rv = (unlink(path) == 0)))
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -341,7 +361,7 @@ su_path_rmdir(char const *path){
 	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
 	if(!(rv = (rmdir(path) == 0)))
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -349,7 +369,7 @@ su_path_rmdir(char const *path){
 
 boole
 su_path_touch(char const *path, struct su_timespec const *tsp_or_nil){
-#ifdef su_HAVE_UTIMENSAT
+#ifdef su__HAVE_UTIMENSAT
 	struct timespec tsa[2];
 #else
 	struct su_timespec ts_x;
@@ -363,7 +383,7 @@ su_path_touch(char const *path, struct su_timespec const *tsp_or_nil){
 	if(tsp_or_nil != NIL && !su_timespec_is_valid(tsp_or_nil))
 		tsp_or_nil = NIL;
 
-#ifdef su_HAVE_UTIMENSAT
+#ifdef su__HAVE_UTIMENSAT
 	if(tsp_or_nil == NIL)
 		tsa[1].tv_nsec = UTIME_NOW;
 	else{
@@ -384,14 +404,14 @@ su_path_touch(char const *path, struct su_timespec const *tsp_or_nil){
 #endif
 
 	if(!rv)
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
 }
 
 u32
-su_path_umask(BITENUM_IS(u32,su_iopf_permission) perm){
+su_path_umask(BITENUM(u32,su_iopf_permission) perm){
 	u32 rv;
 	NYD_IN;
 

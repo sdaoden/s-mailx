@@ -57,6 +57,7 @@ struct su_spinlock;
  * support busy spinning may be replaced with something better.
  * If unavailable spinlocks base themselves upon \r{su_mutex} objects, despite
  * the behaviour change that this implies.
+ * Error numbers (\r{su_err()}, \r{su_err_number}) are not used but for \r{su_spinlock_create()}.
  *
  * Spinlocks can be used to protect smallest regions of code,
  * like access to a single variable et cetera.
@@ -119,7 +120,7 @@ INLINE s32 su_spinlock_create(struct su_spinlock *self, char const *dbg_name_or_
 #ifdef su__SPINLOCK_IS
 	self->sl_lck = 0;
 	DVLDBG( self->sl_name = dbg_name_or_nil; )
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 #else
 	rv = su_mutex_create(&self->sl_mtx, dbg_name_or_nil, estate);
 #endif

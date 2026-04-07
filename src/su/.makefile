@@ -17,13 +17,18 @@ SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL -Dsu_NYD_ENABLE
 SUFOPT=-O1 -g
 #SUFOPT=-DNDEBUG -O2
 
-# standalone: -Dsu_RANDOM_SEED=su_RANDOM_SEED_URANDOM
+SUF_GEN_CONFIG_LIST = \
+	su_RANDOM_SEED\ su_RANDOM_SEED_URANDOM \
+	\
+	su_HAVE_PATH_RM_AT
+
 SUF = $(SUFDEVEL) \
-	-Dsu_HAVE_CLOCK_GETTIME \
-	-Dsu_HAVE_NANOSLEEP \
-	-Dsu_HAVE_PATHCONF \
-	-Dsu_HAVE_STAT_BLOCKS -Dsu_HAVE_STAT_TIMESPEC \
-	-Dsu_HAVE_UTIMENSAT \
+	\
+	-Dsu__HAVE_CLOCK_GETTIME \
+	-Dsu__HAVE_NANOSLEEP \
+	-Dsu__HAVE_PATHCONF \
+	-Dsu__HAVE_STAT_BLOCKS -Dsu__HAVE_STAT_TIMESPEC \
+	-Dsu__HAVE_UTIMENSAT \
 
 SUFWWW = #-Weverything
 SUFWW = -W -Wall -pedantic $(SUFWWW) \
@@ -133,9 +138,11 @@ $(CONFIG):
 	xxx="$(SUF)";\
 	if [ "$${xxx##*su_HAVE_DEBUG}" != "$$xxx" ]; then \
 		printf '#ifndef su_HAVE_DEBUG\n#define su_HAVE_DEBUG\n#endif\n' >> $(@);\
-	fi; \
+	fi;\
 	if [ "$${xxx##*su_HAVE_DEVEL}" != "$$xxx" ]; then \
 		printf '#ifndef su_HAVE_DEVEL\n#define su_HAVE_DEVEL\n#endif\n' >> $(@);\
-	fi
+	fi;\
+	\
+	for ce in $(SUF_GEN_CONFIG_LIST); do echo '#define '$$ce >> $(@); done
 
 # s-mk-mode

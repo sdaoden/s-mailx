@@ -214,7 +214,7 @@ jlhv_redo:
 		idecm = (((*cp == 'u' || *cp == 'U') ? (f |= a_VEXPR_PBASE_FORCE_UNSIGNED, ++cp, su_IDEC_MODE_NONE)
 					: ((*cp == 's' || *cp == 'S') ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
 						: su_IDEC_MODE_SIGNED_TYPE | su_IDEC_MODE_POW2BASE_UNSIGNED)) |
-				su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN);
+				su_IDEC_MODE_BASE0_NUMSIG_RESCAN);
 		if(((idecs = su_idec_cp(&lhv, cp, 0, idecm, NIL)) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 				) != su_IDEC_STATE_CONSUMED){
 			if(!(idecs & su_IDEC_STATE_EOVERFLOW) || !(f & a_VEXPR_MOD_SATURATED)){
@@ -274,7 +274,7 @@ jbinop:
 			idecm = (((*cp == 'u' || *cp == 'U') ? (++cp, su_IDEC_MODE_NONE)
 						: ((*cp == 's' || *cp == 'S') ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
 							: su_IDEC_MODE_SIGNED_TYPE | su_IDEC_MODE_POW2BASE_UNSIGNED)) |
-					su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN);
+					su_IDEC_MODE_BASE0_NUMSIG_RESCAN);
 			if(((idecs = su_idec_cp(&rhv, cp, 0, idecm, NIL)) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 					) != su_IDEC_STATE_CONSUMED){
 				if(!(idecs & su_IDEC_STATE_EOVERFLOW) || !(f & a_VEXPR_MOD_SATURATED)){
@@ -913,11 +913,11 @@ jestr:
 			if(fprintf(n_stdout, "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
 						binabuf, S(u64,vc.vc_lhv), S(u64,vc.vc_lhv), vc.vc_lhv) < 0 ||
 					((f & a_VEXPR_PBASE) && fprintf(n_stdout, "%s\n", vc.vc_varres) < 0)){
-				n_pstate_err_no = su_err_no_by_errno();
+				n_pstate_err_no = su_err_by_errno();
 				f |= a_VEXPR_ERR;
 			}
 		}else if(vc.vc_varres != NIL && fprintf(n_stdout, "%s\n", vc.vc_varres) < 0){
-			n_pstate_err_no = su_err_no_by_errno();
+			n_pstate_err_no = su_err_by_errno();
 			f |= a_VEXPR_ERR;
 		}
 	}else if(!n_var_vset(vc.vc_varname, R(up,vc.vc_varres), vc.vc_cm_local)){

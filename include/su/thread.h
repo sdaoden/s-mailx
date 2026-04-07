@@ -58,7 +58,7 @@ struct su_thread{
 		u8 ATOMIC lck;
 		u8 flags;
 		u8 pad__[2];
-		s32 err_no;
+		s32 err;
 		char const *name;
 		struct su_thread *wait_last; /* Lock-wait-suspension list */
 		void *nydctl;
@@ -73,15 +73,15 @@ struct su_thread{
 /*! Sometimes a block needs to do work but also ensure that the current
  * thread's error number is reestablished before the block is left.
  * This macro opens a scope and saves the number, it will be reestablished once
- * the scope is left via \r{su_THREAD_ERR_NO_SCOPE_OU()}. */
-#define su_THREAD_ERR_NO_SCOPE_IN() \
+ * the scope is left via \r{su_THREAD_ERR_SCOPE_OU()}. */
+#define su_THREAD_ERR_SCOPE_IN() \
 do{\
 	struct su_thread *su____thread_self__ = su_thread_self();\
-	s32 su____thread_self__err_no__ = su____thread_self__->t_.err_no /**/
+	s32 su____thread_self__err__ = su____thread_self__->t_.err /**/
 
-/*! Counterpart to \r{su_THREAD_ERR_NO_SCOPE_OU()}. */
-#define su_THREAD_ERR_NO_SCOPE_OU() \
-	su____thread_self__->t_.err_no = su____thread_self__err_no__;\
+/*! Counterpart to \r{su_THREAD_ERR_SCOPE_OU()}. */
+#define su_THREAD_ERR_SCOPE_OU() \
+	su____thread_self__->t_.err = su____thread_self__err__;\
 }while(0)
 
 EXPORT_DATA struct su_thread su__thread_main;
@@ -95,22 +95,25 @@ INLINE char const *su_thread_name(struct su_thread const *self){
 }
 
 /*! \_ */
-INLINE s32 su_thread_err_no(struct su_thread const *self){
+INLINE s32 su_thread_err(struct su_thread const *self){
 	ASSERT(self);
-	return self->t_.err_no;
+	return self->t_.err;
 }
 
 /*! \_ */
-INLINE void su_thread_set_err_no(struct su_thread *self, s32 e){
+INLINE void su_thread_err_set(struct su_thread *self, s32 e){
 	ASSERT(self);
-	self->t_.err_no = e;
+	self->t_.err = e;
 }
 
 /*! Obtain handle to calling thread. */
 INLINE struct su_thread *su_thread_self(void) {return su__thread_self();}
 
-/*! \r{su_thread_err_no()} of the calling thread */
-INLINE s32 su_thread_get_err_no(void) {return su_thread_err_no(su_thread_self());}
+/*! \r{su_thread_err()} of the calling thread */
+INLINE s32 su_thread_get_err(void) {return su_thread_err(su_thread_self());}
+
+/*! \r{su_thread_err_set()} of the calling thread */
+INLINE void su_thread_set_err(s32 e) {su_thread_err_set(su_thread_self(), e);}
 
 /*! Yield the processor of the calling thread */
 EXPORT void su_thread_yield(void);
@@ -153,11 +156,11 @@ public:
 	/*! \copydoc{su_thread_name()} */
 	char const *name(void) const {return su_thread_name(this);}
 
-	/*! \copydoc{su_thread_err_no()} */
-	s32 err_no(void) const {return su_thread_err_no(this);}
+	/*! \copydoc{su_thread_err()} */
+	s32 err(void) const {return su_thread_err(this);}
 
-	/*! \copydoc{su_thread_set_err_no()} */
-	void set_err_no(s32 e) {su_thread_set_err_no(this, e);}
+	/*! \copydoc{su_thread_err_set()} */
+	void err_set(s32 e) {su_thread_err_set(this, e);}
 
 #ifdef su_HAVE_MT
 # error
@@ -166,8 +169,11 @@ public:
 	/*! \copydoc{su_thread_self()} */
 	static thread *self(void) {return R(thread*,su_thread_self());}
 
-	/*! \copydoc{su_thread_get_err_no()} */
-	static s32 get_err_no(void) {return su_thread_get_err_no();}
+	/*! \copydoc{su_thread_get_err()} */
+	static s32 get_err(void) {return su_thread_get_err();}
+
+	/*! \copydoc{su_thread_set_err()} */
+	static void set_err(s32 e) {su_thread_set_err(e);}
 
 	/*! \copydoc{su_thread_yield()} */
 	static void yield(void) {su_thread_yield();}

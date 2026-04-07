@@ -47,7 +47,7 @@
 # include <priv.h>
 #endif
 
-#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+#if defined su__HAVE_CLOCK_NANOSLEEP || defined su__HAVE_NANOSLEEP
 # include <time.h>
 #endif
 
@@ -66,9 +66,8 @@ uz su__state;
 boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
 boole su__mem_trace(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
-#define su_err_no() errno
-#define su_err_no_by_errno() errno
-#define su_err_set_no(X) (errno = X)
+#define su_err() errno
+#define su_err_by_errno() errno
 #define su_path_link(X,Y) (link(Y, X) != -1)
 #define su_path_rm(X) (unlink(X) != -1)
 #define su_pathinfo_stat(X,Y) (stat(Y, X) != -1)
@@ -92,7 +91,7 @@ static uz
 su_time_msleep(uz millis, boole ignint){
 	uz rv;
 
-#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+#if defined su__HAVE_CLOCK_NANOSLEEP || defined su__HAVE_NANOSLEEP
 	/* C99 */{
 		struct timespec ts, trem;
 		int i;
@@ -101,13 +100,13 @@ su_time_msleep(uz millis, boole ignint){
 		ts.tv_nsec = (millis %= 1000) * 1000 * 1000;
 
 		while((i =
-# ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su__HAVE_CLOCK_NANOSLEEP
 					  clock_nanosleep
 # else
 					  nanosleep
 # endif
 					  (
-# ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su__HAVE_CLOCK_NANOSLEEP
 						CLOCK_REALTIME, 0,
 # endif
 						&ts, &trem)) != 0 && ignint)
@@ -115,7 +114,7 @@ su_time_msleep(uz millis, boole ignint){
 		rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
 	}
 
-#elif defined su_HAVE_SLEEP
+#elif defined su__HAVE_SLEEP
 	if((millis /= 1000) == 0)
 		millis = 1;
 	while((rv = sleep(S(ui,millis))) != 0 && ignint)

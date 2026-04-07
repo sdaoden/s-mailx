@@ -514,7 +514,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
       fi = ap->a_tmpf;
       ASSERT(ftell(fi) == 0);
    }else if((fi = mx_fs_open(ap->a_path, mx_FS_O_RDONLY)) == NIL){
-      err = su_err_no();
+      err = su_err();
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
          su_err_doc(err));
       goto jleave;
@@ -575,7 +575,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
 
       if (putc('\n', fo) == EOF) {
 jerr_header:
-         err = su_err_no_by_errno();
+         err = su_err_by_errno();
          goto jerr_fclose;
       }
    }
@@ -588,7 +588,7 @@ jerr_header:
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if (/*su_cs_cmp_case(charset, ap->a_input_charset) &&*/
             (iconvd = n_iconv_open(charset, ap->a_input_charset)
-               ) == (iconv_t)-1 && (err = su_err_no()) != 0) {
+               ) == (iconv_t)-1 && (err = su_err()) != 0) {
          if (err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset,
                charset);
@@ -699,7 +699,7 @@ a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
    mp = &message[ap->a_msgno - 1];
    touch(mp);
    if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
-      err = su_err_no();
+      err = su_err();
 
 jleave:
    NYD_OU;
@@ -756,7 +756,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    /* the final boundary with two attached dashes */
    if(fprintf(fo, "\n--%s--\n", _sendout_boundary) < 0)
 jerr:
-      if((err = su_err_no_by_errno()) == su_ERR_NONE)
+      if((err = su_err_by_errno()) == su_ERR_NONE)
          err = su_ERR_IO;
 jleave:
    NYD_OU;
@@ -781,12 +781,12 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
    if((nfo = mx_fs_tmp_open(NIL, "infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS),
             &fstcp)) == NIL){
-      n_perr(_("infix: temporary mail file"), err = su_err_no());
+      n_perr(_("infix: temporary mail file"), err = su_err());
       goto jleave;
    }
 
    if((nfi = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL){
-      n_perr(fstcp->fstc_filename, err = su_err_no());
+      n_perr(fstcp->fstc_filename, err = su_err());
       mx_fs_close(nfo);
    }
 
@@ -842,7 +842,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if(!force && /*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
             (iconvd = n_iconv_open(convhdr, tcs)) == R(iconv_t,-1) &&
-            (err = su_err_no()) != su_ERR_NONE){
+            (err = su_err()) != su_ERR_NONE){
          charset = convhdr;
          goto jiconv_err;
       }
@@ -852,7 +852,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
    if(!n_puthead(FAL0, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
          GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset)){
-      if((err = su_err_no()) == su_ERR_NONE)
+      if((err = su_err()) == su_ERR_NONE)
          err = su_ERR_IO;
       goto jerr;
    }
@@ -866,7 +866,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if(/*su_cs_cmp_case(charset, tcs) != 0 &&*/
             (iconvd = n_iconv_open(charset, tcs)) == R(iconv_t,-1) &&
-            (err = su_err_no()) != su_ERR_NONE){
+            (err = su_err()) != su_ERR_NONE){
 jiconv_err:
          if(err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
@@ -887,7 +887,7 @@ jiconv_err:
       goto jerr;
 
    if(fflush(nfo) == EOF)
-      err = su_err_no_by_errno();
+      err = su_err_by_errno();
 
 jerr:
    mx_fs_close(nfo);
@@ -909,7 +909,7 @@ jleave:
       n_iconv_close(iconvd);
 #endif
    if(nfi == NIL)
-      su_err_set_no(err);
+      su_err_set(err);
 
    NYD_OU;
    return nfi;
@@ -1065,7 +1065,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          fflush(fp);
          if(ferror(fp)){
             n_perr(_("Finalizing write of temporary image"),
-                  su_err_no_by_errno());
+                  su_err_by_errno());
             goto jerror;
          }
 
@@ -1127,7 +1127,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
                      (mfap ? mx_FS_O_RDWR | mx_FS_O_APPEND
                       : mx_FS_O_WRONLY | mx_FS_O_TRUNC)), &fs)) == NIL){
 jefileeno:
-               xerr = su_err_no();
+               xerr = su_err();
 jefile:
                n_err(_("Writing message to %s failed: %s\n"),
                   fnameq, su_err_doc(xerr));
@@ -1305,7 +1305,7 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
        * TODO BETTER yet: should be returned in lock state already! */
       if(!mx_file_lock(fileno(fo), (mx_FILE_LOCK_MODE_TEXCL |
             mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-         xerr = su_err_no();
+         xerr = su_err();
          goto jeappend;
       }
 
@@ -1621,7 +1621,7 @@ jkid:
 #endif
         {
       execv(mta, n_UNCONST(args));
-      mx_child_in_child_exec_failed(&cc, su_err_no());
+      mx_child_in_child_exec_failed(&cc, su_err());
    }
    for(;;)
       _exit(su_EX_ERR);
@@ -1830,7 +1830,7 @@ jleave:
    return ((f & a_ERR) == 0);
 
 jeno:
-   f = su_err_no();
+   f = su_err();
 jefo:
    n_err(_("test MTA: cannot open/prepare/write: %s: %s\n"),
       n_shexp_quote_cp(mta, FAL0), su_err_doc(f));
@@ -2391,7 +2391,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          else if((nmtf = a_sendout_infix(hp, mtf, dosign, force)) != NULL)
             break;
 #ifdef mx_HAVE_ICONV
-         else if((err = n_iconv_err_no) == su_ERR_ILSEQ ||
+         else if((err = n_iconv_err) == su_ERR_ILSEQ ||
                err == su_ERR_INVAL || err == su_ERR_NOENT){
             rewind(mtf);
             continue;

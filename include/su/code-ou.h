@@ -113,8 +113,10 @@
 
 #undef ATOMIC
 
-#undef BITENUM_IS
+#undef BITENUM_IS /* FIXME DROP THIS */
+#undef BITENUM
 #undef BITENUM_MASK
+#undef PADENUM
 
 #undef DBG
 #undef NDGB
@@ -161,6 +163,7 @@
 # undef NYD2
 #endif
 
+#undef C2UZ
 #undef P2UZ
 
 #undef PCMP

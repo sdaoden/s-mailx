@@ -162,7 +162,7 @@ writeback(FILE *res, FILE *obuf){ /* TODO errors */
 
    ftrunc(obuf);
    if(ferror(obuf)){
-      n_perr(mailname, su_err_no_by_errno());
+      n_perr(mailname, su_err_by_errno());
 jerror:
       fseek(obuf, 0L, SEEK_SET);
       goto jleave;
@@ -253,7 +253,7 @@ jemailname:
             mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
       int e;
 
-      e = su_err_no();
+      e = su_err();
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
@@ -405,7 +405,7 @@ quit(boole hold_sigs_on)
     * a message */
    fbuf = mx_fs_open_any(mailname, mx_FS_O_RDWR, NIL);
    if(fbuf == NIL){
-      if(su_err_no() != su_ERR_NOENT)
+      if(su_err() != su_ERR_NOENT)
          fprintf(n_stdout, _("Thou hast new mail.\n"));
       rv = TRU1;
       goto jleave;
@@ -595,7 +595,7 @@ jcopyerr:
 
    ftrunc(obuf); /* XXX clears error, order.. */
    if(ferror(obuf)){
-      n_perr(mbox, su_err_no_by_errno());
+      n_perr(mbox, su_err_by_errno());
       mx_fs_close(obuf);
       goto jleave;
    }

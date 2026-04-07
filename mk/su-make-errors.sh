@@ -39,6 +39,7 @@ ERRORS="\
 	BADMSG='Bad message' \
 	BUSY='Device busy' \
 	CANCELED='Operation canceled' \
+	CAPMODE='Not permitted in capability mode' \
 	CHILD='No child processes' \
 	CONNABORTED='Software caused connection abort' \
 	CONNREFUSED='Connection refused' \
@@ -54,6 +55,7 @@ ERRORS="\
 	IDRM='Identifier removed' \
 	ILSEQ='Illegal byte sequence' \
 	INPROGRESS='Operation now in progress' \
+	INTEGRITY='Integrity check failed' \
 	INTR='Interrupted system call' \
 	INVAL='Invalid argument' \
 	IO='Input/output error' \
@@ -83,6 +85,7 @@ ERRORS="\
 	NOSR='Out of streams resource' \
 	NOSTR='Device not a stream' \
 	NOSYS='Function not implemented' \
+	NOTCAPABLE='Capabilities insufficient' \
 	NOTCONN='Socket is not connected' \
 	NOTDIR='Not a directory' \
 	NOTEMPTY='Directory not empty' \
@@ -263,22 +266,25 @@ compile_time() { # {{{
 
 			print "#ifdef __cplusplus"
 			print "# define su__CXX_ERR_NUMBER_ENUM \134"
-			print verb "enone = su_ERR_NONE,\134"
+			print verb "none = su_ERR_NONE,\134"
 
 			unavail = 0
 			for(i = 1; i <= oscnt; ++i){
+				cxxn = tolower(osnaa[i])
+				if(cxxn !~ "^[_[:alpha:]]")
+					cxxn = "e" cxxn
 				if(osnoa[i] >= 0)
-					print verb "e" tolower(osnaa[i]) " = su_ERR_" osnaa[i] ",\134"
+					print verb cxxn " = su_ERR_" osnaa[i] ",\134"
 				else{
 					++unavail
-					the_unavail[unavail] = "e" tolower(osnaa[i]) " = su_ERR_" osnaa[i]
+					the_unavail[unavail] = cxxn " = su_ERR_" osnaa[i]
 				}
 			}
 			for(i = unavail; i >= 1; --i){
 				print verb the_unavail[i] ",\134"
 				++cnt
 			}
-			print verb "enotobacco = su_ERR_NOTOBACCO,\134"
+			print verb "notobacco = su_ERR_NOTOBACCO,\134"
 			print verb "e__number = su__ERR_NUMBER"
 
 			print "#endif /* __cplusplus */"

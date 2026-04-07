@@ -1875,7 +1875,7 @@ msg 'yes'
 ## of our program.  Once this is done fork away BASE_LIBS and other BASE_*
 ## macros to be used by only the subprograms (potentially).
 
-if run_check clock_gettime 'clock_gettime(2)' '#define su_HAVE_CLOCK_GETTIME' << \!
+if run_check clock_gettime 'clock_gettime(2)' '#define su__HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1888,7 +1888,7 @@ int main(void){
 !
 then
 	:
-elif run_check clock_gettime 'clock_gettime(2) (via -lrt)' '#define su_HAVE_CLOCK_GETTIME' '-lrt' << \!
+elif run_check clock_gettime 'clock_gettime(2) (via -lrt)' '#define su__HAVE_CLOCK_GETTIME' '-lrt' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1901,7 +1901,7 @@ int main(void){
 !
 then
 	:
-elif run_check gettimeofday 'gettimeofday(2)' '#define su_HAVE_GETTIMEOFDAY' << \!
+elif run_check gettimeofday 'gettimeofday(2)' '#define su__HAVE_GETTIMEOFDAY' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <sys/time.h>
 # include <errno.h>
@@ -1919,7 +1919,7 @@ else
 	have_no_subsecond_time=1
 fi
 
-if run_check clock_nanosleep 'clock_nanosleep(2)' '#define su_HAVE_CLOCK_NANOSLEEP' << \!
+if run_check clock_nanosleep 'clock_nanosleep(2)' '#define su__HAVE_CLOCK_NANOSLEEP' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1940,7 +1940,7 @@ int main(void){
 !
 then
 	:
-elif run_check nanosleep 'nanosleep(2)' '#define su_HAVE_NANOSLEEP' << \!
+elif run_check nanosleep 'nanosleep(2)' '#define su__HAVE_NANOSLEEP' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1955,7 +1955,7 @@ int main(void){
 !
 then
 	:
-elif run_check nanosleep 'nanosleep(2) (via -lrt)' '#define su_HAVE_NANOSLEEP' '-lrt' << \!
+elif run_check nanosleep 'nanosleep(2) (via -lrt)' '#define su__HAVE_NANOSLEEP' '-lrt' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1971,7 +1971,7 @@ int main(void){
 then
 	:
 # link_check is enough for this, that function is so old, trust the proto
-elif link_check sleep 'sleep(3)' '#define su_HAVE_SLEEP' << \!
+elif link_check sleep 'sleep(3)' '#define su__HAVE_SLEEP' << \!
 #include <unistd.h>
 # include <errno.h>
 int main(void){
@@ -1988,7 +1988,7 @@ else
 fi
 
 # XXX yet not for -lpthread, we only need it for one thread
-if link_check sched_yield 'sched_yield(2)' '#define su_HAVE_SCHED_YIELD' << \!
+if link_check sched_yield 'sched_yield(2)' '#define su__HAVE_SCHED_YIELD' << \!
 #include <sched.h>
 int main(void){
 	sched_yield();
@@ -1997,7 +1997,7 @@ int main(void){
 !
 then
 	:
-elif link_check pthread_yield 'pthread_yield(2)' '#define su_HAVE_PTHREAD_YIELD' << \!
+elif link_check pthread_yield 'pthread_yield(2)' '#define su__HAVE_PTHREAD_YIELD' << \!
 #include <pthread.h>
 int main(void){
 	pthread_yield();
@@ -2232,7 +2232,7 @@ _EOT
 	__va_copy 0 va_copy || __va_copy 1 __va_copy
 fi
 
-run_check pathconf 'f?pathconf(2)' '#define su_HAVE_PATHCONF' << \!
+run_check pathconf 'f?pathconf(2)' '#define su__HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
 int main(void){
@@ -2263,7 +2263,7 @@ int main(void){
 }
 !
 
-link_check stat_blocks 'struct stat st_blocks' '#define su_HAVE_STAT_BLOCKS' << \!
+link_check stat_blocks 'struct stat st_blocks' '#define su__HAVE_STAT_BLOCKS' << \!
 #include <sys/stat.h>
 int main(void){
 	struct stat x;
@@ -2273,7 +2273,7 @@ int main(void){
 }
 !
 
-if link_check stat_timespec 'struct stat timespec fields' '#define su_HAVE_STAT_TIMESPEC' << \!
+if link_check stat_timespec 'struct stat timespec fields' '#define su__HAVE_STAT_TIMESPEC' << \!
 #include <sys/stat.h>
 int main(void){
 	struct stat x;
@@ -2284,7 +2284,7 @@ int main(void){
 !
 then
 	:
-elif link_check stat_timensec 'struct stat timensec fields' '#define su_HAVE_STAT_TIMENSEC' << \!
+elif link_check stat_timensec 'struct stat timensec fields' '#define su__HAVE_STAT_TIMENSEC' << \!
 #include <sys/stat.h>
 int main(void){
 	struct stat x;
@@ -2307,7 +2307,7 @@ int main(void){
 }
 !
 
-run_check utimensat 'utimensat(2)' '#define su_HAVE_UTIMENSAT' << \!
+run_check utimensat 'utimensat(2)' '#define su__HAVE_UTIMENSAT' << \!
 #include <fcntl.h> /* For AT_* */
 #include <sys/stat.h>
 # include <errno.h>
@@ -2317,6 +2317,17 @@ int main(void){
 	ts[0].tv_nsec = UTIME_NOW;
 	ts[1].tv_nsec = UTIME_OMIT;
 	if(!utimensat(AT_FDCWD, "", ts, 0) || errno != ENOSYS)
+		return 0;
+	return 1;
+}
+!
+
+run_check unlinkat 'unlinkat(2)' '#define su_HAVE_PATH_RM_AT' << \!
+#include <fcntl.h> /* For AT_* */
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+	if(!unlinkat(AT_FDCWD, "nonexistent", AT_REMOVEDIR) || errno != ENOSYS)
 		return 0;
 	return 1;
 }

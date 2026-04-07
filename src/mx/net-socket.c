@@ -314,7 +314,7 @@ jjumped:
 
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-      n_perr(_("could not create socket"), su_err_no_by_errno());
+      n_perr(_("could not create socket"), su_err_by_errno());
       ASSERT(sofd == -1 && errval == 0);
       goto jjumped;
    }
@@ -341,7 +341,7 @@ jjumped:
       if(errval != 0){
          if(!(n_poption & n_PO_D_V))
             n_perr(_("Could not connect(2)"), errval);
-         su_err_set_no(errval);
+         su_err_set(errval);
       }
       goto jleave;
    }
@@ -445,7 +445,7 @@ a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
       /* Always select(2) even if it succeeds right away, since on at least
        * SunOS/Solaris 5.9 SPARC it will cause failures (busy resources) */
       if(connect(fd, soap, soapl) &&
-            (i = su_err_no_by_errno()) != su_ERR_INPROGRESS){
+            (i = su_err_by_errno()) != su_ERR_INPROGRESS){
          rv = i;
          goto jerr_noerrno;
       }else{
@@ -500,7 +500,7 @@ jrewait:
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr:
 #endif
-      rv = su_err_no_by_errno();
+      rv = su_err_by_errno();
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr_noerrno:
 #endif
@@ -522,7 +522,7 @@ a_netso_xwrite(int fd, char const *data, uz size)
 
    do {
       if ((wo = write(fd, data + wt, size - wt)) < 0) {
-         if (su_err_no_by_errno() == su_ERR_INTR)
+         if (su_err_by_errno() == su_ERR_INTR)
             continue;
          else
             goto jleave;
@@ -575,7 +575,7 @@ mx_socket_open(struct mx_socket *sop, struct mx_url *urlp){
       pbuf[2] = 0x00; /* METHOD: X'00' NO AUTHENTICATION REQUIRED */
       if(write(sop->s_fd, pbuf, 3) != 3){
 jerrsocks:
-         n_perr("*socks-proxy*", su_err_no_by_errno());
+         n_perr("*socks-proxy*", su_err_by_errno());
 jesocks:
          mx_socket_close(sop);
          goto jleave;
@@ -776,7 +776,7 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
 jssl_retry:
       x = SSL_write(sop->s_tls, data, size);
       if(x < 0){
-         if((err = su_err_no_by_errno()) == su_ERR_INTR)
+         if((err = su_err_by_errno()) == su_ERR_INTR)
             goto jssl_retry;
 
          if(++errcnt < 3 && err != su_ERR_WOULDBLOCK){
@@ -862,7 +862,7 @@ jssl_retry:
                if (sop->s_rsz < 0) {
                   char o[512];
 
-                  if((err = su_err_no_by_errno()) == su_ERR_INTR)
+                  if((err = su_err_by_errno()) == su_ERR_INTR)
                      goto jssl_retry;
 
                   if(++errcnt < 3 && err != su_ERR_WOULDBLOCK){
@@ -890,7 +890,7 @@ jagain:
                   char o[512];
                   int e;
 
-                  if ((e = su_err_no_by_errno()) == su_ERR_INTR)
+                  if ((e = su_err_by_errno()) == su_ERR_INTR)
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
                      (sop->s_desc ?  sop->s_desc : "socket"));
