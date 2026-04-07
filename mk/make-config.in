@@ -25,11 +25,11 @@ gen-mime-types.h: $(CWDDIR)mime.types
 
 uman.1: $(TOPDIR)mx.1
 	$(ECHO_GEN) . ./mk-config.env; \
-	$(SHELL) "$(TOPDIR)"mk/make-man.sh x "$(TOPDIR)"mx.1 "$(@)"
+	$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"mx.1 "$(@)"
 
 uman-config.7: $(TOPDIR)mx-config.7
 	$(ECHO_GEN) . ./mk-config.env; \
-	$(SHELL) "$(TOPDIR)"mk/make-man.sh config "$(TOPDIR)"mx-config.7 "$(@)"
+	$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"mx-config.7 "$(@)"
 
 urc.rc: $(TOPDIR)mx.rc
 	$(ECHO_GEN) . ./mk-config.env; \

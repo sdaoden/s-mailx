@@ -46,18 +46,18 @@
 
 ##  --  >8	--  8<  --	##
 
-ORIG_LC_ALL=${LC_ALL} LC_ALL=C
+ORIG_LC_ALL=$LC_ALL LC_ALL=C
 export LC_ALL
 
-DATE_MAN=$(${date} -u +'%B %d, %Y')
-DATE_ISO=$(${date} -u +%Y-%m-%d)
+DATE_MAN=$($date -u +'%B %d, %Y')
+DATE_ISO=$($date -u +%Y-%m-%d)
 
 yesno() {
 	while :; do
-		[ ${#} -gt 0 ] && printf '%s ' "${@}"
+		[ $# -gt 0 ] && printf '%s ' "$@"
 		printf '[y/n] '
 		read i
-		case ${i} in
+		case $i in
 		[Yy]*) return 0;;
 		[Nn]*) return 1;;
 		*) ;;
@@ -66,61 +66,68 @@ yesno() {
 }
 
 ref_status() {
-	headref=$(${git} rev-parse --verify HEAD)
+	headref=$($git rev-parse --verify HEAD)
 	brref=
-	for i in $(${git} rev-parse --branches=stable master^{commit} 2>/dev/null); do
-		if [ ${headref} = ${i} ]; then
-			brref=${headref}
+	for i in $($git rev-parse --branches=stable master^{commit} 2>/dev/null); do
+		if [ $headref = $i ]; then
+			brref=$headref
 			break
 		fi
 	done
-	if [ -z "${brref}" ]; then
+	if [ -z "$brref" ]; then
 		echo >&2 'Not on the [master] or a [stable/*] branch'
-		[ -z "${grappa}" ] && exit 1
-		if yesno 'Are you sure you want grappa from '${headref}'?'; then :; else
+		[ -z "$grappa" ] && exit 1
+		if yesno 'Are you sure you want grappa from '$headref'?'; then :; else
 			echo >&2 'Bailing out'
 			exit 3
 		fi
 	fi
-	if [ "$(${git} status --porcelain --ignored | ${awk} 'BEGIN{no=0}{++no}END{print no}')" -ne 0 ]; then
+	if [ "$($git status --porcelain --ignored | $awk 'BEGIN{no=0}{++no}END{print no}')" -ne 0 ]; then
 		echo >&2 'Directory not clean, see git status --ignored'
 		exit 2
 	fi
 	#brname="$(git branch | sed -e '/^* /b X' -e d -e :X -e 's/^* //')"
-	brname=$(${git} symbolic-ref --short HEAD)
+	brname=$($git symbolic-ref --short HEAD)
 }
 
 release_version() {
-	vmaj=$(echo ${VERSION} | ${sed} -e 's/^\([^.]\{1,\}\).*/\1/')
-	vmin=$(echo ${VERSION} | ${sed} -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/')
-	[ ${vmin} = ${VERSION} ] && VERSION=${VERSION}.0 vmin=0
-	vupd=$(echo ${VERSION} | ${sed} -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/')
-	[ ${vupd} = ${VERSION} ] && VERSION=${VERSION}.0 vupd=0
-	REL=${VERSION}
+	vmaj=$(echo $VERSION | $sed -e 's/^\([^.]\{1,\}\).*/\1/')
+	vmin=$(echo $VERSION | $sed -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/')
+	[ $vmin = $VERSION ] && VERSION=$VERSION.0 vmin=0
+	vupd=$(echo $VERSION | $sed -e 's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/')
+	[ $vupd = $VERSION ] && VERSION=$VERSION.0 vupd=0
+	REL=$VERSION
 	export VERSION
-	if yesno 'Is '${PROGRAM}' <v'${REL}'> correct?'; then :; else
-		echo >&2 'Bailing out'
-		exit 3
+	if yesno 'Is '$PROGRAM' <v'$REL'> correct?'; then :; else
+		if yesno 'But '$PROGRAM' <v'$VERSION'> is correct?  Dedicated $REL?'; then :; else
+			echo >&2 'Bailing out'
+		fi
+		printf '  ..and the $REL shall be: '
+		read REL
+		if yesno 'Is '"$REL"' correct?'; then :; else
+			echo >&2 'Bailing out'
+			exit 3
+		fi
 	fi
 }
 
 release_brcheck() {
-	stblbrname=stable/v${vmaj}.${vmin} need_stblbrname=
-	brref=$(${git} rev-parse --verify ${stblbrname} 2>/dev/null)
-	if [ -z "${brref}" ]; then
-		if yesno 'Create new branch '"${stblbrname}"' after release tag'; then
+	stblbrname=stable/v$vmaj.$vmin need_stblbrname=
+	brref=$($git rev-parse --verify $stblbrname 2>/dev/null)
+	if [ -z "$brref" ]; then
+		if yesno 'Create new branch '"$stblbrname"' after release tag'; then
 			need_stblbrname=1
 		fi
-	elif [ ${brref} != ${headref} ] || [ ${brname} != ${stblbrname} ]; then
-		echo >&2 "For ${REL} we should be on ${stblbrname}, not ${brname}"
+	elif [ $brref != $headref ] || [ $brname != $stblbrname ]; then
+		echo >&2 "For $REL we should be on $stblbrname, not $brname"
 		echo >&2 'Bailing out'
 		exit 4
 	fi
 
-	relbrname=release/v${VERSION}
-	brref=$(${git} rev-parse --verify ${relbrname} 2>/dev/null)
-	if [ -z "${brref}" ]; then :; else
-		echo >&2 "The ${relbrname} already exists"
+	relbrname=release/v$VERSION
+	brref=$($git rev-parse --verify $relbrname 2>/dev/null)
+	if [ -z "$brref" ]; then :; else
+		echo >&2 "The $relbrname already exists"
 		echo >&2 'Bailing out'
 		exit 5
 	fi
@@ -129,115 +136,115 @@ release_brcheck() {
 release_symname() {
 	RELSYM=
 	stblmsg= relmsg=
-	if yesno 'Shall '${PROGRAM}' v'${REL}' have a symbolic name?'; then
+	if yesno 'Shall '$PROGRAM' v'$REL' have a symbolic name?'; then
 		printf '  ..and it shall be known as: '
 		read RELSYM
-		if yesno 'Is '"${RELSYM}"' correct?'; then :; else
+		if yesno 'Is '"$RELSYM"' correct?'; then :; else
 			echo >&2 'Bailing out'
 			exit 3
 		fi
-		stblmsg="Bump ${UPROGRAM} v${REL} (\"${RELSYM}\"), ${DATE_ISO}"
-		relmsg="Bump ${UPROGRAM} v${REL}.ar (\"${RELSYM}\"), ${DATE_ISO}"
-		RELSYM=" (\"${RELSYM}\")"
+		stblmsg="Bump $UPROGRAM v$REL (\"$RELSYM\"), $DATE_ISO"
+		relmsg="Bump $UPROGRAM v$REL.ar (\"$RELSYM\"), $DATE_ISO"
+		RELSYM=" (\"$RELSYM\")"
 	else
-		stblmsg="Bump ${UPROGRAM} v${REL}, ${DATE_ISO}"
-		relmsg="Bump ${UPROGRAM} v${REL}.ar, ${DATE_ISO}"
+		stblmsg="Bump $UPROGRAM v$REL, $DATE_ISO"
+		relmsg="Bump $UPROGRAM v$REL.ar, $DATE_ISO"
 	fi
 }
 
 update_stable_branch() {
-	LC_ALL=${ORIG_LC_ALL} ${git} commit -S -n -m "${stblmsg}"
-	LC_ALL=${ORIG_LC_ALL} ${git} tag -s -f -m "${stblmsg}" v${REL}
+	LC_ALL=$ORIG_LC_ALL $git commit -S -n -m "$stblmsg"
+	LC_ALL=$ORIG_LC_ALL $git tag -s -f -m "$stblmsg" v$REL
 
-	if [ -n "${need_stblbrname}" ]; then
-		${git} checkout -b ${stblbrname}
+	if [ -n "$need_stblbrname" ]; then
+		$git checkout -b $stblbrname
 	fi
 	# Normally done in post-commit hook, but not once initially created
 	if yesno 'Shall i update stable/latest "symlink"?'; then
-		${git} update-ref refs/heads/stable/latest ${stblbrname}
+		$git update-ref refs/heads/stable/latest $stblbrname
 	fi
 	if yesno 'Shall i update stable/stable "symlink"?'; then
-		${git} update-ref refs/heads/stable/stable ${stblbrname}
+		$git update-ref refs/heads/stable/stable $stblbrname
 	fi
 }
 
 create_release_branch() {
 	if yesno 'Create release/ branch?'; then
-		${git} checkout -b ${relbrname}
+		$git checkout -b $relbrname
 
 		echo 'Updating files: calling update_release_hook'
 		update_release_hook
 
-		LC_ALL=${ORIG_LC_ALL} ${git} commit -S -n -m "${relmsg}"
-		LC_ALL=${ORIG_LC_ALL} ${git} tag -s -f -m "${relmsg}" v${REL}.ar
+		LC_ALL=$ORIG_LC_ALL $git commit -S -n -m "$relmsg"
+		LC_ALL=$ORIG_LC_ALL $git tag -s -f -m "$relmsg" v$REL.ar
 
 		if yesno 'Shall i update release/latest "symlink"?'; then
-			${git} update-ref refs/heads/release/latest ${relbrname}
+			$git update-ref refs/heads/release/latest $relbrname
 		fi
 		if yesno 'Shall i update release/stable "symlink"?'; then
-			${git} update-ref refs/heads/release/stable ${relbrname}
+			$git update-ref refs/heads/release/stable $relbrname
 		fi
 	else
-		relbrname=${stblbrname}
+		relbrname=$stblbrname
 	fi
 }
 
 check_timeline_branch() {
-	if [ ${relbrname} != ${stblbrname} ] && $(${git} rev-parse --verify timeline^{commit} >/dev/null 2>&1) &&
+	if [ $relbrname != $stblbrname ] && $($git rev-parse --verify timeline^{commit} >/dev/null 2>&1) &&
 			yesno 'Shall i update [timeline]?'; then
-		${git} checkout timeline
-		${git} rm -rf '*'
-		${git} archive --format=tar "v${REL}.ar" | ${tar} -x -f -
-		${git} add .
-		LC_ALL=${ORIG_LC_ALL} ${git} commit -S -n -m "${relmsg}"
+		$git checkout timeline
+		$git rm -rf '*'
+		$git archive --format=tar "v$REL.ar" | $tar -x -f -
+		$git add .
+		LC_ALL=$ORIG_LC_ALL $git commit -S -n -m "$relmsg"
 	fi
 }
 
 repo_push() {
-	[ ${relbrname} != ${stblbrname} ] && ${git} checkout ${stblbrname}
-	${git} log --no-walk --decorate --oneline --branches --remotes
-	yesno 'Push git(1) repo?' && ${git} push
+	[ $relbrname != $stblbrname ] && $git checkout $stblbrname
+	$git log --no-walk --decorate --oneline --branches --remotes
+	yesno 'Push git(1) repo?' && $git push
 }
 
 big_balls() {
-	if [ ${relbrname} != ${stblbrname} ] && yesno 'Create tarballs?'; then
+	if [ $relbrname != $stblbrname ] && yesno 'Create tarballs?'; then
 		bigballs=y
 		(
 		umask 0022
 
 		# Repack with standard tar(1) to avoid new-style headers
 		tarm= tarfmt=
-		${tar} -m -c -f "${TMPDIR}/${PROGRAM}-${REL}.dat" /dev/null >/dev/null 2>&1 && tarm=-m
-		${tar} --format=pax -c -f "${TMPDIR}/${PROGRAM}-${REL}.dat" /dev/null >/dev/null 2>&1 &&
+		$tar -m -c -f "$TMPDIR/$PROGRAM-$REL.dat" /dev/null >/dev/null 2>&1 && tarm=-m
+		$tar --format=pax -c -f "$TMPDIR/$PROGRAM-$REL.dat" /dev/null >/dev/null 2>&1 &&
 			tarfmt=--format=pax
-		${rm} -f "${TMPDIR}/${PROGRAM}-${REL}.dat"
+		$rm -f "$TMPDIR/$PROGRAM-$REL.dat"
 
 		#
-		${git} archive --format=tar --prefix="${PROGRAM}-${REL}/" v${REL}.ar |
-			( cd "${TMPDIR}" && ${tar} -x ${tarm} -f - )
-		cd "${TMPDIR}"
+		$git archive --format=tar --prefix="$PROGRAM-$REL/" v$REL.ar |
+			( cd "$TMPDIR" && $tar -x $tarm -f - )
+		cd "$TMPDIR"
 
 		# And use a portable format by default; ustar from 1988 is ok for us,
 		# but pax/posix from 2001 is even more forgiving and future aware
-		${tar} -c ${tarfmt} -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
-		< "${PROGRAM}-${REL}.tar" ${xz} -T0 -9 > "${PROGRAM}-${REL}.tar.xz"
-		< "${PROGRAM}-${REL}.tar" ${gzip} -9 > "${PROGRAM}-${REL}.tar.gz"
-		${rm} "${PROGRAM}-${REL}.tar"
+		$tar -c $tarfmt -f "$PROGRAM-$REL.tar" "$PROGRAM-$REL"
+		< "$PROGRAM-$REL.tar" $xz -T0 -9 > "$PROGRAM-$REL.tar.xz"
+		< "$PROGRAM-$REL.tar" $gzip -9 > "$PROGRAM-$REL.tar.gz"
+		$rm "$PROGRAM-$REL.tar"
 
-		> "${PROGRAM}-${REL}.cksum"
-		${openssl} sha3-256 -help </dev/null >/dev/null 2>&1 && sha3=y || sha3=
-		${openssl} sha256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
-		${openssl} sha512 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "$sha3" ] && ${openssl} sha3-256 "${PROGRAM}-${REL}.tar.xz" >> "${PROGRAM}-${REL}.cksum"
-		${openssl} sha256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
-		${openssl} sha512 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
-		[ -n "$sha3" ] && ${openssl} sha3-256 "${PROGRAM}-${REL}.tar.gz" >> "${PROGRAM}-${REL}.cksum"
+		> "$PROGRAM-$REL.cksum"
+		$openssl sha3-256 -help </dev/null >/dev/null 2>&1 && sha3=y || sha3=
+		$openssl sha256 "$PROGRAM-$REL.tar.xz" >> "$PROGRAM-$REL.cksum"
+		$openssl sha512 "$PROGRAM-$REL.tar.xz" >> "$PROGRAM-$REL.cksum"
+		[ -n "$sha3" ] && $openssl sha3-256 "$PROGRAM-$REL.tar.xz" >> "$PROGRAM-$REL.cksum"
+		$openssl sha256 "$PROGRAM-$REL.tar.gz" >> "$PROGRAM-$REL.cksum"
+		$openssl sha512 "$PROGRAM-$REL.tar.gz" >> "$PROGRAM-$REL.cksum"
+		[ -n "$sha3" ] && $openssl sha3-256 "$PROGRAM-$REL.tar.gz" >> "$PROGRAM-$REL.cksum"
 
-		echo >> "${PROGRAM}-${REL}.cksum"
-		${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.xz"
-		${cat} "${PROGRAM}-${REL}.tar.xz.asc" >> "${PROGRAM}-${REL}.cksum"
-		${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.gz"
-		${cat} "${PROGRAM}-${REL}.tar.gz.asc" >> "${PROGRAM}-${REL}.cksum"
+		echo >> "$PROGRAM-$REL.cksum"
+		$gpg --detach-sign --armor "$PROGRAM-$REL.tar.xz"
+		$cat "$PROGRAM-$REL.tar.xz.asc" >> "$PROGRAM-$REL.cksum"
+		$gpg --detach-sign --armor "$PROGRAM-$REL.tar.gz"
+		$cat "$PROGRAM-$REL.tar.gz.asc" >> "$PROGRAM-$REL.cksum"
 		)
 	else
 		bigballs=
@@ -251,22 +258,22 @@ announcement_prepare() {
 	fi
 	anntxt=y
 
-	if $(${git} cat-file -e ${relbrname}:NEWS 2>/dev/null); then
-		${git} show ${relbrname}:NEWS > "${TMPDIR}/.${PROGRAM}-${REL}.news"
+	if $($git cat-file -e $relbrname:NEWS 2>/dev/null); then
+		$git show $relbrname:NEWS > "$TMPDIR/.$PROGRAM-$REL.news"
 	else
-		> "${TMPDIR}/.${PROGRAM}-${REL}.news"
+		> "$TMPDIR/.$PROGRAM-$REL.news"
 	fi
 
-	{ echo "${relmsg}"; echo; } > "${TMPDIR}/${PROGRAM}-${REL}.txt"
+	{ echo "$relmsg"; echo; } > "$TMPDIR/$PROGRAM-$REL.txt"
 	if [ -f .git/make-release.txt ]; then
 		# For the checksums
-		if [ -n "${bigballs}" ] && [ -f "${TMPDIR}/${PROGRAM}-${REL}.cksum" ]
+		if [ -n "$bigballs" ] && [ -f "$TMPDIR/$PROGRAM-$REL.cksum" ]
 		then
-			cks=$(< "${TMPDIR}/${PROGRAM}-${REL}.cksum" ${sed} -e 's/ //' -e '/^$/,$d')
-			< "${TMPDIR}/${PROGRAM}-${REL}.cksum" ${sed} '1,/^$/d' > "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
-			< .git/make-release.txt ${awk} \
-					-v INS="${cks}" -v SIGS="${TMPDIR}/.${PROGRAM}-${REL}.sigs" \
-					-v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
+			cks=$(< "$TMPDIR/$PROGRAM-$REL.cksum" $sed -e 's/ //' -e '/^$/,$d')
+			< "$TMPDIR/$PROGRAM-$REL.cksum" $sed '1,/^$/d' > "$TMPDIR/.$PROGRAM-$REL.sigs"
+			< .git/make-release.txt $awk \
+					-v INS="$cks" -v SIGS="$TMPDIR/.$PROGRAM-$REL.sigs" \
+					-v NEWS="$TMPDIR/.$PROGRAM-$REL.news" '
 				/-----CHECKSUMS-----/{
 					atop = split(INS, a)
 					fn = ""
@@ -292,29 +299,29 @@ announcement_prepare() {
 					next
 				}
 				{print}
-			' >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
-			${rm} -f "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
+			' >> "$TMPDIR/$PROGRAM-$REL.txt"
+			$rm -f "$TMPDIR/.$PROGRAM-$REL.sigs"
 		else
-			< .git/make-release.txt ${awk} -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
+			< .git/make-release.txt $awk -v NEWS="$TMPDIR/.$PROGRAM-$REL.news" '
 				/-----NEWS-----/{
 					while((getline sl < NEWS) > 0)
 						print sl
 					next
 				}
 				{print}
-			' >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
+			' >> "$TMPDIR/$PROGRAM-$REL.txt"
 		fi
-	elif [ -f "${TMPDIR}/.${PROGRAM}-${REL}.news" ]; then
-		${cat} "${TMPDIR}/.${PROGRAM}-${REL}.news" >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
+	elif [ -f "$TMPDIR/.$PROGRAM-$REL.news" ]; then
+		$cat "$TMPDIR/.$PROGRAM-$REL.news" >> "$TMPDIR/$PROGRAM-$REL.txt"
 	fi
 
-	${rm} -f "${TMPDIR}/.${PROGRAM}-${REL}.news"
+	$rm -f "$TMPDIR/.$PROGRAM-$REL.news"
 
-	LC_ALL=${ORIG_LC_ALL} ${EDITOR} "${TMPDIR}/${PROGRAM}-${REL}.txt"
+	LC_ALL=$ORIG_LC_ALL $EDITOR "$TMPDIR/$PROGRAM-$REL.txt"
 
 	# HTML convert ready for S-Web42
 	APO=\'
-	< "${TMPDIR}/${PROGRAM}-${REL}.txt" ${awk} -v manual="${MANUAL}" '
+	< "$TMPDIR/$PROGRAM-$REL.txt" $awk -v manual="$MANUAL" '
 	BEGIN{
 		hot = 0
 		print "<?begin?><?mode icewatsm?><pre>"
@@ -381,7 +388,7 @@ announcement_prepare() {
 		# (where the mdocmx(7) anchor follows the number sign).
 		# Ideally the anchors have been automatically expanded by
 		# make-news-anchors.sh before.
-		while(match(s, /(^|\(|[	 ]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-#\/:_.0-9a-zA-Z]+|\$[_0-9a-zA-Z]+)#[0-9]+/))
+		while(match(s, /(^|\(|[	 ]+)("[^"]+"|\*[^\*]+\*|`[^'$APO']+'$APO'|[-~][-#\/:_.0-9a-zA-Z]+|\$[_0-9a-zA-Z]+)#[0-9]+/))
 		{
 			pre = (RSTART > 1) ? substr(s, 1, RSTART - 1) : ""
 			mat = substr(s, RSTART, RLENGTH)
@@ -406,49 +413,63 @@ announcement_prepare() {
 	END{
 		print "</pre><?end?>"
 	}
-	' > "${TMPDIR}/.${PROGRAM}-ann.html"
+	' > "$TMPDIR/.$PROGRAM-ann.html"
 }
 
 upload() (
-	if [ -n "${bigballs}" ] && yesno 'Upload archives'; then :; else
+	if [ -n "$bigballs" ] && yesno 'Upload archives'; then :; else
 		return
 	fi
-	cd "${TMPDIR}"
+	cd "$TMPDIR"
+
+	uplns=
+	if yesno 'Shall i create -latest symbolic links upstream?'; then
+		uplns=y
+	fi
 
 	{
-		echo "-put ${PROGRAM}-${REL}.tar.xz"
-		echo "-rm ${PROGRAM}-latest.tar.xz"
-		echo "-ln -s ${PROGRAM}-${REL}.tar.xz ${PROGRAM}-latest.tar.xz"
-
-		echo "-put ${PROGRAM}-${REL}.tar.xz.asc"
-		echo "-rm ${PROGRAM}-latest.tar.xz.asc"
-		echo "-ln -s ${PROGRAM}-${REL}.tar.xz.asc ${PROGRAM}-latest.tar.xz.asc"
-
-		echo "-put ${PROGRAM}-${REL}.tar.gz"
-		echo "-rm ${PROGRAM}-latest.tar.gz"
-		echo "-ln -s ${PROGRAM}-${REL}.tar.gz ${PROGRAM}-latest.tar.gz"
-
-		echo "-put ${PROGRAM}-${REL}.tar.gz.asc"
-		echo "-rm ${PROGRAM}-latest.tar.gz.asc"
-		echo "-ln -s ${PROGRAM}-${REL}.tar.gz.asc ${PROGRAM}-latest.tar.gz.asc"
-
-		if [ -n "${anntxt}" ]; then
-			echo "-put ${PROGRAM}-${REL}.txt"
-			echo "-rm ${PROGRAM}-latest.txt"
-			echo "-ln -s ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
+		echo "-put $PROGRAM-$REL.tar.xz"
+		if [ -n "$uplns" ]; then
+			echo "-rm $PROGRAM-latest.tar.xz"
+			echo "-ln -s $PROGRAM-$REL.tar.xz $PROGRAM-latest.tar.xz"
 		fi
 
-		echo "-chmod 0644 ${PROGRAM}-${REL}.*"
-	} |
-	${sftp} -b - ${UPLOAD}
+		echo "-put $PROGRAM-$REL.tar.xz.asc"
+		if [ -n "$uplns" ]; then
+			echo "-rm $PROGRAM-latest.tar.xz.asc"
+			echo "-ln -s $PROGRAM-$REL.tar.xz.asc $PROGRAM-latest.tar.xz.asc"
+		fi
+
+		echo "-put $PROGRAM-$REL.tar.gz"
+		if [ -n "$uplns" ]; then
+			echo "-rm $PROGRAM-latest.tar.gz"
+			echo "-ln -s $PROGRAM-$REL.tar.gz $PROGRAM-latest.tar.gz"
+		fi
+
+		echo "-put $PROGRAM-$REL.tar.gz.asc"
+		if [ -n "$uplns" ]; then
+			echo "-rm $PROGRAM-latest.tar.gz.asc"
+			echo "-ln -s $PROGRAM-$REL.tar.gz.asc $PROGRAM-latest.tar.gz.asc"
+		fi
+
+		if [ -n "$anntxt" ]; then
+			echo "-put $PROGRAM-$REL.txt"
+			if [ -n "$uplns" ]; then
+				echo "-rm $PROGRAM-latest.txt"
+				echo "-ln -s $PROGRAM-$REL.txt $PROGRAM-latest.txt"
+			fi
+		fi
+
+		echo "-chmod 0644 $PROGRAM-$REL.*"
+	} | $sftp -b - $UPLOAD
 )
 
 announcement_send() {
-	if [ -n "${anntxt}" ] && yesno 'Send announcement mail?'; then
-		LC_ALL=${ORIG_LC_ALL} ${MAILX} -A ${ACCOUNT} \
-			-s "[ANN]ounce of ${UPROGRAM} v${REL}${RELSYM}" \
-			-q "${TMPDIR}/${PROGRAM}-${REL}.txt" \
-			-b ${MAILBCC} ${MAILTO}
+	if [ -n "$anntxt" ] && yesno 'Send announcement mail?'; then
+		LC_ALL=$ORIG_LC_ALL $MAILX -A $ACCOUNT \
+			-s "[ANN]ounce of $UPROGRAM v$REL$RELSYM" \
+			-q "$TMPDIR/$PROGRAM-$REL.txt" \
+			-b $MAILBCC $MAILTO
 	fi
 }
 
@@ -459,48 +480,48 @@ create_grappa_env() {
 }
 
 grappa=
-if [ ${#} -ne 0 ]; then
-	if [ ${#} != 2 ] || [ "${1}" != grappa ] || [ -z "${2}" ]; then
+if [ $#}-ne 0 ]; then
+	if [ $# != 2 ] || [ "$1" != grappa ] || [ -z "$2" ]; then
 		echo >&2 'You have a hell of a lot to learn about Rock'"'"'n Roll'
 		exit 55
 	fi
-	grappa=${2}
+	grappa=$2
 fi
 
 ref_status
-echo 'Preparing a release on commit '"${headref}"
-if [ -z "${grappa}" ]; then
-	printf '  The HEAD is %s\nName of release tag: ' "${brname}"
+echo 'Preparing a release on commit '"$headref"
+if [ -z "$grappa" ]; then
+	printf '  The HEAD is %s\nName of release tag: ' "$brname"
 	read REL
-	VERSION=${REL}
+	VERSION=$REL
 	release_version
 	release_brcheck
 	release_symname
 else
-	echo 'Grappa to be brought from '"${brname}"' to '"${grappa}"
+	echo 'Grappa to be brought from '"$brname"' to '"$grappa"
 	current_version
-	printf 'Program version is %s, packager release addition shall be: ' "${VERSION}"
+	printf 'Program version is %s, packager release addition shall be: ' "$VERSION"
 	read REL
-	VERSION="${VERSION}-${REL}"
+	VERSION="$VERSION-$REL"
 	release_version
 
 	i=
-	if ${git} rev-parse --verify ${grappa} >/dev/null 2>/dev/null; then :; else
+	if $git rev-parse --verify $grappa >/dev/null 2>/dev/null; then :; else
 		i=-B
 	fi
-	${git} checkout ${i} ${grappa}
-	${git} rm -f '*'
-	${git} archive --format=tar ${headref} | ${tar} -x -f -
-	${git} add .
+	$git checkout $i $grappa
+	$git rm -f '*'
+	$git archive --format=tar $headref | $tar -x -f -
+	$git add .
 fi
 
 echo 'Updating files: calling update_stable_hook'
 update_stable_hook
 
-if [ -z "${grappa}" ]; then
+if [ -z "$grappa" ]; then
 	update_stable_branch
 	create_release_branch
-	test_release_hook v${REL}.ar || exit 1
+	test_release_hook v$REL.ar || exit 1
 	check_timeline_branch
 	repo_push
 	big_balls
@@ -511,9 +532,8 @@ else
 	create_grappa_env
 fi
 
-
 # Finally remove the temporary instances than ran this
-${rm} -f .git/make-release.*
+$rm -f .git/make-release.*
 echo 'Done'
 exit
 # s-sht-mode
