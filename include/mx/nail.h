@@ -505,24 +505,25 @@ do{\
 
 /* Various states set once, and first time messages or initializers */
 enum n_program_state_once{
-   /* We have four program states: (0) pre getopt() done, (_GETOPT) pre rcfile
-    * loaded etc., (_CONFIG) only -X evaluation missing still, followed by
-    * _STARTED when we are fully setup */
+   /* We have five program states: (0) pre getopt() done, _GETOPT: pre rcfile
+    * loaded etc., _CONFIG_FILES: config files loaded etc, but -A not yet
+    * honoured, _CONFIG: only -X evaluation missing still, _STARTED: setup */
    n_PSO_STARTED_GETOPT = 1u<<0,
-   n_PSO_STARTED_CONFIG = 1u<<1,
-   n_PSO_STARTED = 1u<<2,
+   n_PSO_STARTED_CONFIG_FILES = 1u<<1,
+   n_PSO_STARTED_CONFIG = 1u<<2,
+   n_PSO_STARTED = 1u<<3,
 
    /* Exit request pending (quick) */
-   n_PSO_XIT = 1u<<3,
-   n_PSO_QUIT = 1u<<4,
+   n_PSO_XIT = 1u<<4,
+   n_PSO_QUIT = 1u<<5,
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
    /* *posix* requires us to exit with error if sending any mail failed */
-   n_PSO_SEND_ERROR = 1u<<5,
+   n_PSO_SEND_ERROR = 1u<<6,
 
    /* Pre _STARTED */
    /* 1u<<5, */
-   n_PSO_UNICODE = 1u<<6,
-   n_PSO_ENC_MBSTATE = 1u<<7,
+   n_PSO_UNICODE = 1u<<7,
+   n_PSO_ENC_MBSTATE = 1u<<8,
 
    n_PSO_SENDMODE = 1u<<9,
    n_PSO_INTERACTIVE = 1u<<10,
@@ -531,11 +532,11 @@ enum n_program_state_once{
    n_PSO_TTYANY = n_PSO_TTYIN | n_PSO_TTYOUT, /* mx_tty_fp = TTY */
    n_PSO_TTYERR = 1u<<13,
 
-   /* "Later" */
+   /* "Later" (mostly "hacks") */
    n_PSO_t_FLAG_DONE = 1u<<15,
-   n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<16,
-   n_PSO_ERRORS_NOTED = 1u<<17,
-   n_PSO_LINE_EDITOR_INIT = 1u<<18,
+   n_PSO_VAR_SETUP_VERIFY_NEEDED = 1u<<16,
+   n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<17,
+   n_PSO_ERRORS_NOTED = 1u<<18,
    n_PSO_TERMCAP_FULLWIDTH = 1u<<19, /* !am or am+xn (right margin wrap) */
    n_PSO_PS_DOTLOCK_NOTED = 1u<<20
 };
@@ -749,8 +750,7 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_on_compose_splice, /* {notempty=1} */
    ok_v_on_compose_splice_shell, /* {notempty=1} */
    ok_v_on_history_addition, /* {notempty=1} */
-   ok_v_on_mailbox_open, /* {notempty=1} */
-   ok_v_on_mailbox_newmail, /* {notempty=1} */
+   ok_v_on_mailbox_event, /* {notempty=1} */
    ok_v_on_main_loop_tick, /* {notempty=1} */
    ok_v_on_program_exit, /* {notempty=1} */
    ok_v_on_resend_cleanup, /* {notempty=1} */
@@ -790,8 +790,8 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-ok_v_replyto, /* {obsolete=1,notempty=1} */
-   ok_v_reply_to, /* {notempty=1} */
+ok_v_replyto, /* {vip=1,obsolete=1,notempty=1} */
+   ok_v_reply_to, /* {vip=1,notempty=1} */
    ok_v_reply_to_honour,
    ok_v_reply_to_swap_in,
    ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */

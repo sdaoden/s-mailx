@@ -1198,6 +1198,85 @@ t_X_Y_opt_input_go_stack() { # {{{
 	t_epilog "${@}"
 } # }}}
 
+t_more_source_go_stack() { # {{{
+	t_prolog "${@}"
+
+	# (in-account, in-folder-hook impossible in past, but now!)
+	gm sub s1 to 1 from 1 body b1 > ./tx.mbox
+	gm sub s2 to 1 from 1 body b2 > ./ty.mbox
+
+	${cat} >> ./tx.rc <<'_EOT'; ${cat} >> ./ty.rc <<'_EOT'
+define ad {
+	echo >ad $#: $*
+	source 'echo echo ecsrc|'
+	source ./ty.rc
+	echo <ad $#: $*
+}
+account ad {
+	set inbox=./tx.mbox
+	xcall ad acc
+}
+define ome {
+	echo >ome $#: $1: $mailbox-display, $mailbox-basename
+	if $1 == open
+		call ad ome
+	end
+	echo <ome
+}
+set on-mailbox-event=ome
+if "$x" =% ad; account ad; end
+_EOT
+echo ty.rc
+_EOT
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Yx > ./t1-1 2>${E0}
+	cke0 1-1 0 ./t1-1 '12986471 209'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad > ./t1-2 2>${E0}
+	cke0 1-2 0 ./t1-2 '214932415 272'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Yx > ./t1-3 2>${EX}
+	cke0 1-3 0 ./t1-3 '273233288 212'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad > ./t1-4 2>${EX}
+	cke0 1-4 0 ./t1-4 '888557292 275'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx > ./t2-1 2>${E0}
+	cke0 2-1 0 ./t2-1 '3496882298 256'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' > ./t2-2 2>${E0}
+	cke0 2-2 0 ./t2-2 '107331108 319'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx -f ty.mbox > ./t2-3 2>${E0}
+	cke0 2-3 0 ./t2-3 '4170253008 441'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -f ty.mbox > ./t2-4 2>${E0}
+	cke0 2-4 0 ./t2-4 '4077294855 490'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' -Yx > ./t2-5 2>${EX}
+	ck 2-5 0 ./t2-5 '273233288 212' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' > ./t2-6 2>${EX}
+	ck 2-6 0 ./t2-6 '888557292 275' '849946118 56'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' -Yx > ./t3-1 2>${EX}
+	ck 3-1 0 ./t3-1 '273233288 212' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' > ./t3-2 2>${EX}
+	ck 3-2 0 ./t3-2 '888557292 275' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' -Yx > ./t3-3 2>${EX}
+	ck 3-3 0 ./t3-3 '273233288 212' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' > ./t3-4 2>${EX}
+	ck 3-4 0 ./t3-2 '888557292 275' '849946118 56'
+
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-1 2>${E0}
+	cke0 4-1 0 ./t4-1 '1045624831 256'
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' > ./t4-2 2>${E0}
+	cke0 4-2 0 ./t4-2 '2473548010 319'
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-3 2>${EX}
+	ck 4-3 0 ./t4-3 '1045624831 256' '849946118 56'
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' > ./t4-4 2>${EX}
+	ck 4-4 0 ./t4-4 '2473548010 319' '849946118 56'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Xx > ./t5-1 2>${E0}
+	cke0 5-1 0 ./t5-1 '2921315483 34'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Xx > ./t5-2 2>${EX}
+	cke0 5-2 0 ./t5-2 '2921315483 34'
+
+	t_epilog "${@}"
+} # }}}
+
 t_X_errexit() { # {{{
 	t_prolog "${@}"
 
@@ -4044,85 +4123,85 @@ t_localopts() { # {{{
 
 	#{{{ Nestable conditions test
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	define t2 {
-		echo in: t2
-		set t2=t2
-		echo $t2
-	}
-	define t1 {
-		echo in: t1
-		set gv1=gv1
-		localopts on
-		set lv1=lv1 lv2=lv2
-		set lv3=lv3
-		call t2
-		localopts off
-		set gv2=gv2
-		echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
-	}
-	define t0 {
-		echo in: t0
-		call t1
-		echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
-		echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
-	}
-	account trouble {
-		echo in: trouble
-		call t0
-	}
+define t2 {
+	echo in: t2
+	set t2=t2
+	echo $t2
+}
+define t1 {
+	echo in: t1
+	set gv1=gv1
+	localopts on
+	set lv1=lv1 lv2=lv2
+	set lv3=lv3
+	call t2
+	localopts off
+	set gv2=gv2
+	echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+}
+define t0 {
+	echo in: t0
+	call t1
+	echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
+}
+account trouble {
+	echo in: trouble
 	call t0
-	unset gv1 gv2
-	account trouble
-	echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
-	account null
-	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+}
+call t0
+unset gv1 gv2
+account trouble
+echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+account null
+echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
 
-	#
-	define ll2 {
-		localopts $1
-		set x=2
-		echo ll2=$x
-	}
-	define ll1 {
-		set y=$1; shift; eval localopts $y; localopts $1; shift
-		set x=1
-		echo ll1.1=$x
-		call ll2 $1
-		echo ll1.2=$x
-	}
-	define ll0 {
-		set y=$1; shift; eval localopts $y; localopts $1; shift
-		set x=0
-		echo ll0.1=$x
-		call ll1 $y "$@"
-		echo ll0.2=$x
-	}
-	define llx {
-		echo ----- $1: $2 -> $3 -> $4
-		echo ll-1.1=$x
-		eval localopts $1
-		call ll0 "$@"
-		echo ll-1.2=$x
-		unset x
-	}
-	define lly {
-		call llx 'call off' on on on
-		call llx 'call off' off on on
-		call llx 'call off' on off on
-		call llx 'call off' on off off
-		localopts call-fixate on
-		call llx 'call-fixate on' on on on
-		call llx 'call-fixate on' off on on
-		call llx 'call-fixate on' on off on
-		call llx 'call-fixate on' on off off
-		unset x;localopts call on
-		call llx 'call on' on on on
-		call llx 'call on' off on on
-		call llx 'call on' on off on
-		call llx 'call on' on off off
-	}
-	call lly
-	__EOT
+#
+define ll2 {
+	localopts $1
+	set x=2
+	echo ll2=$x
+}
+define ll1 {
+	set y=$1; shift; eval localopts $y; localopts $1; shift
+	set x=1
+	echo ll1.1=$x
+	call ll2 $1
+	echo ll1.2=$x
+}
+define ll0 {
+	set y=$1; shift; eval localopts $y; localopts $1; shift
+	set x=0
+	echo ll0.1=$x
+	call ll1 $y "$@"
+	echo ll0.2=$x
+}
+define llx {
+	echo ----- $1: $2 -> $3 -> $4
+	echo ll-1.1=$x
+	eval localopts $1
+	call ll0 "$@"
+	echo ll-1.2=$x
+	unset x
+}
+define lly {
+	call llx 'call off' on on on
+	call llx 'call off' off on on
+	call llx 'call off' on off on
+	call llx 'call off' on off off
+	localopts call-fixate on
+	call llx 'call-fixate on' on on on
+	call llx 'call-fixate on' off on on
+	call llx 'call-fixate on' on off on
+	call llx 'call-fixate on' on off off
+	unset x;localopts call on
+	call llx 'call on' on on on
+	call llx 'call on' off on on
+	call llx 'call on' on off on
+	call llx 'call on' on off off
+}
+call lly
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '4016155249 1246'
 
@@ -9143,33 +9222,40 @@ t_e_H_L_opts() { # {{{
 	printf 'm me3@exam.ple\n~s subject abc\nLine 123.\n~.\n' |
 	${MAILX} ${ARGS} -Smta=test://t.mbox \
 		-r '' -X 'set from=pony3@$LOGNAME' >>${E0} 2>&1
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test size; set autosort=size showname showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome size; set autosort=size showname showto
+			end
 		}' -fH ./t.mbox > ./t2 2>>${E0}
+	cke0 2 0 ./t2 '3285796114 409'
 
-	cke0 2 0 ./t2 '3132089442 413'
-
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test subject; set autosort=subject showname showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome subject; set autosort=subject showname showto
+			end
 		}' -fH ./t.mbox > ./t3 2>${E0}
-	cke0 3 0 ./t3 '2813644801 416'
+	cke0 3 0 ./t3 '922425541 412'
 
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test from; set autosort=from showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome from; set autosort=from showto
+			end
 		}' -fH ./t.mbox > ./t4 2>${E0}
-	cke0 4 0 ./t4 '3208236297 413'
+	cke0 4 0 ./t4 '3327093881 409'
 
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test to; set autosort=to showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome to; set autosort=to showto
+			end
 		}' -fH ./t.mbox > ./t5 2>${E0}
-	cke0 5 0 ./t5 '901727002 411'
+	cke0 5 0 ./t5 '3769863165 407'
 
 	ck 6 - ./t.mbox '3540578520 839'
 
 	t_epilog "${@}"
 } # }}}
 
-t_newmail_on_folder() { #{{{ (renamed to on-mailbox)
+t_on_mailbox() { # {{{
 	t_prolog "${@}"
 
 	gm from 'ex1@am.ple' sub s1 > ./t1x.mbox
@@ -9179,52 +9265,56 @@ t_newmail_on_folder() { #{{{ (renamed to on-mailbox)
 	xfolder=$(${pwd})
 
 	#{{{
-	${MAILX} ${ARGS} -Y '#
-		set noautosort noshowto \
-			on-mailbox-open=ofo on-mailbox-newmail=ofn \
-			on-mailbox-open-+t1x.mbox=ofo-z on-mailbox-newmail-+t1x.mbox=ofn-z \
-			on-mailbox-open-+t1y.mbox=ofo-z on-mailbox-newmail-+t1y.mbox=ofn-z
-		define ofo {
-			echo "ofo as<$autosort> showto<$showto> kuh<$kuh>"
-			set autosort=to showto kuh=muh
-		}
-		define ofn {
-			echo "ofn as<$autosort> showto<$showto> kuh<$kuh>"
-			set autosort=from kuh=wuff
-			search:u
-		}
-		define ofo-z {
-			echo ofo-z; \xcall ofo
-		}
-		define ofn-z {
-			echo ofn-z; \xcall ofn
-		}
-		echo "1 as<$autosort> showto<$showto> kuh<$kuh>"
-		File ./t1x.mbox
-		echo "2 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "3 as<$autosort> showto<$showto> kuh<$kuh>"
-		!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
-		echo "4 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "5 as<$autosort> showto<$showto> kuh<$kuh>"
-		headers
-		#
-		set folder='"${xfolder}"'
-		echo "11 as<$autosort> showto<$showto> kuh<$kuh>"
-		File +t1y.mbox
-		echo "12 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "13 as<$autosort> showto<$showto> kuh<$kuh>"
-		!'"${cat}"' ./t1z.mbox >> ./t1y.mbox
-		echo "14 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "15 as<$autosort> showto<$showto> kuh<$kuh>"
-		headers
-		' \
-		-R > ./t1 2>${E0}
+	</dev/null ${MAILX} ${ARGS} -Y '#
+\set noautosort noshowto \
+	on-mailbox-event=ome on-mailbox-event-+t1x.mbox=ome-z on-mailbox-event-+t1y.mbox=ome-z
+\def ome {
+	\echon "ome #<$#> 1<$1> <$mailbox-basename,$mailbox-display>: "
+	\if $1 == open
+		\ec "open as<$autosort> showto<$showto> kuh<$kuh>"
+		\set autosort=to showto kuh=muh
+	\eli $1 == newmail
+		\ec "newmail as<$autosort> showto<$showto> kuh<$kuh>"
+		\set autosort=from kuh=wuff
+		\ec =newest;\sea:N;\ec =all;\sea*
+	\el
+		\ec
+	\end
+}
+\def ome-z {
+	\ec ome-z; \xcall ome "$@"
+}
+\def em {
+	\ec "$@ as<$autosort> showto<$showto> kuh<$kuh>"
+}
+\commandalias e \call em
+#
+e 1;\Fi ./t1x.mbox
+e 2;\h;\newmail
+e 3;\!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
+e 4;\newmail
+e 5;\h
+e 6;\!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
+e 7;\set header;\newmail;\unset header
+e 8;\h
+#
+\set folder='"${xfolder}"'
+#
+e 11;\Fi +t1y.mbox
+e 12;\h;\newmail
+e 13;\!'"${cat}"' ./t1z.mbox >> ./t1y.mbox
+e 14;\newmail
+e 15;\h
+#
+e 21;\Fi ./t1x.mbox
+e 22;\h;\newmail
+e 23;\!'"${cat}"' ./t1z.mbox >> ./t1x.mbox
+e 24;\newmail
+e 25;\h
+' \
+	-R > ./t1 2>${E0}
 	#}}}
-	cke0 1 0 ./t1 '3709091196 1000'
+	cke0 1 0 ./t1 '211872035 4022'
 
 	t_epilog "${@}"
 } # }}}
@@ -13685,6 +13775,7 @@ t_all() { #{{{
 	jspawn eval
 	jspawn call
 	jspawn X_Y_opt_input_go_stack
+	jspawn more_source_go_stack
 	jspawn X_errexit
 	jspawn Y_errexit
 	jspawn S_freeze
@@ -13760,7 +13851,7 @@ t_all() { #{{{
 	jspawn mta_aliases # (after t_expandaddr)
 	jspawn filetype
 	jspawn e_H_L_opts
-	jspawn newmail_on_folder
+	jspawn on_mailbox
 	jspawn q_t_etc_opts
 	jspawn message_injections
 	jspawn attachments

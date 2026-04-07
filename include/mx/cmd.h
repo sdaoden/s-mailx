@@ -61,7 +61,8 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 	mx_CMD_ARG_V = 1u<<19, /* Supports `vput' prefix */
 	mx_CMD_ARG_W = 1u<<20, /* Invalid when read only bit */
 	mx_CMD_ARG_X = 1u<<21, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-	mx_CMD_ARG_NEEDMAC = 1u<<22, /* Only within a macro/account */
+	mx_CMD_ARG_NO_HOOK = 1u<<22, /* Not within PS_HOOK_MASK */
+	mx_CMD_ARG_NEEDMAC = 1u<<23, /* Only within a macro/account */
 
 	/* TODO Never place in `history': should be replaced by cmd_ctx flag stating
 	 * TODO do not place "this" invocation in history! */

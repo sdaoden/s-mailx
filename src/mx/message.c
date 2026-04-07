@@ -87,18 +87,19 @@ enum a_msg_idfield{
 };
 
 enum a_msg_state{
-   a_MSG_S_NEW = 1u<<0,
-   a_MSG_S_OLD = 1u<<1,
-   a_MSG_S_UNREAD = 1u<<2,
-   a_MSG_S_DELETED = 1u<<3,
-   a_MSG_S_READ = 1u<<4,
-   a_MSG_S_FLAG = 1u<<5,
-   a_MSG_S_ANSWERED = 1u<<6,
-   a_MSG_S_DRAFT = 1u<<7,
-   a_MSG_S_SPAM = 1u<<8,
-   a_MSG_S_SPAMUNSURE = 1u<<9,
-   a_MSG_S_MLIST = 1u<<10,
-   a_MSG_S_MLSUBSCRIBE = 1u<<11
+   a_MSG_S_NEWEST = 1u<<0,
+   a_MSG_S_NEW = 1u<<1,
+   a_MSG_S_OLD = 1u<<2,
+   a_MSG_S_UNREAD = 1u<<3,
+   a_MSG_S_DELETED = 1u<<4,
+   a_MSG_S_READ = 1u<<5,
+   a_MSG_S_FLAG = 1u<<6,
+   a_MSG_S_ANSWERED = 1u<<7,
+   a_MSG_S_DRAFT = 1u<<8,
+   a_MSG_S_SPAM = 1u<<9,
+   a_MSG_S_SPAMUNSURE = 1u<<10,
+   a_MSG_S_MLIST = 1u<<11,
+   a_MSG_S_MLSUBSCRIBE = 1u<<12
 };
 
 struct a_msg_coltab{
@@ -124,6 +125,7 @@ struct a_msg_speclex{
 };
 
 static struct a_msg_coltab const a_msg_coltabs[] = {
+   {'N', {0,}, a_MSG_S_NEWEST, MNEWEST, MNEWEST},
    {'n', {0,}, a_MSG_S_NEW, MNEW, MNEW},
    {'o', {0,}, a_MSG_S_OLD, MNEW, 0},
    {'u', {0,}, a_MSG_S_UNREAD, MREAD, 0},
@@ -201,9 +203,6 @@ static boole a_msg_match_dash(struct message *mp, char const *str);
  * This is the engine behind the "@[..@].." search */
 static boole a_msg_match_at(struct message *mp, struct mx_srch_ctx *scp);
 
-/* Unmark the named message */
-static void a_msg_unmark(int mesg);
-
 /* Return the message number corresponding to the passed meta character */
 static int a_msg_metamess(int meta, int f);
 
@@ -271,18 +270,19 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    char const *id;
    char **nmadat_lofi, **nmadat, **np, **nq, *cp;
    struct message *mp, *mx;
+   BITENUM_IS(u32,mflag) mf;
    int i, valdot, beg, colmod, tok, colresult;
    enum{
       a_NONE = 0,
-      a_ALLNET = 1u<<0,    /* (CTA()d to be == TRU1 */
-      a_ALLOC = 1u<<1,     /* Have allocated something */
-      a_THREADED = 1u<<2,
+      a_ALLNET = 1u<<0, /* (CTA()d to be == TRU1 */
+      a_ALLOC = 1u<<1, /* Have allocated something */
+      a_THREADED = 1u<<2, /* Threaded display */
       a_ERROR = 1u<<3,
       a_ANY = 1u<<4,       /* Have marked just ANY */
       a_RANGE = 1u<<5,     /* Seen dash, await close */
       a_ASTER = 1u<<8,
-      a_TOPEN = 1u<<9,     /* ( used (and didn't match) */
-      a_TBACK = 1u<<10,    /* ` used (and didn't match) */
+      a_TOPEN = 1u<<9,     /* ( used (and did not match) */
+      a_TBACK = 1u<<10,    /* ` used (and did not match) */
 #ifdef mx_HAVE_IMAP
       a_HAVE_IMAP_HEADERS = 1u<<14,
 #endif
@@ -290,14 +290,13 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
       a_TMP = 1u<<30
    } flags;
    NYD_IN;
-   LCTA((u32)a_ALLNET == (u32)TRU1,
+   LCTA(S(u32,a_ALLNET) == S(u32,TRU1),
       "Constant is converted to boole via AND, thus");
 
    /* Update message array: clear MMARK but remember its former state for ` */
    for(i = msgCount; i-- > 0;){
-      enum mflag mf;
-
-      mf = (mp = &message[i])->m_flag;
+      mp = &message[i];
+      mf = mp->m_flag;
       if(mf & MMARK)
          mf |= MOLDMARK;
       else
@@ -315,12 +314,12 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    UNINIT(beg, 0);
    UNINIT(idfield, a_MSG_ID_REFERENCES);
    a_msg_threadflag = FAL0;
-   valdot = (int)P2UZ(dot - message + 1);
+   valdot = S(int,P2UZ(dot - message + 1));
    colmod = 0;
    id = NULL;
-   flags = a_ALLOC | (mb.mb_threaded ? a_THREADED : 0) |
+   flags = (a_ALLOC | (mb.mb_threaded ? a_THREADED : 0) |
          ((!(n_pstate & n_PS_HOOK_MASK) || (n_poption & n_PO_D_V))
-            ? a_LOG : 0);
+            ? a_LOG : 0));
 
    while((tok = a_msg_scan(&msl)) != a_MSG_T_EOL){
       if((a_msg_threadflag = (tok < 0)))
@@ -348,8 +347,8 @@ jnumber:
 
                for(; i <= msl.msl_no; ++i){
                   mp = &message[i - 1];
-                  if(!(mp->m_flag & MHIDDEN) &&
-                         (f == MDELETED || !(mp->m_flag & MDELETED))){
+                  mf = mp->m_flag;
+                  if(!(mf & MHIDDEN) && (f == MDELETED || !(mf & MDELETED))){
                      mark(i, f);
                      flags |= a_ANY;
                   }
@@ -375,8 +374,8 @@ jnumber:
 jnumber__thr:
                for(;;){
                   mp = &message[i - 1];
-                  if(!(mp->m_flag & MHIDDEN) &&
-                         (f == MDELETED || !(mp->m_flag & MDELETED))){
+                  mf = mp->m_flag;
+                  if(!(mf & MHIDDEN) && (f == MDELETED || !(mf & MDELETED))){
                      if(tf & a_T_HOT){
                         mark(i, f);
                         flags |= a_ANY;
@@ -532,14 +531,16 @@ jevalcol_err:
 
          flags |= a_TBACK;
          for(i = 0; i < msgCount; ++i){
-            if((mp = &message[i])->m_flag & MHIDDEN)
+            mp = &message[i];
+            mf = mp->m_flag;
+            if(mf & MHIDDEN)
                continue;
-            if((mp->m_flag & MDELETED) != (unsigned)f){
+            if((mf & MDELETED) != S(u32,f)){
                if(!a_msg_list_last_saw_d)
                   continue;
                a_msg_list_saw_d = TRU1;
             }
-            if(mp->m_flag & MOLDMARK){
+            if(mf & MOLDMARK){
                mark(i + 1, f);
                flags &= ~a_TBACK;
                flags |= a_ANY;
@@ -615,9 +616,11 @@ jevalcol_err:
    /* * is special at this point, after we have parsed the entire line */
    if(flags & a_ASTER){
       for(i = 0; i < msgCount; ++i){
-         if((mp = &message[i])->m_flag & MHIDDEN)
+         mp = &message[i];
+         mf = mp->m_flag;
+         if(mf & MHIDDEN)
             continue;
-         if(!a_msg_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
+         if(!a_msg_list_saw_d && (mf & MDELETED) != S(u32,f))
             continue;
          mark(i + 1, f);
          flags |= a_ANY;
@@ -752,9 +755,11 @@ jat_where_default:
 
       su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
       for(i = 0; i < msgCount; ++i){
-         if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
+         mp = &message[i];
+         mf = mp->m_flag;
+         if(mf & (MMARK | MHIDDEN))
             continue;
-         if(!a_msg_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
+         if(!a_msg_list_saw_d && (mf & MDELETED) != S(u32,f))
             continue;
 
          flags &= ~a_TMP;
@@ -813,9 +818,11 @@ jnamesearch_scpfree:
       for(i = 0; i < msgCount; ++i){
          struct a_msg_coltab const *colp;
 
-         if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
+         mp = &message[i];
+         mf = mp->m_flag;
+         if(mf & (MMARK | MHIDDEN))
             continue;
-         if(!a_msg_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
+         if(!a_msg_list_saw_d && (mf & MDELETED) != S(u32,f))
             continue;
 
          for(colp = a_msg_coltabs;
@@ -832,8 +839,7 @@ jnamesearch_scpfree:
                      if(what == mx_mlist_query_mp(mp, what))
                         goto jcolonmod_mark;
                   }
-               }else if((mp->m_flag & colp->mco_mask
-                     ) == (enum mflag)colp->mco_equal){
+               }else if((mf & colp->mco_mask) == S(u32,colp->mco_equal)){
 jcolonmod_mark:
                   mark(i + 1, f);
                   flags |= a_ANY;
@@ -1238,18 +1244,6 @@ jleave:
    return rv;
 }
 
-static void
-a_msg_unmark(int mesg){
-   uz i;
-   NYD2_IN;
-
-   i = (uz)mesg;
-   if(i < 1 || UCMP(z, i, >, msgCount))
-      n_panic(_("Bad message number to unmark"));
-   message[--i].m_flag &= ~MMARK;
-   NYD2_OU;
-}
-
 static int
 a_msg_metamess(int meta, int f){
    struct message *mp;
@@ -1645,21 +1639,6 @@ n_getmsglist(char const *buf, int *vector, int flags, boole skip_aka_dryrun,
    }
 
    ip = vector;
-   if(n_pstate & n_PS_HOOK_NEWMAIL){
-      mc = 0;
-      for(mp = message; mp < &message[msgCount]; ++mp)
-         if(mp->m_flag & MMARK){
-            if(!(mp->m_flag & MNEWEST))
-               a_msg_unmark(S(int,P2UZ(mp - message + 1)));
-            else
-               ++mc;
-         }
-      if(mc == 0){
-         mc = -1;
-         goto jleave;
-      }
-   }
-
    if(mb.mb_threaded == 0){
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK)

@@ -138,9 +138,10 @@ FL int mx_xcall(void *vp, void *lospopts);
 FL int c_call_if(void *vp);
 
 /* Accounts: `account', `unaccount' */
+FL boole mx_account_enter(char const *name);
 FL void mx_account_leave(void);
-FL int c_account(void *v);
-FL int c_unaccount(void *v);
+FL int c_account(void *vp);
+FL int c_unaccount(void *vp);
 
 /* `localopts', `shift', `return' */
 FL int c_localopts(void *vp);
@@ -153,9 +154,17 @@ FL int c_return(void *vp);
 FL void temporary_on_xy_hook_caller(char const *hname, char const *mac,
       boole sigs_held);
 
-/* TODO Check whether *on-mailbox-open* exists for currently active mailbox */
-FL boole temporary_on_mailbox_open(boole only_new_mail_check);
-FL void temporary_on_mailbox_close(void); /* XXX im. hack */
+/* TODO Check whether *on-mailbox-* exists for currently active mailbox;
+ * TODO enum mx_on_mailbox_event does not belong here */
+enum mx_on_mailbox_event{
+   mx_ON_MAILBOX_EVENT_CLOSE,
+   mx_ON_MAILBOX_EVENT_ENTER,
+   mx_ON_MAILBOX_EVENT_LEAVE,
+   mx_ON_MAILBOX_EVENT_NEWMAIL,
+   mx_ON_MAILBOX_EVENT_OPEN
+};
+enum{mx__ON_MAILBOX_EVENT_MAX = mx_ON_MAILBOX_EVENT_OPEN};
+FL boole mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev);
 
 /* TODO v15 drop Invoke compose hook macname
  * _hook_control(): local argument only of interest for enable=!FAL0 */
@@ -184,6 +193,9 @@ FL s32 mx_var_re_match_set(u32 group_count, char const *dat,
 
 /* Setting up batch mode, variable-handling side */
 FL void n_var_setup_batch_mode(void);
+
+/* Config files loaded, do some expansions / verifications yet impossible */
+FL boole n_var_setup_verify(char const **account, boole error_out);
 
 /* Can name freely be used as a variable by users? */
 FL boole n_var_is_user_writable(char const *name);

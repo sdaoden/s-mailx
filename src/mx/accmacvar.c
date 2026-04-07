@@ -13,6 +13,7 @@
  *@ TODO   UNLIKELY() it, and add a OnProgramStartupCompletedEvent to
  *@ TODO   incorporate what it tracks, then drop it.  Etc.
  *@ TODO   Global -> Scope -> Local, all "overlay" objects.
+ *@ TODO . Also, storing variable names can be optional for non-chain built-ins
  *
  * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -324,7 +325,7 @@ static struct a_amv_mac *a_amv_macs[a_AMV_PRIME]; /* TODO dynamically spaced */
 /* Unroll list of currently running macro stack (XXX grrr global byypass) */
 static struct a_amv_lostack *a_amv_lopts;
 #define a_AMV_HAVE_LOPTS_AKA_LOCAL() /* TODO */\
-	(/*mx_go_ctx_is_macro() || a_amv_on_mailbox_open_lopts != NIL || */\
+	(/*mx_go_ctx_is_macro() || a_amv_on_mailbox_lopts != NIL || */\
 	/*a_amv_compose_lostack != NIL*/ a_amv_lopts != NIL)
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
@@ -338,9 +339,9 @@ static struct a_amv_pospar a_amv_pospar;
 /* Ditto, $^[#0-9].. */
 static struct a_amv_pospar a_amv_re_match;
 
-/* TODO We really deserve localopts support for *on-mailbox-open*, so hack in today via a static lostack, it should be
+/* TODO We really deserve localopts support for *on-mailbox-*, so hack in today via a static lostack, it should be
  * TODO be a field in mailbox, once that is a real multi-instance object */
-static struct a_amv_var *a_amv_on_mailbox_open_lopts;
+static struct a_amv_var *a_amv_on_mailbox_lopts;
 
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_lostack *a_amv_compose_lostack;
@@ -386,9 +387,9 @@ static void a_amv_lopts_unroll(struct a_amv_var **avpp);
 static char *a_amv_var_copy(char const *str);
 static void a_amv_var_free(char *cp);
 
-/* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail (or propagate errors), _VIP_SET_PRE may and
- * should cause abortion */
+/* _VIP_SET_POST and _VIP_CLEAR do not fail (or propagate errors), _VIP_SET_PRE may and should cause abortion */
 static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val);
+static char const *a_amv_var__vips_addr(enum okeys okey, char const **val);
 
 /* _VF_NUM / _VF_POSNUM */
 static boole a_amv_var_check_num(char const *val, boole posnum);
@@ -1026,7 +1027,9 @@ a_amv_var_free(char *cp){
 
 static boole
 a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val){
-	char const *emsg;
+	struct n_string s_b, *s = &s_b;
+	char *cp;
+	char const *emsg, *ccp;
 	boole ok;
 	NYD2_IN;
 
@@ -1044,10 +1047,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			if((*val = n_iconv_normalize_name(*val)) == NIL)
 				ok = FAL0;
 			break;
-		case ok_v_customhdr:{
-			char const *ccp;
-			char *cp;
-
+		case ok_v_customhdr:
 			cp = savestr(*val);
 			while((ccp = su_cs_sep_escable_c(&cp, ',', TRU1)) != NIL){
 				if(!n_header_add_custom(NIL, ccp, TRUM1)){
@@ -1055,26 +1055,18 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 					goto jerr;
 				}
 			}
-			}break;
-		case ok_v_from:
-		case ok_v_sender:
-		case ok_v_smtp_from:{
-			struct mx_name *np;
-
-			np = (okey != ok_v_from ? n_extract_single : lextract)(*val, GEXTRA | GFULL);
-			if(np == NIL){
-jefrom:
-				emsg = N_("*from* / *sender* / *smtp-from*: invalid address(es): %s\n");
+			break;
+		case ok_v_replyto:
+			n_OBSOLETE("*replyto*: please set *reply-to*, doing it for you");
+			FALLTHRU
+		case ok_v_from: FALLTHRU
+		case ok_v_sender: FALLTHRU
+		case ok_v_smtp_from: FALLTHRU
+		case ok_v_reply_to:
+			emsg = a_amv_var__vips_addr(okey, val);
+			if(emsg != NIL)
 				goto jerr;
-			}else{
-				if(okey == ok_v_smtp_from)
-					*val = np->n_name;
-
-				for(; np != NIL; np = np->n_flink)
-					if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-						goto jefrom;
-			}
-			}break;
+			break;
 		case ok_v_HOME:
 			/* Note this gets called from main.c during initialization, and they simply set this to pw_dir
 			 * as a fallback: do not verify _that_ call.  See main.c! */
@@ -1087,32 +1079,28 @@ jefrom:
 		case ok_v_hostname:
 		case ok_v_smtp_hostname:
 			if(**val != '\0'){
-				struct n_string cnv;
-
-				n_string_creat_auto(&cnv);
-				if(!n_idna_to_ascii(&cnv, *val, UZ_MAX)){
+				n_string_creat_auto(s);
+				if(!n_idna_to_ascii(s, *val, UZ_MAX)){
 					/*n_string_gut(&res);*/
 					emsg = N_("*hostname*/*smtp_hostname*: IDNA encoding failed: %s\n");
 					goto jerr;
 				}
-				*val = n_string_cp(&cnv);
+				*val = n_string_cp(s);
 				/*n_string_drop_ownership(&cnv);*/
 			}
 			break;
 #endif
 		case ok_v_quote_chars:{
 			char c;
-			char const *cp;
 
-			for(cp = *val; (c = *cp++) != '\0';)
+			for(ccp = *val; (c = *ccp++) != '\0';)
 				if(!su_cs_is_ascii(c) || su_cs_is_space(c)){
 					ok = FAL0;
 					break;
 				}
 			}break;
 		case ok_v_sendcharsets:{
-			struct n_string s_b, *s = &s_b;
-			char *csv, *cp;
+			char *csv;
 
 			s = n_string_creat_auto(s);
 			csv = savestr(*val);
@@ -1175,13 +1163,11 @@ jefrom:
 			ok_bset(asksub);
 			break;
 		case ok_v_bind_timeout: /* v15-compat: drop this */
-			n_OBSOLETE("*bind-timeout*: please set *bind-inter-byte-timeout*, doing it for you (for now)");
+			n_OBSOLETE("*bind-timeout*: please set *bind-inter-byte-timeout*, doing it for you");
 			n_PS_ROOT_BLOCK(ok_vset(bind_inter_byte_timeout, *val));
 			break;
 		case ok_v_customhdr:{
-			char const *ccp;
 			struct n_header_field *hflp, **hflpp;
-			char *cp;
 
 			cp = savestr(*val);
 			hflp = NIL;
@@ -1207,11 +1193,10 @@ jefrom:
 			break;
 		case ok_v_ifs:{
 			char *x_b, *x, c;
-			char const *cp;
 
-			cp = *val;
-			x_b = x = su_AUTO_ALLOC(su_cs_len(cp) +1);
-			while((c = *cp++) != '\0')
+			ccp = *val;
+			x_b = x = su_AUTO_ALLOC(su_cs_len(ccp) +1);
+			while((c = *ccp++) != '\0')
 				if(su_cs_is_space(c))
 					*x++ = c;
 			*x = '\0';
@@ -1348,6 +1333,61 @@ jerr:
 	n_err(emsg, n_shexp_quote_cp(*val, FAL0));
 	ok = FAL0;
 	goto jleave;
+}
+
+static char const *
+a_amv_var__vips_addr(enum okeys okey, char const **val){
+	struct n_string s_b, *s = &s_b;
+	struct mx_name *np;
+	boole ready, single;
+	char const *emsg;
+	NYD2_IN;
+
+	s = n_string_creat_auto(s);
+
+	emsg = NIL;
+	ready = ((n_psonce & n_PSO_STARTED_CONFIG_FILES) != 0);
+	single = (okey != ok_v_from && okey != ok_v_reply_to);
+
+	np = (single ? n_extract_single : lextract)(*val, GEXTRA | GFULL);
+	if(np == NIL){
+jerr:
+		s = n_string_assign_cp(s, V_("invalid address(es): "));
+		s = n_string_push_cp(s, &a_amv_var_names[a_amv_var_map[S(u32,okey)].avm_keyoff]);
+		s = n_string_push_cp(s, ": %s\n");
+		emsg = n_string_cp(s);
+	}else{
+		n_psonce |= n_PSO_VAR_SETUP_VERIFY_NEEDED;
+
+		if(ready){
+			np = usermap(np, TRU1);
+			if(np == NIL)
+				goto jerr;
+			if(single && np->n_flink != NIL)
+				goto jerr;
+		}
+
+		if(single){
+			if(ready && is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+				goto jerr;
+			*val = (okey == ok_v_smtp_from) ? np->n_name : np->n_fullname;
+		}else{
+			for(; np != NIL; np = np->n_flink){
+				if(ready && is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+					goto jerr;
+				if(s->s_len > 0)
+					s = n_string_push_c(s, ',');
+				s = n_string_push_cp(s, np->n_fullname);
+			}
+			*val = n_string_cp(s);
+
+			if(okey == ok_v_replyto) /* v15-compat */
+				n_PS_ROOT_BLOCK(ok_vset(reply_to, *val));
+		}
+	}
+
+	NYD2_OU;
+	return emsg;
 }
 
 static boole
@@ -2877,89 +2917,39 @@ c_call_if(void *vp){
 	return rv;
 }
 
-FL void
-mx_account_leave(void){
-	/* Note no care for *account* here */
+FL boole
+mx_account_enter(char const *name){
 	struct a_amv_mac_call_args *amcap;
+	int i, oqf, nqf;
 	struct a_amv_mac *amp;
-	char const *cp;
-	char *var;
 	NYD_IN;
 
-	if(a_amv_acc_curr != NIL){
-		/* Is there a cleanup hook? */
-		var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
-		if((cp = n_var_vlook(var, FAL0)) != NIL || (cp = ok_vlook(on_account_cleanup)) != NIL){
-			if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
-				amcap = su_LOFI_CALLOC(sizeof *amcap);
-				amcap->amca_name = cp;
-				amcap->amca_amp = amp;
-				amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
-				amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
-				amcap->amca_no_xcall = TRU1;
-				amcap->amca_pospar = &amcap->amca__pospar;
-				amcap->amca_re_match = &amcap->amca__re_match;
-				n_pstate |= n_PS_HOOK;
-				(void)a_amv_mac_exec(amcap, NIL);
-				n_pstate &= ~n_PS_HOOK_MASK;
-			}else
-				n_err(_("*on-account-leave* hook %s does not exist\n"), n_shexp_quote_cp(cp, FAL0));
-		}
-
-		/* `localopts'? */
-		if(a_amv_acc_curr->am_lopts != NIL)
-			a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
-
-		/* For accounts this lingers */
-		--a_amv_acc_curr->am_refcnt;
-		if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
-			a_amv_mac_free(a_amv_acc_curr);
-	}
-
-	NYD_OU;
-}
-
-FL int
-c_account(void *v){
-	struct a_amv_mac_call_args *amcap;
-	struct a_amv_mac *amp;
-	char **args;
-	int rv, i, oqf, nqf;
-	NYD_IN;
-
-	rv = 1;
-
-	if((args = v)[0] == NIL){
-		rv = (a_amv_mac_show(a_AMV_MF_ACCOUNT, NIL) == FAL0);
+	if((amp = a_amv_acc_curr) != NIL && !su_cs_cmp(amp->am_name, name)){
+		n_err(_("account: account already active: %s\n"), name);
 		goto jleave;
 	}
 
-	if(args[1] != NIL){
-		if(args[1][0] != '{' || args[1][1] != '\0' || args[2] != NIL){
-			mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("account"), NIL);
-			goto jleave;
-		}
-		if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
-			n_err(_("account: cannot use reserved name: %s\n"), ACCOUNT_NULL);
-			goto jleave;
-		}
-		rv = (a_amv_mac_def(args[0], a_AMV_MF_ACCOUNT) == FAL0);
+	if(!su_cs_cmp_case(name, ACCOUNT_NULL))
+		amp = NIL;
+	else if((amp = a_amv_mac_lookup(name, NIL, a_AMV_MF_ACCOUNT)) == NIL){
+		n_err(_("account: account does not exist: %s\n"), name);
 		goto jleave;
 	}
 
-	if(n_pstate & n_PS_HOOK_MASK){
-		n_err(_("account: cannot change account from within a hook\n"));
+	/* In the startup phase we accumulate any `account' until n_var_setup_verify() clears it up */
+	if(!(n_psonce & n_PSO_STARTED_CONFIG_FILES)){
+		n_psonce |= n_PSO_VAR_SETUP_VERIFY_NEEDED;
+		n_PS_ROOT_BLOCK(ok_vset(account, amp->am_name));
+		goto jleave;
+	}
+	/* Otherwise it gets too complicated in here: simply forbid it! */
+	if((n_psonce & n_PSO_STARTED_CONFIG) && !(n_psonce & n_PSO_STARTED)){
+		n_err(_("account: cannot be called via -X option: %s\n"), name);
+		amp = NIL;
 		goto jleave;
 	}
 
 	save_mbox_for_possible_quitstuff();
-
-	amp = NIL;
-	if(su_cs_cmp_case(args[0], ACCOUNT_NULL) != 0 && (amp = a_amv_mac_lookup(args[0], NIL, a_AMV_MF_ACCOUNT)) == NIL){
-		n_err(_("account: account does not exist: %s\n"), args[0]);
-		goto jleave;
-	}
-
 	oqf = savequitflags();
 
 	/* Shutdown the active account */
@@ -2986,42 +2976,129 @@ c_account(void *v){
 			mx_account_leave();
 			n_PS_ROOT_BLOCK(ok_vclear(account));
 			n_err(_("account: failed to switch to account: %s\n"), amp->am_name);
+			amp = NIL;
 			goto jleave;
 		}
 	}else
 		n_PS_ROOT_BLOCK(ok_vclear(account));
 
-	/* Otherwise likely initial setfile() in a_main_rcv_mode() will pick up */
+	/* Otherwise setfile("%") of a_main_rcv_mode() will pick up */
 	if(n_psonce & n_PSO_STARTED){
-		ASSERT(!(n_pstate & n_PS_HOOK_MASK));
 		nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
 		restorequitflags(oqf);
 		i = setfile("%", FEDIT_SYSBOX | FEDIT_ACCOUNT);
 		restorequitflags(nqf);
-		if(i < 0)
+		if(i < 0){
+			amp = NIL;
 			goto jleave;
-		temporary_on_mailbox_open(FAL0);
-		if(i != 0 && !ok_blook(emptystart)) /* Avoid annoying "double message" */
+		}
+		mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_OPEN);
+		if(i != 0 && !ok_blook(emptystart)){ /* Avoid annoying "double message" */
+			amp = NIL;
 			goto jleave;
+		}
 		n_folder_announce(n_ANNOUNCE_CHANGE);
 	}
 
-	rv = 0;
+jleave:
+	NYD_OU;
+	return (amp != NIL);
+}
+
+FL void
+mx_account_leave(void){
+	/* Note no care for *account* here */
+	struct a_amv_mac_call_args *amcap;
+	struct a_amv_mac *amp;
+	char const *cp;
+	char *var;
+	NYD_IN;
+
+	if(a_amv_acc_curr == NIL)
+		goto jleave;
+
+	/* Is there a cleanup hook? */
+	var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
+	if((cp = n_var_vlook(var, FAL0)) != NIL || (cp = ok_vlook(on_account_cleanup)) != NIL){
+		if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
+			amcap = su_LOFI_CALLOC(sizeof *amcap);
+			amcap->amca_name = cp;
+			amcap->amca_amp = amp;
+			amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
+			amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+			amcap->amca_no_xcall = TRU1;
+			amcap->amca_pospar = &amcap->amca__pospar;
+			amcap->amca_re_match = &amcap->amca__re_match;
+			n_pstate |= n_PS_HOOK;
+			(void)a_amv_mac_exec(amcap, NIL);
+			n_pstate &= ~n_PS_HOOK_MASK;
+		}else
+			n_err(_("*on-account-leave* hook %s does not exist\n"), n_shexp_quote_cp(cp, FAL0));
+	}
+
+	/* `localopts'? */
+	if(a_amv_acc_curr->am_lopts != NIL)
+		a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
+
+	/* For accounts this lingers */
+	--a_amv_acc_curr->am_refcnt;
+	if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE){
+		ASSERT(a_amv_acc_curr->am_refcnt == 0);
+		a_amv_mac_free(a_amv_acc_curr);
+	}
+
+jleave:
+	NYD_OU;
+}
+
+FL int
+c_account(void *vp){
+	char const **args;
+	int rv;
+	NYD_IN;
+
+	rv = su_EX_ERR;
+
+	if((args = vp)[0] == NIL){
+		if(a_amv_mac_show(a_AMV_MF_ACCOUNT, NIL))
+			rv = su_EX_OK;
+		goto jleave;
+	}
+
+	if(args[1] != NIL){
+		if(args[1][0] != '{' || args[1][1] != '\0' || args[2] != NIL){
+			mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("account"), NIL);
+			goto jleave;
+		}
+		if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
+			n_err(_("account: cannot use reserved name: %s\n"), ACCOUNT_NULL);
+			goto jleave;
+		}
+
+		if(a_amv_mac_def(args[0], a_AMV_MF_ACCOUNT))
+			rv = su_EX_OK;
+		goto jleave;
+	}
+
+	if(mx_account_enter(args[0]))
+		rv = su_EX_OK;
+
 jleave:
 	NYD_OU;
 	return rv;
 }
 
 FL int
-c_unaccount(void *v){
+c_unaccount(void *vp){
+	char const **args;
 	int rv;
-	char **args;
 	NYD_IN;
 
-	rv = 0;
-	args = v;
+	rv = su_EX_OK;
+	args = vp;
 	do
-		rv |= !a_amv_mac_undef(*args, a_AMV_MF_ACCOUNT);
+		if(!a_amv_mac_undef(*args, a_AMV_MF_ACCOUNT))
+			rv = su_EX_ERR;
 	while(*++args != NIL);
 
 	NYD_OU;
@@ -3181,64 +3258,76 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac, boole sigs_held)
 }
 
 FL boole
-temporary_on_mailbox_open(boole only_new_mail_check){ /* TODO v15: drop */
-	struct{
-		char const name[30];
-		u16 ok;
-	} const looks[2] = {
-		{"on-mailbox-open-", ok_v_on_mailbox_open},
-		{"on-mailbox-newmail-", ok_v_on_mailbox_newmail}
-	};
+mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev){ /* TODO v15: drop */
+	/* TODO later we must switch to lopts for enter, and unroll for leave (not only open and [final] close!) */
+	static char const a_names[mx__ON_MAILBOX_EVENT_MAX + 1][8] = {"close", "enter", "leave", "newmail", "open"};
+
 	struct a_amv_mac_call_args *amcap;
 	struct a_amv_mac *amp;
-	char const *mn, *cp;
-	boole rv, v15_compat;
+	char const *mn, *cp, *argv[2];
 	char *var;
 	uz len;
+	boole rv, v15_compat;/*v15-compat*/
 	NYD_IN;
-
-	len = su_cs_len(mailname);
-	var = su_AUTO_ALLOC((len * 2) + sizeof("on-mailbox-newmail-") -1 +2);
-	only_new_mail_check = !!only_new_mail_check;
+	LCTAV(mx_ON_MAILBOX_EVENT_CLOSE == 0 && mx_ON_MAILBOX_EVENT_ENTER == 1 && mx_ON_MAILBOX_EVENT_LEAVE == 2 &&
+		mx_ON_MAILBOX_EVENT_NEWMAIL == 3 && mx_ON_MAILBOX_EVENT_OPEN == 4);
 
 	rv = TRU1;
+	len = su_cs_len(mailname);
+
+	/* */
+	if(len == sizeof(su_PATH_NULL) -1 && !su_mem_cmp(mailname, su_path_null, sizeof(su_PATH_NULL))){
+		ASSERT(a_amv_on_mailbox_lopts == NIL);
+		goto j_leave;
+	}
+
+	var = su_AUTO_ALLOC((len * 2) + sizeof("on-mailbox-event-") -1 +2);
+
+	v15_compat = TRU1;
 	mn = mailname;
 jredo:
 	/* First try the fully resolved path */
-	v15_compat = TRU1;
-	su_cs_pcopy(su_cs_pcopy(var, looks[S(u8,only_new_mail_check)].name), mn);
+	su_cs_pcopy(su_cs_pcopy(var, "on-mailbox-event-"), mn);
 	if((cp = n_var_vlook(var, FAL0)) != NIL)
 		goto jmac;
 
-	v15_compat = FAL0;
-	su_cs_pcopy(su_cs_pcopy(var, "folder-hook-"), mn);/* v15-compat */
-	if((cp = n_var_vlook(var, FAL0)) != NIL)
-		goto jmac;
+	if(onmbev == mx_ON_MAILBOX_EVENT_OPEN || onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
+		v15_compat = FAL0;
+		su_cs_pcopy(su_cs_pcopy(var, "folder-hook-"), mn);
+		if((cp = n_var_vlook(var, FAL0)) != NIL)
+			goto jmac;
+		v15_compat = TRU1;
+	}
 
-	/* If we are under *folder*, try the usual +NAME syntax, too */
+	/* If we are under *folder*, try the usual +NAME syntax, too.  We have reserved room in var */
 	if(mn == mailname && (n_pstate & n_PS_MAILNAME_WITHIN_FOLDER)){
 		for(cp = &mailname[len]; cp != mailname; --cp)
 			if(cp[-1] == '/'){
 				char *x;
-				mn = x = &var[sizeof("on-mailbox-newmail-") -1 + len + 1];
+
+				mn = x = &var[sizeof("on-mailbox-event-") -1 + len + 1];
 				x[0] = '+';
 				su_cs_pcopy(&x[1], cp);
 				goto jredo;
 			}
 	}
 
-	/* Plain *on-mailbox-XY* is our last try */
-	v15_compat = TRU1;
-	if((cp = n_var_oklook(looks[S(u8,only_new_mail_check)].ok)) == NIL){
-		v15_compat = FAL0;
-		if((cp = ok_vlook(folder_hook)) == NIL)/*v15-compat*/
-			goto jleave;
+
+	/* Plain *on-mailbox-event* is our last try */
+	if((cp = ok_vlook(on_mailbox_event)) != NIL)
+		goto jmac;
+
+	if(onmbev == mx_ON_MAILBOX_EVENT_OPEN || onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
+		v15_compat = FAL0;/*v15-compat*/
+		if((cp = ok_vlook(folder_hook)) != NIL)
+			goto jmac;
 	}
 
+	goto jleave;
 jmac:
 	if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) == NIL){
-		n_err(_("Cannot call *%s** for %s: macro does not exist: %s\n"),
-			looks[S(u8,only_new_mail_check)].name, n_shexp_quote_cp(displayname, FAL0), cp);
+		n_err(_("Cannot call *on-mailbox-event* for %s: macro does not exist: %s\n"),
+			n_shexp_quote_cp(displayname, FAL0), cp);
 		rv = FAL0;
 		goto jleave;
 	}
@@ -3246,42 +3335,45 @@ jmac:
 	amcap = su_LOFI_CALLOC(sizeof *amcap);
 	amcap->amca_name = cp;
 	amcap->amca_amp = amp;
+
 	n_pstate &= ~n_PS_HOOK_MASK;
-	if(only_new_mail_check){
+	if(onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
 		if(v15_compat)
-			amcap->amca_unroller = &a_amv_on_mailbox_open_lopts;
+			amcap->amca_unroller = &a_amv_on_mailbox_lopts;
 		n_pstate |= n_PS_HOOK_NEWMAIL;
 	}else{
-		amcap->amca_unroller = &a_amv_on_mailbox_open_lopts;
+		amcap->amca_unroller = &a_amv_on_mailbox_lopts;
 		n_pstate |= n_PS_HOOK;
 	}
 	amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
 	amcap->amca_ps_hook_mask = TRU1;
 	amcap->amca_no_xcall = TRU1;
 	amcap->amca_pospar = &amcap->amca__pospar;
+	if(v15_compat){
+		argv[0] = a_names[S(u8,onmbev)];;
+		argv[1] = NIL;
+		amcap->amca__pospar.app_count = 1;
+		amcap->amca__pospar.app_not_heap = TRU1;
+		amcap->amca__pospar.app_dat = argv;
+	}
 	amcap->amca_re_match = &amcap->amca__re_match;
 	rv = a_amv_mac_exec(amcap, NIL);
 	n_pstate &= ~n_PS_HOOK_MASK;
 
 jleave:
-	NYD_OU;
-	return rv;
-}
+	if(onmbev == mx_ON_MAILBOX_EVENT_CLOSE && a_amv_on_mailbox_lopts != NIL){
+		void *save;
 
-FL void
-temporary_on_mailbox_close(void){ /* XXX intermediate hack */
-	NYD_IN;
-
-	if(a_amv_on_mailbox_open_lopts != NIL){
-		void *save = a_amv_lopts;
-
+		save = a_amv_lopts;
 		a_amv_lopts = NIL;
-		a_amv_lopts_unroll(&a_amv_on_mailbox_open_lopts);
-		ASSERT(a_amv_on_mailbox_open_lopts == NIL);
+		a_amv_lopts_unroll(&a_amv_on_mailbox_lopts);
+		ASSERT(a_amv_on_mailbox_lopts == NIL);
 		a_amv_lopts = save;
 	}
 
+j_leave:
 	NYD_OU;
+	return rv;
 }
 
 FL void
@@ -3523,20 +3615,77 @@ n_var_setup_batch_mode(void){
 
 	n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
 	n_poption |= n_PO_S_FLAG_TEMPORARY;
-	ok_vset(MAIL, su_path_null);
-	ok_vset(MBOX, su_path_null);
 	ok_bset(emptystart);
 	ok_bclear(errexit);
 	ok_bclear(header);
-	ok_vset(inbox, su_path_null);
 	ok_bclear(posix);
 	ok_bset(quiet);
 	ok_vset(sendwait, su_empty);
 	ok_bset(typescript_mode);
 	n_poption &= ~n_PO_S_FLAG_TEMPORARY;
+	ok_vset(MAIL, su_path_null);
+	ok_vset(MBOX, su_path_null);
+	ok_vset(inbox, su_path_null);
 	n_pstate &= ~n_PS_ROBOT;
 
 	NYD2_OU;
+}
+
+FL boole
+n_var_setup_verify(char const **account, boole error_out){
+	/* Unroll a bit: more lengthy, but lesser resources */
+	enum okeys const oa[4] = {ok_v_from, ok_v_sender, ok_v_smtp_from, ok_v_reply_to};
+
+	struct a_amv_var_carrier avc;
+	struct a_amv_var_map const *avmp;
+	uz i;
+	boole rv;
+	NYD2_IN;
+	ASSERT(n_psonce & n_PSO_VAR_SETUP_VERIFY_NEEDED);
+
+	rv = !error_out;
+
+	for(i = 0; i < NELEM(oa); ++i){
+		STRUCT_ZERO(struct a_amv_var_carrier, &avc);
+		avc.avc_map = avmp = &a_amv_var_map[avc.avc_okey = oa[i]];
+		avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
+		avc.avc_hash = avmp->avm_hash;
+
+		if(a_amv_var_lookup(&avc, a_AMV_VLOOK_I3VAL_NONEW)){
+			char const *emsg;
+			char *cp;
+
+			cp = avc.avc_var->av_value;
+
+			emsg = a_amv_var__vips_addr(oa[i], C(char const**,&avc.avc_var->av_value));
+			if(emsg == NIL){
+				a_amv_var_free(cp);
+				avc.avc_var->av_value = a_amv_var_copy(avc.avc_var->av_value);
+			}else{
+				emsg = V_(emsg);
+				n_err(emsg, n_shexp_quote_cp(cp, FAL0));
+				n_PS_ROOT_BLOCK(a_amv_var_clear(&avc, a_AMV_VSETCLR_NONE));
+				if(error_out)
+					goto jleave;
+			}
+		}
+	}
+
+	/* Except when there was an -A ccount argument, we want an `account' to be picked up by main() */
+	if(*account == NIL){
+		STRUCT_ZERO(struct a_amv_var_carrier, &avc);
+		avc.avc_map = avmp = &a_amv_var_map[avc.avc_okey = ok_v_account];
+		avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
+		avc.avc_hash = avmp->avm_hash;
+
+		if(a_amv_var_lookup(&avc, a_AMV_VLOOK_I3VAL_NONEW))
+			*account = avc.avc_var->av_value;
+	}
+
+	rv = TRU1;
+jleave:
+	NYD2_OU;
+	return rv;
 }
 
 FL boole
@@ -3563,7 +3712,7 @@ n_var_oklook(enum okeys okey){
 	struct a_amv_var_map const *avmp;
 	NYD_IN;
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_map = avmp = &a_amv_var_map[okey];
 	avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
 	avc.avc_hash = avmp->avm_hash;
@@ -3585,7 +3734,7 @@ n_var_okset(enum okeys okey, up val){
 	struct a_amv_var_map const *avmp;
 	NYD_IN;
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_map = avmp = &a_amv_var_map[okey];
 	avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
 	avc.avc_hash = avmp->avm_hash;
@@ -3604,7 +3753,7 @@ n_var_okclear(enum okeys okey){
 	struct a_amv_var_map const *avmp;
 	NYD_IN;
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_map = avmp = &a_amv_var_map[okey];
 	avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
 	avc.avc_hash = avmp->avm_hash;
@@ -3695,7 +3844,7 @@ n_var_xoklook(enum okeys okey, struct mx_url const *urlp, enum okey_xlook_mode o
 		goto jplain;
 	}
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_name = &a_amv_var_names[(avc.avc_map = &a_amv_var_map[okey])->avm_keyoff];
 	avc.avc_okey = okey;
 	avc.avc_is_chain_variant = TRU1;

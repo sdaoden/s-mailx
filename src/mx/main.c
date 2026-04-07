@@ -337,7 +337,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 		n_exit_status = su_EX_ERR; /* error already reported */
 		goto jquit;
 	}
-	temporary_on_mailbox_open(FAL0);
+	mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_OPEN);
 
 	if(n_poption & n_PO_QUICKRUN_MASK){
 		n_exit_status = i;
@@ -730,6 +730,7 @@ main(int argc, char *argv[]){
 		case 'A':
 			/* Execute an account command later on */
 			mc.mc_A = avo.avo_current_arg;
+			n_PS_ROOT_BLOCK(ok_vset(account, avo.avo_current_arg));
 			break;
 		case 'a':{
 			/* Add an attachment */
@@ -1089,7 +1090,6 @@ jgetopt_done:
 	 * We have reached our second program state, the command line options have been worked and verified a bit,
 	 * we are likely to go, perform more setup
 	 */
-
 	n_psonce |= n_PSO_STARTED_GETOPT;
 	ASSERT(!(n_poption & n_PO_QUICKRUN_MASK) || !(n_psonce & n_PSO_INTERACTIVE));
 
@@ -1125,10 +1125,6 @@ jgetopt_done:
 			(cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))) != NIL && !mx_go_load_rc(cp))
 		goto jleave;
 
-	/* Cause possible umask(2) to be applied, now that any setting is established, and before we change accounts,
-	 * evaluate commands etc. */
-	(void)ok_vlook(umask);
-
 	/* Additional options to pass-through to MTA, and allowed to do so? */
 	i = argc;
 	if((cp = ok_vlook(expandargv)) != NIL){
@@ -1156,28 +1152,35 @@ je_expandargv:
 	}else if(argv[i] != NIL)
 		goto je_expandargv;
 
-	/* We had to wait until the resource files are loaded and any command line setting has been restored, but get
-	 * the termcap up and going before we switch account or running commands */
+	/*
+	 * Third stage
+	 * Now that any setting is established, and before we change accounts, evaluate commands etc, work some more.
+	 */
+	n_psonce |= n_PSO_STARTED_CONFIG_FILES;
+
+	/* XXX This actually could counteract `ignerr' requests! */
+	if((n_psonce & n_PSO_VAR_SETUP_VERIFY_NEEDED) && !n_var_setup_verify(&mc.mc_A,
+				(!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix)))){
+		n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
+		goto jleave;
+	}
+
+	(void)ok_vlook(umask);
+
 	if(n_psonce & n_PSO_INTERACTIVE){
 #ifdef mx_HAVE_TCAP
 		mx_termcap_init();
 #endif
-		/* We have to fake some state of readiness in order to allow resolving of lazy `bind's (from config
-		 * files); this is ok and allows one call to tty_init() (and to tty_destroy()) instead of two according
-		 * pairs for send and receive mode, which also had the ugly effect that -A account switch and -X
-		 * commands ran without properly setup tty/MLE! */
-		n_psonce |= n_PSO_STARTED_CONFIG;
-		mx_tty_init();
-		n_psonce ^= n_PSO_STARTED_CONFIG;
+		mx_tty_init(TRU1);
 	}
 
-	/* Now we can set the account */
+	/* Now we can set the account.  Before -X, even though its inbox is not accessed until startup is complete */
 	if(mc.mc_A != NIL){
-		char const *a[2];
-
-		a[0] = mc.mc_A;
-		a[1] = NIL;
-		if(c_account(a) && (!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix))){
+		/* Reset special -# batch mode setting so usual resolving kicks in */
+		if(mc.mc_folder == su_path_null)
+			mc.mc_folder = NIL;
+		if(!mx_account_enter(mc.mc_A) &&
+				(!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix))){
 			n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
 			goto jleave;
 		}
@@ -1192,7 +1195,7 @@ je_expandargv:
 	if(mc.mc_X_cnt > 0 && !mx_go_load_lines(FAL0, mc.mc_X, mc.mc_X_cnt))
 		goto jleave_full;
 
-	/* Final tests */
+	/* Final tests last, after anything but -Y has been evaluated */
 	if(n_poption & n_PO_Mm_FLAG){
 		if(mc.mc_quote == R(char*,-1)){
 			if(!mx_mime_type_is_known(n_poption_arg_Mm)){
