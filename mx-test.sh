@@ -178,8 +178,17 @@ t_all() { # {{{
 
    # Unclassified rest
    jspawn top
-   jspawn s_mime
    jspawn z
+   jsync
+
+   # OPT_TLS (basics, like S/MIME)
+   jspawn s_mime
+   jsync
+
+   ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
+   jspawn net_pop3
+   jspawn net_imap
+   jspawn net_smtp
    jsync
 
    jsync 1
@@ -231,6 +240,7 @@ _EOT
 CHECK= RUN_TEST= MAILX=
 DEVELDIFF= DUMPERR= GIT_REPO=
 MAXJOBS=1 NOCOLOUR= NOJOBS=
+
 while [ ${#} -gt 0 ]; do
    if [ "${1}" = --no-jobs ]; then
       NOJOBS=y
@@ -280,7 +290,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
-            ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
+            (</dev/null "${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          # C,POSIX last due to faulty localedef(1) result of GNU C lib 2.3[24]
          # so here political friction for some decades, too
@@ -357,17 +367,21 @@ JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
 SUBSECOND_SLEEP=
    ( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
+   TESTS_NET_TEST=
+   [ "${OPT_NET_TEST}" = 1 ] && [ -x ./net-test ] && TESTS_NET_TEST=1
+   export TESTS_NET_TEST
+
 COLOR_ERR_ON= COLOR_ERR_OFF=  COLOR_DBGERR_ON= COLOR_DBGERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
 COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 
-${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.tls.db
+${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
 trap "
    jobreaper_stop
    [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
 " EXIT
 trap "exit 1" HUP INT QUIT TERM
 
@@ -6428,7 +6442,7 @@ t_mta_aliases() { # {{{
    mtaali=
    if have_feat smtp; then
       echo | ${MAILX} ${ARGS} \
-         -Smta=smtp://laber.backe -Ssmtp-auth=none \
+         -Smta=smtp://laber.backe -Ssmtp-config=-ehlo \
          -Smta-aliases=./t.ali \
          -b a3 -c a2 a1 > ./t5 2>&1
       check_exn0 3
@@ -9347,7 +9361,7 @@ application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
 # }}}
 
 # Unclassified rest {{{
-t_top() {
+t_top() { # {{{
    t_prolog "${@}"
 
    t__gen_msg subject top1 to 1 from 1 cc 1 body 'body1-1
@@ -9358,7 +9372,8 @@ body1-4
 
 
 body1-5
-'     > "${MBOX}"
+'     > ./t.mbox
+
    t__gen_msg subject top2 to 1 from 1 cc 1 body 'body2-1
 body2-2
 
@@ -9368,7 +9383,7 @@ body2-3
 
 body2-4
 body2-5
-'     >> "${MBOX}"
+'     >> ./t.mbox
 
    ${MAILX} ${ARGS} -Rf -Y '#
 \top 1
@@ -9383,13 +9398,37 @@ body2-5
 \echo --- $?/$^ERRNAME, 4
 \Top 1
 \echo --- $?/$^ERRNAME, 5
-#  ' "${MBOX}" > ./.tall 2>&1
-   check 1 0 ./.tall '2556125754 705'
+#  ' ./t.mbox > ./t1 2>&1
+   check 1 0 ./t1 '2556125754 705'
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_s_mime() {
+# xxx Note: t_z() was the first test (series) written.  Today many
+# xxx aspects are (better) covered by other tests above, some are not.
+# xxx At some future date and time, convert the last remains not covered
+# xxx elsewhere to a real t_* test and drop it
+t_z() { # {{{
+   t_prolog "${@}"
+
+   # Test for [260e19d] (Juergen Daubert)
+   echo body | ${MAILX} ${ARGS} ./t1
+   check 4 0 ./t1 '2948857341 94'
+
+   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
+   ${awk} 'BEGIN{
+      for(i = 0; i < 10000; ++i)
+         printf "\xC3\xBC"
+         #printf "\xF0\x90\x87\x90"
+      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject ./t7
+   check 7 0 ./t7 '1707496413 61812'
+
+   t_epilog "${@}"
+} # }}}
+# }}}
+
+# OPT_TLS (basics, like S/MIME) {{{
+t_s_mime() { # {{{
    t_prolog "${@}"
 
    if have_feat smime; then :; else
@@ -9398,60 +9437,35 @@ t_s_mime() {
       return
    fi
 
-   ${cat} <<-_EOT > ./.t.conf
-		[req]
-		x509_extensions = extensions
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		output_password = Pacem_in_terris
-
-		[extensions]
-		basicConstraints = CA:FALSE
-		# Needs a CA for that keyUsage = digitalSignature
-		extendedKeyUsage = emailProtection
-
-		[req_distinguished_name]
-		C = GB
-		ST = Over the
-		L = rainbow
-		O = S-nail
-		OU = S-nail.smime
-		CN = S-nail.test2
-		emailAddress = test@localhost
-
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-	_EOT
+   if t__tls_certs; then :; else
+      t_echoskip '[!TLS certificate setup]'
+      t_epilog "${@}"
+      return
+   fi
 
    doit() {
       _z=${1}
 
       if [ "${_z}" = 0 ]; then
          _pass=
-         _osslreq=-nodes
          _ossl=
+         _f=client
       else
-         _pass=Pacem_in_terris
+         _pass=client-key-pass
          _osslreq=
          _ossl='-passin pass:'${_pass}
+         _f=client-pass
       fi
 
-      ${rm} -f ./.VERIFY ./.ENCRYPT ./.DECRYPT
-
-      openssl req ${_osslreq} ${_ossl} -x509 -days 3650 -config ./.t.conf \
-         -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
-      check_ex0 ${_z}
       _z=`add ${_z} 1`
-
-      ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
       # Sign/verify
       echo bla | ${MAILX} ${ARGS} \
-         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -Ssmime-sign -Ssmime-sign-cert=./${_f}-pair.pem \
+         -Sfrom=test@localhost \
          -Ssmime-sign-digest=sha1 \
          -S password-test@localhost.smime-cert-key=${_pass} \
-         -s 'S/MIME test' ./.VERIFY >>${ERR} 2>&1
+         -s 'S/MIME test' ./t${1}.VERIFY >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${awk} '
          BEGIN{ skip=0 }
@@ -9459,42 +9473,44 @@ t_s_mime() {
          /^$/{ if(skip) --skip }
          { if(!skip) print }
       ' \
-         < ./.VERIFY > "${MBOX}"
-      check ${_z} - "${MBOX}" '335634014 644'
+         < ./t${1}.VERIFY > ./t${_z}
+      check ${_z} - ./t${_z} '335634014 644'
       _z=`add ${_z} 1`
 
       printf 'verify\nx\n' |
-      ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
-         -R -f ./.VERIFY >>${ERR} 2>&1
+      ${MAILX} ${ARGS} -Ssmime-ca-file=./ca.pem -Serrexit \
+         -R -f ./t${1}.VERIFY >>${ERR} 2>&1
       check_ex0 ${_z} # XXX pipe
       _z=`add ${_z} 1`
 
-      openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
+      openssl smime -verify -CAfile ./ca.pem \
+         -in ./t${1}.VERIFY >>${ERR} 2>&1
       check_ex0 ${_z}
       _z=`add ${_z} 1`
 
       # (signing +) encryption / decryption
       echo bla |
       ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Smta=test://t${1}.ENCRYPT \
+         -Ssmime-force-encryption \
+         -Ssmime-encrypt-recei@ver.com=./client2-cert.pem \
          -Ssmime-sign-digest=sha1 \
-         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -Ssmime-sign -Ssmime-sign-cert=./${_f}-pair.pem \
+         -Sfrom=test@localhost \
          -S password-test@localhost.smime-cert-key=${_pass} \
          -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
-      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-      check ${_z} - "${MBOX}" '2359655411 336'
+      ${sed} -e '/^$/,$d' < ./t${1}.ENCRYPT > ./t${_z}
+      check ${_z} - ./t${_z} '2359655411 336'
       _z=`add ${_z} 1`
 
-      printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
+      printf 'decrypt ./t%s.DECRYPT\nfi ./t%s.DECRYPT\nverify\nx\n' \
+         "${1}" "${1}" |
       ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-ca-file=./.tcert.pem \
-         -Ssmime-sign-cert=./.tpair.pem \
-         -Sfrom=test@localhost \
-         -S password-test@localhost.smime-cert-key=${_pass} \
-         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
+         -Smta=test://./t${1}.ENCRYPT \
+         -Ssmime-ca-file=./ca.pem \
+         -Ssmime-sign-cert=./client2-pair.pem \
+         -Serrexit -R -f ./t${1}.ENCRYPT >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${awk} '
          BEGIN{ skip=0 }
@@ -9502,39 +9518,38 @@ t_s_mime() {
          /^$/{ if(skip) --skip }
          { if(!skip) print }
       ' \
-         < ./.DECRYPT > "${MBOX}"
-      check ${_z} - "${MBOX}" '2602978204 940'
+         < ./t${1}.DECRYPT > ./t${_z}
+      check ${_z} - ./t${_z} '2602978204 940'
       _z=`add ${_z} 1`
 
-      (openssl smime -decrypt ${_ossl} -inkey ./.tkey.pem -in ./.ENCRYPT |
-            openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
+      { openssl smime -decrypt -inkey ./client2-key.pem \
+            -in ./t${1}.ENCRYPT |
+         openssl smime -verify -CAfile ./ca.pem; } >>${ERR} 2>&1
       check_ex0 ${_z} # XXX pipe..
       _z=`add ${_z} 1`
 
-      ${rm} ./.ENCRYPT
+      ${rm} ./t${1}.ENCRYPT
       echo bla | ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Smta=test://t${1}.ENCRYPT \
+         -Ssmime-force-encryption \
+         -Ssmime-encrypt-recei@ver.com=./client2-cert.pem \
          -Sfrom=test@localhost \
-         -S password-test@localhost.smime-cert-key=${_pass} \
          -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
-      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-      check ${_z} - "${MBOX}" '2359655411 336'
+      ${sed} -e '/^$/,$d' < ./t${1}.ENCRYPT > ./t${_z}
+      check ${_z} - ./t${_z} '2359655411 336'
       _z=`add ${_z} 1`
 
-      ${rm} ./.DECRYPT
       # Note: deduce from *sign-cert*, not from *from*!
-      printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-sign-cert-recei@ver.com=./.tpair.pem \
-         -S password-recei@ver.com.smime-cert-key=${_pass} \
-         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-      check ${_z} 0 ./.DECRYPT '2453471323 431'
+      printf 'decrypt ./t%s\nx\n' "${_z}" |
+         ${MAILX} ${ARGS} \
+         -Ssmime-sign-cert-recei@ver.com=./client2-pair.pem \
+         -Serrexit -R -f ./t${1}.ENCRYPT >>${ERR} 2>&1
+      check ${_z} 0 ./t${_z} '2453471323 431'
       _z=`add ${_z} 1`
 
-      openssl smime ${_ossl} -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT \
-         >>${ERR} 2>&1
+      openssl smime ${_ossl} -decrypt -inkey ./client2-key.pem \
+         -in ./t${1}.ENCRYPT >>${ERR} 2>&1
       check_ex0 ${_z}
 
       unset _z _pass _osslreq _ossl
@@ -9544,33 +9559,681 @@ t_s_mime() {
    doit 10
 
    t_epilog "${@}"
-}
+} # }}}
 # }}}
 
-# xxx Note: t_z() was the first test (series) written.  Today many
-# xxx aspects are (better) covered by other tests above, some are not.
-# xxx At some future date and time, convert the last remains not covered
-# xxx elsewhere to a real t_* test and drop it
-t_z() {
+# OPT_NET_TEST {{{
+t_net_pop3() { # {{{ TODO TLS tests, then also EXTERN*
    t_prolog "${@}"
 
-   # Test for [260e19d] (Juergen Daubert)
-   echo body | ${MAILX} ${ARGS} "${MBOX}"
-   check 4 0 "${MBOX}" '2948857341 94'
+   if [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
+      t_echoskip '[!NET_TEST or !POP3]'
+      t_epilog "${@}"
+      return
+   fi
 
-   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
-   ${rm} "${MBOX}"
-   ${awk} 'BEGIN{
-      for(i = 0; i < 10000; ++i)
-         printf "\xC3\xBC"
-         #printf "\xF0\x90\x87\x90"
-      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
-   check 7 0 "${MBOX}" '1707496413 61812'
+   pop3_logged_in() { # {{{
+      printf '\002
++OK Logged in.
+\001
+STAT
+\002
++OK 2 506
+\001
+LIST 1
+\002
++OK 1 258
+\001
+LIST 2
+\002
++OK 2 248
+\001
+TOP 1 0
+\002
++OK
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Fri, 16 Aug 2019 19:46:20 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: The GSSAPI dance is done!
+Message-ID: <20190816174620.LeViGqO2@kdc.localdomain>
+
+.
+\001
+TOP 2 0
+\002
++OK
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Sat, 17 Aug 2019 23:21:25 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: Hi from FreeBSD
+Message-ID: <20190817212125.28sI5X7c@kdc.localdomain>
+
+.
+\001
+QUIT
+\002
++OK Logging out.
+'
+   } # }}}
+
+   # Authentication types {{{
+   t__net_script .t.sh pop3 \
+      -Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
+   { printf '\002
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\001
+USER steffen
+\002
++OK
+\001
+PASS Sway
+' &&
+      pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '3754674759 160'
+
+   if have_feat md5; then
+      t__net_script .t.sh pop3 \
+         -Spop3-auth=plain -Snopop3-use-starttls
+      { printf '\002
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\001
+APOP steffen 4f66ea9bf092117b009b9f8d928c656d
+' &&
+         pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 2 0 "${MBOX}" '3754674759 160'
+   else
+      t_echoskip '2:[!MD5]'
+   fi
+
+   if false && have_feat tls; then # TODO TLS-NET-SERV
+      t__net_script .t.sh pop3 \
+         -Spop3-auth=xoauth2 -Snopop3-use-starttls
+      { printf '\001
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\002
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+         pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 3 0 "${MBOX}" '3754674759 160'
+   else
+      t_echoskip '3:[false/TODO/!TLS]'
+   fi
+   # }}}
 
    t_epilog "${@}"
-}
+} # }}}
+
+t_net_imap() { # {{{ TODO TLS tests, then also EXTERN*
+   t_prolog "${@}"
+
+   if [ -n "${TESTS_NET_TEST}" ] && have_feat imap; then :; else
+      t_echoskip '[!NET_TEST or !IMAP]'
+      t_epilog "${@}"
+      return
+   fi
+
+   imap_hello() { # {{{
+      printf '\002
+* OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL] Dovecot ready.
+\001
+T1 CAPABILITY
+\002
+* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL
+T1 OK Pre-login capabilities listed, post-login capabilities have more.
+'
+   } # }}}
+
+   imap_logged_in() { # {{{
+      __xno1__=2
+      [ ${#} -eq 1 ] && __xno1__=${1}
+
+      __xno2__=`add ${__xno1__} 1`
+      __xno3__=`add ${__xno2__} 1`
+      __xno4__=`add ${__xno3__} 1`
+      __xno5__=`add ${__xno4__} 1`
+      __xno6__=`add ${__xno5__} 1`
+
+      printf '\002
+T%s OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAME SPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY LITERAL+ NOTIFY SPECIAL-USE] Logged in
+\001
+T%s EXAMINE "INBOX"
+\002
+* FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)
+* OK [PERMANENTFLAGS ()] Read-only mailbox.
+* 2 EXISTS
+* 0 RECENT
+* OK [UNSEEN 2] First unseen.
+* OK [UIDVALIDITY 1565715806] UIDs valid
+* OK [UIDNEXT 38] Predicted next UID
+T%s OK [READ-ONLY] Examine completed (0.001 + 0.000 secs).
+\001
+T%s FETCH 1:2 (FLAGS UID)
+\002
+* 1 FETCH (FLAGS (\\Seen) UID 36)
+* 2 FETCH (FLAGS () UID 37)
+T%s OK Fetch completed (0.001 + 0.000 secs).
+\001
+T%s FETCH 1:2 (RFC822.SIZE INTERNALDATE)
+\002
+* 1 FETCH (RFC822.SIZE 258 INTERNALDATE "16-Aug-2019 19:46:20 +0200")
+* 2 FETCH (RFC822.SIZE 248 INTERNALDATE "17-Aug-2019 23:21:27 +0200")
+T%s OK Fetch completed (0.001 + 0.000 secs).
+\001
+T%s UID FETCH 36:37 (RFC822.HEADER)
+\002
+* 1 FETCH (UID 36 RFC822.HEADER {253}
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Fri, 16 Aug 2019 19:46:20 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: The GSSAPI dance is done!
+Message-ID: <20190816174620.LeViGqO2@kdc.localdomain>
+
+)
+* 2 FETCH (UID 37 RFC822.HEADER {243}
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Sat, 17 Aug 2019 23:21:25 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: Hi from FreeBSD
+Message-ID: <20190817212125.28sI5X7c@kdc.localdomain>
+
+)
+T%s OK Fetch completed (0.001 + 0.000 secs).
+\001
+T%s LOGOUT
+\002
+* BYE Logging out
+' \
+      "${__xno1__}" \
+      "${__xno2__}" "${__xno2__}" \
+      "${__xno3__}" "${__xno3__}" \
+      "${__xno4__}" "${__xno4__}" \
+      "${__xno5__}" "${__xno5__}" \
+      "${__xno6__}"
+   } # }}}
+
+   t__net_script .t.sh imap \
+      -Simap-auth=login -Snoimap-use-starttls
+   { imap_hello && printf '\001
+T2 LOGIN "steffen" "Sway"
+' &&
+      imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '4233548649 160'
+
+   if false && have_feat tls; then # TODO TLS-NET-SERV
+      t__net_script .t.sh imap \
+         -Simap-auth=oauthbearer -Snoimap-use-starttls
+      { imap_hello && printf '\002
+T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+         imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 2 0 "${MBOX}" '4233548649 160'
+   else
+      t_echoskip '2:[false/TODO/!TLS]'
+   fi
+
+   if have_feat md5; then
+      t__net_script .t.sh imap \
+         -Simap-auth=cram-md5 -Snoimap-use-starttls
+      { imap_hello && printf '\001
+T2 AUTHENTICATE CRAM-MD5
+\002
++ PDAzMjYxNTc5NDU2Mzc3MTAuMTU2NzI5NDU0MUBhcmNoLTIwMTk+
+\001
+c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
+' &&
+         imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 2 0 "${MBOX}" '4233548649 160'
+   else
+      t_echoskip '2:[!MD5]'
+   fi
+
+   t_epilog "${@}"
+} # }}}
+
+t_net_smtp() { # {{{
+   t_prolog "${@}"
+
+   if [ -n "${TESTS_NET_TEST}" ] && have_feat smtp; then :; else
+      t_echoskip '[!NET_TEST or !SMTP]'
+      t_epilog "${@}"
+      return
+   fi
+
+   t__tls_certs
+
+   helo= mail_from= from= msgid=
+
+   have_feat tls && ext_tls=250-STARTTLS || ext_tls=
+
+   # SMTP net-test script {{{
+   smtp__script() {
+      file=${1}
+      proto=${2}
+      shift 2
+
+      ${cat} <<-_EOT > ./t.sh
+		#!${SHELL} -
+		<"${file}" ${MAILX} ${ARGS} -Sstealthmua=noagent \\
+			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
+			-Suser=steffen -Spassword=Sway -s ub \\
+			-S 'mta=${proto}://localhost:'\${1} \\
+			${@} \\
+			ex@am.ple
+		_EOT
+      ${chmod} 0755 ./t.sh
+   }
+
+   smtp_script_file() {
+      file=${1}
+      shift
+      helo=reproducible_build
+      mail_from=reproducible_build@${helo}
+      from=${mail_from}
+      msgid='
+Message-ID: <19961002015007.AQACA%reproducible_build@reproducible_build>'
+      smtp__script ${file} "$@"
+   }
+
+   smtp_script() {
+      smtp_script_file /dev/null "$@"
+   }
+
+   smtp_script_hostname() {
+      helo=am.ple
+      mail_from=reproducible_build@${helo}
+      from=${mail_from}
+      msgid='
+Message-ID: <19961002015007.AQACAAAA@am.ple>'
+      smtp__script /dev/null "$@" -Shostname=am.ple
+   }
+
+   smtp_script_hostname_smtp_hostname() {
+      helo=am.ple
+      mail_from=steffen@am2.ple2
+      from=reproducible_build@${helo}
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
+      smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=am2.ple2
+   }
+
+   smtp_script_hostname_smtp_hostname_empty() {
+      helo=am.ple
+      mail_from=steffen@am.ple
+      from=reproducible_build@${helo}
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am.ple>'
+      smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=
+   }
+
+   smtp_script_from() {
+      helo=reproducible_build
+      mail_from=steffen.ex@am.ple
+      from=${mail_from}
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple
+   }
+
+   smtp_script_from_hostname() {
+      helo=am2.ple2
+      mail_from=steffen.ex@am.ple
+      from=${mail_from}
+      msgid='
+Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2
+   }
+
+   smtp_script_from_hostname_smtp_hostname() {
+      helo=am2.ple2
+      mail_from=steffen@am3.ple3
+      from=steffen.ex@am.ple
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple \
+         -Shostname=am2.ple2 -Ssmtp-hostname=am3.ple3
+   }
+
+   smtp_script_from_hostname_smtp_hostname_empty() {
+      helo=am2.ple2
+      mail_from=steffen@am2.ple2
+      from=steffen.ex@am.ple
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple \
+         -Shostname=am2.ple2 -Ssmtp-hostname=
+   }
+   # }}}
+
+   # HE-EH-LOs {{{
+   smtp_helo() {
+      printf '\002
+220 arch-2019 ESMTP Postfix
+\001
+HELO %s
+\002
+250 arch-2019, hi dude
+' \
+      "${helo}"
+   }
+
+   smtp_ehlo() {
+      [ ${#} -eq 0 ] && printf '\002\n220 arch-2019 ESMTP Postfix\n'
+      printf '\001
+EHLO %s
+\002
+250-arch-2019, hi dude
+250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 OAUTHBEARER EXTERNAL
+250-ENHANCEDSTATUSCODES
+' \
+      "${helo}"
+      [ ${#} -eq 0 ] && [ -n "${ext_tls}" ] && printf '%s\n' "${ext_tls}"
+      printf '250 PIPELINING\n'
+   }
+   # }}}
+
+   smtp_auth_ok() { printf '\002\n235 2.7.0 Authentication successful\n'; }
+
+   # After AUTH {{{
+   smtp_mail_from_to() {
+      printf '\001\nMAIL FROM:<%s>\n\002\n250 2.1.0 Ok\n' "${mail_from}"
+      printf '\001\nRCPT TO:<%s>\n\002\n250 2.1.5 Ok\n' "${@}"
+      printf '\001\nDATA\n'
+   }
+
+   smtp_mail_from_to_pipelining() {
+      printf '\001\nMAIL FROM:<%s>\n' "${mail_from}"
+      printf 'RCPT TO:<%s>\n' "${@}"
+      printf 'DATA\n'
+   }
+
+   smtp_data() {
+      printf '\002\n'
+      if [ ${#} -gt 0 ]; then
+         printf '250 2.1.0 Ok\n'
+         while [ ${#} -gt 0 ]; do
+            printf '250 2.1.0 Ok\n'
+            shift
+         done
+      fi
+      printf '354 End data with <CR><LF>.<CR><LF>\n\001\n'
+      smtp_date_from
+   }
+
+   smtp_date_from() {
+      printf 'Date: Wed, 02 Oct 1996 01:50:07 +0000\nFrom: %s\n' "${from}"
+   }
+
+   smtp_to() { printf 'To: ex@am.ple\n'; }
+
+   smtp_head_tail() { printf 'Subject: ub%s\n\n' "${msgid}"; }
+
+   smtp_head_all() {
+      smtp_mail_from_to ex@am.ple &&
+      smtp_data && smtp_to && smtp_head_tail
+   }
+
+   smtp_quit() {
+      printf '.
+\002
+250 2.0.0 Ok: queued as 78FFC20305
+\001
+QUIT
+\002
+221 2.0.0 Bye
+'
+   }
+
+   smtp_quit_pipelining() {
+      printf '.
+QUIT
+\002
+250 2.0.0 Ok: queued as 78FFC20305
+221 2.0.0 Bye
+'
+   }
+
+   smtp_go() { smtp_head_all && smtp_quit; }
+   # }}}
+
+   # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
+   smtp_script smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t1 2>&1
+   check 1 0 ./t1 '4294967295 0'
+
+   smtp_script_hostname smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t2 2>&1
+   check 2 0 ./t2 '4294967295 0'
+
+   smtp_script_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t3 2>&1
+   check 3 0 ./t3 '4294967295 0'
+
+   smtp_script_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t4 2>&1
+   check 4 0 ./t4 '4294967295 0'
+
+   smtp_script_from smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t5 2>&1
+   check 5 0 ./t5 '4294967295 0'
+
+   smtp_script_from_hostname smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t6 2>&1
+   check 6 0 ./t6 '4294967295 0'
+
+   smtp_script_from_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t7 2>&1
+   check 7 0 ./t7 '4294967295 0'
+
+   smtp_script_from_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t8 2>&1
+   check 8 0 ./t8 '4294967295 0'
+   # }}}
+
+   # Real EHLO authentication types {{{
+   smtp_script smtp -Ssmtp-config=-all,,plain,, #,ehlo<-implied,plain
+   { smtp_ehlo && printf '\001
+AUTH PLAIN AHN0ZWZmZW4AU3dheQ==
+' &&
+      smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-1 2>&1
+   check auth-1 0 ./tauth-1 '4294967295 0'
+
+   smtp_script smtp -Ssmtp-config=-all,ehlo,login
+   { smtp_ehlo && printf '\001
+AUTH LOGIN
+\002
+334 VXNlcm5hbWU6
+\001
+c3RlZmZlbg==
+\002
+334 UGFzc3dvcmQ6
+\001
+U3dheQ==
+' &&
+      smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-2 2>&1
+   check auth-2 0 ./tauth-2 '4294967295 0'
+
+   if have_feat tls; then
+      smtp_script smtps -Ssmtp-config=-all,ehlo,xoauth2
+      { smtp_ehlo && printf '\001
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-3 2>&1
+      check auth-3 0 ./tauth-3 '4294967295 0'
+   else
+      t_echoskip 'auth-3:[!TLS]'
+   fi
+
+   if have_feat md5; then
+      smtp_script smtp -Ssmtp-config=-all,ehlo,,cram-md5
+      { smtp_ehlo && printf '\001
+AUTH CRAM-MD5
+\002
+334 PDM2MzI5MzIyMDE2MDM5NDUuMTU2NzQ1NTkxOUBhcmNoLTIwMTk+
+\001
+c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-4 2>&1
+      check auth-4 0 ./tauth-4 '4294967295 0'
+   else
+      t_echoskip 'auth-4:[!MD5]'
+   fi
+
+   # STARTTLS, and more TLS AUTH things
+   if have_feat tls; then
+      smtp_script smtp -Ssmtp-config=-all,xoauth2
+      { smtp_ehlo && printf '\001\nNOT REACHED\n'; } |
+            ../net-test -s t.sh > ./tauth-5 2>>${ERR}
+      check_exn0 auth-5 8
+
+      smtp_script smtp -Ssmtp-config=-all,starttls,xoauth2
+      { smtp_ehlo && printf '\001
+STARTTLS
+\003
+220 2.0.0 Ready to start TLS
+' &&
+         smtp_ehlo 0 && printf '\001
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -s t.sh > ./tauth-6 2>&1
+      check auth-6 0 ./tauth-6 '4294967295 0'
+
+      smtp_script smtp -Ssmtp-config=-all,starttls,externanon \
+         -Stls-config-pairs=Certificate=client-pair.pem
+      { smtp_ehlo && printf '\001
+STARTTLS
+\003
+220 2.0.0 Ready to start TLS
+' &&
+         smtp_ehlo 0 && printf '\001
+AUTH EXTERNAL =
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -U -s t.sh > ./tauth-7 2>&1
+      check auth-7 0 ./tauth-7 '4294967295 0'
+
+      smtp_script smtps -Ssmtp-config=-all,external \
+         -Stls-config-pairs=Certificate=client-pair.pem
+      { smtp_ehlo && printf '\001
+AUTH EXTERNAL c3RlZmZlbg==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -U -S t.sh > ./tauth-8 2>&1
+      check auth-8 0 ./tauth-8 '4294967295 0'
+
+      smtp_script smtps -Ssmtp-config=-all,oauthbearer
+      { smtp_ehlo && printf '\001
+AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWFyZXIgU3dheQEB
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-9 2>&1
+      check auth-9 0 ./tauth-9 '4294967295 0'
+   else
+      # Why not that instead?
+      smtp_script smtp -Ssmtp-config=-all,xoauth2
+      { smtp_ehlo && printf '\001\nNOT REACHED\n'; } |
+            ../net-test -s t.sh > ./tauth-5 2>>${ERR}
+      check_exn0 auth-5 8
+
+      t_echoskip 'auth-{6-9}:[!TLS]'
+   fi
+   # }}}
+
+   # Some data feeding {{{
+   # body data
+   ${awk} '
+      BEGIN{
+         for(lnlen = i = 0; i < 9999; ++i){
+            j = "[" i "]"
+            printf j
+            if((lnlen += length(j)) >= 70){
+               printf "\n"
+               lnlen = 0
+            }
+         }
+         if(lnlen > 0)
+            printf "\n"
+      }' > ./t.dat
+
+   smtp_script_file ./t.dat smtp -Ssmtp-config=-all &&
+   { smtp_helo && smtp_head_all && ${cat} ./t.dat && smtp_quit; } |
+      ../net-test t.sh > ./tdata-1 2>&1
+   check data-1 0 ./tdata-1 '4294967295 0'
+
+   # more RCPT TO:<>
+   rcpt_to=`${awk} '
+         BEGIN{
+            for(i = 0; i < 100; i += 2)
+               printf "ex-" i "@am.ple "
+            printf "ex@am.ple "
+            for(i = 1; i < 100; i += 2)
+               printf "ex-" i "@am.ple "
+         }'`
+   tolist=`${awk} '
+         BEGIN{
+            for(i = 0; i < 100; i += 2)
+               printf "ex-%s@am.ple ", i
+         }'`
+   cclist=`${awk} '
+         BEGIN{
+            for(i = 1; i < 100; i += 2)
+               printf "-c ex-%s@am.ple ", i
+         }'`
+
+   smtp_rcpt_to() {
+      smtp_script smtp -Ssmtp-config=${1} \
+         ${cclist} ${tolist} &&
+      { ${2} && ${3} $rcpt_to &&
+            eval "smtp_data ${4}" && ${awk} '
+               function doit(i, j){
+                  printf j
+                  lnlen = length(j)
+                  for(; i <= 100; i += 2){
+                     if(i + 2 > 100){
+                        printf "ex%s@am.ple\n", (i == 100 ? "" : "-99")
+                        break
+                     }
+
+                     j = "ex-" i "@am.ple,"
+                     if((lnlen += length(j)) >= 60){
+                        lnlen = 1;
+                        j = j "\n "
+                     }else
+                        j = j " "
+                     printf j
+                  }
+               }
+               BEGIN{
+                  doit(0, "To: ")
+                  doit(1, "Cc: ")
+               }' &&
+            smtp_head_tail && ${5}; } |
+         ../net-test t.sh > ./${6} 2>>${ERR}
+   }
+   smtp_rcpt_to -ehlo \
+      smtp_helo \
+      smtp_mail_from_to '' \
+      smtp_quit \
+      tdata-2
+   check data-2 0 ./tdata-2 '4294967295 0'
+   smtp_rcpt_to all,-starttls,-allmechs \
+      smtp_ehlo \
+      smtp_mail_from_to_pipelining "$rcpt_to" \
+      smtp_quit_pipelining \
+      tdata-3
+   check data-3 0 ./tdata-3 '4294967295 0'
+   # }}}
+
+   t_epilog "${@}"
+} # }}}
+# }}}
 
 # Test support {{{
+# Message generation and other header/message content {{{
 t__gen_msg() {
    t___gen_msg '' "${@}"
 }
@@ -9794,6 +10457,324 @@ t__put_body() {
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '
 }
+# }}}
+
+t__net_script() {
+   file=${1}
+   proto=${2}
+   shift 2
+
+   t__tls_certs
+
+   ${cat} <<-_EOT > ${file}
+		#!${SHELL} -
+		</dev/null ${MAILX} -# ${ARGS} \\
+			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
+			-Suser=steffen -Spassword=Sway \\
+			${@} \\
+			-Y 'File ${proto}://localhost:'\${1} \\
+			-Y 'h;q'
+		_EOT
+   ${chmod} 0755 ${file}
+}
+
+# TLS keys and certificates {{{
+t__tls_certs() {
+   if have_feat tls; then :; else
+      return 1
+   fi
+
+   __tls_certs_harderr=
+   while :; do
+      [ -d ../t.tls.db ] && {
+         t__tls__copy
+         return ${?}
+      }
+      [  -n "${__tls_cert_harderr}" ] && return 1
+      if ${mkdir} ../t.tls.db 2>/dev/null; then
+         t__tls__create 2>>${ERR} 1>&2 || {
+            e=${?}
+            ${rm} -rf ../t.tls.db
+            return ${e}
+         }
+      else
+         __tls_certs_harderr=1
+      fi
+   done
+}
+
+t__tls__create() (
+   cd ../t.tls.db
+
+   ${cat} <<-_EOT > ./t-root-ca.cnf
+		extensions = ext_v3_ca
+		[req]
+		x509_extensions = ext_v3_ca
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = ROOT-CA-ST
+		L = ROOT-CA-L
+		O = ROOT-CA-O
+		OU = ROOT-CA-OU
+		CN = ROOT-CA-CN
+		emailAddress = test@root-ca.example
+		# At one time AlpineLinux OpenSSL required that:
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		# Extensions for a typical CA
+		[ext_v3_ca]
+		# PKIX recommendation
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid:always,issuer
+		basicConstraints = critical,CA:true
+	_EOT
+
+   ${cat} <<-_EOT > ./t-root2-ca.cnf
+		extensions = ext_v3_ca
+		[req]
+		x509_extensions = ext_v3_ca
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = ROOT2-CA-ST
+		L = ROOT2-CA-L
+		O = ROOT2-CA-O
+		OU = ROOT2-CA-OU
+		CN = ROOT2-CA-CN
+		emailAddress = test@root2-ca.example
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		# Extensions for a typical CA
+		[ext_v3_ca]
+		# PKIX recommendation
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid:always,issuer
+		basicConstraints = critical,CA:true
+	_EOT
+
+   ${cat} <<-_EOT > ./t-ca.cnf
+		extensions = ext_v3_ca
+		[req]
+		x509_extensions = ext_v3_ca
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = CA-ST
+		L = CA-L
+		O = CA-O
+		OU = CA-OU
+		CN = CA-CN
+		emailAddress = test@ca.example
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		# Extensions for a typical CA
+		[ext_v3_ca]
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid:always,issuer
+		basicConstraints = critical,CA:true
+	_EOT
+
+   ${cat} <<-_EOT > ./t-srv.cnf
+		extensions = ext_srv_cert
+		[req]
+		x509_extensions = ext_srv_cert
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = SERV-ST
+		L = SERV-L
+		O = SERV-O
+		OU = SERV-OU
+		CN = localhost
+		emailAddress = test@srv.example
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		[ext_srv_cert]
+		basicConstraints = CA:FALSE
+		extendedKeyUsage = critical,serverAuth,emailProtection
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid,issuer
+	_EOT
+
+   ${cat} <<-_EOT > ./t.cnf
+		extensions = ext_usr_cert
+		[req]
+		x509_extensions = ext_usr_cert
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = Over the
+		L = rainbow
+		O = S-mailx
+		OU = S-mailx.tls
+		CN = S-mailx.test3
+		emailAddress = test@localhost
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		[ext_usr_cert]
+		basicConstraints = CA:FALSE
+		extendedKeyUsage = critical,clientAuth,emailProtection
+		subjectKeyIdentifier = hash
+	_EOT
+
+   ${cat} <<-_EOT > ./t2.cnf
+		extensions = ext_usr_cert
+		[req]
+		x509_extensions = ext_usr_cert
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = Over the
+		L = rainbow
+		O = S-mailx2
+		OU = S-mailx2.tls
+		CN = S-mailx2.test3
+		emailAddress = test2@localhost
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		[ext_usr_cert]
+		basicConstraints = CA:FALSE
+		extendedKeyUsage = critical,clientAuth,emailProtection
+		subjectKeyIdentifier = hash
+	_EOT
+
+   ## Root CA
+   openssl req -newkey rsa:1024 \
+      -config t-root-ca.cnf -nodes \
+      -keyout root-ca-key.pem -out root-ca-req.pem || exit 1
+   openssl x509 -req -in root-ca-req.pem \
+      -extfile t-root-ca.cnf \
+      -signkey root-ca-key.pem \
+      -out root-ca-cert.pem || exit 2
+
+   ## Root CA 2
+   openssl req -newkey rsa:1024 \
+      -config t-root2-ca.cnf -nodes \
+      -keyout root2-ca-key.pem -out root2-ca-req.pem || exit 1
+   openssl x509 -req -in root2-ca-req.pem \
+      -extfile t-root2-ca.cnf \
+      -signkey root2-ca-key.pem \
+      -out root2-ca-cert.pem || exit 2
+
+   ${cat} root-ca-cert.pem root2-ca-cert.pem > ca.pem
+
+   ## Server CA, sign with root CA
+   openssl req -newkey rsa:1024 \
+      -config t-ca.cnf -nodes \
+      -keyout server-ca-key.pem -out server-ca-req.pem || exit 3
+   openssl x509 -req -in server-ca-req.pem \
+      -extfile t-ca.cnf \
+      -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
+      -out server-ca-cert.pem || exit 4
+
+   ## Server certificate, sign with server CA
+   openssl req -newkey rsa:1024 \
+      -config t-srv.cnf -nodes \
+      -keyout server-key.pem -out server-req.pem || exit 5
+   openssl x509 -req -in server-req.pem \
+      -extfile t-srv.cnf \
+      -CA server-ca-cert.pem -CAkey server-ca-key.pem -CAcreateserial \
+      -out server-cert.pem || exit 6
+   ${cat} server-cert.pem \
+      server-ca-cert.pem \
+      > server-chain.pem
+
+   # Same, password protected
+   openssl req -newkey rsa:1024 \
+      -config t.cnf \
+      -passout pass:server-key-pass \
+      -keyout server-pass-key.pem -out server-pass-req.pem || exit 7
+   openssl x509 -req -in server-pass-req.pem \
+      -extfile t.cnf \
+      -CA server-ca-cert.pem -CAkey server-ca-key.pem -CAcreateserial \
+      -out server-pass-cert.pem || exit 8
+   ${cat} \
+      server-pass-cert.pem \
+      server-ca-cert.pem \
+      > server-pass-chain.pem
+
+   ##
+   openssl dhparam -check -text -5 512 -out dh512.pem || exit 9
+
+   ## Client certificate
+   openssl req -newkey rsa:1024 \
+      -config t.cnf -nodes \
+      -keyout client-key.pem -out client-req.pem || exit 10
+   openssl x509 -req -in client-req.pem \
+      -extfile t.cnf \
+      -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
+      -out client-cert.pem || exit 11
+   ${cat} \
+      client-key.pem client-cert.pem \
+      > client-pair.pem
+   ${cat} \
+      client-cert.pem \
+      root-ca-cert.pem \
+      > client-chain.pem
+
+   # With password
+   openssl req -newkey rsa:1024 \
+      -config t.cnf \
+      -passout pass:client-key-pass \
+      -keyout client-pass-key.pem -out client-pass-req.pem || exit 12
+   openssl x509 -req -in client-pass-req.pem \
+      -extfile t.cnf \
+      -passin pass:client-key-pass \
+      -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
+      -out client-pass-cert.pem || exit 13
+   ${cat} \
+      client-pass-key.pem client-pass-cert.pem \
+      > client-pass-pair.pem
+   ${cat} \
+      client-pass-cert.pem \
+      root-ca-cert.pem \
+      > client-pass-chain.pem
+
+   ## Client 2 certificate
+   openssl req -newkey rsa:1024 \
+      -config t2.cnf -nodes \
+      -keyout client2-key.pem -out client2-req.pem || exit 10
+   openssl x509 -req -in client2-req.pem \
+      -extfile t2.cnf \
+      -CA root2-ca-cert.pem -CAkey root2-ca-key.pem -CAcreateserial \
+      -out client2-cert.pem || exit 11
+   ${cat} \
+      client2-key.pem client2-cert.pem \
+      > client2-pair.pem
+   ${cat} \
+      client2-cert.pem \
+      root2-ca-cert.pem \
+      > client2-chain.pem
+
+   printf '' > .t_tls_is_setup
+)
+
+t__tls__copy() {
+   while :; do
+      [ -f ../t.tls.db/.t_tls_is_setup ] && break
+      if [ -z "${SUBSECOND_SLEEP}" ]; then
+         sleep 1 &
+      else
+         sleep .25 &
+      fi
+      wait ${!}
+   done
+   ${cp} -f ../t.tls.db/*.* .
+}
+# }}}
 # }}}
 
 # Test all configs TODO does not cover all *combinations*, stupid!

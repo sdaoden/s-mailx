@@ -948,7 +948,7 @@ $ </dev/null LC_ALL=C \*(uA -d -:/ \e
 
 # With SMTP (no real sending due to -d debug dry-run)
 $ LC_ALL=C \*(uA -d -:/ -Sttycharset=utf8 \e
-    -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
+    -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-auth \e
     -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc --end-options \e
     eric@exam.ple < /tmp/letter.txt
@@ -1079,7 +1079,7 @@ to specify variables:
 $ env LC_ALL=C \*(uA -:/ \e
     -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
-    -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
+    -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-allmechs,plain \e
     -S from=scriptreply@exam.ple \e
     -s 'Subject to go' -a attachment_file \e
     -Sfullnames -. \e
@@ -1966,7 +1966,7 @@ unusual cases become possible.
 The usual case is as short as:
 .
 .Bd -literal -offset indent
-set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
+set mta=smtp://USER:PASS@HOST smtp-config=-starttls \e
     smime-sign smime-sign-cert=+smime.pair \e
     from=myname@my.host
 .Ed
@@ -2045,7 +2045,8 @@ shortcut encpop2 pop3://pop2.exam.ple
 set pop3-use-starttls-pop2.exam.ple
 
 set mta=smtps://smtp.exam.ple:465
-set mta=smtp://smtp.exam.ple smtp-use-starttls
+# Automatically upgrades unless smtp-config=-starttls
+set mta=smtp://smtp.exam.ple
 .Ed
 .
 .Pp
@@ -4206,7 +4207,7 @@ hook is called once they are left, also for program exit.
 Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
 .Va inbox
-of that account will be activated (as via
+of that account will be changed to (as via
 .Ic folder ) ,
 a possibly installed
 .Va folder-hook
@@ -4224,12 +4225,12 @@ as well as things like
 .Va tls-config-pairs
 .Pf ( Sx "Encrypted network communication" ) ,
 and protocol specifics like
-.Va imap-auth , pop3-auth , smtp-auth .
+.Va imap-auth , pop3-auth , smtp-config .
 .Bd -literal -offset indent
 account myisp {
   set folder=~/mail inbox=+syste.mbox record=+sent.mbox
   set from='(My Name) myname@myisp.example'
-  set mta=smtp://mylogin@smtp.myisp.example
+  set mta=smtp://me@smtp.myisp.example
 }
 .Ed
 .
@@ -7453,7 +7454,7 @@ and
 .Ql +?saturated
 are therefore identical.
 In saturated mode overflow errors and division and modulo by zero are no
-longer reported via the exit status, but the result will linger at the
+longer reported via the return status, but the result will linger at the
 minimum or maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
@@ -7766,7 +7767,7 @@ character is the tilde
 Unless otherwise documented command escapes ensure proper updates of
 the error number
 .Va \&!
-and the exit status
+and the exit/return status
 .Va \&? .
 The variable
 .Va errexit
@@ -9767,9 +9768,9 @@ command line option (without argument; see there for more), or by setting
 .
 .Pp
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine) then either this variable or
-.Va hostname ;
-(a SMTP-based
+a dialup machine) either this or
+.Va hostname
+(and a SMTP-based
 .Va mta
 adds even more fine-tuning capabilities with
 .Va smtp-hostname )
@@ -10627,13 +10628,12 @@ will (not) be passed.
 .Pp
 \*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
-a SMTP or SUBMISSION URL (see
+a corresponding URL (see
 .Sx "On URL syntax and credential lookup" ) .
-An authentication scheme can be specified via the variable chain
-.Va smtp-auth .
-Encrypted network connections are \*(OPally available, the section
-.Sx "Encrypted network communication"
-should give an overview and provide links to more information on this.
+Server interaction (TLS, authentication type, etc.) is configurable via
+.Va smtp-config .
+An overview on TLS and links to more information can be found under
+.Sx "Encrypted network communication" .
 Note that with some mail providers it may be necessary to set the
 .Va smtp-hostname
 variable in order to use a specific combination of
@@ -10653,14 +10653,14 @@ The following SMTP variants may be used:
 .Bl -bullet
 .It
 The plain SMTP protocol (RFC 5321) that normally lives on the
-server port 25 and requires setting the
-.Va smtp-use-starttls
-variable to enter a TLS encrypted session state.
+server port 25, which will \*(OPally be upgraded to a TLS encrypted
+session unless disallowed by
+.Va smtp-config .
 Assign a value like
 .Ql smtp://[user[:password]@]server[:port]
 to choose this protocol.
 .It
-The so-called SMTPS which is supposed to live on server port 465
+\*(OP The so-called SMTPS which is supposed to live on server port 465
 and is automatically TLS secured.
 Unfortunately it never became a standardized protocol and may thus not
 be supported by your hosts network service database
@@ -10676,14 +10676,11 @@ specify the port as
 however.
 .It
 The SUBMISSION protocol (RFC 6409) lives on server port 587 and
-is identically to the SMTP protocol from \*(UA's point of view;
-it requires setting
-.Va smtp-use-starttls
-to enter a TLS secured session state; e.g.,
+shares the semantics with SMTP from \*(UA's point of view:
 .Ql submission://[user[:password]@]server[:port] .
 .It
-The SUBMISSIONS protocol (RFC 8314) that lives on server port 465 and is
-TLS secured by default.
+\*(OP The SUBMISSIONS protocol (RFC 8314) that lives on server port 465
+and is TLS secured by default.
 It can be chosen by assigning a value like
 .Ql submissions://[user[:password]@]server[:port] .
 Due to the problems mentioned for SMTPS above and the fact that
@@ -11258,10 +11255,6 @@ need a
 .Va user ,
 the remains also require a
 .Va password .
-.Ql externanon
-solely builds upon the credentials passed via a client certificate,
-and is usually the way to go since tested servers do not actually follow
-RFC 4422, and fail if additional credentials are actually passed.
 Unless
 .Va pop3-no-apop
 is set the
@@ -11304,12 +11297,13 @@ wire, but for one MD5 does not any longer offer sufficient security,
 and then today transport is almost ever TLS secured.)
 .
 .Mx Va pop3-use-starttls
-.It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST , pop3-use-starttls
+.It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST ,\
+  pop3-use-starttls
 \*(BO\*(OP Causes \*(UA to issue a
 .Ql STLS
 command to make an unencrypted POP3 session TLS encrypted.
-This functionality is not supported by all servers,
-and is not used if the session is already encrypted by the POP3S method.
+This functionality is not supported by all servers.
+Directly using encrypted communication channels should be preferred.
 .
 .
 .Mx
@@ -12018,11 +12012,13 @@ Also see
 and
 .Va smime-sign-digest .
 .
+.
 .Mx Va smime-sign-cert
 .It Va smime-sign-cert-USER@HOST , smime-sign-cert
 \*(OP Points to a file in PEM format.
 For the purpose of signing and decryption this file needs to contain the
 user's private key, followed by his certificate.
+.
 .Pp
 For message signing
 .Ql USER@HOST
@@ -12037,6 +12033,7 @@ can be used to save certificates of signed messages (the section
 .Sx "Signed and encrypted messages with S/MIME"
 gives some details).
 This mode of operation is usually driven by the specialized form.
+.
 .Pp
 When decrypting messages the account is derived from the recipient
 fields
@@ -12048,6 +12045,7 @@ a variable is set.
 \*(UA always uses the first address that matches,
 so if the same message is sent to more than one of the user addresses
 using different encryption keys, decryption might fail.
+.
 .Pp
 Password-encrypted keys may be used for signing and decryption.
 Automated password lookup is possible via the
@@ -12073,6 +12071,7 @@ To include intermediate certificates, use
 The possible password sources are documented in
 .Sx "On URL syntax and credential lookup" .
 .
+.
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
 \*(OP Specifies the message digest to use when signing S/MIME messages.
@@ -12092,6 +12091,7 @@ due to security concerns.
 This variable is ignored for very old (released before 2010)
 cryptographic libraries which do not offer the necessary interface:
 it will be logged if that happened.
+.
 .Pp
 \*(UA will try to add built-in support for the following message
 digests, names are case-insensitive:
@@ -12114,6 +12114,7 @@ More digests may \*(OPally be available through dynamic loading via the
 OpenSSL function
 .Xr EVP_get_digestbyname 3 .
 .
+.
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
 \*(OP If used, this is supposed to a consist of a comma-separated list
@@ -12128,6 +12129,7 @@ a local root certificate, over the intermediate certificates, down to the
 .Va smime-sign-cert .
 Even though top level certificates may also be included in the chain,
 they will not be used for the verification on the receiver's side.
+.
 .Pp
 For the purpose of the mechanisms involved here,
 .Ql USER@HOST
@@ -12142,51 +12144,145 @@ shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
 .Sx "On URL syntax and credential lookup" .
 .
+.
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
-\*(OP Variable chain that controls the SMTP
+\*(OP\*(OB Please use the authentication slots of
+.Va smtp-config .
+.
+.
+.Mx Va smtp-config
+.It Va smtp-config-USER@HOST , smtp-config-HOST , smtp-config
+\*(OP When a SMTP based
 .Va mta
-authentication method, possible values are
-.Ql none ,
+is contacted a list of supported SMTP service extensions will
+(optionally) be announced by the server.
+This comma-separated (case-insensitive) list configures which extensions
+shall be used, and which of the available ones shall not.
+Order matters, whitespace is ignored, an optional plus sign
+.Ql +
+prefix enables, a hyphen-minus
+.Ql -
+prefix disables usage of an extension, for example
+.Ql -all , ehlo,+starttls,   gssapi .
+.
+.Pp
+.Bl -tag -compact -width ".It Cd BaNg"
+.It Cd all
+This special word enables or disables all extensions.
+Disabling it also disables all the below authentication mechanisms.
+If unset or empty all available extensions are enabled.
+.It Cd ehlo
+Service Extensions (RFC 1869) added the notion of extensions to the SMTP
+protocol; when disabled, all other extensions are also disabled (for
+.Cd auth
+only the master switch is toggled, not the individual mechanisms),
+enabling any extension (re-)implies this.
+.It Cd pipelining
+Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
+successive commands without waiting for respective server responses.
+.It Cd starttls
+Secure SMTP over TLS (Transport Layer Security, RFC 3207) allows
+upgrading an unencrypted (SMTP not SMTPS) connection to use private,
+authenticated communication.
+To improve security and provide a safety measure against
+man-in-the-middle attacks this is always performed \(em even if the
+server does not announce it \(em unless explicitly turned off.
+Directly using encrypted transport channels should be preferred, as
+it saves network traffic.
+.It Cd auth
+Authentication (RFC 4954) allows account credentials to be passed.
+This word disables all authentication mechanisms, but enables only those
+which can be managed automatically without external help; for example
+GSSAPI requires an externally granted ticket to exist, and is therefore
+excluded by the default automatic selection, as is EXTERNAL etc.: these
+mechanisms have to be enabled explicitly.
+The default selection depends upon the (im- or explicit) presence of TLS.
+.El
+.
+.Pp
+If multiple
+.Cd auth Ns
+entication mechanisms are available, an automatic selection of the
+.Dq best
+method is performed, preferring the non-automatic mechanisms.
+The used list can be fine-tuned, any non-empty list implies
+.Cd auth .
+For example,
+.Ql smtp-config=-allmechs,\:gssapi,\:external,\:plain
+will favour external over gssapi, and use plain as a last resort only.
+Beware, in the following example
 .Ql plain
-(default),
-.Ql login ,
-.Ql oauthbearer
-(see
+would still be used as a last ressort, sending credentials in clear
+(unless the transport is of an encrypted type):
+.Ql smtp-config=-all,,\:gssapi,\:plain .
+The following mechanisms are known:
+.
+.Pp
+.Bl -tag -compact -width ".It Cd BaNg"
+.It Cd allmechs
+Special word which covers all authentication methods (where
+.Dq all
+means all for disabling, and all supported ones for enabling).
+.It Cd cram-md5
+\*(OP Challenge-Response authentication mechanism (CRAM; included in
+RFC 2195), needs
+.Va user
+and
+.Va password .
+.It Cd external
+\*(OP Included in the simple authentication and security layer (SASL;
+RFC 4422).
+Authentication happens through a TLS client certificate (see
+.Va tls-config-pairs ,
+.Cd Certificate )
+on the transport layer, therefore not automatic.
+Needs a
+.Va user .
+.It Cd externanon
+\*(OP Likewise, but an empty user name is passed, as it is expected
+that the server extracts the name from the certificate.
+Not compliant with RFC 4422 / RFC 4954, but has been seen in the wild.
+.It Cd gssapi
+\*(OP The Kerberos V5 ("GSSAPI") mechanism (RFC 4752).
+Needs an external ticket (to be granted by
+.Xr kinit 1 ) ,
+therefore not automatic.
+Needs a
+.Va user .
+.It Cd login
+The LOGIN mechanism
+.Pf ( Pa draft-murchison-sasl-login-00.txt ) .
+It requires three packet roundtrips, has been obsoleted by the IETF,
+and should only be used as a last resort.
+Needs
+.Va user
+and
+.Va password .
+.It Cd oauthbearer
+A set of mechanisms for OAuth (RFC 7628).
+One packet roundtrip.
+Needs
+.Va user
+and
+.Va password .
+The password is a temporary bearer token, not the real password,
+and therefore this mechanism is not automatic.
+Also see the
 .Sx FAQ
 entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
-as well as
-.Ql external
-and
-.Ql externanon
-for TLS secured connections which pass a client certificate via
-.Va tls-config-pairs .
-There may be the \*(OPal methods
-.Ql cram-md5
-and
-.Ql gssapi .
-.Ql none
-and
-.Ql externanon
-do not need any user credentials,
-.Ql external
-and
-.Ql gssapi
-require a user name, and all other methods require a
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?"
+.It Cd plain
+The PLAIN mechanism (RFC 4616).
+One packet roundtrip, needs
 .Va user
-name and a
+and
 .Va password .
-.Ql externanon
-solely builds upon the credentials passed via a client certificate,
-and is usually the way to go since tested servers do not actually follow
-RFC 4422 aka RFC 4954, and fail if additional credentials are passed.
-Also see
-.Va mta .
-Note for
-.Va smtp-auth-USER@HOST :
-may override dependent on sender address in the variable
-.Va from . )
+.It Cd xoauth2
+A popular slightly different variant of the later standardized
+.Cd oauthbearer .
+.El
+.
 .
 .Mx Va smtp-hostname
 .It Va smtp-hostname-USER@HOST , smtp-hostname-HOST , smtp-hostname
@@ -12226,12 +12322,11 @@ If the \*(OPal IDNA support is available (see
 variable assignment is aborted when a necessary conversion fails.
 .
 .Mx Va smtp-use-starttls
-.It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
-\*(BO\*(OP Causes \*(UA to issue a
-.Ql STARTTLS
-command to make an SMTP
-.Va mta
-session TLS encrypted, i.e., to enable transport layer security.
+.It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST ,\
+  smtp-use-starttls
+\*(BO\*(OP\*(OB Please use
+.Va smtp-config .
+(Forcing TLS has become a default setting.)
 .
 .Mx
 .It Va socket-connect-timeout
@@ -14698,7 +14793,7 @@ Note: some IMAP servers do not accept the creation of mailboxes in
 the hierarchy base, but require that they are created as subfolders of
 `INBOX' \(en with such servers a folder name of the form
 .Pp
-.Dl imaps://mylogin@imap.myisp.example/INBOX.
+.Dl imaps://me@imap.myisp.example/INBOX.
 .Pp
 should be used (the last character is the server's hierarchy
 delimiter).
@@ -14847,9 +14942,7 @@ and
 .Ql external ,
 which only need the former.
 .Ql externanon
-solely builds upon the credentials passed via a client certificate,
-and is usually the way to go since tested servers do not actually follow
-RFC 4422, and fail if additional credentials are actually passed.
+only uses data from the client certificate.
 .
 .Mx
 .It Va imap-cache
@@ -14900,6 +14993,7 @@ Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
 IMAP session TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
+Directly using encrypted communication channels should be preferred.
 .El
 .
 .\" }}}

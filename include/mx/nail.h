@@ -181,6 +181,7 @@ enum conversion{
    CONV_TOHDR_A /* convert addresses for header */
 };
 
+/* Real protocols must be first */
 enum cproto{
    CPROTO_NONE, /* Invalid.  But sometimes used to be able to parse an URL */
 CPROTO_IMAP,
@@ -880,13 +881,14 @@ ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_v_smime_sign_include_certs, /* {chain=1} */
 ok_v_smime_sign_message_digest, /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
-   ok_v_smtp_auth,                     /* {chain=1} */
+ok_v_smtp_auth, /* {chain=1,obsolete=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
+   ok_v_smtp_config, /* {chain=1} */
    ok_v_smtp_hostname, /* {vip=1,chain=1} */
-   ok_b_smtp_use_starttls, /* {chain=1} */
+ok_b_smtp_use_starttls, /* {chain=1,obsolete=1} */
    ok_v_SOCKS5_PROXY, /* {vip=1,import=1,notempty=1,name=SOCKS5_PROXY} */
-   ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
+   ok_v_SOURCE_DATE_EPOCH, /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
    ok_v_socket_connect_timeout, /* {posnum=1} */
    ok_v_socks_proxy, /* {vip=1,chain=1,notempty=1} */
@@ -1039,12 +1041,13 @@ struct time_current{ /* TODO s64, etc. */
 
 struct mailbox{
    enum{
-      MB_NONE = 000, /* no reply expected */
-      MB_COMD = 001, /* command reply expected */
-      MB_MULT = 002, /* multiline reply expected */
-      MB_PREAUTH = 004, /* not in authenticated state */
-      MB_BYE = 010, /* may accept a BYE state */
-      MB_BAD_FROM_ = 1<<4 /* MBOX with invalid From_ seen & logged */
+      MB_NONE = 0, /* no reply expected */
+      MB_COMD = 1u<<0, /* command reply expected */
+      MB_MULT = 1u<<1, /* multiline reply expected */
+      MB_PREAUTH = 1u<<2, /* not in authenticated state */
+      MB_MAY_SEE_CAPS = 1u<<3, /* response may bring capabilities */
+      MB_BYE = 1u<<4, /* may accept a BYE state */
+      MB_BAD_FROM_ = 1<<5 /* MBOX with invalid From_ seen & logged */
    } mb_active;
    FILE *mb_itf; /* temp file with messages, read open */
    FILE *mb_otf; /* same, write open */
@@ -1064,9 +1067,10 @@ MB_CACHE, /* IMAP cache */
    int mb_threaded; /* mailbox has been threaded */
 #ifdef mx_HAVE_IMAP
    enum mbflags{
-      MB_NOFLAGS = 000,
-      MB_UIDPLUS = 001, /* supports IMAP UIDPLUS */
-      MB_SASL_IR = 002  /* supports RFC 4959 SASL-IR */
+      MB_NOFLAGS = 0,
+      MB_SEEN_CAPS = 1u<<0, /* Have parsed CAPABILITIES */
+      MB_UIDPLUS = 1u<<1, /* Supports IMAP UIDPLUS */
+      MB_SASL_IR = 1u<<2  /* Supports RFC 4959 SASL-IR */
    } mb_flags;
    u64 mb_uidvalidity; /* IMAP unique identifier validity */
    char *mb_imap_account; /* name of current IMAP account */
@@ -1321,13 +1325,13 @@ struct n_addrguts{
    u32 ag_n_flags; /* enum mx_name_flags of .ag_skinned */
 };
 
-struct sendbundle{
-   struct header *sb_hp;
-   struct mx_name *sb_to;
-   FILE *sb_input;
-   struct mx_url *sb_urlp; /* Or NIL for file-based MTA */
-   struct mx_cred_ctx *sb_credp; /* cred-auth.h not included */
-   struct str sb_signer; /* USER@HOST for signing+ */
+struct mx_send_ctx{
+   struct header *sc_hp;
+   struct mx_name *sc_to;
+   FILE *sc_input;
+   struct mx_url *sc_urlp; /* Or NIL for file-based MTA */
+   struct mx_cred_ctx *sc_credp; /* cred-auth.h not included */
+   struct str sc_signer; /* USER@HOST for signing+ */
 };
 
 /* For saving the current directory and later returning */

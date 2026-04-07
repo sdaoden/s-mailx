@@ -57,13 +57,14 @@ su_EMPTY_FILE()
 #include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
+#include "mx/cred-oauthbearer.h"
 #include "mx/file-streams.h"
 #include "mx/mime-enc.h"
 #include "mx/net-socket.h"
 #include "mx/sigs.h"
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
+# include "mx/cred-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 #include "mx/net-pop3.h"
@@ -99,7 +100,7 @@ static enum okay a_pop3_auth_apop(struct mailbox *mp,
 static enum okay a_pop3_auth_plain(struct mailbox *mp,
       struct a_pop3_ctx const *pcp);
 static enum okay a_pop3_auth_oauthbearer(struct mailbox *mp,
-      struct a_pop3_ctx const *pcp);
+      struct a_pop3_ctx const *pcp, boole is_xoauth2);
 static enum okay a_pop3_auth_external(struct mailbox *mp,
       struct a_pop3_ctx const *pcp);
 
@@ -120,7 +121,7 @@ static enum okay a_pop3_delete(struct mailbox *mp, int n);
 static enum okay a_pop3_update(struct mailbox *mp);
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 /* Indirect POP3 I/O */
@@ -212,7 +213,9 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
       rv = a_pop3_auth_plain(mp, pcp);
       break;
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
-      rv = a_pop3_auth_oauthbearer(mp, pcp);
+   case mx_CRED_AUTHTYPE_XOAUTH2:
+      rv = a_pop3_auth_oauthbearer(mp, pcp,
+            (pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_XOAUTH2));
       break;
    case mx_CRED_AUTHTYPE_EXTERNAL:
    case mx_CRED_AUTHTYPE_EXTERNANON:
@@ -355,55 +358,34 @@ jleave:
 }
 
 static enum okay
-a_pop3_auth_oauthbearer(struct mailbox *mp, struct a_pop3_ctx const *pcp){
-   struct str b64;
-   int i;
-   uz cnt;
-   char *cp;
+a_pop3_auth_oauthbearer(struct mailbox *mp, struct a_pop3_ctx const *pcp,
+      boole is_xoauth2){
+   struct str s;
+   uz i;
+   char const *mech, oa[] = "AUTH OAUTHBEARER ", xoa[] = "AUTH XOAUTH2 ";
    enum okay rv;
    NYD_IN;
 
    rv = STOP;
-   cp = NIL;
 
-   /* Calculate required storage */
-   cnt = pcp->pc_cred.cc_user.l;
-#define a_MAX \
-   (2 + sizeof("AUTH XOAUTH2 " "user=\001auth=Bearer \001\001" NETNL))
+   if(!is_xoauth2)
+      mech = oa, i = sizeof(oa) -1;
+   else
+      mech = xoa, i = sizeof(xoa) -1;
 
-   if(pcp->pc_cred.cc_pass.l >= UZ_MAX - a_MAX ||
-         cnt >= UZ_MAX - a_MAX - pcp->pc_cred.cc_pass.l){
-jerr_cred:
-      n_err(_("Credentials overflow buffer sizes\n"));
-      goto jleave;
-   }
-   cnt += pcp->pc_cred.cc_pass.l;
-
-   cnt += a_MAX;
-#undef a_MAX
-   if((cnt = mx_b64_enc_calc_size(cnt)) == UZ_MAX)
-      goto jerr_cred;
-
-   cp = n_lofi_alloc(cnt +1);
-
-   /* Then create login query */
-   i = snprintf(cp, cnt +1, "user=%s\001auth=Bearer %s\001\001",
-      pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_pass.s);
-   if(mx_b64_enc_buf(&b64, cp, i, mx_B64_AUTO_ALLOC) == NIL)
+   if(!mx_oauthbearer_create_icr(&s, i, &pcp->pc_url, &pcp->pc_cred,
+         is_xoauth2))
       goto jleave;
 
-   cnt = sizeof("AUTH XOAUTH2 ") -1;
-   su_mem_copy(cp, "AUTH XOAUTH2 ", cnt);
-   su_mem_copy(&cp[cnt], b64.s, b64.l);
-   su_mem_copy(&cp[cnt += b64.l], NETNL, sizeof(NETNL));
+   su_mem_copy(&s.s[0], mech, i);
 
-   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_OUT(rv, s.s, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   rv = OKAY;
 jleave:
-   if(cp != NIL)
-      n_lofi_free(cp);
+   if(s.s != NIL)
+      n_lofi_free(s.s);
+
    NYD_OU;
    return rv;
 }
@@ -971,7 +953,7 @@ a_pop3_update(struct mailbox *mp){
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 #undef a_POP3_OUT
@@ -1019,18 +1001,8 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm){
 
    if(!mx_url_parse(&pc.pc_url, CPROTO_POP3, server))
       goto jleave;
-   if(ok_vlook(v15_compat) == NIL && pc.pc_url.url_pass.s != NIL){
-      n_err(_("POP3: new-style URL used without *v15-compat* being set: %s\n"),
-         n_shexp_quote_cp(server, FAL0));
-      goto jleave;
-   }
 
-   if(!((ok_vlook(v15_compat) != NIL)
-         ? mx_cred_auth_lookup(&pc.pc_cred, &pc.pc_url)
-         : mx_cred_auth_lookup_old(&pc.pc_cred, CPROTO_POP3,
-            ((pc.pc_url.url_flags & mx_URL_HAD_USER)
-             ? pc.pc_url.url_eu_h_p.s
-             : pc.pc_url.url_u_h_p.s))))
+   if(!mx_cred_auth_lookup(&pc.pc_cred, &pc.pc_url))
       goto jleave;
 
    if(!quit(FAL0))
