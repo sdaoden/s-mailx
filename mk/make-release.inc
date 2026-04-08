@@ -124,6 +124,7 @@ release_brcheck() {
 		exit 4
 	fi
 
+	balltagx=.ar
 	relbrname=release/v$VERSION
 	brref=$($git rev-parse --verify $relbrname 2>/dev/null)
 	if [ -z "$brref" ]; then :; else
@@ -185,7 +186,7 @@ create_release_branch() {
 			$git update-ref refs/heads/release/stable $relbrname
 		fi
 	else
-		relbrname=$stblbrname
+		relbrname=$stblbrname balltagx=
 	fi
 }
 
@@ -194,7 +195,7 @@ check_timeline_branch() {
 			yesno 'Shall i update [timeline]?'; then
 		$git checkout timeline
 		$git rm -rf '*'
-		$git archive --format=tar "v$REL.ar" | $tar -x -f -
+		$git archive --format=tar "v$REL$balltagx" | $tar -x -f -
 		$git add .
 		LC_ALL=$ORIG_LC_ALL $git commit -S -n -m "$relmsg"
 	fi
@@ -220,7 +221,7 @@ big_balls() {
 		$rm -f "$TMPDIR/$PROGRAM-$REL.dat"
 
 		#
-		$git archive --format=tar --prefix="$PROGRAM-$REL/" v$REL.ar |
+		$git archive --format=tar --prefix="$PROGRAM-$REL/" v$REL$balltagx |
 			( cd "$TMPDIR" && $tar -x $tarm -f - )
 		cd "$TMPDIR"
 
@@ -480,7 +481,7 @@ create_grappa_env() {
 }
 
 grappa=
-if [ $#}-ne 0 ]; then
+if [ $# -ne 0 ]; then
 	if [ $# != 2 ] || [ "$1" != grappa ] || [ -z "$2" ]; then
 		echo >&2 'You have a hell of a lot to learn about Rock'"'"'n Roll'
 		exit 55
@@ -521,7 +522,7 @@ update_stable_hook
 if [ -z "$grappa" ]; then
 	update_stable_branch
 	create_release_branch
-	test_release_hook v$REL.ar || exit 1
+	test_release_hook v$REL$balltagx || exit 1
 	check_timeline_branch
 	repo_push
 	big_balls

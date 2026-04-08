@@ -13,6 +13,7 @@ export VERSION
 < "$1" > "$2" exec $awk -v CNFIN="$CNFIN" '
 	BEGIN {written = 0}
 	/\.\\"--MKROFF-START--/,/\.\\"--MKROFF-END--/{
+		print ".\\\"--MKROFF-START--"
 		inli = el = 0
 		while((getline < CNFIN) > 0){
 			if($0 ~ /^#\./){
@@ -44,6 +45,7 @@ export VERSION
 		close(CONFIN)
 		if(inli)
 			print ".Ed"
+		print ".\\\"--MKROFF-END--"
 		next
 	}
 	{print}

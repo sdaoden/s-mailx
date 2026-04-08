@@ -132,7 +132,8 @@ update_stable_hook() {
 update_release_hook() {
 	#
 	echo 'mx.1: stripping MKREL etc.'
-	$sed -e '/^\.\\"--MKREL-START--/d' \
+	$sed \
+		-e '/^\.\\"--MKREL-START--/d' \
 		-e '/^\.\\"--MKREL-END--/d' \
 		-e '/--BEGINSTRIP--/,$ {' \
 			-e '/^\.[	 ]*$/d' -e '/^\.[	 ]*\\"/d' \
@@ -149,9 +150,12 @@ update_release_hook() {
 		< mx.1 MDOCMX_ENABLE=1 $roff -Thtml -mdoc > /tmp/mx-manual.html
 	fi
 
-	echo 'mx-config.7: stripping MKREL etc.'
-	$sed -e '/^\.\\"--MKREL-START--/d' \
+	echo 'mx-config.7: stripping MKREL, MKROFF etc.'
+	$sed \
+		-e '/^\.\\"--MKREL-START--/d' \
 		-e '/^\.\\"--MKREL-END--/d' \
+		-e '/^\.\\"--MKROFF-START--/d' \
+		-e '/^\.\\"--MKROFF-END--/d' \
 		-e '/--BEGINSTRIP--/,$ {' \
 			-e '/^\.[	 ]*$/d' -e '/^\.[	 ]*\\"/d' \
 		-e '}' \
@@ -175,7 +179,7 @@ update_release_hook() {
 	$mv -f mx.rcx mx.rc
 	$git add mx.rc
 
-	${SHELL}mk/su-make-strip-cxx.sh
+	$SHELL mk/su-make-strip-cxx.sh
 
 	$make d-cmd-tab-nv && $git add -f src/mx/gen-cmd-tab.h
 	$make d-cs-ctype-nv && $git add -f src/su/gen-cs-ctype.h
