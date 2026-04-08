@@ -65,19 +65,19 @@ NOTES, ChangeLog
 
 + Command line interface moved towards sh(1)ell-style quite a bit.
 
-  This includes that `if'#? .. series now practically works
+  This includes that `if'#226 .. series now practically works
   identical to bash(1)s [[ ]] construct, such things now succeed:
     uns i; if -z $i; ec ya; end
 
 + Several settings gained built-in initial values.  Like this non-
   expert users should get away out-of-the-box more easily.
   (Arkadiusz Miśkiewicz, Kevin Bloom)
-  Note: includes *mime-force-sendout*#? (Arkadiusz Miśkiewicz)
+  Note: includes *mime-force-sendout*#498 (Arkadiusz Miśkiewicz)
 
   ! Remarks: power users may not like certain of these, for example,
-  ! that *emptystart*#? is now set by default.  So far there is no
+  ! that *emptystart*#432 is now set by default.  So far there is no
   ! simple toggle to turn these extensions all off, like the new
-  ! *expert*#? that Norman Ramsey asked for.
+  ! *expert*#439 that Norman Ramsey asked for.
   ! I wonder whether that should change with the final v14.10.0
   ! release.  For at least -alpha however they have to be
   ! disabled/changed explicitly, in resource files, for example.
@@ -87,7 +87,7 @@ NOTES, ChangeLog
   The entire set of known variables plus initial settings:
     s-nail -:/ [-v] -Xvars -Xx)
 
-+ `xcall'#?, the "manual tail call optimization", no longer leaks
++ `xcall'#317, the "manual tail call optimization", no longer leaks
   memory (and much more fixes).  Oh no, we can implement yes(1)!
     s-nail -:/ -X'define yes {
       ec yes
@@ -95,7 +95,7 @@ NOTES, ChangeLog
     }
     call yes'
 
-+ SMTP configuration changed completely via new *smtp-config*#?,
++ SMTP configuration changed completely via new *smtp-config*#590,
   including support of SMTP extensions like PIPELINING and more.
   (It is likely "it just works" for you out of the box.  Any hint
   if not would be appreciated!)
@@ -109,7 +109,7 @@ NOTES, ChangeLog
   authentication mechanisms.
   (IMAP also PLAIN.  (Stephen Isard))
 
-  There is an optional *build-oauth-helper*#? Python3 script
+  There is an optional *build-oauth-helper*#407 Python3 script
   that can be used by the macros shown in the new XY-config(7)
   manual, which gives copy+paste examples, to manage OAuth
   credentials.
@@ -119,7 +119,7 @@ NOTES, ChangeLog
   ! when they are *really* needed.
 
 + MIME classification learned about chains like .tar.gz.
-  New ?o [only-handler] `mimetype'#? marker, a good thing.
+  New ?o [only-handler] `mimetype'#235 marker, a good thing.
   Both: (Olaf Hering)
   Also new ?s [send-text] marker.
 
@@ -140,8 +140,8 @@ NOTES, ChangeLog
   Some are built-in by default, see
     $ s-nail -:/ -Xmimet -Xx | grep only-hand
 
-+ File related functions of `vexpr'#? moved to new `fop'#?.
-  Many `csop'#?, `fop' and `vexpr' functions added or extended.
++ File related functions of `vexpr'#313 moved to new `fop'#213.
+  Many `csop'#172, `fop' and `vexpr' functions added or extended.
 
 + New $(( )) shell-style arithmetic evaluator.
   ! Known -alpha bug for tremendously deep ?: style conditionals:
@@ -150,12 +150,12 @@ NOTES, ChangeLog
   ! bad: $((0,1,2,0?(3,4):(((5,0)))?0?0?0?6:7:8:9:10?11?(12?(13?(0?+14:-14):0:0):0):0?15:0?16:17?18:0))
 
 + We gained multiple "local" scopes for commands, please read
-  "Command modifiers"#?.
+  "Command modifiers"#22.
 
   Also `vput' is obsolete, there is a ">" command "redirection"
   modifier instead
 
-+ We gained "result set"#?; alongside this `vexpr'#? regular
++ We gained "result set"#367; alongside this `vexpr'#313 regular
   expression matching goes that route, with temporary backward
   compatibility.
 
@@ -182,10 +182,10 @@ NOTES, ChangeLog
            #-> 3: <abrakadabra> <abra> <br>
            #-> 1, 3, x says br
 
-+ New *on-mailbox-event*#? hook will replace folder hooks,
++ New *on-mailbox-event*#519 hook will replace folder hooks,
   reporting more conditions.
 
-+ New *on-compose-embed*#? hook!
++ New *on-compose-embed*#515 hook!
   This replaces the obsolete *on-compose-splice* series, which ran
   in subprocesses, was hard to use and could end with process
   deadlocks if used falsely.
@@ -195,9 +195,9 @@ NOTES, ChangeLog
    ESCAPES# mode and can act like an interactive user.  The
    s-nail-config(7)* manual provides examples.
 
-+ New *ttycharset-detect*#? variable.
++ New *ttycharset-detect*#629 variable.
   Alongside this, rewrite of the entire MIME probing machinery!
-  And support *iconv-disable*#?.
+  And support *iconv-disable*#463.
   (Dr. Werner Fink)
 
   We can now create email content as crude as, for example (result
@@ -224,30 +224,30 @@ NOTES, ChangeLog
 ChangeLog
 ^^^^^^^^^
 
-- *smtp-from*#? replaces *smtp-hostname*, and is a variable chain.
+- *smtp-from*#591 replaces *smtp-hostname*, and is a variable chain.
   (Madou Mad, [Giannis-2], [Stephen Isard])
 
 - Password "logged" only for -d/3x -v  (Gavin Troy)
 
-- New *line-editor-config*#?.
+- New *line-editor-config*#474.
 
 - If *termcap-ca-mode* is given a value, alternative screen is
   cleared when left.  (Vincent Lefevre, Oskari Pirhonen)
 
-- New `:'#? no-effect command (like sh(1)ell one).
+- New `:'#143 no-effect command (like sh(1)ell one).
 
-- *tls-config-pairs*#? (fallback) knows about KTLS.
+- *tls-config-pairs*#618 (fallback) knows about KTLS.
 
 - -M and -m command line option hacks were removed.
 
-- `~r'#?, `~R' and `~<' command escapes saw fixes / changes.
+- `~r'#348, `~R' and `~<' command escapes saw fixes / changes.
 
-- New *message-id*#? configuration format string.
+- New *message-id*#489 configuration format string.
 
 - The Subject: [tag] resorting done by (certain, newer?) Mailman
   configurations is now properly dealt with.
 
-- The MLE ("Terminal control and line editor"#?) supports
+- The MLE ("Terminal control and line editor"#15) supports
   "bracketed paste mode":
    [Option] mle-be-bd-ps: if "bracketed-paste" is supported by the
    TERM#inal (see termcap#), enabled regardless of
@@ -259,27 +259,27 @@ ChangeLog
   anything, we now include a complete character set name database
   in order to reflect, and choose MIME preferred real names.
 
-- *on-program-exit*#? defined more.  (Robert Elz)
+- *on-program-exit*#521 defined more.  (Robert Elz)
 
-- New *obsoletion*#? variable to allow configuration of
+- New *obsoletion*#511 variable to allow configuration of
   which obsoletion messages appear (to some extend).
 
-- *smime-cipher*#? defaults to AES256.
+- *smime-cipher*#580 defaults to AES256.
 
-- In certain contexts *cols*#? replaces $COLUMNS#?.
+- In certain contexts *cols*#413 replaces $COLUMNS#642.
 
-- No more *piperaw*: `Pipe'#? is always, `pipe'#? never.
-  `Show' is gone, `show'#? remains.
+- No more *piperaw*: `Pipe'#255 is always, `pipe'#256 never.
+  `Show' is gone, `show'#286 remains.
 
 - From_ quoting in the first body line was broken for eleven years.
 
-- "Compose mode"#? `history'#? entries are better normalized.
+- "Compose mode"#8 `history'#223 entries are better normalized.
 
-- New mle-prompt2 and -promptx slots for "Coloured display"#?
-  aka `colour'#?.
+- New mle-prompt2 and -promptx slots for "Coloured display"#16
+  aka `colour'#166.
 
 - According to RFC 5321, 2.3.5, the plain <postmaster> address is
-  supported, case-insensitively (with an empty *hostname*#?).
+  supported, case-insensitively (with an empty *hostname*#462).
 ==alpha
 
 git(1) shortlog (edited)

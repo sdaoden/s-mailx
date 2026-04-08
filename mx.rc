@@ -2,7 +2,7 @@
 #@ /etc/s-nail.rc - global configuration file for S-nail(1)
 #--MKRC-END--
 #--MKREL-START--
-#@ S-nail v14.9.25 / 2024-06-27
+#@ S-nail v14.10.0-alpha / 2026-04-08
 #--MKREL-END--
 #@
 #@ NOTE:

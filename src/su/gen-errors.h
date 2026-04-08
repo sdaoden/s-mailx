@@ -232,8 +232,8 @@ static char const a_corerr_docs[] = {
 	'N','o',' ','r','o','u','t','e',' ','t','o',' ','h','o','s','t','\0',
 	/* 25. [572]+18 IDRM */ a_X(N_("Identifier removed"))
 	'I','d','e','n','t','i','f','i','e','r',' ','r','e','m','o','v','e','d','\0',
-	/* 26. [591]+21 ILSEQ */ a_X(N_("Illegal byte sequence"))
-	'I','l','l','e','g','a','l',' ','b','y','t','e',' ','s','e','q','u','e','n','c','e','\0',
+	/* 26. [591]+21 ILSEQ */ a_X(N_("Invalid byte sequence"))
+	'I','n','v','a','l','i','d',' ','b','y','t','e',' ','s','e','q','u','e','n','c','e','\0',
 	/* 27. [613]+25 INPROGRESS */ a_X(N_("Operation now in progress"))
 	'O','p','e','r','a','t','i','o','n',' ','n','o','w',' ','i','n',' ','p','r','o','g','r','e','s','s','\0',
 	/* 28. [639]+22 INTEGRITY */ a_X(N_("Integrity check failed"))
