@@ -61,13 +61,6 @@ d-cross-build:
 		CC="`pwd`/mk/pcb-cc.sh";\
 	$(MAKE) OPT_CROSS_BUILD=y OPT_DEVEL=1 VERBOSE=1 CC="$${CC}" config;\
 	$(MAKE) distclean
-d-b:
-	@$(_prestop);\
-	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk all
-d-v:
-	@$(_prestop);\
-	$${SHELL} "$${TOPDIR}"mk/make-version.sh create
 d-cmd-tab:
 	sh mk/make-cmd-tab.sh
 d-cmd-tab-nv:
