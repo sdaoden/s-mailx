@@ -275,6 +275,9 @@ ChangeLog
 
 - "Compose mode"#8 `history'#223 entries are better normalized.
 
+- New `headerorder'#? command to visually sort header fields
+  when `type'#?ing etc messages.
+
 - New mle-prompt2 and -promptx slots for "Coloured display"#16
   aka `colour'#166.
 
