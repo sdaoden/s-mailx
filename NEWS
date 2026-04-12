@@ -87,8 +87,9 @@ NOTES, ChangeLog
   The entire set of known variables plus initial settings:
     s-nail -:/ [-v] -Xvars -Xx)
 
-+ `xcall'#317, the "manual tail call optimization", no longer leaks
-  memory (and much more fixes).  Oh no, we can implement yes(1)!
++ `xcall'#317, the "manual tail call optimization", no longer
+  causes memory lingering in the xcall machinery (and more fixes).
+  Oh no, we can implement yes(1)!
     s-nail -:/ -X'define yes {
       ec yes
       xcall yes
