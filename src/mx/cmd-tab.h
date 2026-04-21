@@ -999,7 +999,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Delete <shortcut-list> (* for all)")},
 	{"unsort", &c_unsort, (A | M | S | TMSGLST), 0, 0, NIL,
 	 N_("The same as \"sort none\"")},
-	{"urlcodec", &c_urlcodec, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unset),
+	{"urlcodec", &c_urlcodec, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_urlcodec),
 	 N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")},
 {"unfwdignore", &c_unfwdignore, (OBS | M | TRAWLST), 0, MAC, NIL,
  N_("Please use `unheaderpick'")},

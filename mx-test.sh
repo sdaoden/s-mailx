@@ -15605,6 +15605,51 @@ body2-5
 	t_epilog "${@}"
 } #}}}
 
+t_urlcodec() { #{{{
+	t_prolog "$@"
+
+	#{{{
+	<< '__EOT' $MAILX $ARGS > ./t1 2>$E0
+commandalias x ec '"$?/$^ERRNAME <$r>"'
+se r
+urlcodec decode L%20a%20g%20
+x
+urlc encode L a g 
+x
+>r urlc dec L%20a%20g%20
+x
+>r urlc enc L a g 
+x
+>r urlc d %7e%2fL%20%5ba%5D%20g/%20/
+x
+>r urlc e ~/L [a] g/ /
+x
+>r urlc e ./L [a] g/ /
+x
+>r urlc e -/L [a] g/ /
+x
+>r urlc pathdecode %7e%2fL%20%5ba%5D%20g%2f%20%2F
+x
+>r urlc pathencode ~/L [a] g/ / 
+x
+eval >r urlc pd $r; x
+>r urlc pdecode -%2fL%20%5ba%5D%20g%2f%20%2F
+x
+>r urlc pencode -/L [a] g/ / 
+x
+eval >r urlc pd $r; x
+>r urlc pd .%2fL%20%5ba%5D%20g%2f%20%2F
+x
+>r urlc pe ./L [a] g/ / 
+x
+eval >r urlc pd $r; x
+__EOT
+	#}}}
+	cke0 1 0 ./t1 '2247124165 460'
+
+	t_epilog "$@"
+} #}}}
+
 # xxx Note: t_z() was the first test (series) written.  Today many
 # xxx aspects are (better) covered by other tests above, some are not.
 # xxx At some future date and time, convert the last remains not covered

@@ -8326,20 +8326,26 @@ See
 Apply
 .Ar e[ncode] ,
 .Ar d[ecode] ,
-.Ar p[ath]enc[ode]
+.Ar p[ath]e[ncode]
 or
-.Ar p[ath]dec[ode]
+.Ar p[ath]d[ecode]
 URL percent codec (RFC 3986) operations on the following raw-data.
-The latter two are slightly modified to better adhere to pathnames: tilde
-.Ql ~
-is not allowed, and the initial character can neither be hyphen-minus
+The latter two are modified for pathnames: tilde
+.Ql ~ ,
+and a first character hyphen-minus
 .Ql -
-nor dot
-.Ql .
+and dot
+.Ql \&.
+are encoded.
 (\*(ID The path-aware decoder is yet identical to the normal one.)
-This is a character set agnostic operation which could decode bytes that
-are invalid in the current
-.Va ttycharset .
+.Sy Remarks:
+this is a character set agnostic operation which could decode bytes
+invalid in the current
+.Va ttycharset !
+.Pf ( Ic vexpr
+offers a
+.Cm makeprint
+subcommand, shall the URL be displayed.)
 .Pp
 Supports
 .Cm >
@@ -8352,10 +8358,6 @@ is set to
 and the unmodified input is the result (error number may change again
 due to output or result storage errors).
 \*(ID This command does not know about URLs beside what is documented.
-.Pf ( Ic vexpr
-offers a
-.Cm makeprint
-subcommand, shall the URL be displayed.)
 .
 .Mx
 .It Ic varshow
