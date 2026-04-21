@@ -704,6 +704,7 @@ _cc_flags_generic() {
 				cc_check -Wcast-align=strict
 			fi
 				cc_check -Wcast-qual
+			cc_check -Wdiscarded-qualifiers
 			cc_check -Wformat-security # -Wformat via -Wall
 				cc_check -Wformat-signedness
 			cc_check -Wimplicit-fallthrough=5
