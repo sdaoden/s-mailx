@@ -29,6 +29,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
 #include <su/sort.h>
@@ -93,6 +94,7 @@ static struct mx_cmd_desc const a_cmd_ctable[] = {
 
 static char const *
 a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
+	char ienc_buf[su_IENC_BUFFER_SIZE];
 	struct n_string rvb, *rv;
 	char const *cp;
 	NYD2_IN;
@@ -109,7 +111,7 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		break;
 	case mx_CMD_ARG_TYPE_STRING:
 	case mx_CMD_ARG_TYPE_RAWDAT:
-		cp = N_("string data");
+		cp = N_("raw string data");
 		break;
 	case mx_CMD_ARG_TYPE_RAWLIST:
 		cp = N_("old-style quoting");
@@ -128,9 +130,11 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		uz i, ol;
 		struct mx_cmd_arg_desc const *cadp;
 
-		rv = n_string_push_cp(rv, _("argument tokens: "));
+		cadp = cdp->cd_cadp;
+		rv = n_string_push_cp(rv, su_ienc_u32(ienc_buf, cadp->cad_no, 10));
+		rv = n_string_push_cp(rv, _(" argument token(s): "));
 
-		for(cadp = cdp->cd_cadp, ol = i = 0; i < cadp->cad_no; ++i){
+		for(ol = i = 0; i < cadp->cad_no; ++i){
 			flags = cadp->cad_ent_flags[i][0];
 
 			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
@@ -161,6 +165,9 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 				break;
 			case mx_CMD_ARG_DESC_NDMSGLIST:
 				rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
+				break;
+			case mx_CMD_ARG_DESC_RAW:
+				rv = n_string_push_cp(rv, _("raw string data"));
 				break;
 			}
 
@@ -255,7 +262,7 @@ a_cmd_c_list(void *vp){
 		if(cdp->cd_func == NIL)
 			pre = "[", suf = "]";
 		else
-			pre = suf = n_empty;
+			pre = suf = su_empty;
 
 		if(n_poption & n_PO_D_V){
 			fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
