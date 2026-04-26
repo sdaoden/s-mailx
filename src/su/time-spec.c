@@ -23,7 +23,11 @@
 
 su_USECASE_CONFIG_CHECKS(su__HAVE_CLOCK_GETTIME su__HAVE_GETTIMEOFDAY)
 
-#include <time.h>
+#ifdef su__HAVE_CLOCK_GETTIME
+# include <time.h>
+#elif defined su__HAVE_GETTIMEOFDAY
+# include <sys/time.h>
+#endif
 
 #include "su/time.h"
 /*#define NYDPROF_ENABLE*/
