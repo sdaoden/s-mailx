@@ -45,7 +45,7 @@ enum mx_mime_type{
 	mx_MIME_TYPE_DISCARD /* is discarded */
 };
 
-enum mx_mime_type_handler_flags{
+enum mx_mime_type_handler_flags BITENUM_SPEC(u32){
 	mx_MIME_TYPE_HDL_NIL, /* No pipe- mimetype handler, go away */
 	mx_MIME_TYPE_HDL_CMD, /* Normal command */
 	mx_MIME_TYPE_HDL_MSG, /* Display msg (returned as command string) */
