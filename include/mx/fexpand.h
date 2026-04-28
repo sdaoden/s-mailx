@@ -24,7 +24,7 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-enum mx_fexp_mode{
+enum mx_fexp_mode BITENUM_SPEC(u32){
 	mx_FEXP_MOST,
 	mx_FEXP_SILENT = 1u<<0, /* Do not print but only return errors */
 	mx_FEXP_LOCAL = 1u<<1, /* Result must be local file/maildir (glob-expands) */

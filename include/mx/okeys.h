@@ -63,7 +63,7 @@
  * - Keep in sync with manual and eg t_posix__compat() test
  * - See the introductional source comments before changing *anything* in here
  * TODO: could auto-generate posix tests etc */
-enum okeys{
+enum okeys ZIPENUM_SPEC(u16){
 	/* This is used for all macro(-local) variables etc., i.e.,
 	 * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
 	 * It is also used for the ${^.+} multiplexer */
