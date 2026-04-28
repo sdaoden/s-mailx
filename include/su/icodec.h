@@ -47,7 +47,7 @@ C_DECL_BEGIN
  */
 
 /*! \_ */
-enum su_idec_mode{
+enum su_idec_mode BITENUM_SPEC(u32){
 	su_IDEC_MODE_NONE, /*!< \_ */
 	/*! Parse a signed integer; Will be used to choose minimum/maximum limits, error constants, etc. */
 	su_IDEC_MODE_SIGNED_TYPE = 1u<<0,
@@ -88,7 +88,7 @@ enum su_idec_mode{
 };
 
 /*! \_ */
-enum su_idec_state{
+enum su_idec_state BITENUM_SPEC(u32){
 	su_IDEC_STATE_NONE, /*!< \_*/
 	su_IDEC_STATE_EINVAL = 1u<<16, /*!< Malformed input, no usable result has been stored. */
 	/*! Bad character according to base, but we have seen some good ones before,

@@ -39,7 +39,7 @@ C_DECL_BEGIN
  */
 
 /*! Path access test bits, for example for \r{su_path_access()}. */
-enum su_iopf_access{
+enum su_iopf_access BITENUM_SPEC(u32){
 	su_IOPF_EXIST = 0, /*!< Path exists. */
 	su_IOPF_EXEC = 1u<<0, /*!< User may execute/search. */
 	su_IOPF_WRITE = 1u<<1, /*!< User may write. */
@@ -50,7 +50,7 @@ enum{
 };
 
 /*! Flags for \c{*at()} function series, for example \r{su_path_rm_at()}. */
-enum su_iopf_at{
+enum su_iopf_at BITENUM_SPEC(u32){
 	su_IOPF_AT_NONE = 0, /*!< \_ */
 	su_IOPF_AT_RMDIR = 1u<<0, /*!< Remove a(n empty) directory only, not any other file type. */
 	su_IOPF_AT_EACCESS = 1u<<1, /*!< Test with effective, not real user and group IDs. */
@@ -60,7 +60,7 @@ enum su_iopf_at{
 
 /*! POSIXish path permission bits.
  * These reflect 1:1 the POSIX bits, numerical constants may thus be used. */
-enum su_iopf_permission{
+enum su_iopf_permission BITENUM_SPEC(u32){
 	su_IOPF_XOTH = 1u<<0, /*!< Others: execute/search permission. */
 	su_IOPF_WOTH = 1u<<1, /*!< Others: write permission. */
 	su_IOPF_ROTH = 1u<<2, /*!< Others: read permission. */
@@ -80,7 +80,7 @@ enum{
 };
 
 /*! POSIXish path protection bits beyond \r{su_iopf_permission}. */
-enum su_iopf_protection{
+enum su_iopf_protection BITENUM_SPEC(u32){
 	su_IOPF_SVTX = 1u<<9, /*!< Sticky bit. */
 	su_IOPF_SGID = 1u<<10, /*!< Set group ID. */
 	su_IOPF_SUID = 1u<<11 /*!< Set user ID. */
@@ -90,7 +90,7 @@ enum{
 };
 
 /*! POSIXish file types (bits not unique). */
-enum su_iopf_type{
+enum su_iopf_type ZIPENUM_SPEC(u32){
 	su_IOPF_FIFO = 1u<<12, /*!< FIFO. */
 	su_IOPF_CHR = 2u<<12, /*!< Character device. */
 	su_IOPF_DIR = 4u<<12, /*!< Directory. */

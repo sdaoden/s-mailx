@@ -85,7 +85,7 @@ char const su_empty[] = "";
 char const su_reproducible_build[] = "reproducible_build";
 u16 const su_bom = su_BOM;
 
-uz su__state;
+u32 su__state;
 char const *su_program;
 
 /* internal.h */
@@ -286,7 +286,7 @@ su__gnlck(enum su__glck_type gt){
 #endif /* su_USECASE_SU */
 
 s32
-su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
+su_state_create_core(char const *program_or_nil, u32 flags, u32 estate){
 	s32 rv;
 	UNUSED(estate);
 
@@ -409,7 +409,7 @@ su_state_gut(BITENUM(u32,su_state_gut_flags) flags){
 }
 
 s32
-su_state_err(s32 err, BITENUM(uz,su_state_err_flags) state, char const *msg_or_nil){
+su_state_err(s32 err, BITENUM(u32,su_state_err_flags) state, char const *msg_or_nil){
 	enum su_log_level lvl;
 	u32 xerr;
 	char const *introp;

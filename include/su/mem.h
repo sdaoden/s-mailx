@@ -98,7 +98,7 @@ INLINE void su_mem_zero(void *vp, uz len){
 #endif
 
 /*! \_ */
-enum su_mem_alloc_flags{
+enum su_mem_alloc_flags BITENUM_SPEC(u32){
 	su_MEM_ALLOC_NONE, /*!< \_ */
 	/*! Zero memory.
 	 * \remarks{TODO: until C++ memory cache is ported this flag will not be honoured by reallocation requests.} */
@@ -145,7 +145,7 @@ enum{
 };
 
 /*! Most \r{su_mem_set_conf()} flags are \r{su_MEM_ALLOC_DEBUG} specific. */
-enum su_mem_conf_option{
+enum su_mem_conf_option BITENUM_SPEC(u32){
 	su_MEM_CONF_NONE,
 	/* su_MEM_ALLOC_DEBUG only: booleans */
 	su_MEM_CONF_DEBUG = 1u<<0, /*!< More tests, be verbose. */
