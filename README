@@ -49,14 +49,14 @@ and repo.or.cz[5.c].
   [5.b] https://github.com/sdaoden/s-mailx
   [5.c] https://repo.or.cz/s-mailx.git
 
-We have a mailing list[7] with moderated unsubscribed posting possi-
-bilities; subscriptions can be managed via web interface[8] (it is
-a GNU Mailman list, so posting to LISTNAME-request@ and the subject
-"subscribe" will also do).  We have a browser-accessible and searchable
-archive[9], and The Mail Archive is so kind and offers it, with all its
-services[10]!  We are at Gmane.org[11] and Gwene.org[12]: thank you!
-There is a #mailx IRC channel on irc.libera.chat[15,16] that is logged
-by libera.irclog.whitequark.org[17]: thank you, too!
+We have a mailing list[7]; subscriptions can be managed via
+web interface[8] (it is a GNU Mailman list, so posting to
+LISTNAME-request@ and the subject "subscribe" will also do).
+We have a browser-accessible and searchable archive[9], and The
+Mail Archive is so kind and offers it, with all its services[10]!
+We are at Gmane.org[11] and Gwene.org[12]: thank you!  There is
+a #mailx IRC channel on irc.libera.chat[15,16] that is logged by
+libera.irclog.whitequark.org[17]: thank you, too!
 
 Commits to the [master], [release/*] and [stable/*] branches are
 posted to [13], and announcements will also be posted to [14], both
