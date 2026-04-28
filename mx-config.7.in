@@ -130,7 +130,7 @@ if t && $features =% ,+key-bindings, && $features =% ,+colour,
 		col mono view-msginfo ft=reverse,ft=underline
 		col mono view-partinfo  ft=bold,ft=underline
 	}
-\en
+end
 ## }}}
 ##
 ## MIME TYPE {{{
