@@ -192,7 +192,7 @@ enum prompt_exp{
    PROMPT_AT = -3
 };
 
-enum protocol{
+enum protocol ZIPENUM_SPEC(u8){
    n_PROTO_NONE,
    n_PROTO_EML, /* Local electronic mail file (single message, rdonly) */
    n_PROTO_FILE, /* local file, aka MBOX (file://, mbox://; *mbox-rfc4155*) */
@@ -208,7 +208,7 @@ enum protocol{
 MCTA(n_PROTO_MASK >= n_PROTO_UNKNOWN, "PROTO_MASK bit coverage")
 
 /* In "strictening" privacy (we do eg xy>_GLOBAL)! */
-enum mx_scope{
+enum mx_scope ZIPENUM_SPEC(u8){
 	mx_SCOPE_NONE,
 	mx_SCOPE_GLOBAL,
 	mx_SCOPE_OUR,
@@ -230,7 +230,7 @@ enum sendaction{
    SEND_DECRYPT /* decrypt */
 };
 
-enum n_shexp_parse_flags{
+enum n_shexp_parse_flags BITENUM_SPEC(u32){
    n_SHEXP_PARSE_NONE,
    /* Do not perform expansions or interpret reverse solidus escape sequences.
     * Output may be NIL, otherwise the possibly trimmed non-expanded input is
@@ -294,7 +294,7 @@ enum n_shexp_parse_flags{
    n__SHEXP_PARSE_LAST = 30
 };
 
-enum n_shexp_state{
+enum n_shexp_state BITENUM_SPEC(u32){
    n_SHEXP_STATE_NONE,
    /* We have produced some output (or would have, with _PARSE_DRYRUN).
     * Note that empty quotes like '' produce no output but set this bit */
@@ -328,7 +328,7 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_GROUPOPEN = 1u<<21, /* Unclosed ${/( */
    n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22, /* Quote remains open at EOS */
 
-   n_SHEXP_STATE_ERR_MASK = su_BITENUM_MASK(16, 22)
+   n_SHEXP_STATE_ERR_MASK = BITENUM_MASK(16, 22)
 };
 /* Ignore Unicode error, just keep the normalized \[Uu] */
 #define n_SHEXP_STATE_ERR_ADJUST(X) \
@@ -412,7 +412,7 @@ do if(!su_state_has(su_STATE_REPRODUCIBLE) && V > mx_obsoletion){\
 
 /* Program state bits which may regularly fluctuate.
  * P.S.: most of these actually hacks, but better ways are hard to find */
-enum n_program_state{
+enum n_program_state BITENUM_SPEC(u32){
    n_PS_ROOT = 1u<<30, /* Temporary "bypass any checks" bit */
 #define n_PS_ROOT_BLOCK(ACT) \
 do{\
@@ -446,7 +446,7 @@ do{\
    n_PS_SIGWINCH_PEND = 1u<<12, /* Need $COLUMNS/$LINES update (xxx atomic) */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_MSGLIST_MASK = su_BITENUM_MASK(15, 15),
+   n_PS_MSGLIST_MASK = BITENUM_MASK(15, 15),
    n_PS_GABBY_FUZZ = 1u<<15, /* y history-gabbyness TODO CmdCtx+FINE-GRAINED */
 
    /* In the interactive main loop, we want any error to appear once for each
@@ -749,7 +749,7 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
 };
 #define GMASK (GTO | GSUBJECT | GCC | GBCC)
 
-enum header_flags{
+enum header_flags BITENUM_SPEC(u32){
    HF_NONE = 0,
 
    HF_CMD_forward = 1u<<0,

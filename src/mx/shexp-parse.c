@@ -60,7 +60,7 @@
 #define a_SHEXP_ISENVVARC_BAD1ST(C) su_cs_is_digit(C)
 #define a_SHEXP_ISENVVARC_BADNST(C) (FAL0)
 
-enum a_shexp_parse_flags{
+enum a_shexp_parse_flags BITENUM_SPEC(u32){
 	a_SHEXP_PARSE_NONE = 0,
 	a_SHEXP_PARSE_SKIPQ = 1u<<0, /* Skip rest of this quote (\u0 ..) */
 	a_SHEXP_PARSE_SKIPT = 1u<<1, /* Skip entire token (\c@) */
