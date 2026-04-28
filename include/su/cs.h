@@ -48,7 +48,7 @@ struct su_siphash;
  */
 
 /*! \_ */
-enum su_cs_ctype{
+enum su_cs_ctype BITENUM_SPEC(u32){
 	su_CS_CTYPE_NONE, /*!< \_ */
 	su_CS_CTYPE_ALNUM = 1u<<0, /*!< \_ */
 	su_CS_CTYPE_ALPHA = 1u<<1, /*!< \_ */

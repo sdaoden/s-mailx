@@ -77,7 +77,7 @@ struct su_random;
  */
 
 /*! \_ */
-enum su_random_type{
+enum su_random_type ZIPENUM_SPEC(u8){
 	/*! No type (value 0); not in practice but if \r{su_random_create()} fails
 	 * (so \r{su_random_gut()} can do the right thing). */
 	su_RANDOM_TYPE_NONE,
@@ -110,7 +110,7 @@ typedef boole (*su_random_generate_fun)(void **cookie, void *buf, uz len);
 
 /*! \_ */
 struct su_random{
-	BITENUM(u8,su_random_type) rm_type; /*!< \_ */
+	ZIPENUM(u8,su_random_type) rm_type; /*!< \_ */
 	u8 rm_flags;
 	u8 rm_ro1;
 	u8 rm_ro2;

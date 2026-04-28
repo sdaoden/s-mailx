@@ -220,7 +220,7 @@ struct su_imf_shtok;
 #define su__IMF_TABLE_SIZE su_U8_MAX
 
 /*! Shares bit range with \r{su_imf_state} and \r{su_imf_err}. */
-enum su_imf_mode{
+enum su_imf_mode BITENUM_SPEC(u32){
 	su_IMF_MODE_NONE, /*!< Nothing (this is 0). */
 
 	/*! Ok \c{.} in \c{display-name}, support \c{Dr. X &lt;y&#40;z&gt;} user input (result correctly quoted).
@@ -292,7 +292,7 @@ enum su_imf_mode{
 };
 
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_err}. */
-enum su_imf_state{
+enum su_imf_state BITENUM_SPEC(u32){
 	/*!< \r{su_IMF_MODE_DISPLAY_NAME_DOT}, and an unquoted \c{.} was seen (result is correctly quoted). */
 	su_IMF_STATE_DISPLAY_NAME_DOT = 1u<<11,
 	/*! \r{su_IMF_MODE_ADDR_SPEC_NO_DOMAIN}, \c{&lt;USERNAME&gt;} was seen. */
@@ -323,7 +323,7 @@ enum su_imf_state{
 };
 
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_state}. */
-enum su_imf_err{
+enum su_imf_err BITENUM_SPEC(u32){
 	su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY = 1u<<24, /*!< Address group display-name must not be empty, but is. */
 	su_IMF_ERR_DISPLAY_NAME_DOT = 1u<<25, /*!< \c{.} in display-name, no \r{su_IMF_MODE_DISPLAY_NAME_DOT}. */
 	su_IMF_ERR_DQUOTE = 1u<<26, /*!< Quoted-string \c{".."} content invalid, or quote not closed. */
@@ -343,7 +343,7 @@ enum su_imf_err{
 };
 
 /* Classification bits for su_imf_c_*() series */
-enum su_imf_c_class{
+enum su_imf_c_class BITENUM_SPEC(u32){
 	su_IMF_C_ALPHA = 1u<<0,
 	su_IMF_C_DIGIT = 1u<<1,
 	su_IMF_C_VCHAR = 1u<<2,

@@ -87,7 +87,7 @@ su__re_error_doc(u8 error){
 	return rv;
 }
 
-BITENUM(u8,su_re_errors)
+ZIPENUM(u8,su_re_errors)
 su_re_setup_cp(struct su_re *self, char const *expr, BITENUM(u8,su_re_setup_flags) flags){
 	regex_t re;
 	uz i;

@@ -63,14 +63,14 @@ enum{
 };
 
 /*! \_ */
-enum su_siphash_digest{
+enum su_siphash_digest ZIPENUM_SPEC(u8){
 	su_SIPHASH_DIGEST_64, /*!< 64-bit digest type. */
 	su_SIPHASH_DIGEST_128 /*!< 128-bit digest type. */
 };
 
 /*! \_ */
 struct su_siphash{
-	BITENUM(u8,su_siphash_digest) sh_digest; /*!< \_ */
+	ZIPENUM(u8,su_siphash_digest) sh_digest; /*!< \_ */
 	u8 sh_compress_rounds; /*!< \_ */
 	u8 sh_finalize_rounds; /*!< \_ */
 	u8 sh__pad[1];
