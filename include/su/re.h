@@ -44,7 +44,7 @@ struct su_re_match;
  * @{ */
 
 /*! \_ */
-enum su_re_setup_flags{
+enum su_re_setup_flags BITENUM_SPEC(u8){
 	su_RE_SETUP_NONE = 0, /*!< This is 0. */
 	su_RE_SETUP_EXT = 1u<<0, /*!< Use POSIX extended syntax. */
 	su_RE_SETUP_EXTENDED = su_RE_SETUP_EXT, /*!< Equals \r{su_RE_SETUP_EXT}. */
@@ -54,14 +54,14 @@ enum su_re_setup_flags{
 };
 
 /*! \_ */
-enum su_re_eval_flags{
+enum su_re_eval_flags BITENUM_SPEC(u8){
 	su_RE_EVAL_NONE = 0, /*!< This is 0. */
 	su_RE_EVAL_NOTBOL = 1u<<0, /*!< Begin-of-line does not match. */
 	su_RE_EVAL_NOTEOL = 1u<<1 /*!< End-of-line does not match. */
 };
 
 /*! \_ */
-enum su_re_errors{
+enum su_re_errors ZIPENUM_SPEC(u8){
 	su_RE_ERROR_NONE = 0, /*!< No error: this is 0. */
 	su_RE_ERROR_BADBR, /*!< Invalid use of back reference. */
 	su_RE_ERROR_BADPAT, /*!< Invalid use of pattern such as group or list. */
@@ -83,7 +83,7 @@ struct su_re{
 	 /*! \r{su_re_setup_flags} as given to \r{su_re_setup_cp()}. */
 	BITENUM(u8,su_re_setup_flags) re_setup_flags;
 	/*! After \r{su_re_setup_cp()}: one of the \r{su_re_errors}. */
-	BITENUM(u8,su_re_errors) re_error; /* (to make it fit in 8-bit) */
+	ZIPENUM(u8,su_re_errors) re_error; /* (to make it fit in 8-bit) */
 	boole re_eval_ok; /*!< Whether last \r{su_re_eval_cp()} matched. */
 	/*! \r{su_re_eval_flags} as given to last \r{su_re_eval_cp()}. */
 	BITENUM(u8,su_re_eval_flags) re_eval_flags;
@@ -142,7 +142,7 @@ INLINE struct su_re *su_re_reset(struct su_re *self){
  * A \r{su_re_errors} is (stored in \r{su_re::re_error} and) returned,
  * and \r{su_re_error_doc()} might be used; memory is allocated with
  * \r{su_MEM_ALLOC_MAYFAIL} and errors are mapped to \r{su_RE_ERROR_SPACE}. */
-EXPORT BITENUM(u8,su_re_errors) su_re_setup_cp(struct su_re *self,
+EXPORT ZIPENUM(u8,su_re_errors) su_re_setup_cp(struct su_re *self,
 		char const *expr, BITENUM(u8,su_re_setup_flags) flags);
 
 /*! This condition is asserted by most functions below. */
@@ -256,7 +256,7 @@ public:
 
 	/*! \cd{su_re_setup_cp()}.
 	 * \remarks{Sets \r{#setup_ext} by default.} */
-	BITENUM(u8,errors) setup(char const *expr, BITENUM(u8,setup_flags) flags=setup_ext){
+	ZIPENUM(u8,errors) setup(char const *expr, BITENUM(u8,setup_flags) flags=setup_ext){
 		return S(errors,su_re_setup_cp(this, expr, S(u8,flags)));
 	}
 

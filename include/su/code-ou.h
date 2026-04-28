@@ -115,6 +115,7 @@
 #undef ATOMIC
 
 #undef BITENUM
+#undef BITENUM_SPEC
 #undef BITENUM_MASK
 
 #undef DBG
@@ -201,6 +202,7 @@
 #undef VSTRUCT_SIZEOF
 
 #undef ZIPENUM
+#undef ZIPENUM_SPEC
 
 /* POD TYPE SUPPORT (only if !C++) */
 
