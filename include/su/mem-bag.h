@@ -81,7 +81,7 @@ struct su_mem_bag;
 #endif
 
 /*! Mirrors a subset of the \r{su_mem_alloc_flags}. *//* Equality CTAsserted */
-enum su_mem_bag_alloc_flags{
+enum su_mem_bag_alloc_flags BITENUM_SPEC(u32){
 	su_MEM_BAG_ALLOC_NONE, /*!< \_ */
 	su_MEM_BAG_ALLOC_ZERO = 1u<<1, /*!< Zero memory. */
 

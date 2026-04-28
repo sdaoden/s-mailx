@@ -155,6 +155,7 @@
 #define ATOMIC su_ATOMIC
 
 #define BITENUM su_BITENUM
+#define BITENUM_SPEC su_BITENUM_SPEC
 #define BITENUM_MASK su_BITENUM_MASK
 
 #define DBG su_DBG
@@ -285,6 +286,7 @@
 #define VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
 
 #define ZIPENUM su_ZIPENUM
+#define ZIPENUM_SPEC su_ZIPENUM_SPEC
 
 /* POD TYPE SUPPORT (only if !C++) */
 #if defined su_HEADER || (defined su_FILE && su_C_LANG)

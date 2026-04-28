@@ -781,8 +781,20 @@ do if(!(X)){\
  * flags that are, effectively, part of a bit enumeration.
  * This macro awaits a future ISO C bit-enumeration: \a{X} is the pod used until then, \a{Y} the name of the
  * enumeration that is really meant.
+ *
+ * Starting with ISO C 2023 ("Fifth Edition") at least the exact type of an enumeration can be defined;
+ * see \r{su_BITENUM_SPEC()}.
+ *
  * Also see \r{su_ZIPENUM}. */
 #define su_BITENUM(X,Y) X /* enum Y */
+
+#if (su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 202311l) || defined DOXYGEN
+ /*! ISO C 2023 added type specifiers for \c{enum}erations, made accessible with this macro.
+  * \remarks{Usages of \c{su_BITENUM_SPEC()} and \r{su_BITENUM()} should match.} */
+# define su_BITENUM_SPEC(X) : X
+#else
+# define su_BITENUM_SPEC(X)
+#endif
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
@@ -1013,8 +1025,17 @@ do{\
 #endif
 
 /*! It is not possible to enforce a type size for enumerations, thus enforce \a{X}, but mean \a{Y}.
+ * However, starting with ISO C 2023 ("Fifth Edition") it is: see \r{su_ZIPENUM_SPEC()}.
  * Also see \r{su_BITENUM}. */
 #define su_ZIPENUM(X,Y) X /* enum Y */
+
+#if (su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 202311l) || defined DOXYGEN
+ /*! ISO C 2023 added type specifiers for \c{enum}erations, made accessible with this macro.
+  * \remarks{Usages of \c{su_ZIPENUM_SPEC()} and \r{su_ZIPENUM()} should match.} */
+# define su_ZIPENUM_SPEC(X) : X
+#else
+# define su_ZIPENUM_SPEC(X)
+#endif
 
 /* SUPPORT MACROS+ }}} */
 
@@ -1291,14 +1312,14 @@ MCTA(1u<<su__LOG_PRISHIFT > su__LOG_PRIMAX, "Bit ranges may not overlap")
 #endif
 
 /*! Flags that can be ORd to \r{su_log_level}. */
-enum su_log_flags{
+enum su_log_flags BITENUM_SPEC(u32){
 	/*! In a state in that recursive logging should be avoided at all cost this flag should be set. */
 	su_LOG_F_CORE = 1u<<(su__LOG_PRISHIFT+0)
 };
 
 /*! Adjustment possibilities for the global log domain (for example, \r{su_log_write()}),
  * to be set via \r{su_state_set()}, to be queried via \r{su_state_has()}. */
-enum su_state_log_flags{
+enum su_state_log_flags BITENUM_SPEC(u32){
 	su_STATE_LOG_SHOW_LEVEL = 1u<<4, /*!< Prepend a message's \r{su_log_level}. */
 	/*! Show the PID (Process IDentification number).
 	 * This flag is only honoured if \r{su_program} set to non-\NIL. */
@@ -1319,7 +1340,7 @@ enum su_state_log_flags{
  * Often functions and objects allow additional control over the global on a by-call or by-object basis,
  * taking a state argument which consists of \c{su_state_err_type} and \r{su_state_err_flags} bits.
  * These are combinable bits in the second byte (bits 9 to 16, value 256 to 32768, inclusive). */
-enum su_state_err_type{
+enum su_state_err_type BITENUM_SPEC(u32){
 	su_STATE_ERR_NOMEM = 1u<<8, /*!< Out-of-memory. */
 	su_STATE_ERR_OVERFLOW = 1u<<9 /*!< Integer/xy domain overflow. */
 };
@@ -1332,7 +1353,7 @@ enum su_state_err_type{
  * (optional) function argument, or object control function or field.
  * It is also possible to instead enforce program abortion regardless of a global ignorance policy, and pass other
  * control flags. */
-enum su_state_err_flags{
+enum su_state_err_flags BITENUM_SPEC(u32){
 	su_STATE_ERR_NONE, /*!< 0. */
 	/*! A mask containing all \r{su_state_err_type} bits. */
 	su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
@@ -1370,7 +1391,7 @@ enum su_state_err_flags{
 /* ..third byte: misc flags */
 
 /*! State flags of \r{su_state_has()}. */
-enum su_state_flags{
+enum su_state_flags BITENUM_SPEC(u32){
 	su_STATE_NONE, /*!< No flag: this is 0. */
 	su_STATE_DEBUG = 1u<<16, /*!< \_ */
 	su_STATE_VERBOSE = 1u<<17, /*!< \_ */
@@ -1385,7 +1406,7 @@ enum su_state_flags{
 	su_STATE_REPRODUCIBLE = 1u<<19
 };
 
-enum su__state_flags{
+enum su__state_flags BITENUM_SPEC(u32){
 	/* enum su_log_level is first "member" */
 	su__STATE_LOG_MASK = 0x0Fu,
 	su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
@@ -1400,7 +1421,7 @@ MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00u) == 0, "Bits excess documented bounds")
 #endif
 
 /*! Argument bits for \r{su_state_create()}. */
-enum su_state_create_flags{
+enum su_state_create_flags BITENUM_SPEC(u32){
 	su_STATE_CREATE_RANDOM = 1u<<0, /*!< (V1) Initialize \r{RANDOM}, and seed its internal seeder object. */
 	su__STATE_CREATE_RANDOM_MEM_FILLER = 1u<<1,
 	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET} (only with \r{su_MEM_ALLOC_DEBUG}).
@@ -1417,7 +1438,7 @@ enum su_state_create_flags{
 };
 
 /*! Argument bits for \r{su_state_gut()}. */
-enum su_state_gut_flags{
+enum su_state_gut_flags BITENUM_SPEC(u32){
 	su_STATE_GUT_ACT_NORM, /*!< The value 0 for normal exit (see \r{su_STATE_GUT_ACT_MASK}). */
 	/*! Normal exit, quick (see \r{su_STATE_GUT_ACT_MASK}).
 	 * Does less, and a hint to the handlers to follow suit. */
@@ -1468,7 +1489,7 @@ enum su__glck_type{
  * the actual values will be detected at compilation time.
  * Non resolvable (native) mappings will map to \ERR{NOTOBACCO},
  * \SU mappings with no (native) mapping will have high unsigned numbers. */
-enum su_err_number{
+enum su_err_number ZIPENUM_SPEC(s32){
 #ifdef DOXYGEN
 	su_ERR_NONE, /*!< No error. */
 	su_ERR_NOTOBACCO /*!< No such errno, fallback: no mapping exists. */
@@ -1536,7 +1557,7 @@ EXPORT_DATA union su__bom_union const su__bom_little;
 EXPORT_DATA union su__bom_union const su__bom_big;
 
 /* (Not yet) Internal enum su_state_* bit carrier */
-EXPORT_DATA uz su__state;
+EXPORT_DATA u32 su__state;
 
 /*! The byte order mark \r{su_BOM} in host, \r{su_bom_little} and \r{su_bom_big} byte order.
  * The latter two are macros which access constant union data.
@@ -1604,14 +1625,14 @@ EXPORT void su__gnlck(enum su__glck_type gt);
  *
  * \remarks{Dependent upon the actual configuration it may make use of native libraries and therefore cause itself
  * resource usage / initialization.} */
-EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
+EXPORT s32 su_state_create_core(char const *name_or_nil, u32 flags, u32 estate);
 
 /*! Like \r{su_state_create_core()}, but initializes many more subsystems according to \a{create_flags}.
  * Many subsystems need internal machineries which are initialized when needed first, an operation that may fail.
  * Because of this the public interface may generate errors that need to be handled, which may be undesireable.
  * If this function is used instead of \r{su_state_create_core()}, then internals of a desired subset of subsystems
  * is initialized immediately, which asserts these errors cannot occur. */
-EXPORT s32 su_state_create(BITENUM(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags,
+EXPORT s32 su_state_create(BITENUM(u32,su_state_create_flags) create_flags, char const *name_or_nil, u32 flags,
 		u32 estate);
 
 /*! Tear down \SU according to \a{flags}.
@@ -1642,13 +1663,13 @@ INLINE u32 su_state_get(void){
 
 /*! Interaction with the SU library (global) state machine:
  * test whether all (not any) of \a{flags} are set in \r{su_state_get()}. */
-INLINE boole su_state_has(uz flags){
+INLINE boole su_state_has(u32 flags){
 	flags &= su__STATE_GLOBAL_MASK;
 	return ((su__state & flags) == flags);
 }
 
 /*! Adjustments of the SU library (global) state machine, see \r{su_state_get()}. */
-INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
+INLINE void su_state_set(u32 flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
 	su__glck(su__GLCK_STATE);
 	su__state |= flags;
@@ -1656,7 +1677,7 @@ INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
 }
 
 /*! \cd{su_state_set()} */
-INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
+INLINE void su_state_clear(u32 flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
 	flags = ~flags;
 	su__glck(su__GLCK_STATE);
@@ -1670,7 +1691,7 @@ INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
  * Since individual (non-\r{su_state_err_type}) errors cannot be suppressed via states, either of \a{state} or
  * \r{su_state_get()} must flag \r{su_STATE_ERR_PASS} to make such errors non-fatal.
  * If this function returns, then with an according \r{su_err_number} (aka non-negated \a{err} itself). */
-EXPORT s32 su_state_err(s32 err, BITENUM(uz,su_state_err_flags) state, char const *msg_or_nil);
+EXPORT s32 su_state_err(s32 err, BITENUM(u32,su_state_err_flags) state, char const *msg_or_nil);
 
 /*! Get the \SU error number of the calling thread.
  * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
@@ -1711,9 +1732,9 @@ INLINE enum su_log_level su_log_get_level(void){
 /*! \_
  * Also see \r{su_state_get()}. */
 INLINE void su_log_set_level(enum su_log_level nlvl){ /* XXX maybe not state */
-	uz lvl;
+	u32 lvl;
 	su__glck(su__GLCK_STATE);
-	lvl = S(uz,nlvl) & su__STATE_LOG_MASK;
+	lvl = S(u32,nlvl) & su__STATE_LOG_MASK;
 	su__state = (su__state & su__STATE_GLOBAL_MASK) | lvl;
 	su__gnlck(su__GLCK_STATE);
 }
@@ -2190,12 +2211,13 @@ public:
 	typedef void (*on_gut_fun)(BITENUM(u32,gut_flags) flags);
 
 	/*! \cd{su_state_create_core()} */
-	static s32 create_core(char const *program_or_nil, uz flags, u32 estate=none){
+	static s32 create_core(char const *program_or_nil, u32 flags, u32 estate=none){
 		return su_state_create_core(program_or_nil, flags, estate);
 	}
 
 	/*! \cd{su_state_create()} */
-	static s32 create(BITENUM(u32,create_flags) create_flags, char const *program_or_nil, uz flags, u32 estate=none){
+	static s32 create(BITENUM(u32,create_flags) create_flags, char const *program_or_nil, u32 flags,
+			u32 estate=none){
 		return su_state_create(create_flags, program_or_nil, flags, estate);
 	}
 
@@ -2206,16 +2228,16 @@ public:
 	static u32 get(void) {return su_state_get();}
 
 	/*! \cd{su_state_has()} */
-	static boole has(uz state) {return su_state_has(state);}
+	static boole has(u32 state) {return su_state_has(state);}
 
 	/*! \cd{su_state_set()} */
-	static void set(uz state) {su_state_set(state);}
+	static void set(u32 state) {su_state_set(state);}
 
 	/*! \cd{su_state_clear()} */
-	static void clear(uz state) {su_state_clear(state);}
+	static void clear(u32 state) {su_state_clear(state);}
 
 	/*! \cd{su_state_err()} */
-	static s32 err(s32 err, BITENUM(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
+	static s32 err(s32 err, BITENUM(u32,err_flags) state=err_none, char const *msg_or_nil=NIL){
 		return su_state_err(err, state, msg_or_nil);
 	}
 
