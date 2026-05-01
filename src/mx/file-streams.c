@@ -1020,7 +1020,7 @@ mx_fs_pipe_cloxy(sz fd[2], BITENUM(u8,mx_fs_cloxy) what){
 
 #if !defined mx_HAVE_PIPE2
 	if((what != mx_FS_CLOXY_NONE) && (!mx_fs_fd_cloxy_ensure(fd[0], what, mx_FS_CLOXY_NONE) ||
-			!mx_fs_cloxy_ensure(fd[1], what, mx_FS_CLOXY_NONE)))
+			!mx_fs_fd_cloxy_ensure(fd[1], what, mx_FS_CLOXY_NONE)))
 		goto jerr;
 #endif
 
