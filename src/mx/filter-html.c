@@ -1273,7 +1273,6 @@ jcp_reset:
 					self = a_flthtml_puts(self, self->fh_bdat);
 					f = self->fh_flags;
 				}
-				break;
 			}
 			cp = self->fh_bdat;
 			*cp++ = c;
@@ -1300,10 +1299,11 @@ jcp_reset:
 		case '\n':
 			/* End of line is not considered unless we are in PRE section.
 			 * However, in FLTHTML_NOPUT mode we must be aware of tagsoup which
-			 * uses newlines for separating parameters */
+			 * uses newlines for separating parameters; ugly, but turn to SPACE */
+			c = ' ';
 			if(f & a_FLTHTML_NOPUT)
 				goto jdo_c;
-			self = (f & a_FLTHTML_PRE) ? a_flthtml_nl_force(self) : a_flthtml_putc(self, ' ');
+			self = (f & a_FLTHTML_PRE) ? a_flthtml_nl_force(self) : a_flthtml_putc(self, c);
 			break;
 
 		case '\t':
@@ -1324,7 +1324,7 @@ jdo_c:
 					self = a_flthtml_putc_premode(self, c);
 					self->fh_flags &= ~a_FLTHTML_BLANK;
 				}else
-				  self = a_flthtml_putc(self, c);
+					self = a_flthtml_putc(self, c);
 			}
 			/* People are using & without &amp;ing it, so terminate entity
 			 * processing if it cannot be an entity XXX is_space() not enough */
