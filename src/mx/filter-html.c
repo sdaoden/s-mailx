@@ -410,7 +410,16 @@ a_flthtml_dump(struct mx_flthtml *self){
 	f = (self->fh_flags & ~a_FLTHTML_BLANK);
 	cp = self->fh_line;
 
-	ASSERT(!(f & a_FLTHTML_MBSEQ) || l == self->fh_mboff);
+	/* TODO MBERROR It can happen that we saw an incomplete multibyte character "last".
+	 * TODO ("Last" in respect to byte input; but tags may have happened thereafter etc!!)
+	 * TODO For now we simply place a signal here, and commented out assert */
+	/*ASSERT(!(f & a_FLTHTML_MBSEQ) || l == self->fh_mboff);*/
+	if((f & a_FLTHTML_MBSEQ) && l != self->fh_mboff){
+		if(l < self->fh_lmax - 1){
+			cp[self->fh_mboff] = '?';
+			l = ++self->fh_mboff;
+		}
+	}
 
 	self->fh_mbwidth = self->fh_mboff = self->fh_last_ws = self->fh_len = 0;
 
@@ -541,7 +550,9 @@ a_flthtml_store(struct mx_flthtml *self, char c){
 					self->fh_line[self->fh_mboff] = '?';
 					self->fh_len = l = ++self->fh_mboff;
 					++self->fh_mbwidth;
-				}else
+				}
+				/* Incomplete character TODO set bit, carry state - search MBERROR! */
+				else
 					goto jleave;
 			}
 		}
