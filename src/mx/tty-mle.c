@@ -2984,10 +2984,12 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
 		goto jleave;
 	}
 
+	/* New search? */
 	if((thp = tlp->tl_hist) == NIL){
 		a_tty_cell2save(tlp);
 		if((thp = a_tty.tg_hist) == NIL) /* TODO Should end "doing nothing"! */
 			goto jleave;
+
 		/* Ensure in compose mode command( escape)s can be reached at all */
 		if(rv){
 			char const *esc;
@@ -2998,17 +3000,18 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
 				goto jleave;
 			}
 		}
+
 		if(fwd)
 			while(thp->th_older != NIL)
 				thp = thp->th_older;
 		orig_savec.s = NIL;
 		orig_savec.l = 0; /* silence CC */
-		if(rv)
-			goto jin;
+		goto jin;
 	}else{
 		/* In compose mode we first iterate the compose mode entries */
 		if(rv && (thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
-			++rv;
+			++rv; /* != 1 */
+
 		orig_savec = tlp->tl_savec;
 		if(orig_savec.s == NIL)
 			a_tty_cell2save(tlp);
@@ -3017,17 +3020,21 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){ /* {{{ */
 	for(;;){
 		thp = fwd ? thp->th_younger : thp->th_older;
 		if(thp == NIL){
+			/* If not compose mode, or already switched in the past, done */
 			if(rv != 1)
 				goto jleave;
 			++rv;
+
 			thp = a_tty.tg_hist;
 			if(fwd)
 				while(thp->th_older != NIL)
 					thp = thp->th_older;
 		}
 jin:
+		/* In compose mode, first compose mode entries */
 		if(!(((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE) ^ (rv == 1)))
 			continue;
+
 #  ifdef mx_HAVE_REGEX
 		if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX){
 			if(UNLIKELY(!su_re_is_setup(&re)) &&
