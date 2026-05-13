@@ -45,8 +45,8 @@ SUF_GEN_CONFIG_LIST = \
 # _GNU_SOURCE for anything, __EXTENSIONS__ for SunOS/Solaris
 SUF = -D_GNU_SOURCE -D__EXTENSIONS__ $(SUFDEVEL)
 
-SUFWW = #-Weverything -Wno-unsafe-buffer-usage -Wno-format-nonliteral
-SUFW = -W -Wall -pedantic $(SUFWW) \
+SUFWW = #-Weverything -Wno-unsafe-buffer-usage -Wno-format-nonliteral -Wfree-labels
+SUFW = -W -Wall -Wshadow -pedantic $(SUFWW) \
 	\
 	-Wno-atomic-implicit-seq-cst \
 	-Wno-c++98-compat \
