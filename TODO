@@ -299,7 +299,7 @@ Low-Level
 
 200. Split program: when entering interactive mode, the main machine
      should fork and the UI should run in the forked one, taking the
-     terminal (have done setsid, TIOCSTTY, tcsetpgrp, dance).
+     terminal (have done setsid, [BSD:TIOCSTTY], tcsetpgrp, dance).
      - Communication via sendmsg()/recvmsg(), it was in BSD as soon as
        1982 says CSRG (date and time created 82/12/04 16:22:24 by
        mckusick); ok, a bit different by then, but on 1990-04-04 at
@@ -659,13 +659,24 @@ Low-Level
 	.. but works for ~Q????
 
 - SMTP: RFC 5321: 4.5.3.1.8., 4.5.3.1.10.  Too Many Recipients Code.
-	- count number of recipients
-	- if the number exceeds 99, suspend pipelining, fetch all responses.
 	  afterwards work receiver-by-receiver until either list exhausted or
 	  452 (OR 552) response code is seen.
 	- Be capable to redo jsend: with the rest of the receivers!
 	++ FALSE! NOTE: we need to restart and work in chunks of X-1 in case of
 	452 / 552.
+        + try MAIL FROM loop, work rest
+        + try reconnect, work rest
+        + whenever pipelining fails, simply bring back the too manies,
+          reduce limit for this connection (too avoid such in fture)
+        + in reconnect case, maybe do not use pipelining..
+        + send email or place cache directory report email
+          with mail as attachment and message "could not be delivered to
+          X" in case some recipients cannot be delivered at all,
+          in interactive mode simply show a log message?
+        +++ this can ONLY be done if we can report partial success
+            or error status, other than that it CAN ONLY BE
+            good or bad!!!  *sendwait* not enough??  We need a queue
+            or something
 
 - SMTP: partial send with retry of rest
 	as well as
@@ -746,32 +757,6 @@ Low-Level
 
 - if a character="set" is missing _OR_ "wrong" (iconv failure), treat
   it as US-ASCII!  RFC 2046.
-
-- Kevin Bloom:
-  The list of doing things proper is:
-  1. s-nail points to ${PREFIX}/etc/s-nail.rc for default
-  2. pkgsrc install s-nail.rc to ${PREFIX}/share/examples/s-nail/
-  3. pkgsrc copies s-nail.rc from examples to etc if it's missing
-     from etc.
-
-  You can probably see the issue given that list -- s-nail doesn't want
-  to install the default config in a different location than it expects
-  it to be. Therefore, the patch was born. I hope that makes sense.
-  ---
-  Possibly the best would thus be to add another packager option,
-  like VAL_INSTALL_SYSCONFDIR, or similar.  Then the MUA would
-  continue to look for VAL_SYSCONFDIR/VAL_SYSCONFRC, but the
-  installation script would instead install only to
-  VAL_INSTALL_SYSCONFDIR/VAL_SYSCONFRC.
-  Does this sound sane enough?  Will do!
-
-- arekm@maven.pl Arkadiusz Miśkiewicz
-  TEST_SHELL for the test, if set
-  SHELL=${CONFIG_SHELL-/bin/sh} <-> is an autotools thing
-  very good for OpenIndiana:
-    SHELL = /usr/xpg4/bin/sh
-  but
-    /export/home/steffen/src/nail.git/./mx-test.sh: line 7162: syntax error at line 7428: `<<__EOT' here-document not contained within command substitution
 
 - .. DVLDBG -- shouldn't this be "DEVEL || (DEBUG && !NDEBUG)"???
 
