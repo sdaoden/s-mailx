@@ -659,13 +659,24 @@ Low-Level
 	.. but works for ~Q????
 
 - SMTP: RFC 5321: 4.5.3.1.8., 4.5.3.1.10.  Too Many Recipients Code.
-	- count number of recipients
-	- if the number exceeds 99, suspend pipelining, fetch all responses.
 	  afterwards work receiver-by-receiver until either list exhausted or
 	  452 (OR 552) response code is seen.
 	- Be capable to redo jsend: with the rest of the receivers!
 	++ FALSE! NOTE: we need to restart and work in chunks of X-1 in case of
 	452 / 552.
+        + try MAIL FROM loop, work rest
+        + try reconnect, work rest
+        + whenever pipelining fails, simply bring back the too manies,
+          reduce limit for this connection (too avoid such in fture)
+        + in reconnect case, maybe do not use pipelining..
+        + send email or place cache directory report email
+          with mail as attachment and message "could not be delivered to
+          X" in case some recipients cannot be delivered at all,
+          in interactive mode simply show a log message?
+        +++ this can ONLY be done if we can report partial success
+            or error status, other than that it CAN ONLY BE
+            good or bad!!!  *sendwait* not enough??  We need a queue
+            or something
 
 - SMTP: partial send with retry of rest
 	as well as
