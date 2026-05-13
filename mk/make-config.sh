@@ -707,6 +707,7 @@ _cc_flags_generic() {
 			cc_check -Wdiscarded-qualifiers
 			cc_check -Wformat-security # -Wformat via -Wall
 				cc_check -Wformat-signedness
+			cc_check -Wfree-labels
 			cc_check -Wimplicit-fallthrough=5
 			cc_check -Winit-self
 			cc_check -Wmissing-prototypes
