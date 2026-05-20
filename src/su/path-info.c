@@ -127,10 +127,15 @@ a_pathinfo_copy(struct su_pathinfo *self, struct stat *stp){
 
 	self->pi_flags = f;
 	self->pi_nlink = stp->st_nlink;
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_ino) >= FIELD_SIZEOF(struct stat,st_ino));
 	self->pi_ino = S(u64,stp->st_ino);
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_dev) >= FIELD_SIZEOF(struct stat,st_dev));
 	self->pi_dev = S(u64,stp->st_dev);
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_rdev) >= FIELD_SIZEOF(struct stat,st_rdev));
 	self->pi_rdev = S(u64,stp->st_rdev);
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_uid) >= FIELD_SIZEOF(struct stat,st_uid));
 	self->pi_uid = S(uz,stp->st_uid);
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_gid) >= FIELD_SIZEOF(struct stat,st_gid));
 	self->pi_gid = S(uz,stp->st_gid);
 	self->pi_blocks =
 #ifdef su__HAVE_STAT_BLOCKS
@@ -139,7 +144,9 @@ a_pathinfo_copy(struct su_pathinfo *self, struct stat *stp){
 			((S(u64,stp->st_size) + 511) & ~511) >> 9
 #endif
 			;
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_blksize) >= FIELD_SIZEOF(struct stat,st_blksize));
 	self->pi_blksize = S(uz,stp->st_blksize);
+	LCTAV(FIELD_SIZEOF(struct su_pathinfo,pi_size) >= FIELD_SIZEOF(struct stat,st_size));
 	self->pi_size = S(u64,stp->st_size);
 #ifdef su__HAVE_STAT_TIMESPEC
 	self->pi_atime.ts_sec = S(s64,stp->st_atim.tv_sec);
