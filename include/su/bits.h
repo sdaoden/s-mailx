@@ -129,11 +129,12 @@ INLINE boole su_bits_test_and_clear(uz *xp, uz bit){
 
 /*! \r{su_UZ_MAX} if none found. */
 INLINE uz su_bits_find_first_set(uz x){
-	uz i = 0;
-	if(x != 0)
+	if(x != 0){
+		uz i = 0;
 		do if(x & 1)
 			return i;
 		while((S(void,++i), x >>= 1));
+	}
 	return UZ_MAX;
 }
 

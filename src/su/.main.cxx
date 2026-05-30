@@ -16,6 +16,7 @@ su_USECASE_MX_DISABLED
 
 #include <su/atomic.h>
 #include <su/avopt.h>
+// FIXME #include <su/bits.h>
 #include <su/boswap.h>
 #include <su/cs.h>
 #include <su/cs-dict.h>
