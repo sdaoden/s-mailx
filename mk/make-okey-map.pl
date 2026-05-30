@@ -353,7 +353,8 @@ _EOT
 
 		print F 'static struct a_amv_var_chain_map_bsrch const a_amv_var_chain_map_bsrch[] = {', "\n";
 		foreach my $e (@prefixes){
-			print F "${S}{\"$e->[0]\", $e->[1]u, $e->[2]},\n"
+			my @prfx = split(//, $e->[0]);
+			print F "${S}{{'$prfx[0]', '$prfx[1]', '$prfx[2]', '$prfx[3]'}, $e->[1]u, $e->[2]},\n"
 		}
 		print F '};', "\n";
 		print F '#define a_AMV_VAR_CHAIN_MAP_BSRCH_CNT ', scalar @prefixes, "\n\n"
