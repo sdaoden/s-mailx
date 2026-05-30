@@ -50,6 +50,7 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_XTLS /* Shorthand for mx_HAVE_TLS==mx_TLS_IMPL{...} */
 #include <sys/socket.h>
 
+#include <openssl/asn1.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -150,15 +151,22 @@ CTA(SSL_OP_NO_SSL_MASK != 0,
 # endif
 #endif
 
-/* More cute compatibility sighs */
-#if mx_HAVE_XTLS >= 0x10100
+/* More cute compatibility sighs; LibreSSL is "faked" (could use earlier one) */
+#if mx_HAVE_XTLS >= 0x10100 || \
+      (mx_HAVE_TLS == mx_TLS_IMPL_RESSL && LIBRESSL_VERSION_NUMBER >= 0x4000000fL)
 # define a_xtls_X509_get_notBefore X509_get0_notBefore
 # define a_xtls_X509_get_notAfter X509_get0_notAfter
 # define a_xtls_SSL_get_verified_chain SSL_get0_verified_chain
+
+# define a_xtls_ASN1_STRING_get0_data(X) ((char const*)ASN1_STRING_get0_data(X))
+# define a_xtls_ASN1_STRING_length(X) ASN1_STRING_length(X)
 #else
 # define a_xtls_X509_get_notBefore X509_get_notBefore
 # define a_xtls_X509_get_notAfter X509_get_notAfter
 # define a_xtls_SSL_get_verified_chain SSL_get_peer_cert_chain
+
+# define a_xtls_ASN1_STRING_get0_data(X) ((char const*)(X)->data)
+# define a_xtls_ASN1_STRING_length(X) ((int)(X)->length)
 #endif
 
 #if mx_HAVE_XTLS >= 0x30000
@@ -297,7 +305,7 @@ static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
 static struct a_xtls_protocol const a_xtls_protocols[] = {
    {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, FAL0, TRU1, {0}},
-   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1,TRU1,FAL0,FAL0,{0}},
+   {"TLSv1.3", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1,TRU1,FAL0,FAL0,{0}},
    {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
    {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
    {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
@@ -702,12 +710,13 @@ a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, uz blen)
 
    mbp = BIO_new(BIO_s_mem());
 
-   if (ASN1_TIME_print(mbp, C(ASN1_TIME*,atp)) &&
+   if(ASN1_TIME_print(mbp, C(ASN1_TIME*,atp)) &&
          (l = BIO_get_mem_data(mbp, &mcp)) > 0)
       snprintf(bdat, blen, "%.*s", (int)l, mcp);
    else {
       snprintf(bdat, blen, _("Bogus certificate date: %.*s"),
-         /*is (int)*/atp->length, (char const*)atp->data);
+         /*is (int)*/a_xtls_ASN1_STRING_length(atp),
+         a_xtls_ASN1_STRING_get0_data(atp));
       mcp = NULL;
    }
 
@@ -1382,7 +1391,7 @@ a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
    char data[256];
    a_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
-   X509_NAME *subj;
+   X509_NAME const *subj;
    boole rv;
    NYD_IN;
    UNUSED(sop);
@@ -1398,9 +1407,9 @@ a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
          if(gen->type == GEN_DNS){
             if(n_poption & n_PO_D_V)
                n_err(_("Comparing subject_alt_name: need<%s> is<%s>\n"),
-                  urlp->url_host.s, (char*)gen->d.ia5->data);
+                  urlp->url_host.s, a_xtls_ASN1_STRING_get0_data(gen->d.ia5));
             if((rv = n_tls_rfc2595_hostname_match(urlp->url_host.s,
-                  (char*)gen->d.ia5->data)))
+                  a_xtls_ASN1_STRING_get0_data(gen->d.ia5))))
                goto jleave;
          }
       }
@@ -1434,7 +1443,7 @@ smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
    a_XTLS_STACKOF(X509) *certs;
    a_XTLS_STACKOF(GENERAL_NAME) *gens;
    X509 *cert;
-   X509_NAME *subj;
+   X509_NAME const *subj;
    GENERAL_NAME *gen;
    NYD_IN;
 
@@ -1522,8 +1531,8 @@ smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
             if (gen->type == GEN_EMAIL) {
                if (n_poption & n_PO_D_V)
                   n_err(_("Comparing subject_alt_name: need<%s> is<%s>)\n"),
-                     sender, (char*)gen->d.ia5->data);
-               if (!su_cs_cmp_case((char*)gen->d.ia5->data, sender))
+                     sender, a_xtls_ASN1_STRING_get0_data(gen->d.ia5));
+               if (!su_cs_cmp_case(a_xtls_ASN1_STRING_get0_data(gen->d.ia5), sender))
                   goto jfound;
             }
          }
