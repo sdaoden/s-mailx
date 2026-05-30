@@ -3395,12 +3395,12 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
 	cacp = vp;
 
 	if((cap = cacp->cac_arg) != NIL){
-		struct str *sp;
+		struct str *s;
 
-		sp = &cap->ca_arg.ca_str;
+		s = &cap->ca_arg.ca_str;
 
-		if(su_idec_s64_cp(&c, sp->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
-			n_err(_("shift: invalid or yet seen argument: %s\n"), sp->s);
+		if(su_idec_s64_cp(&c, s->s, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
+			n_err(_("shift: invalid or yet seen argument: %s\n"), s->s);
 			goto jleave;
 		}
 	}
@@ -4639,10 +4639,10 @@ c_vpospar(void *vp){ /* {{{ */
 			varres = su_empty;
 		else{
 			struct str in;
-			struct n_string s_b, *s;
+			struct n_string s_b, *sop;
 			char sep1, sep2;
 
-			s = n_string_creat_auto(&s_b);
+			sop = n_string_creat_auto(&s_b);
 
 			sep1 = *ok_vlook(ifs);
 			sep2 = *ok_vlook(ifs_ws);
@@ -4652,26 +4652,26 @@ c_vpospar(void *vp){ /* {{{ */
 				sep1 = ' ';
 
 			for(i = 0; i < appp->app_count; ++i){
-				if(s->s_len){
-					if(!n_string_can_book(s, 2))
+				if(sop->s_len){
+					if(!n_string_can_book(sop, 2))
 						goto jeover;
-					s = n_string_push_c(s, sep1);
+					sop = n_string_push_c(sop, sep1);
 					if(sep2 != '\0')
-						s = n_string_push_c(s, sep2);
+						sop = n_string_push_c(sop, sep2);
 				}
 				in.l = su_cs_len(in.s = UNCONST(char*,appp->app_dat[i + appp->app_idx]));
 
-				if(!n_string_can_book(s, in.l)){
+				if(!n_string_can_book(sop, in.l)){
 jeover:
 					n_err(_("vpospar: overflow: string too long!\n"));
 					n_pstate_err_no = su_ERR_OVERFLOW;
 					f = a_ERR;
 					goto jleave;
 				}
-				s = n_shexp_quote(s, &in, TRU1);
+				sop = n_shexp_quote(sop, &in, TRU1);
 			}
 
-			varres = n_string_cp(s);
+			varres = n_string_cp(sop);
 		}
 
 		if(cacp->cac_vput == NIL){

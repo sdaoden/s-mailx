@@ -85,11 +85,11 @@ static boole a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg
 
 static struct a_dmsg_sl *a_dmsg__help(void);
 static struct a_dmsg_sl *a_dmsg__header(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args,
-		struct a_dmsg_sl *dmslp, struct n_string *sp);
+		struct a_dmsg_sl *dmslp, struct n_string *sop);
 static struct a_dmsg_sl *a_dmsg__attach(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args,
-		struct a_dmsg_sl *dmslp, struct n_string *sp);
+		struct a_dmsg_sl *dmslp, struct n_string *sop);
 static struct a_dmsg_sl *a_dmsg__part(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args,
-		struct a_dmsg_sl *dmslp, struct n_string *sp);
+		struct a_dmsg_sl *dmslp, struct n_string *sop);
 
 static struct a_dmsg_sl *a_dmsg___line_tuple(char const *name, boole ndup, char const *value, boole vdup);
 
@@ -150,7 +150,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 	char cb_i[su_IENC_BUFFER_SIZE], cb_s[8], *cps;
 	struct n_string s;
 	struct a_dmsg_sl *dmslp, dmsl_s[1];
-	struct str *sp;
+	struct str *ssp;
 	void *lofi_snap;
 	NYD2_IN;
 
@@ -165,10 +165,10 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 	if(cmd == NIL)
 		goto Jecmd;
 
-	sp = &cmd->ca_arg.ca_str;
-	if(su_cs_starts_with_case_n("header", sp->s, sp->l))
+	ssp = &cmd->ca_arg.ca_str;
+	if(su_cs_starts_with_case_n("header", ssp->s, ssp->l))
 		dmslp = a_dmsg__header(dmcp, args, dmslp, &s);
-	else if(su_cs_starts_with_case_n("attachment", sp->s, sp->l)){
+	else if(su_cs_starts_with_case_n("attachment", ssp->s, ssp->l)){
 		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE)
 			dmslp = a_dmsg__attach(dmcp, args, dmslp, &s);
 		else{
@@ -178,7 +178,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 			dmslp->dmsl_len = sizeof(ca) - 1;
 			dmslp->dmsl_dat = ca;
 		}
-	}else if(su_cs_starts_with_case_n("x-part", sp->s, sp->l)){ /* X-SERIES */
+	}else if(su_cs_starts_with_case_n("x-part", ssp->s, ssp->l)){ /* X-SERIES */
 		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE){
 			static char const ca[] = "digmsg: part: not in compose mode";
 
@@ -187,7 +187,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 			dmslp->dmsl_dat = ca;
 		}else
 			dmslp = a_dmsg__part(dmcp, args, dmslp, &s);
-	}else if(su_cs_starts_with_case_n("epoch", sp->s, sp->l)){
+	}else if(su_cs_starts_with_case_n("epoch", ssp->s, ssp->l)){
 		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE){
 			static char const ca[] = "digmsg: epoch: not in compose mode";
 
@@ -211,7 +211,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 				dmslp->dmsl_len = su_cs_len(dmslp->dmsl_dat = su_ienc_u64(cb_i, t, 10));
 			}
 		}
-	}else if(su_cs_starts_with_case_n("version", sp->s, sp->l)){
+	}else if(su_cs_starts_with_case_n("version", ssp->s, ssp->l)){
 		static char const ca[] = mx_DIG_MSG_PLUMBING_VERSION;
 
 		if(args != NIL)
@@ -219,7 +219,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 		dmslp->dmsl_status_or_new_ent = 210;
 		dmslp->dmsl_len = sizeof(ca) - 1;
 		dmslp->dmsl_dat = ca;
-	}else if((sp->l == 1 && sp->s[0] == '?') || su_cs_starts_with_case_n("help", sp->s, sp->l)){
+	}else if((ssp->l == 1 && ssp->s[0] == '?') || su_cs_starts_with_case_n("help", ssp->s, ssp->l)){
 		if(args != NIL)
 			goto Jecmd;
 		dmslp = a_dmsg__help();
@@ -367,7 +367,7 @@ a_dmsg__help(void){
 
 /* a_dmsg__header {{{ */
 static struct a_dmsg_sl *
-a_dmsg__header(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args, struct a_dmsg_sl *dmslp, struct n_string *sp){
+a_dmsg__header(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args, struct a_dmsg_sl *dmslp, struct n_string *sop){
 	char ienc_b[su_IENC_BUFFER_SIZE];
 	struct str sin, sou;
 	struct n_header_field *hfp;
@@ -435,11 +435,11 @@ jleave:
 
 j505r:
 	dmslp->dmsl_status_or_new_ent = 505;
-	sp = n_string_assign_buf(sp, "read-only: ", sizeof("read-only: ") -1);
-	sp = n_string_push_cp(sp, cp);
-	dmslp->dmsl_len = sp->s_len;
-	dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
-	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
+	sop = n_string_assign_buf(sop, "read-only: ", sizeof("read-only: ") -1);
+	sop = n_string_push_cp(sop, cp);
+	dmslp->dmsl_len = sop->s_len;
+	dmslp->dmsl_dat = su_LOFI_ALLOC(sop->s_len +1);
+	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sop), sop->s_len +1);
 	goto jleave;
 j501cp:
 	dmslp->dmsl_status_or_new_ent = 501;
@@ -713,12 +713,12 @@ jcmd_headerpick:{ /* TODO v15-compat: oooooh: an iterator! {{{ */
 
 jcmd_list: jdefault:{ /* {{{ */
 	if(args == NIL){
-		n_string_trunc(sp, 0);
+		n_string_trunc(sop, 0);
 
 #undef a_X
 #define a_X(F,S) \
 		if(su_CONCAT(hp->h_, F) != NIL)\
-			n_string_push_buf((sp->s_len > 0 ? n_string_push_c(sp, ' ') : sp),\
+			n_string_push_buf((sop->s_len > 0 ? n_string_push_c(sop, ' ') : sop),\
 				su_STRING(S), sizeof(su_STRING(S)) -1);\
 
 		a_X(subject, Subject);
@@ -750,7 +750,7 @@ jcmd_list: jdefault:{ /* {{{ */
 		if((hp->h_flags & HF_CMD_MASK) != HF_NONE){
 			static char const ca[] = "Mailx-Command";
 
-			n_string_push_buf((sp->s_len > 0 ? n_string_push_c(sp, ' ') : sp), ca, sizeof(ca) -1);
+			n_string_push_buf((sop->s_len > 0 ? n_string_push_c(sop, ' ') : sop), ca, sizeof(ca) -1);
 		}
 
 		/* Print only one instance of each free-form header */
@@ -759,7 +759,7 @@ jcmd_list: jdefault:{ /* {{{ */
 
 			for(hfpx = hp->h_user_headers;; hfpx = hfpx->hf_next){
 				if(hfpx == hfp){
-					n_string_push_cp((sp->s_len > 0 ? n_string_push_c(sp, ' ') : sp),
+					n_string_push_cp((sop->s_len > 0 ? n_string_push_c(sop, ' ') : sop),
 						&hfp->hf_dat[0]);
 					break;
 				}else if(!su_cs_cmp_case(&hfpx->hf_dat[0], &hfp->hf_dat[0]))
@@ -768,9 +768,9 @@ jcmd_list: jdefault:{ /* {{{ */
 		}
 
 		dmslp->dmsl_status_or_new_ent = 210;
-		if((dmslp->dmsl_len = sp->s_len) > 0){
-			dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
-			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
+		if((dmslp->dmsl_len = sop->s_len) > 0){
+			dmslp->dmsl_dat = su_LOFI_ALLOC(sop->s_len +1);
+			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sop), sop->s_len +1);
 		}
 	}else{
 		if(a3p != NIL)
@@ -948,12 +948,12 @@ jcmd_remove_at:{ /* {{{ */
 
 	if((su_idec_uz_cp(&i, a3p->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) || i == 0){
 		dmslp->dmsl_status_or_new_ent = 505;
-		sp = n_string_trunc(sp, 0);
-		sp = n_string_push_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
-		sp = n_string_push_buf(sp, a3p->ca_arg.ca_str.s, a3p->ca_arg.ca_str.l);
-		dmslp->dmsl_len = sp->s_len;
-		dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
-		su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
+		sop = n_string_trunc(sop, 0);
+		sop = n_string_push_buf(sop, "invalid position: ", sizeof("invalid position: ") -1);
+		sop = n_string_push_buf(sop, a3p->ca_arg.ca_str.s, a3p->ca_arg.ca_str.l);
+		dmslp->dmsl_len = sop->s_len;
+		dmslp->dmsl_dat = su_LOFI_ALLOC(sop->s_len +1);
+		su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sop), sop->s_len +1);
 		goto jleave;
 	}
 
@@ -1302,7 +1302,7 @@ jcmd_x_decode:{ /* TODO v15-compat: not at all needed! {{{ */
 
 /* a_dmsg__attach {{{ */
 static struct a_dmsg_sl *
-a_dmsg__attach(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args, struct a_dmsg_sl *dmslp, struct n_string *sp){
+a_dmsg__attach(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args, struct a_dmsg_sl *dmslp, struct n_string *sop){
 	char ienc_b[su_IENC_BUFFER_SIZE];
 	boole status;
 	struct mx_attachment *ap;
@@ -1402,12 +1402,12 @@ jatt_attset:
 			static char const ca[] = "RFC822 message attachment: ";
 
 			dmslp->dmsl_status_or_new_ent = 505;
-			sp = n_string_trunc(sp, 0);
-			sp = n_string_push_buf(sp, ca, sizeof(ca) -1);
-			sp = n_string_push_cp(sp, cp);
-			dmslp->dmsl_len = sp->s_len;
-			dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
-			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len);
+			sop = n_string_trunc(sop, 0);
+			sop = n_string_push_buf(sop, ca, sizeof(ca) -1);
+			sop = n_string_push_cp(sop, cp);
+			dmslp->dmsl_len = sop->s_len;
+			dmslp->dmsl_dat = su_LOFI_ALLOC(sop->s_len +1);
+			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sop), sop->s_len);
 		}else{
 			char c;
 			char const *keyw, *xcp;
@@ -1584,16 +1584,16 @@ j505:
 	goto jleave;
 j505r:
 	dmslp->dmsl_status_or_new_ent = 505;
-	sp = n_string_assign_buf(sp, "read-only: ", sizeof("read-only: ") -1);
+	sop = n_string_assign_buf(sop, "read-only: ", sizeof("read-only: ") -1);
 	goto jeapp;
 j505invpos:
 	dmslp->dmsl_status_or_new_ent = 505;
-	sp = n_string_assign_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
+	sop = n_string_assign_buf(sop, "invalid position: ", sizeof("invalid position: ") -1);
 jeapp:
-	sp = n_string_push_cp(sp, cp);
-	dmslp->dmsl_len = sp->s_len;
-	dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
-	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
+	sop = n_string_push_cp(sop, cp);
+	dmslp->dmsl_len = sop->s_len;
+	dmslp->dmsl_dat = su_LOFI_ALLOC(sop->s_len +1);
+	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sop), sop->s_len +1);
 	goto jleave;
 j506:
 	dmslp->dmsl_status_or_new_ent = 506;
@@ -1603,7 +1603,7 @@ j506:
 
 /* a_dmsg__part X-SERIES {{{ */
 static struct a_dmsg_sl *
-a_dmsg__part(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg * volatile args, struct a_dmsg_sl *dmslp, struct n_string *sp){
+a_dmsg__part(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg * volatile args, struct a_dmsg_sl *dmslp, struct n_string *sop){
 	/* TODO `part': all of this is a gross hack to be able to write a simple
 	 * TODO mailing-list manager; after the MIME rewrite we have a tree of
 	 * TODO objects which can be created/deleted at will, and which know how to
@@ -1736,16 +1736,16 @@ j505:
 #endif
 j505r:
 	dmslp->dmsl_status_or_new_ent = 505;
-	sp = n_string_assign_buf(sp, "read-only: ", sizeof("read-only: ") -1);
+	sop = n_string_assign_buf(sop, "read-only: ", sizeof("read-only: ") -1);
 	goto jeapp;
 j505invpos:
 	dmslp->dmsl_status_or_new_ent = 505;
-	sp = n_string_assign_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
+	sop = n_string_assign_buf(sop, "invalid position: ", sizeof("invalid position: ") -1);
 jeapp:
-	sp = n_string_push_cp(sp, cp);
-	dmslp->dmsl_len = sp->s_len;
-	dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
-	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
+	sop = n_string_push_cp(sop, cp);
+	dmslp->dmsl_len = sop->s_len;
+	dmslp->dmsl_dat = su_LOFI_ALLOC(sop->s_len +1);
+	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sop), sop->s_len +1);
 	goto jleave;
 /*
 j506:

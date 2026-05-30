@@ -172,18 +172,18 @@ c_noop(void *vp){
 
 FL int
 c_remove(void *vp){
-	struct n_string s_b, *sp;
+	struct n_string s_b, *sop;
 	char const *emsg, **argv, *name;
-	uz sp_len;
+	uz sol;
 	NYD_IN;
 
 	if(n_psonce & n_PSO_INTERACTIVE){
-		sp = n_string_book(n_string_creat_auto(&s_b), 127);
+		sop = n_string_book(n_string_creat_auto(&s_b), 127);
 		/* I18N: remove a file (mailbox)? */
-		sp_len = n_string_assign_cp(sp, _("Remove "))->s_len;
+		sol = n_string_assign_cp(sop, _("Remove "))->s_len;
 	}else{
-		sp = NIL;
-		UNINIT(sp_len, 0);
+		sop = NIL;
+		UNINIT(sol, 0);
 	}
 
 	emsg = NIL;
@@ -199,13 +199,13 @@ c_remove(void *vp){
 		ASSERT_EXEC(p == n_which_protocol(name, n_WHIPRO_STAT, NIL), (void)0);
 
 		if(p != n_PROTO_UNKNOWN){
-			if(sp != NIL){
-				sp = n_string_trunc(sp, sp_len);
-				sp = n_string_push_cp(sp, n_shexp_quote_cp(*argv, FAL0));
-				sp = n_string_push_buf(sp, " (", sizeof(" (") -1);
-				sp = n_string_push_cp(sp, n_shexp_quote_cp(name, FAL0));
-				sp = n_string_push_c(sp, ')');
-				if(!mx_tty_yesorno(n_string_cp_const(sp), TRU1))
+			if(sop != NIL){
+				sop = n_string_trunc(sop, sol);
+				sop = n_string_push_cp(sop, n_shexp_quote_cp(*argv, FAL0));
+				sop = n_string_push_buf(sop, " (", sizeof(" (") -1);
+				sop = n_string_push_cp(sop, n_shexp_quote_cp(name, FAL0));
+				sop = n_string_push_c(sop, ')');
+				if(!mx_tty_yesorno(n_string_cp_const(sop), TRU1))
 					continue;
 			}
 
@@ -270,7 +270,7 @@ jerr:
 		}
 	}while(*++argv != NIL);
 
-	/* if(sp != NIL) n_string_gut(sp); */
+	/* if(s != NIL) n_string_gut(s); */
 
 	NYD_OU;
 	return (emsg == NIL ? su_EX_OK : su_EX_ERR);

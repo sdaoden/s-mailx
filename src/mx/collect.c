@@ -257,7 +257,7 @@ static s32
 a_coll_include_file(char const *name, boole indent, boole writestat){ /* {{{ */
 	enum{a_NONE = su_ERR_NONE, a_HERE = 1<<0, a_HERE_QUOTE = 1<<1, a_HERE_TAB = 1<<2};
 
-	struct str si;
+	struct str s;
 	struct n_string so_b, *sop;
 	FILE *fbuf;
 	char const *heredb, *indb;
@@ -378,8 +378,8 @@ jhere_err:
 				BITENUM(u32,n_shexp_state) shs;
 				void const *cookie;
 
-				si.s = lb;
-				si.l = ll;
+				s.s = lb;
+				s.l = ll;
 				sop = n_string_trunc(sop, 0);
 				cookie = NIL;
 
@@ -388,7 +388,7 @@ jhere_err:
 								n_SHEXP_PARSE_IGN_COMMENT | n_SHEXP_PARSE_SCOPE_CAPSULE |
 								n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
 								n_SHEXP_PARSE_QUOTE_AUTO_DQ),
-							mx_SCOPE_LOCAL, sop, &si, &cookie);
+							mx_SCOPE_LOCAL, sop, &s, &cookie);
 					if(shs & n_SHEXP_STATE_STOP)
 						break;
 					if(shs & n_SHEXP_STATE_OUTPUT)
