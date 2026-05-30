@@ -318,7 +318,12 @@ a_main_setup_vars(void){
 		ok_vset(LOGNAME, su_reproducible_build);
 		/* Do not care about USER at all in this special mode! */
 		n_pstate &= ~n_PS_ROOT;
-		ok_vset(log_prefix, savecat(su_reproducible_build, ": "));
+		/* C99 */{
+			char const *ccp;
+
+			ccp = savecat(su_reproducible_build, ": ");
+			ok_vset(log_prefix, ccp);
+		}
 	}
 
 	/* Finally set our terminal dimension */
