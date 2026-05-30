@@ -1869,7 +1869,8 @@ jtick:
 		}
 
 		/* Reset "signal received" state upon any user input */
-		a_coll->cc_sig_int_last = a_coll->cc_sig_int = FAL0;
+		a_coll->cc_sig_int = FAL0;
+		a_coll->cc_sig_int_last = FAL0;
 
 		cp = a_coll->cc_lndata;
 		if(cnt == 0)
