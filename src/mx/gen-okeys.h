@@ -1094,17 +1094,17 @@ static struct a_amv_var_chain_map const a_amv_var_chain_map[] = {
 #define a_AMV_VAR_CHAIN_MAP_CNT 45
 
 static struct a_amv_var_chain_map_bsrch const a_amv_var_chain_map_bsrch[] = {
-	{"disc", 0u, ok_b_disconnected},
-	{"imap", 1u, ok_b_imap_use_starttls},
-	{"netr", 5u, ok_b_netrc_lookup},
-	{"pass", 6u, ok_v_password},
-	{"pop3", 7u, ok_b_pop3_use_starttls},
-	{"smim", 10u, ok_v_smime_sign_message_digest},
-	{"smtp", 16u, ok_b_smtp_use_starttls},
-	{"sock", 21u, ok_v_socks_proxy},
-	{"ssl-", 22u, ok_v_ssl_verify},
-	{"tls-", 35u, ok_v_tls_verify},
-	{"user", 44u, ok_v_user},
+	{{'d', 'i', 's', 'c'}, 0u, ok_b_disconnected},
+	{{'i', 'm', 'a', 'p'}, 1u, ok_b_imap_use_starttls},
+	{{'n', 'e', 't', 'r'}, 5u, ok_b_netrc_lookup},
+	{{'p', 'a', 's', 's'}, 6u, ok_v_password},
+	{{'p', 'o', 'p', '3'}, 7u, ok_b_pop3_use_starttls},
+	{{'s', 'm', 'i', 'm'}, 10u, ok_v_smime_sign_message_digest},
+	{{'s', 'm', 't', 'p'}, 16u, ok_b_smtp_use_starttls},
+	{{'s', 'o', 'c', 'k'}, 21u, ok_v_socks_proxy},
+	{{'s', 's', 'l', '-'}, 22u, ok_v_ssl_verify},
+	{{'t', 'l', 's', '-'}, 35u, ok_v_tls_verify},
+	{{'u', 's', 'e', 'r'}, 44u, ok_v_user},
 };
 #define a_AMV_VAR_CHAIN_MAP_BSRCH_CNT 11
 
@@ -1199,7 +1199,7 @@ static struct{
 	char const av_name[12 +1];
 } const a_amv_var_virt_ssl_features = {NIL, a_amv_var_virt_ssl_features_val, a_X(0 su_COMMA) a_AMV_VF_NONE|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_OBSOLETE, "ssl-features"};
 
-static char const a_amv_var_virt_system_mailrc_val[] = {VAL_SYSCONFDIR "/" VAL_SYSCONFRC};
+static char const a_amv_var_virt_system_mailrc_val[] = {VAL_SYSCONF_LOOKUPDIR "/" VAL_SYSCONFRC};
 static struct{
 	struct a_amv_var *av_link;
 	char const *av_value;
