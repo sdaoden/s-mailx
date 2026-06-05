@@ -902,7 +902,8 @@ FL enum okay n_mail1(enum n_mailsend_flags flags, enum mx_scope scope,
  * implies output preparation for the user (display).
  * If hp->h_flags&HF_COMPOSE_MODE then we are really in compose mode and
  * produce some fields for easier filling in */
-FL boole n_puthead(boole nosend, FILE *fo, struct header *hp, enum gfield w);
+FL boole n_puthead(boole nosend, FILE *fo, struct mx_url *urlp_or_nil,
+   struct header *hp, enum gfield w);
 
 /* Create Date:-style header field body (not field itself).
  * We compare the localtime() and gmtime() results to get the timezone, because

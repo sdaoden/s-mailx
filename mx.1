@@ -11150,7 +11150,7 @@ of normal text and expandable conversions of a percent sign
 .Ql %
 and a conversion specifier.
 If unset or empty, or if results are shorter 10 bytes or without randoms
-.Ql %Y%m%d%H%M%S.%r%r@%a
+.Ql %Y%m%d%H%M%S.%r%r@%A
 is used.
 Date and time are in UTC (Coordinated Universal Time).
 .
@@ -11158,12 +11158,22 @@ Date and time are in UTC (Coordinated Universal Time).
 .Bl -tag -compact -width ".It Ql _%%_"
 .It Ql %%
 Doubling avoids expansion.
+.It Ql \&%A
+The domain of the sender address.
+If unavailable equals
+.Ql %h .
 .It Ql %a
 Sender address, with
 .Ql @
 replaced by
 .Ql %
 because some spam detectors trigger otherwise for unknown reasons.
+If the
+.Ql local-part
+contains
+.Ql quoted-string
+this equals
+.Ql \&%A .
 If unavailable equals
 .Ql %h .
 .It Ql %d
@@ -13236,7 +13246,9 @@ SMTP
 .Va mta
 commands;
 .Ic alias Ns
-es are expanded instantly with senders kept
+es are expanded when
+.Ic set
+and with senders kept
 .Pf ( Va metoo ) .
 If unset
 .Va from
@@ -13244,10 +13256,12 @@ is used, otherwise
 .Va user
 and
 .Va hostname .
+(Setting not used by
+.Sx "URL syntax and credential lookup" . )
 .
 .Mx Va smtp-hostname
 .It Va smtp-hostname-USER@HOST , smtp-hostname-HOST , smtp-hostname
-\*(OP\*(OB Use the more powerful successor
+\*(OP\*(OB Use
 .Va smtp-from .
 .
 .Mx Va smtp-use-starttls
@@ -14175,7 +14189,10 @@ Child processes inherit the file mode creation mask of their parent.
 .It Va user-HOST , user
 Variable chain that sets a global fallback user name, used in case
 none has been given in the protocol and account-specific URL.
-This variable defaults to the name of the user who runs \*(Xx.
+This variable defaults to
+.Ev LOGNAME .
+(Also see
+.Sx "URL syntax and credential lookup" . )
 .
 .Mx
 .It Va v15-compat
@@ -14397,9 +14414,11 @@ Default is
 .
 .Mx
 .It Ev LOGNAME
-Upon startup \*(Xx will actively ensure that this variable refers to the
-name of the user who runs \*(Xx, in order to be able to pass a verified
-name to any newly created child process.
+Upon startup it is ensured that this variable refers to the name of the
+user, in order to be able to pass a verified name to newly created child
+processes.
+Also see
+.Sx "URL syntax and credential lookup" .
 .
 .Mx
 .It Ev MAIL

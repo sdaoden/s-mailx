@@ -116,7 +116,6 @@ struct a_sendout_infix_ctx{
    struct mx_mime_type_classify_fp_ctx sic_mtcfc; /* Of mainbody */
 };
 
-static char const *__sendout_ident; /* TODO temporary; rewrite n_puthead() */
 static s8   _sendout_error;
 
 /* */
@@ -187,15 +186,16 @@ static void a_sendout_mta_file_debug(struct mx_send_ctx *scp, char const *mta,
 static boole a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta);
 
 /* Create a (Message-ID|Content): header field (via *message-id*) */
-static char const *a_sendout_random_id(struct header *hp, boole msgid);
+static char const *a_sendout_random_id(struct mx_url *urlp,
+      struct header *hp, boole msgid);
 
 /* Format the given header line to not exceed 72 characters */
 static boole a_sendout_put_addrline(char const *hname, struct mx_name *np,
                FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
-static boole a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
-      struct message *mp, struct mx_name *to, int add_resent);
+static boole a_sendout_infix_resend(struct mx_send_ctx *scp, FILE *fi,
+      FILE *fo, struct message *mp, struct mx_name *to, int add_resent);
 
 static u32
 a_sendout_sendwait_to_swf(void){ /* TODO should happen at var assign time */
@@ -296,9 +296,9 @@ a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps){
    NYD_IN;
 
    rv = FAL0;
-   shost = ok_vlook(smtp_hostname);
+   shost = ok_vlook(smtp_hostname); /* v15compat drop */
    if(sign_caps || shost == NIL){
-      from = UNCONST(char*,myorigin(scp->sc_hp));
+      from = UNCONST(char*,myorigin(scp->sc_hp)); /* v15compat drop redunda */
       if(from != NIL){
          struct mx_name *np;
 
@@ -319,7 +319,7 @@ a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps){
    }
 
    /* file:// and test:// MTAs do not need credentials */
-   if(scp->sc_urlp->url_cproto == CPROTO_NONE){
+   if(scp->sc_urlp->url_cproto == CPROTO_NONE){ /* TODO != _SMTP */
       rv = TRU1;
       goto jleave;
    }
@@ -332,8 +332,7 @@ a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps){
          goto jleave;
       }
       scp->sc_urlp->url_u_h.l = su_cs_len(scp->sc_urlp->url_u_h.s = from);
-   }else
-      __sendout_ident = scp->sc_urlp->url_u_h.s;
+   }
 
    if(!mx_cred_auth_lookup(scp->sc_credp, scp->sc_urlp))
       goto jleave;
@@ -669,7 +668,7 @@ jiter:
 
    /* */
    n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
-   if(!n_puthead(FAL0, sicp->sic_encfp, sctxp->sc_hp,
+   if(!n_puthead(FAL0, sicp->sic_encfp, sctxp->sc_urlp, sctxp->sc_hp,
          (GTO | GSUBJECT | GCC | GBCC | GCOMMA | GUA | GMSGID |
           GIDENT | GREF | GDATE))){
 #ifdef mx_HAVE_ICONV
@@ -867,7 +866,8 @@ a_sendout__infix_dump(struct mx_send_ctx *sctxp, /* {{{ */
             if(sicp->sic_gen_ids){
                char const *cp;
 
-               if((cp = a_sendout_random_id(sctxp->sc_hp, FAL0)) != NIL &&
+               if((cp = a_sendout_random_id(sctxp->sc_urlp, sctxp->sc_hp, FAL0)
+                     ) != NIL &&
                      fprintf(sicp->sic_encfp, "Content-ID: <%s>\n", cp) < 0)
                   goto jerr;
             }
@@ -943,7 +943,7 @@ a_sendout__infix_dump(struct mx_send_ctx *sctxp, /* {{{ */
             if(ap->a_content_id != NIL)
                cp = ap->a_content_id->n_name;
             else
-               cp = a_sendout_random_id(sctxp->sc_hp, FAL0);
+               cp = a_sendout_random_id(sctxp->sc_urlp, sctxp->sc_hp, FAL0);
             if(cp != NIL &&
                   fprintf(sicp->sic_encfp, "Content-ID: <%s>\n", cp) < 0)
                goto jerr;
@@ -1280,11 +1280,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
     * string storage */
    if(pipecnt == 0 || (n_poption & n_PO_D))
       pipecnt = 0;
-   else{
-      i = sizeof(FILE*) * pipecnt;
-      fppa = su_LOFI_ALLOC(i);
-      su_mem_set(fppa, 0, i);
-   }
+   else
+      fppa = su_LOFI_CALLOC_N(sizeof(FILE*), pipecnt);
 
    mfap = ok_blook(mbox_fcc_and_pcc);
    swf = a_sendout_sendwait_to_swf();
@@ -2164,7 +2161,7 @@ jefo:
 } /* }}} */
 
 static char const *
-a_sendout_random_id(struct header *hp, boole msgid){ /* {{{ */
+a_sendout_random_id(struct mx_url *urlp, struct header *hp, boole msgid){ /* {{{ */
    static u32 reprocnt;
 
    char ibuf[su_IENC_BUFFER_SIZE];
@@ -2198,17 +2195,23 @@ a_sendout_random_id(struct header *hp, boole msgid){ /* {{{ */
    if(!c || *host == '\0')
       host = n_nodename(TRU1);
 
-   sender = __sendout_ident;
+   sender =
+#ifdef mx_HAVE_NET
+         (urlp != NIL && urlp->url_cproto != CPROTO_NONE &&
+               urlp->url_u_h.s != NIL) ? urlp->url_u_h.s :
+#endif
+         NIL;
+
    c |= (sender != NIL);
    if(sender == NIL && hp != NIL){
-      sender = myorigin(hp);
+      sender = myorigin(hp); /* v15compat: is a valid address then! */
       if(sender != NIL){
          struct mx_name *np;
 
          np = mx_name_parse(sender, GIDENT);
-         sender = (np != NIL) ? np->n_name : NIL;
+         sender = (np != NIL) ? np->n_name : NIL; /* v15compat: valid, then */
       }
-      c = (sender != NIL && su_cs_find_c(sender, '@') != NIL); /* v15compat */
+      c = (sender != NIL && su_cs_rfind_c(sender, '@') != NIL); /* v15compat */
    }
 
    fmt = ok_vlook(message_id);
@@ -2231,13 +2234,20 @@ jc:
       default:
          n_err(_("*message-id*: invalid conversion: %s\n"), &fmt[-2]);
          goto jc;
+      case 'A': FALLTHRU
       case 'a':
          h = sender;
          if(h == NIL)
             goto jh;
+         rv = su_cs_rfind_c(h, '@'); /* v15compat: always found, is valid! */
          rl = s->s_len;
+         /* local-part with quoted-string equals %A */
+         if(c == 'a' && rv != NIL && su_mem_find(h, '"', P2UZ(rv - h)) != NIL)
+               c = 'A';
+         if(c == 'A' && rv != NIL)
+            h = ++rv;
          s = n_string_push_cp(s, h);
-         if((rv = su_cs_find_c(h, '@')) != NIL){
+         if(c == 'a' && rv != NIL){
             i = P2UZ(rv - h);
             s->s_dat[rl + i] = '%';
          }
@@ -2413,7 +2423,7 @@ jleave:
 }
 
 static boole
-a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
+a_sendout_infix_resend(struct mx_send_ctx *scp, FILE *fi, FILE *fo,
       struct message *mp, struct mx_name *to, int add_resent)
 {
    uz cnt, c, bufsize;
@@ -2444,10 +2454,13 @@ a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
                "Resent-Sender:", fo, &senderfield))
             goto jleave;
       }
+
       if (!a_sendout_put_addrline("Resent-To:", to, fo, a_SENDOUT_AL_COMMA))
          goto jleave;
-      if (((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")) &&
-            (cp = a_sendout_random_id(NULL, TRU1)) != NULL &&
+
+      if(((cp = ok_vlook(stealthmua)) == NIL || !su_cs_cmp(cp, "noagent")) &&
+            (cp = a_sendout_random_id(scp->sc_urlp, scp->sc_hp, TRU1)
+            ) != NIL &&
             fprintf(fo, "Resent-Message-ID: <%s>\n", cp) < 0)
          goto jleave;
    }
@@ -2485,12 +2498,12 @@ a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
       if(cnt == 0 && *buf == '\n')
          break;
 
-      if(!(hp->h_flags & HF_MESSAGE_8BITMIME)){ /* TODO hack for resending */
+      if(!(scp->sc_hp->h_flags & HF_MESSAGE_8BITMIME)){ /* TODO hack for resending */
          uz i;
 
          for(i = 0; i < c; ++i)
             if(S(u8,buf[i]) & 0x80u){
-               hp->h_flags |= HF_MESSAGE_8BITMIME;
+               scp->sc_hp->h_flags |= HF_MESSAGE_8BITMIME;
                break;
             }
       }
@@ -2596,11 +2609,11 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
    boole fullnames;
    NYD_IN;
 
-   su_mem_set(&head, 0, sizeof head);
+   STRUCT_ZERO(struct header, &head);
 
    /* The given subject may be in RFC1522 format. */
-   if (subject != NULL) {
-      in.s = n_UNCONST(subject);
+   if(subject != NIL){
+      in.s = UNCONST(char*,subject);
       in.l = su_cs_len(subject);
       if(mx_mime_display_from_header(&in, &out,
             /* TODO ???_ISPRINT |*/ mx_MIME_DISPLAY_ICONV))
@@ -2679,7 +2692,6 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
 #endif
 
    _sendout_error = FAL0;
-   __sendout_ident = NULL;
    n_pstate_err_no = su_ERR_INVAL;
    rv = STOP;
    mtf = NULL;
@@ -2881,7 +2893,8 @@ jfail_dead:
 } /* }}} */
 
 FL boole
-n_puthead(boole nosend, FILE *fo, struct header *hp, enum gfield w){ /*{{{*/
+n_puthead(boole nosend, FILE *fo, struct mx_url *urlp_or_nil,
+      struct header *hp, enum gfield w){ /*{{{*/
 #define a_SENDOUT_PUT_CC_BCC_FCC() \
 do{\
    if((w & GCC) && (hp->h_cc != NIL || nosend > FAL0)){\
@@ -3136,9 +3149,9 @@ j_mft_add:
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
       a_SENDOUT_PUT_CC_BCC_FCC();
 
-   if ((w & GMSGID) && stealthmua <= 0 &&
-         (addr = a_sendout_random_id(hp, TRU1)) != NULL) {
-      if (fprintf(fo, "Message-ID: <%s>\n", addr) < 0)
+   if((w & GMSGID) && stealthmua <= 0 &&
+         (addr = a_sendout_random_id(urlp_or_nil, hp, TRU1)) != NIL){
+      if(fprintf(fo, "Message-ID: <%s>\n", addr) < 0)
          goto jleave;
       ++gotcha;
    }
@@ -3312,7 +3325,6 @@ n_resend_msg(enum mx_scope scope, struct message *mp, struct mx_url *urlp,
    NYD_IN;
 
    _sendout_error = FAL0;
-   __sendout_ident = NULL;
    n_pstate_err_no = su_ERR_INVAL;
 
    rv = STOP;
@@ -3366,7 +3378,7 @@ n_resend_msg(enum mx_scope scope, struct message *mp, struct mx_url *urlp,
       }
    }
 
-   su_mem_set(&sctx, 0, sizeof sctx);
+   STRUCT_ZERO(struct mx_send_ctx, &sctx);
    sctx.sc_hp = hp;
    sctx.sc_to = to;
    sctx.sc_input = nfi;
@@ -3383,7 +3395,7 @@ n_resend_msg(enum mx_scope scope, struct message *mp, struct mx_url *urlp,
       _sendout_error = -1;
    }
 
-   if(!a_sendout_infix_resend(hp, ibuf, nfo, mp, to, add_resent)){
+   if(!a_sendout_infix_resend(&sctx, ibuf, nfo, mp, to, add_resent)){
 jfail_dead:
       mx_dead_save(nfi, TRU1);
       n_err(_("... message not sent\n"));

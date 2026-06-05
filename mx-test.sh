@@ -8557,10 +8557,10 @@ t_resend() { #{{{
 } #}}}
 
 t_message_id() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
+	<< '__EOT' $MAILX $ARGS > ./t1 2>$EX
 uns stealthmua
 m a1@a
 ~.
@@ -8596,6 +8596,9 @@ m b2@a
 se message-id=<%>
 m b3@a
 ~.
+se message-id=%A
+m b4_m1@a
+~.
 se message-id=%a
 m b4@a
 ~.
@@ -8629,11 +8632,23 @@ m b13@Y
 se message-id=%%.%a.%d.%H.%h.%M.%m.%r.%S.%Y.%r
 m b14@Y
 ~.
+se message-id=%%.%A.%a.%d.%H.%h.%M.%m.%r.%S.%Y.%r.z
+m b15@Y
+~.
+uns from
+m b16@Y
+~.
+uns hostname
+m b17@Y
+~.
+se from='e"j"a@x' hostname=z
+m b18@Y
+~.
 __EOT
 	#}}}
-	ck 1 0 ./t1 '1018284836 3466' '62756984 1355'
+	ck 1 0 ./t1 '3399589268 4397' '1745374329 1650'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_date_tz() { #{{{
