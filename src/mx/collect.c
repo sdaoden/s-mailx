@@ -510,7 +510,7 @@ a_coll_print(FILE *cf, struct header *hp){
 	if(fprintf(obuf, _("-------\nMessage contains:\n")) < 0)
 		goto jleave;
 
-	if(!n_puthead(TRU1, obuf, hp, (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC |
+	if(!n_puthead(TRU1, obuf, NIL, hp, (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC |
 			GNL | GFILES | GCOMMA)))
 		goto jleave;
 
@@ -1442,7 +1442,7 @@ jy_inject_restart:
 					goto jloop;
 				}else{
 					if(msf & n_MAILSEND_HEADERS_PRINT)
-						n_puthead(TRU1, n_stdout, hp, gfield);
+						n_puthead(TRU1, n_stdout, NIL, hp, gfield);
 
 					rewind(cc.cc_fp);
 					while((c = getc(cc.cc_fp)) != EOF) /* XXX bytewise, yuck! */
@@ -1607,7 +1607,7 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 			boole b;
 
 			fprintf(n_stdout, _("-------\n(Preliminary) Envelope contains:\n")); /* XXX */
-			if(!n_puthead(TRU1, n_stdout, hp, (GIDENT | GREF_IRT  | GSUBJECT |
+			if(!n_puthead(TRU1, n_stdout, NIL, hp, (GIDENT | GREF_IRT  | GSUBJECT |
 					GTO | GCC | GBCC | GBCC_IS_FCC | GFILES | GCOMMA)))
 				goto jerr;
 

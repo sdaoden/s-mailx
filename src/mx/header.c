@@ -735,7 +735,7 @@ n_header_put4compose(FILE *fp, struct header *hp){
          hp->h_list_post != NIL || (hp->h_flags & HF_LIST_REPLY))
       t |= GIDENT;
 
-   rv = n_puthead(TRUM1, fp, hp, t);
+   rv = n_puthead(TRUM1, fp, NIL, hp, t);
 
    NYD_OU;
    return rv;
