@@ -86,6 +86,8 @@ The following make(1) targets exist, the default being `build':
 
 - test        Run mx-test.sh in check mode on the built binary.
               Tests to be skipped can be passed via SKIPTEST="t1 t2".
+              The test can be run with a dedicated shell:
+                $ make TEST_SHELL=/bin/bash all test
 - testnj      Likewise, but use $JOBNO=1 to avoid spawning multiple
               tests in parallel.
 
@@ -133,8 +135,8 @@ not part of the POSIX standard).
 To set these environment variables, the following can be done in
 a Bourne / Korn / POSIX compatible shell:
 
-  $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
-  $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
+  $ C_INCLUDE_PATH="$C_INCLUDE_PATH:/usr/local/include"
+  $ LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
   $ make tangerine CONFIG=MINIMAL
 
@@ -188,6 +190,9 @@ target platform, and there is no applicable fix on application level.
 For example, it is not uncommon that Unicode tests fail because the
 platform uses old or incomplete character information.
 These tests can be excluded by passing SKIPTEST="t1 t2 ..".
+
+Maybe $SHELL (a.k.a. VAL_SHELL!) gets the mx-test.sh script wrong.
+Try setting $TEST_SHELL, as above.
 
 It may be that the test detected conditions wrong, or used obsolete say
 message digests that are not supported by your cryptographic library.
