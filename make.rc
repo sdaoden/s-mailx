@@ -81,12 +81,16 @@ VAL_PREFIX=/usr/local
 	VAL_LIBEXECDIR=$VAL_PREFIX/libexec
 	# . of the manual.
 	VAL_MANDIR=$VAL_PREFIX/share/man
-	# . of the system wide resource file.
-	VAL_SYSCONFDIR=$VAL_PREFIX/etc
 
 		# The system wide resource file (within $VAL_SYSCONFDIR).
-		# Note 1: not overwritten by "make install" if yet exists!
+		# Note: not overwritten by "make install" if yet exists!
 		VAL_SYSCONFRC=$VAL_SID$VAL_MAILX.rc
+
+	# . of the installation of $VAL_SYSCONFRC.
+	VAL_SYSCONFDIR=$VAL_PREFIX/etc
+	# . of where $VAL_SYSCONRC is actually searched at runtime.
+	#   (Packagers may want to install the default in a different place.)
+	VAL_SYSCONF_LOOKUPDIR=$VAL_PREFIX/etc
 
 # The variable $DESTDIR is prepended to all the paths from above at
 # installation time; this feature can be used for package building,

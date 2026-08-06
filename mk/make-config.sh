@@ -4035,7 +4035,10 @@ msg ''
 while read l; do msg "$l"; done < "$tmp"
 
 msg 'Setup:'
-msg ' . System-wide resource file: %s/%s' "$VAL_SYSCONFDIR" "$VAL_SYSCONFRC"
+msg ' . System-wide resource file: %s/%s' "$VAL_SYSCONF_LOOKUPDIR" "$VAL_SYSCONFRC"
+if [ "$VAL_SYSCONF_LOOKUPDIR/$VAL_SYSCONFRC" != "$VAL_SYSCONFDIR/$VAL_SYSCONFRC" ]; then
+	msg '               (installed as: %s/%s)' "$VAL_SYSCONFDIR" "$VAL_SYSCONFRC"
+fi
 msg ' . bindir: %s' "$VAL_BINDIR"
 if feat_yes DOTLOCK || feat_yes OAUTH_HELPER; then
 	msg ' . libexecdir: %s' "$VAL_LIBEXECDIR"
