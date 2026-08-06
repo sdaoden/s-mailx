@@ -40,6 +40,19 @@ export OBJDIR JOBNO JOBWAIT JOBMON SKIPTEST UTF8_LOCALE HONOURS_READONLY_NOT FS_
 # Note: until we reexec to get the configured $SHELL we may not use any newer or more sophisticated constructs
 # like for example $( subshell )!
 
+# ..but allow early shell replacement for really weird situations
+# Re-exec ourselves with the "correct" $SHELL, if not already
+if [ -n "$TEST_SHELL" ]; then
+	MAILX__CC_TEST_RUNNING=...
+	export MAILX__CC_TEST_RUNNING
+	i=$TEST_SHELL
+	unset TEST_SHELL
+	exec $i "$0" "$@"
+elif [ "$MAILX__CC_TEST_RUNNING" = ... ]; then
+	unset MAILX__CC_TEST_RUNNING
+	TEST_SHELL=y
+fi
+
 # environ,usage,argv {{{
 LC_ALL=C LANG=C TZ=UTC
 export LC_ALL LANG TZ
@@ -138,8 +151,8 @@ done
 
 . ./mk-config.env
 
-# Re-exxec ourselves with the "correct" $SHELL, if not already.
-if [ -z "$MAILX__CC_TEST_RUNNING" ]; then
+# Re-exxec ourselves with the "correct" $SHELL, if not already or $TEST_SHELL
+if [ -z "$TEST_SHELL$MAILX__CC_TEST_RUNNING" ]; then
 	MAILX__CC_TEST_RUNNING=y
 	export MAILX__CC_TEST_RUNNING
 	exec $SHELL "$i$0" "$@"
@@ -183,33 +196,33 @@ export SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT LOGNAME USER
 
 # Since we invoke $MAILX from within several directories we need a fully qualified path.  Or at least something similar
-{ echo ${MAILX} | ${grep} -q ^/; } || MAILX="${TMPDIR}"/${MAILX}
-RAWMAILX=${MAILX}
+{ echo $MAILX | $grep -q ^/; } || MAILX="$TMPDIR"/$MAILX
+RAWMAILX=$MAILX
 
 # "sh -c -- 'echo yes'" must echo "yes"; FreeBSD #264319, #220587: work around
-if [ $("${VAL_SHELL}" -c -- 'echo yes' 2>/dev/null) = yes ]; then
+if [ $("$VAL_SHELL" -c -- 'echo yes' 2>/dev/null) = yes ]; then
 	T_MAILX= T_SH=
 else
-	echo '! '"${VAL_SHELL}"' cannot deal with "-c -- ARG", using workaround'
+	echo '! '"$VAL_SHELL"' cannot deal with "-c -- ARG", using workaround'
 	T_MAILX=./t.mailx.sh T_SH=./t.sh.sh
-	${rm} -f ${T_MAILX} ${T_SH}
-	${cat} > ${T_MAILX} <<_EOT
-#!${VAL_SHELL}
-SHELL=${TMPDIR}/${T_SH}
+	$rm -f $T_MAILX $T_SH
+	$cat > $T_MAILX <<_EOT
+#!$VAL_SHELL
+SHELL=$TMPDIR/$T_SH
 export SHELL
-exec ${MAILX} "\$@"
+exec $MAILX "\$@"
 _EOT
-	${cat} > ${T_SH} <<_EOT
-#!${VAL_SHELL}
+	$cat > $T_SH <<_EOT
+#!$VAL_SHELL
 shift 2
-exec ${VAL_SHELL} -c "\${@}"
+exec $VAL_SHELL -c "\$@"
 _EOT
-	${chmod} 0755 ${T_MAILX} ${T_SH}
-	MAILX=${TMPDIR}/${T_MAILX}
+	$chmod 0755 $T_MAILX $T_SH
+	MAILX=$TMPDIR/$T_MAILX
 fi
 
-[ -x "${MAILX}" ] || usage
-MAILX="${MEMTESTER}${MAILX}"
+[ -x "$MAILX" ] || usage
+MAILX="$MEMTESTER$MAILX"
 export RAWMAILX MAILX
 
 # We want an UTF-8 locale, and HONOURS_READONLY_NOT {{{
@@ -285,7 +298,7 @@ export UTF8_LOCALE HONOURS_READONLY_NOT
 #}}}
 
 GIT_REPO=
-[ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
+[ -d ../.git ] && [ -z "$MAILX__CC_TEST_NO_DATA_FILES" ] && GIT_REPO=1
 FILTER_ERR=:
 DEVELDIFF= DUMPERR=
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
@@ -295,7 +308,7 @@ SUBSECOND_SLEEP=
 	( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
 	TESTS_NET_TEST=
-	[ "${OPT_NET_TEST}" = 1 ] && [ -x ./net-test ] && TESTS_NET_TEST=1
+	[ "$OPT_NET_TEST" = 1 ] && [ -x ./net-test ] && TESTS_NET_TEST=1
 	export TESTS_NET_TEST
 
 COLOR_ERR_ON= COLOR_ERR_OFF=  COLOR_DBGERR_ON= COLOR_DBGERR_OFF=
@@ -304,11 +317,11 @@ COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 
-${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
+$rm -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
 trap "
 	jobreaper_stop
-	[ -z \"${TEST_NO_CLEANUP}\" ] &&
-		${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db ${T_MAILX} ${T_SH}
+	[ -z \"$TEST_NO_CLEANUP\" ] &&
+		$rm -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db $T_MAILX $T_SH
 " EXIT
 trap "exit 1" HUP INT QUIT TERM
 
