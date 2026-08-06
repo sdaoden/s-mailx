@@ -145,8 +145,11 @@ mx_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil, struct tm const *loc
 			(localp_or_nil->tm_min - utcp_or_nil->tm_min)) * 60) +
 			(localp_or_nil->tm_sec - utcp_or_nil->tm_sec);
 
-	if((t = (localp_or_nil->tm_yday - utcp_or_nil->tm_yday)) != 0)
+	if((t = (localp_or_nil->tm_yday - utcp_or_nil->tm_yday)) != 0){
+		if(t < 0 && localp_or_nil->tm_yday == 0)
+			t = 1;
 		rv += (t == 1) ? S(s32,su_TIME_DAY_SECS) : -S(s32,su_TIME_DAY_SECS);
+	}
 #endif
 
 jleave:
