@@ -38,6 +38,8 @@ struct su_timespec;
  * \defgroup TIME Time and date utilities
  * \ingroup MISC
  * \brief Time and date utilities (\r{su/time.h})
+ *
+ * \remarks{Constants are unsigned unless noted otherwise.}
  * @{
  */
 

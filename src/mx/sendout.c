@@ -3260,9 +3260,9 @@ mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
    tzsign = n_hy;
    if(LIKELY(tmptr->tm_sec == mx_time_current.tc_gm.tm_sec) || must_locale){
       tzdiff_min = S(int,mx_time_tzdiff(mx_time_current.tc_time, NIL, tmptr));
-      tzdiff_min /= su_TIME_MIN_SECS;
-      tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
-      tzdiff_min %= su_TIME_HOUR_MINS;
+      tzdiff_min /= S(int,su_TIME_MIN_SECS);
+      tzdiff_hour = tzdiff_min / S(int,su_TIME_HOUR_MINS);
+      tzdiff_min %= S(int,su_TIME_HOUR_MINS);
       tzdiff_hour *= 100;
       tzdiff_hour += tzdiff_min;
       if(tzdiff_hour < 0)
