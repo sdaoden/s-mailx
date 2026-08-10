@@ -91,7 +91,7 @@ su_imf_parse_msgid_header(struct su_imf_msgid **mipp, char const *header, BITENU
 			i = VSTRUCT_SIZEOF(struct su__imf_actx,ac_dat);
 		i += +1; /* domain + comment not quoted, so includes +2) */
 
-		acp = su__IMF_ALLOC(membp, i * 4);
+		acp = S(struct su__imf_actx*,su__IMF_ALLOC(membp, i * 4));
 		if(acp == NIL){
 			rv = -su_ERR_NOMEM;
 			goto j_leave;
@@ -392,7 +392,7 @@ jid_new:
 		i += acp->ac_.domain;
 		i += acp->ac_.comm;
 
-		mip = su__IMF_ALLOC(membp, i);
+		mip = S(struct su_imf_msgid*,su__IMF_ALLOC(membp, i));
 		*mipp = mip;
 		mipp = &mip->imfmi_next;
 		mip->imfmi_next = NIL;

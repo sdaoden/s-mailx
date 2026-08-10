@@ -68,7 +68,7 @@ su_imf_parse_struct_header(struct su_imf_shtok **shtpp, char const *header, BITE
 		i = VSTRUCT_SIZEOF(struct su__imf_actx,ac_dat);
 	i += 2 +1;
 
-	acp = su__IMF_ALLOC(membp, i << 1);
+	acp = S(struct su__imf_actx*,su__IMF_ALLOC(membp, i << 1));
 	if(acp == NIL){
 		rv = -su_ERR_NOMEM;
 		goto j_leave;
@@ -201,7 +201,7 @@ jtoken_create:
 		i = acp->ac_.comm;
 		i = VSTRUCT_SIZEOF(struct su_imf_shtok,imfsht_dat) + i + 2 +1;
 
-		shtp = su__IMF_ALLOC(membp, i);
+		shtp = S(struct su_imf_shtok*,su__IMF_ALLOC(membp, i));
 		*shtpp = shtp;
 		shtpp = &shtp->imfsht_next;
 

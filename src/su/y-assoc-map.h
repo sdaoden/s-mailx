@@ -265,7 +265,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const
 				&S(char*,np)[adspcoff]
 # endif
 				;
-		ASSERT(S(up,ALIGN_Z(np->a_N_F(data))) == R(up,np->a_N_F(data)));
+		ASSERT(S(up,ALIGN_Z(R(uz,np->a_N_F(data)))) == R(up,np->a_N_F(data)));
 		if(!(flags & a_T_PUBNAME(DATA_SPACE_RAW)))
 			su_mem_copy(np->a_N_F(data), value, dspc);
 	}
@@ -340,7 +340,7 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
 					S(char*,&np)[ALIGN_Z(sizeof(*np))]
 # endif
 					;
-			ASSERT(S(up,ALIGN_Z(np->a_N_F(data))) == R(up,np->a_N_F(data)));
+			ASSERT(S(up,ALIGN_Z(R(uz,np->a_N_F(data)))) == R(up,np->a_N_F(data)));
 			if(!(flags & a_T_PUBNAME(DATA_SPACE_RAW)))
 				su_mem_copy(np->a_N_F(data), value, dspc);
 		}
@@ -1021,7 +1021,7 @@ a_V_PUBSYM(set_data)(struct a_V *self, void *value){
 					S(char*,&np)[ALIGN_Z(sizeof(*np))]
 # endif
 					;
-			ASSERT(S(up,ALIGN_Z(np->a_N_F(data))) == R(up,np->a_N_F(data)));
+			ASSERT(S(up,ALIGN_Z(R(uz,np->a_N_F(data)))) == R(up,np->a_N_F(data)));
 			if(!(flags & a_T_PUBNAME(DATA_SPACE_RAW)))
 				su_mem_copy(np->a_N_F(data), value, dspc);
 		}

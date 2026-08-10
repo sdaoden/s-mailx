@@ -138,11 +138,11 @@ namespace{
 
 		OVRX(~a_md(void)) {su_md_del(m_md);}
 
-		OVRX(up property(prop prop) const){
+		OVRX(up property(prop p) const){
 			up rv;
 			NYD_IN;
 
-			rv = su_md_property(m_md, S(su_md_prop,prop));
+			rv = su_md_property(m_md, S(su_md_prop,p));
 
 			NYD_OU;
 			return rv;
@@ -232,8 +232,8 @@ md::new_by_name(char const *name, u32 estate){
 }
 
 VIR up
-md::property(prop prop) const{ // (for vtable placement)
-	UNUSED(prop);
+md::property(prop p) const{ // (for vtable placement)
+	UNUSED(p);
 	return S(up,-1);
 }
 

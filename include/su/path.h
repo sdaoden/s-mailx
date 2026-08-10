@@ -75,8 +75,8 @@ struct su_pathinfo{
 	struct su_timespec pi_ctime; /*!< Change time or all-0. */
 };
 
-INLINE boole su__pathinfo_is(struct su_pathinfo const *pip, u32 t){
-	return ((pip->pi_flags & su_IOPF_TYPE_MASK) == t);
+INLINE boole su__pathinfo_is(struct su_pathinfo const *self, u32 t){
+	return ((self->pi_flags & su_IOPF_TYPE_MASK) == t);
 }
 
 /*! \_ */
@@ -92,45 +92,45 @@ EXPORT boole su_pathinfo_fstat(struct su_pathinfo *self, sz fd);
 EXPORT char su_pathinfo_descriptive_char(struct su_pathinfo const *self);
 
 /*! \_ */
-INLINE boole su_pathinfo_is_blk(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_BLK);
+INLINE boole su_pathinfo_is_blk(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_BLK);
 }
 
 /*! \_ */
-INLINE boole su_pathinfo_is_chr(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_CHR);
+INLINE boole su_pathinfo_is_chr(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_CHR);
 }
 
 /*! \_ */
-INLINE boole su_pathinfo_is_dir(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_DIR);
+INLINE boole su_pathinfo_is_dir(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_DIR);
 }
 
 /*! \_ */
-INLINE boole su_pathinfo_is_fifo(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_FIFO);
+INLINE boole su_pathinfo_is_fifo(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_FIFO);
 }
 
 /*! \_ */
-INLINE boole su_pathinfo_is_lnk(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_LNK);
+INLINE boole su_pathinfo_is_lnk(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_LNK);
 }
 
 /*! \_ */
-INLINE boole su_pathinfo_is_reg(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_REG);
+INLINE boole su_pathinfo_is_reg(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_REG);
 }
 
 /*! \_ */
-INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *pip){
-	ASSERT_RET(pip != NIL, FAL0);
-	return su__pathinfo_is(pip, su_IOPF_SOCK);
+INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *self){
+	ASSERT_RET(self != NIL, FAL0);
+	return su__pathinfo_is(self, su_IOPF_SOCK);
 }
 
 /*! @} *//* }}} */
