@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Time related facilities.
+ *@ Time facilities, positive seconds since UNIX epoch (1970-01-01T000000Z).
  *
  * Copyright (c) 2012 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC

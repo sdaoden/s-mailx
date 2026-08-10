@@ -96,7 +96,6 @@ mx_time_now(boole force_update){ /* TODO event loop update IF cmd requests! */
 	}else if(force_update || ts_now.ts_sec == 0)
 		su_timespec_current(&ts_now);
 
-	/* Just in case.. */
 	if(UNLIKELY(ts_now.ts_sec < 0))
 		ts_now.ts_sec = 0;
 
@@ -131,7 +130,6 @@ mx_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil, struct tm const *loc
 
 #ifdef mx_HAVE_TM_GMTOFF
 	rv = localp_or_nil->tm_gmtoff;
-
 #else
 	if(utcp_or_nil == NIL){
 		t = S(time_t,secsepoch);
@@ -145,8 +143,9 @@ mx_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil, struct tm const *loc
 			(localp_or_nil->tm_min - utcp_or_nil->tm_min)) * 60) +
 			(localp_or_nil->tm_sec - utcp_or_nil->tm_sec);
 
-	if((t = (localp_or_nil->tm_yday - utcp_or_nil->tm_yday)) != 0){
-		if((t < 0 && localp_or_nil->tm_yday == 0) || t == 1)
+	t = localp_or_nil->tm_yday - utcp_or_nil->tm_yday;
+	if(t != 0){
+		if(t == 1 || (t < 0 && localp_or_nil->tm_yday == 0))
 			rv += S(s32,su_TIME_DAY_SECS);
 		else
 			rv -= S(s32,su_TIME_DAY_SECS);
@@ -212,7 +211,7 @@ jredo:
 			th = 0;
 		if((tm = tmp->tm_min) < 0 || tm > 59)
 			tm = 0;
-		if((ts = tmp->tm_sec) < 0 || ts > 60)
+		if((ts = tmp->tm_sec) < 0 || ts > 59+1)
 			ts = 0;
 	}
 

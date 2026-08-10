@@ -3275,7 +3275,7 @@ mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
       if(!a_noted){
          a_noted = TRU1;
          n_err(_("The difference of UTC to local timezone $TZ requires second precision.\n"
-            "  Unsupported by RFC 5321, henceforth using TZ=UTC to not loose precision!\n"));
+            "  Unsupported by RFC 5322, henceforth using TZ=UTC to not loose precision!\n"));
       }
       tmptr = &mx_time_current.tc_gm;
       tzdiff_hour = 0;

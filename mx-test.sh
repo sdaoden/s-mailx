@@ -8638,86 +8638,38 @@ __EOT
 
 t_date_tz() { #{{{
 	t_prolog "$@"
-	# (SOURCE_DATE_EPOCH is read-only)
+	# (SOURCE_DATE_EPOCH is read-only: pass-in)
 
-	# UTC
-	s=1767225599
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null > ./t1 2>$E0
-	ck_ex0 1.1-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t1 2>>$E0
-	ck_ex0 1.2-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t1 2>>$E0
-	ck_ex0 1.3-estat
+	__t() {
+		s=$1
+		shift
+		i=1
+		__t2() {
+			SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS -s '' a@b </dev/null >> ./t$1 2>$E0
+			ck_ex0 $1.$i-estat
+			i=`add $i 1`
+			SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS -s '' a@b </dev/null >> ./t$1 2>>$E0
+			ck_ex0 $1.$i-estat
+			i=`add $i 1`
+			SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS -s '' a@b </dev/null >> ./t$1 2>>$E0
+			ck_ex0 $1.$i-estat
+			i=`add $i 1`
+		}
+		__t2 $1
+		s=`add $s 1`
+		__t2 $1
+		s=`add $s 1`
+		__t2 $1
+	}
 
-	s=`add $s 1`
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null >> ./t1 2>$E0
-	ck_ex0 1.4-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t1 2>>$E0
-	ck_ex0 1.5-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t1 2>>$E0
-	ck_ex0 1.6-estat
-
-	s=`add $s 1`
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null >> ./t1 2>$E0
-	ck_ex0 1.7-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t1 2>>$E0
-	ck_ex0 1.8-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t1 2>>$E0
-	ck_ex0 1.9-estat
+	# UTC / Mexico / India
+	__t 1767225599 1
 	cke0 1 - ./t1 '2943886231 873'
-
-	# Mexico
-	#s=$((1767225599 + 7*60*60))
-	s=1767250799
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null > ./t2 2>$E0
-	ck_ex0 2.1-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t2 2>>$E0
-	ck_ex0 2.2-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t2 2>>$E0
-	ck_ex0 2.3-estat
-
-	s=`add $s 1`
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null >> ./t2 2>$E0
-	ck_ex0 2.4-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t2 2>>$E0
-	ck_ex0 2.5-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t2 2>>$E0
-	ck_ex0 2.6-estat
-
-	s=`add $s 1`
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null >> ./t2 2>$E0
-	ck_ex0 2.7-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t2 2>>$E0
-	ck_ex0 2.8-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t2 2>>$E0
-	ck_ex0 2.9-estat
+	#$((1767225599 + 7*60*60))
+	__t 1767250799 2
 	cke0 2 - ./t2 '3744295477 873'
-
-	# India
-	#s=$((1767225599 - (5*60*60 + 30*60)))
-	s=1767205799
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null > ./t3 2>$E0
-	ck_ex0 3.1-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t3 2>>$E0
-	ck_ex0 3.2-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t3 2>>$E0
-	ck_ex0 3.3-estat
-
-	s=`add $s 1`
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null >> ./t3 2>$E0
-	ck_ex0 3.4-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t3 2>>$E0
-	ck_ex0 3.5-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t3 2>>$E0
-	ck_ex0 3.6-estat
-
-	s=`add $s 1`
-	SOURCE_DATE_EPOCH=$s TZ=UTC $MAILX $ARGS a@b </dev/null >> ./t3 2>$E0
-	ck_ex0 3.7-estat
-	SOURCE_DATE_EPOCH=$s TZ=Mexico/BajaSur $MAILX $ARGS a@b </dev/null >> ./t3 2>>$E0
-	ck_ex0 3.8-estat
-	SOURCE_DATE_EPOCH=$s TZ=Asia/Kolkata $MAILX $ARGS a@b </dev/null >> ./t3 2>>$E0
-	ck_ex0 3.9-estat
+	#$((1767225599 - (5*60*60 + 30*60)))
+	__t 1767205799 3
 	cke0 3 - ./t3 '82785350 873'
 
 	t_epilog "$@"
