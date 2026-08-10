@@ -51,21 +51,21 @@ EXPORT sz su_mem_cmp(void const *vpa, void const *vpb, uz len);
 EXPORT void *su_mem_copy(void *vp, void const *src, uz len);
 
 /*! \_ */
-EXPORT void *su_mem_find(void const *vp, s32 what, uz len);
+EXPORT void *su_mem_find(void const *vp, u8 what, uz len);
 
 /*! \_ */
-EXPORT void *su_mem_rfind(void const *vp, s32 what, uz len);
+EXPORT void *su_mem_rfind(void const *vp, u8 what, uz len);
 
 /*! \_ */
 EXPORT void *su_mem_move(void *vp, void const *src, uz len);
 
 /*! \_ */
-EXPORT void *su_mem_set(void *vp, s32 what, uz len);
+EXPORT void *su_mem_set(void *vp, u8 what, uz len);
 
 /*! Ensure \a{len} bytes of \a{vp} are zeroed.
  * Care is taken compiler or linker do not optimize this away. */
 INLINE void su_mem_zero(void *vp, uz len){
-	void *(*const volatile set_v)(void *, s32, uz) = &su_mem_set;
+	void *(*const volatile set_v)(void *, u8, uz) = &su_mem_set;
 	(*set_v)(vp, 0, len);
 }
 /*! @} *//* }}} */
@@ -438,16 +438,16 @@ public:
 	static void *copy(void *vp, void const *src, uz len) {return su_mem_copy(vp, src, len);}
 
 	/*! \cd{su_mem_find()} */
-	static void *find(void const *vp, s32 what, uz len) {return su_mem_find(vp, what, len);}
+	static void *find(void const *vp, u8 what, uz len) {return su_mem_find(vp, what, len);}
 
 	/*! \cd{su_mem_rfind()} */
-	static void *rfind(void const *vp, s32 what, uz len) {return su_mem_rfind(vp, what, len);}
+	static void *rfind(void const *vp, u8 what, uz len) {return su_mem_rfind(vp, what, len);}
 
 	/*! \cd{su_mem_move()} */
 	static void *move(void *vp, void const *src, uz len) {return su_mem_move(vp, src, len);}
 
 	/*! \cd{su_mem_set()} */
-	static void *set(void *vp, s32 what, uz len) {return su_mem_set(vp, what, len);}
+	static void *set(void *vp, u8 what, uz len) {return su_mem_set(vp, what, len);}
 
 	/*! \cd{su_mem_zero()} */
 	static void zero(void *vp, uz len) {su_mem_zero(vp, len);}
