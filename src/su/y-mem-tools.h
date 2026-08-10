@@ -24,26 +24,26 @@
 # undef su__MEM_TOOLS_Y
 # define su__MEM_TOOLS_Y 2
 
-SINLINE void *a_memt_find(void const *vp, s32 what, uz len);
-SINLINE void *a_memt_rfind(void const *vp, s32 what, uz len);
+SINLINE void *a_memt_find(void const *vp, u8 what, uz len);
+SINLINE void *a_memt_rfind(void const *vp, u8 what, uz len);
 SINLINE sz a_memt_cmp(void const *vpa, void const *vpb, uz len);
 SINLINE void *a_memt_copy(void *vp, void const *src, uz len);
 SINLINE void *a_memt_move(void *vp, void const *src, uz len);
-SINLINE void *a_memt_set(void *vp, s32 what, uz len);
+SINLINE void *a_memt_set(void *vp, u8 what, uz len);
 
 SINLINE void *
-a_memt_find(void const *vp, s32 what, uz len){
+a_memt_find(void const *vp, u8 what, uz len){
 	/* Need to cast away const for g++ 8.2.0 (OSUKISS Linux) */
 	return memchr(C(void*,vp), what, len);
 }
 
 SINLINE void *
-a_memt_rfind(void const *vp, s32 what, uz len){
+a_memt_rfind(void const *vp, u8 what, uz len){
 	u8 *rv;
 
 	for(rv = &C(u8*,S(u8 const*,vp))[len];;){
 		ASSERT(&rv[-1] >= S(u8 const*,vp));
-		if(*--rv == S(u8,what))
+		if(*--rv == what)
 			break;
 		if(UNLIKELY(rv == vp)){
 			rv = NIL;
@@ -72,7 +72,7 @@ a_memt_move(void *vp, void const *src, uz len){
 }
 
 SINLINE void *
-a_memt_set(void *vp, s32 what, uz len){
+a_memt_set(void *vp, u8 what, uz len){
 	memset(vp, what, len);
 	return vp;
 }

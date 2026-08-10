@@ -36,7 +36,7 @@ NSPC_USE(su)
 #include <su/y-mem-tools.h> /* 2. */
 
 void *
-su_mem_find(void const *vp, s32 what, uz len){
+su_mem_find(void const *vp, u8 what, uz len){
 	void *rv;
 	NYD_IN;
 	ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
@@ -48,7 +48,7 @@ su_mem_find(void const *vp, s32 what, uz len){
 }
 
 void *
-su_mem_rfind(void const *vp, s32 what, uz len){
+su_mem_rfind(void const *vp, u8 what, uz len){
 	void *rv;
 	NYD_IN;
 	ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
@@ -105,7 +105,7 @@ su_mem_move(void *vp, void const *src, uz len){
 }
 
 void *
-su_mem_set(void *vp, s32 what, uz len){
+su_mem_set(void *vp, u8 what, uz len){
 	NYD_IN;
 	ASSERT_NYD(len == 0 || vp != NIL);
 
