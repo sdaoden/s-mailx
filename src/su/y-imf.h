@@ -35,16 +35,18 @@
 # endif
 
 /* Address context: whenever an address was parsed su_imf_addr is created and this is reset */
+struct su__imf_x{
+	char const *hd; /* Header field body content data rest */
+	BITENUM(u32,su_imf_mode) mse; /* imf_mode, plus current imf_state */
+	u32 group_display_name;
+	u32 display_name;
+	u32 locpar;
+	u32 domain;
+	u32 comm;
+};
+
 struct su__imf_actx{
-	struct su__imf_x{
-		char const *hd; /* Header field body content data rest */
-		BITENUM(u32,su_imf_mode) mse; /* imf_mode, plus current imf_state */
-		u32 group_display_name;
-		u32 display_name;
-		u32 locpar;
-		u32 domain;
-		u32 comm;
-	} ac_;
+	struct su__imf_x ac_;
 	char *ac_group_display_name;
 	char *ac_display_name;
 	char *ac_locpar;
