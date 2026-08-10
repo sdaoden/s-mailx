@@ -48,7 +48,7 @@ a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_
 			acp->ac_.group_display_name +1 + acp->ac_.display_name +1 +
 			acp->ac_.locpar +1 + acp->ac_.domain +1 + acp->ac_.comm +1;
 
-	ap = su__IMF_ALLOC(membp, i);
+	ap = S(struct su_imf_addr*,su__IMF_ALLOC(membp, i));
 	**appp = ap;
 	*appp = &ap->imfa_next;
 
@@ -140,7 +140,7 @@ su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u
 			i = VSTRUCT_SIZEOF(struct su__imf_actx,ac_dat);
 		i += 2 +1;
 
-		acp = su__IMF_ALLOC(membp, i * 6);
+		acp = S(struct su__imf_actx*,su__IMF_ALLOC(membp, i * 6));
 		if(acp == NIL){
 			rv = -su_ERR_NOMEM;
 			goto j_leave;
