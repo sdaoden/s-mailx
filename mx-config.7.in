@@ -77,7 +77,8 @@ if t && $features =% ,+key-bindings, && $features =% ,+colour,
 		col iso view-msginfo fg=green
 		col iso view-partinfo fg=brown
 
-		col mono view-header ft=bold author,from,sender,subject
+		col mono view-header \
+			ft=bold author,from,sender,subject
 		col mono view-msginfo ft=reverse,ft=underline
 		col mono view-partinfo  ft=bold,ft=underline
 	}
