@@ -43,7 +43,7 @@ set history-gabby=all history-gabby-persist
 # Builtin types exist and may be sufficient!  The default equals "us".
 #set mimetypes-load-control
 
-# An informational prompt (and see "Gimmicks" below).
+# An informational prompt.
 # Of interest may also be \${^ERRQUEUE-EXISTS} and \${^ERRQUEUE-COUNT}.
 # The _real_ evaluation occurs once used (see *prompt* manual entry).
 #set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
