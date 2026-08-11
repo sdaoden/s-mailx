@@ -11,7 +11,7 @@ I n s t a l l i n g  S - n a i l / S - m a i l x
 1.0 Compilation
 ---------------
 
-System specific notes can be found in the next section.
+System specific notes can be found in section 2.0.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
@@ -55,8 +55,8 @@ the prefix "/usr" but rooted under "[./]xy", i.e., the binary would be
 installed as "[./]xy/usr/bin/s-nail".
 
 Out-of-tree compilation is supported; to use it, create the target
-directory of desire, change into it and run the make-emerge.sh script
-shipped with S-nail, then proceed as with normal in-tree building.
+directory of desire, change into it and run the make-emerge.sh script,
+then proceed as with normal in-tree building.
 Generated configuration files, objects and test output will be located
 in the directory .obj/ (or what $OBJDIR defines), in- or off-tree.
 
@@ -83,6 +83,7 @@ The following make(1) targets exist, the default being `build':
 
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
+              (An out-of-tree compilation must be re-setup thereafter.)
 
 - test        Run mx-test.sh in check mode on the built binary.
               Tests to be skipped can be passed via SKIPTEST="t1 t2".
@@ -222,7 +223,7 @@ would run the tests "mbox" and "reply".  If not an absolute path the
 binary (./s-nail) is expected relative to $OBJDIR.  There also the test
 output files of failed tests, named like t.TESTNAME-XY, reside.
 
-It might make sense to send the output files of the failing tests to
+It may make sense to send the output files of the failing tests to
 the mailing-list.  Because of ML message size restrictions, creating
 a compressed tar(1) archive of the files would be appreciated:
 
@@ -251,7 +252,7 @@ options (variables) is always good idea:
 or
   $ s-nail -Sdebug -Sverbose=3
 
-Should you really discover any problems with S-nail it would be very
+Should you really discover any problems with the MUA it would be very
 useful for development if you would contact the mailing-list!
 Thank you!
 
@@ -282,7 +283,7 @@ Thank you!
     The codebase is ISO C89 which has no %z printf(3) format.
     However we try hard to detect the real type size and define the
     "PRI[du]Z" macros which end up with the correct size, which is
-    also compile-time asserted (via "MCTA(sizeof(size_t) == XZ)").
+    also compile-time asserted (via "MCTA(sizeof(size_t) == XY)").
 
     By forcing ISO C99 mode these warnings vanish, for example gcc(1):
     with OPT_AUTOCC pass "EXTRA_CFLAGS=-std=c99", otherwise ensure that
@@ -302,9 +303,9 @@ Thank you!
 
   * /usr/xpg4/bin/sh is buggy regarding <<'_EOT' standard input
     redirections (eg
-    -       << '__EOT' TMPDIR=$($pwd) $MAILX $ARGS > ./t4 2>$E0
-    +      TMPDIR=$($pwd) $MAILX $ARGS > ./t4 2>$E0 << '__EOT'),
-    TEST_SHELL= could help.
+      -       << '__EOT' TMPDIR=$($pwd) $MAILX $ARGS > ./t4 2>$E0
+      +      TMPDIR=$($pwd) $MAILX $ARGS > ./t4 2>$E0 << '__EOT'),
+    Setting $TEST_SHELL= could help.
 
   * The original Sun roff (aka AT&T ditroff) is not capable to display
     the manual.  OpenIndiana++ use mandoc which can, however.
