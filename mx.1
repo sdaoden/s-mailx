@@ -874,10 +874,18 @@ and/or (blind) carbon copy recipients via
 .Fl b
 and
 .Fl c
-on the command line
-When delivered through a local
+on the command line.
+\*(OPally
+.Mx -ix "IDN"
+international domain names (IDN) are supported (turning apples
+.Ql \(:apfel.example
+into oranges
+.Ql xn--pfel-koa.example ;
+disable via
+.Va idna-disable ) .
+When delivered through a local Message-Transfer-Agent
 .Va mta
-(Message-Transfer-Agent) plain system-local user names can be addressed.
+system-local user names can also be addressed.
 The message text will be read from standard input \(em
 if the standard input and output I/O channels do not both point to
 a terminal, non-interactive mode is entered:
@@ -2174,21 +2182,22 @@ messages.
 .
 .
 .Pp
-\*(OP IMAP-style SEARCH expressions may be used.
-These consist of keywords and criterions, and because
+\*(OP IMAP-style SEARCH expressions may be used,
+which consist of keywords and criterions.
+.Sy Note:
 .Sx "Message list arguments"
 are split into tokens according to
-.Sx "Shell-style argument quoting"
-it is necessary to quote the entire IMAP search expression in order to
-ensure that it remains a single token.
+.Sx "Shell-style argument quoting" ,
+therefore IMAP search expressions need to be properly shell-quoted
+in their entirety to ensure their proper interpretation.
 .
 .Pp
-This addressing mode is available with all types of mailbox
+These search expressions are available with all types of mailbox
 .Ic folder Ns
-s, a local search is performed as necessary.
+s, but server-side instead of local searches requires protocol support.
 Strings must be enclosed by double quotation marks
 .Ql \&"
-in their entirety if they contain whitespace or parentheses;
+if they contain whitespace or parentheses;
 within the quotes, only reverse solidus
 .Ql \e
 is recognized as an escape character.
@@ -9398,7 +9407,10 @@ variants.
 Here
 .Ql HOST
 will be converted to all lowercase when looked up (but not when the
-variable is set or unset!), \*(oPally IDNA converted, and indeed means
+variable is set or unset!), \*(oPally
+.Mx -sx
+.Sx IDN
+converted, and indeed means
 .Ql server:port
 if a
 .Ql port
@@ -10360,9 +10372,12 @@ Comma-separated list of whitelisted domain names for the
 .Ql domaincheck
 of
 .Va expandaddr .
-IDNA encoding is not automatically performed,
+(No automatic
+.Mx -sx
+.Sx IDN
+conversion is applied to domains: use
 .Ic addrcodec
-can be used to prepare names.
+to prepare names.)
 .
 .Mx
 .It Va expandargv
@@ -10800,7 +10815,10 @@ also see
 .Va from
 and
 .Va message-id .
-\*(OP If IDNA conversion is necessary but fails assignment is aborted
+\*(OP If
+.Mx -sx
+.Sx IDN
+conversion is necessary but fails, the assignment is aborted
 .Pf ( Va idna-disable ) .
 One should produce some test messages with the desired combination of
 .Va \&\&hostname ,
@@ -10816,16 +10834,14 @@ and/or
 .
 .Mx
 .It Va idna-disable
-\*(BO\*(OP Turn off IDNA (internationalized domain names for
-applications) conversions.
+\*(BO\*(OP Turn off
+.Mx -sx
+.Sx IDN Ns
+(A) internationalized domain names (for applications) conversions.
 .Va ttycharset
 is assumed for domain names (the UTF-8 character set is required to
 represent all non-converted IDNs), for context see
 .Sx "Character sets" .
-.Bd -literal -offset indent
-addrcodec enc root@\(:apfel.example
-\*(OUroot@xn--pfel-koa.example
-.Ed
 .
 .Mx
 .It Va ifs

@@ -3509,13 +3509,13 @@ if feat_yes IDNA; then # {{{
 		link_check idna 'OPT_IDNA->VAL_IDNA: GNU Libidn2' '#define mx_HAVE_IDNA n_IDNA_IMPL_LIBIDN2' '-lidn2' << \!
 #include <idn2.h>
 int main(void){
-	char *idna_utf8, *idna_lc;
+	char *idna_utf8, *idna_utf8_2;
 
-	if(idn2_to_ascii_8z("does.this.work", &idna_utf8, IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
+	if(idn2_to_ascii_8z("does.this.work", &idna_utf8, IDN2_NFC_INPUT | IDN2_NONTRANSITIONAL) != IDN2_OK)
 		return 1;
-	if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
+	if(idn2_to_unicode_8z8z(idna_utf8, &idna_utf8_2, 0) != IDN2_OK)
 		return 1;
-	idn2_free(idna_lc);
+	idn2_free(idna_utf8_2);
 	idn2_free(idna_utf8);
 	return 0;
 }
@@ -3526,16 +3526,15 @@ int main(void){
 		link_check idna 'OPT_IDNA->VAL_IDNA: GNU Libidn' '#define mx_HAVE_IDNA n_IDNA_IMPL_LIBIDN' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
-#include <stringprep.h> /* XXX we actually use our own iconv instead */
 int main(void){
-	char *utf8, *idna_ascii, *idna_utf8;
+	char *idna_utf8, *idna_utf8_2;
 
-	utf8 = stringprep_locale_to_utf8("does.this.work");
-	if (idna_to_ascii_8z(utf8, &idna_ascii, IDNA_USE_STD3_ASCII_RULES) != IDNA_SUCCESS)
+	if(idna_to_ascii_8z("does.this.work", &idna_utf8, IDNA_ALLOW_UNASSIGNED) != IDNA_SUCCESS)
 		return 1;
-	idn_free(idna_ascii);
-	/* (Rather link check only here) */
-	idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", "de_DE");
+	if(idna_to_unicode_8z8z(idna_utf8, &idna_utf8_2, 0) != IDNA_SUCCESS)
+		return 1;
+	idn_free(idna_utf8_2);
+	idn_free(idna_utf8);
 	return 0;
 }
 !
@@ -3546,6 +3545,10 @@ int main(void){
 #include <stdio.h>
 #include <idn/api.h>
 #include <idn/result.h>
+#include <idn/version.h>
+#ifndef IDNKIT_MAJOR_VERSION_LIBIDN
+# error want idnkit v2 or above
+#endif
 int main(void){
 	idn_result_t r;
 	char ace_name[256];
@@ -3556,7 +3559,7 @@ int main(void){
 		fprintf(stderr, "idn_encodename failed: %s\n", idn_result_tostring(r));
 		return 1;
 	}
-	r = idn_decodename(IDN_DECODE_APP, ace_name, local_name,sizeof(local_name));
+	r = idn_decodename(IDN_DECODE_APP, ace_name, local_name, sizeof(local_name));
 	if (r != idn_success) {
 		fprintf(stderr, "idn_decodename failed: %s\n", idn_result_tostring(r));
 		return 1;
