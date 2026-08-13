@@ -775,10 +775,6 @@ applies to all
 on the command line.
 For more see
 .Sx "Sending mail, and non-interactive mode" .
-.
-.Bd -literal -offset indent
-$ \*(xX -#:/ -X 'addrcodec enc <silver@go> Hey, ho' -Xx
-.Ed
 .\" }}}
 .
 .\" .Ss "A starter" {{{
@@ -2125,9 +2121,11 @@ including administrativa strings).
 .Pp
 Even with regular expression support it is almost impossible to safely
 match only a specific address domain.
-To match only email addresses (skinned from name and comment parts, see
-.Ic addrcodec )
-of address header fields (the mentioned
+To match only email addresses (skinned from
+.Ql display-name
+and
+.Ql comment
+etc parts) of address header fields (the mentioned
 .Ql a ,
 .Ql f ,
 .Ql t ,
@@ -4073,8 +4071,8 @@ will indicate when no default is used.
 A special set of commands, all of which with
 .Dq codec
 in their name, like
-.Ic addrcodec ,
-.Ic shcodec ,
+.Ic shcodec
+or
 .Ic urlcodec ,
 take raw string data as input, which means that the input line
 is taken literally: like this the effect of the actual codec is visible
@@ -4368,8 +4366,8 @@ The two argument form creates a new account macro as via
 .Pp
 Important settings for accounts include
 .Va folder , from , hostname , inbox , mta , record ,
-also
-password
+then
+.Va password
 and
 .Va user
 .Pf ( Sx "URL syntax and credential lookup" ) ,
@@ -4379,7 +4377,9 @@ as well as things like
 .Va tls-config-pairs
 .Pf ( Sx "Encrypted network communication" ) ,
 and protocol specifics like
-.Va imap-auth , pop3-auth , smtp-config .
+.Va smtp-config
+(and
+.Va imap-auth , pop3-auth ) .
 .
 .Bd -literal -offset indent
 account myisp {
@@ -4392,36 +4392,96 @@ account myisp {
 .
 .Mx
 .It Ic addrcodec
-Perform email address codec transformations on raw-data argument, rather
-according to email standards (RFC 5322; \*(ID will furtherly improve).
+Perform transformations and checks on domains or email addresses,
+given as raw-data arguments.
 Supports
-.Cm > .
-The first argument must be any unique substring one of
-.Ar [+[+[+]]]encode ,
-.Ar decode ,
-.Ar skin ,
-.Ar skinlist ,
+.Cm > ,
+manages the error number
+.Va \&!
+and the exit/return status
+.Va \&? .
+The first argument must be any unique substring of one of the \*(OPal
+.Cm idn-to
 and
-.Ar normalize .
-The last parses the data as a potential list of multiple email addresses
-(including comments etc), and normalizes them to make them accessible in
+.Cm idn-from
+for
+.Mx -sx
+.Sx IDN
+conversion of the domain-only argument, as well as
+.Cm normalize ,
+.Cm skin
+or
+.Cm skinlist .
+.
+.Bd -literal -offset indent
+addrcodec idn-from xn--pfel-koa.example
+\*(OU\(:apfel.example
+>dec addr idn-f xn--pfel-koa.example
+>enc eval addr idn-to $dec
+ec $enc
+\*(OUxn--pfel-koa.example
+.Ed
+.
+.Pp
+.Cm normalize ,
+which does not support
+.Cm > ,
+parses the argument as a
+.Ql mailbox-list
+(email addresses including
+.Ql display-name ,
+.Ql comment Ns
+s etc) to store the normalised extracts in
 .Mx -sx
 .Sx "result set"
 accessors
 .Va ^# , ^0 , ^1
-etc;
+etc; on success
 .Va ^0
-is the rejoined list of normalized data.
+is the rejoined list of normalized data,
+on error input (up to parser error if any) is stored.
+Thereafter follow tuples of five:
+.Pp
+.Bl -hang -compact -width ".Ql flags"
+.It Ql flags
+a bit carrier (0-based: bit 0 means
+.Ql 1<<0 ) ;
+0: display name requoted (lone dot);
+1: no domain in the address (plain
+.Ql <user> ,
+to be expanded; invalid email address, but often supported by local
+.Va mta Ns
+s);
+(2 unused);
+3: domain (is not a name but a) literal;
+4: within an address group;
+5: group started here;
+6: group ends here;
+7: empty group (no addresses therein, for example
+.Ql Undisclosed recipients:; ) ;
+(8-11 unused);
+12: a strict parser would have rejected the input
+(normalized result usually valid);
+13: group-display-name is empty (invalid).
+.It Ql group-display-name
+if the tuple opens a group, its properly quoted
+.Ql display-name ;
+with bit 14: asterisk
+.Ql * .
+.It Ql display-name
+if any, properly quoted.
+.It Ql local-part
+properly quoted as necessary.
+.It Ql domain
+if any (see bit 1); no IDN(A) decoding is performed.
+.El
 .
 .Pp
-Decoding will show how a standard-compliant MUA will display the data.
-MUAs have varying support for address standards regarding comments,
-parenthesis, double-quoted strings, or so-called quoted-pairs.
-\*(ID \*(Xx currently does not perform decoding when displaying addresses.
-.
-.Pp
-Skinning parses the data as a single email address, strips any comments
-and name parts and outputs the address only.
+.Cm skin
+parses the data as a single email address, strips any comments
+and display-name parts and outputs the
+.Ql addr-spec
+only.
 It may fail with
 .Va \&!
 set to
@@ -4442,27 +4502,25 @@ as
 .Va ^ERR Ns -EXIST .
 .
 .Pp
-Encoding supports four different modes: the more plus signs, the lesser
+\*(OB The first argument may also be any unique substring one of
+.Cm [+[+[+]]]encode
+and
+.Cm decode .
+Decoding will show how a standard-compliant MUA will display the data.
+MUAs have varying support for address standards regarding comments,
+parenthesis, double-quoted strings, or so-called quoted-pairs.
+Encoding is adjustable: the more plus signs, the lesser
 standard imposed special bytes are converted to so-called quoted-pairs.
 One plus sign to leave alone parenthesis,
 two for double quotation marks,
 three for also leaving reverse solidus alone.
 The result will be valid if a successful exit status is reported
-(\*(ID the current parser fails this assertion for some constructs).
+(\*(ID the current parser may fail this assertion.).
 \*(ID Addresses need to be specified in between angle brackets
 .Ql < ,
 .Ql >
 if the construct becomes more difficult, otherwise the current parser
 will fail; it is not smart enough to guess right.
-.
-.Bd -literal -offset indent
-addrc enc "Hey, you",<diet@exam.ple>\e out\e there
-\*(OU"\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
-addrc d "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
-\*(OU"Hey, you", \e out\e there <diet@exam.ple>
-addrc s "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
-\*(OUdiet@exam.ple
-.Ed
 .
 .
 .Mx
@@ -8674,9 +8732,9 @@ This mode supports
 .Cm >
 .Pf ( Sx "Command modifiers" ) .
 The subcommands
-.Ql set
+.Cm set
 and
-.Ql quote
+.Cm quote
 can be used (in conjunction with
 .Cm eval )
 to losslessly (re)create an argument stack from and to a single variable.
@@ -10440,9 +10498,10 @@ of
 (No automatic
 .Mx -sx
 .Sx IDN
-conversion is applied to domains: use
+conversion is applied to domains: use the
 .Ic addrcodec
-to prepare names.)
+.Cm idn-to
+subcommand to prepare them.)
 .
 .Mx
 .It Va expandargv

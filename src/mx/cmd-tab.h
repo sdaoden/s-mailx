@@ -472,7 +472,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"account", &c_account, (M | NOHOOK | TWYSH), 0, MAC, NIL,
 	 N_("Create <account {>, select <account>, or list all accounts")},
 	{"addrcodec", &c_addrcodec, (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_addrcodec),
-	 N_("Mail address <[+[+[+]]]e[ncode]|d[ecode]|s[kin[l[ist]]]> <rest-of-line>")},
+	 N_("Transformation and checks <idn-from|idn-to|normalize|skin[list]> on domain or address in <rest-of-line>")},
 	{"alternates", &c_alternates, (M | V | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_alternates),
 	 N_("(alt) Show or define an alternate <address-list> (for *from* etc)")},
 	{"answered", &c_answered, (A | M | S | TMSGLST), 0, 0, NIL,

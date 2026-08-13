@@ -7570,10 +7570,98 @@ x
 
 # Send/RFC absolute basics {{{
 t_addrcodec() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
+
+	if have_feat idna && [ -n "$UTF8_LOCALE" ]; then
+		#{{{
+		<< '__EOT' LC_ALL=$UTF8_LOCALE $MAILX $ARGS $ADDARG_UNI > ./tidna 2>$E0
+commandalias x ec '"$?/$^ERRNAME $res"'
+>res addrcodec idn-to blödiän
+x
+eval >res addr idn-from $res
+x
+eval >res addr idn-t $res
+x
+eval >res addr idn-f $res
+x
+eval addr idn-t $res
+x
+eval addr idn-f $res
+x
+__EOT
+		#}}}
+		cke0 idna 0 ./tidna '133956744 140'
+	else
+		t_echoskip '[!idna:!IDNA or no UTF-8 locale]'
+	fi
 
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<< '__EOT' $MAILX $ARGS > ./texplode 2>$E0
+commandalias x ec '"$?/$^ERRNAME: $^?/$^#: <$^0>"; call y "$^@"'
+define y {
+	if $# -le 0; retu; en
+	local se fs
+	if $i -lt 0 || $1 -ge $((1<<14)); se fs=ERR; en
+	if $(($1 & (1<<0))); se fs=$fs':0'; en
+	if $(($1 & (1<<1))); se fs=$fs':1'; en
+	if $(($1 & (1<<2))); se fs=$fs':2'; en
+	if $(($1 & (1<<3))); se fs=$fs':3'; en
+	if $(($1 & (1<<4))); se fs=$fs':4'; en
+	if $(($1 & (1<<5))); se fs=$fs':5'; en
+	if $(($1 & (1<<6))); se fs=$fs':6'; en
+	if $(($1 & (1<<7))); se fs=$fs':7'; en
+	if $(($1 & (1<<8))); se fs=$fs':8'; en
+	if $(($1 & (1<<9))); se fs=$fs':9'; en
+	if $(($1 & (1<<10))); se fs=$fs':10'; en
+	if $(($1 & (1<<11))); se fs=$fs':11'; en
+	if $(($1 & (1<<12))); se fs=$fs':12'; en
+	if $(($1 & (1<<13))); se fs=$fs':13'; en
+	echo "  $#: <$1>$fs <$2> <$3> <$4> <$5>"
+	shift 5
+	xcall y "$@"
+}
+addrcodec explode "a" < b @ 	c >  	 , (du) , "d"<e@f>,g"h"i<j@k>
+x
+addr ex  	  G  	   :"a" < b @	 c > 	  , (du) , "d"<e@f>;,g""h<i"j"@k>
+x
+addr ex :"a" < b @	c >	, "d"<e@f>;,g<h"i"j@k>
+x
+addr ex a.b <c@d>, e @ f
+x
+addr ex a" <c@d>
+x
+__EOT
+	#}}}
+	cke0 explode 0 ./texplode '3476713239 543'
+
+	#{{{
+	<< '__EOT' $MAILX $ARGS > ./tskin 2>$E0
+commandalias x ec '"$?/$^ERRNAME $res"'
+mlist the@bus.dear
+mlsubscribe the@bike.dear
+#
+>res addrcodec skin "run" for (my darling) <the@bus.dear> (believe me)
+x
+>res addr skinlist real love <the@bus.dear>
+x
+>res addr sk "ra" ra <the@bike.dear>
+x
+>res eval addr skinl $res
+x
+>res addr sk (xyz) b@ig.v8
+x
+>res eval addr skinl $res
+x
+addr sk (xyz) b@ig.v8
+x
+eval addr skinl $res
+x
+__EOT
+	#}}}
+	cke0 skin 0 ./tskin '1072730927 160'
+
+	#{{{ v15 drop
+	<< '__EOT' $MAILX $ARGS > ./ted 2>$E0
 commandalias x ec '"$?/$^ERRNAME $res"'
 >res addrcodec e 1 <doog@def>
 x
@@ -7694,34 +7782,11 @@ eval >res addrcodec d "$res"
 x
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '1047317989 2612'
+	cke0 ed 0 ./ted '1047317989 2612'
 
-	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
-commandalias x ec '"$?/$^ERRNAME $res"'
-mlist isa1@list
-mlsubscribe isa2@list
-#
->res addrcodec skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-x
->res addrcodec skinlist Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-x
->res addrcodec skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-x
->res addrcodec skinlist \
-	Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-x
->res addrcodec skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-x
->res addrcodec skinlist Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-x
-__EOT
-	#}}}
-	cke0 2 0 ./t2 '1391779299 104'
-
-	if have_feat idna; then
+	if have_feat idna && [ -n "$UTF8_LOCALE" ]; then
 		#{{{
-		<< '__EOT' ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>${E0}
+		<< '__EOT' LC_ALL=$UTF8_LOCALE $MAILX $ARGS $ADDARG_UNI > ./ted-idna 2>$E0
 commandalias x ec '"$?/$^ERRNAME $res"'
 >res addrcodec e		(heu) <du@blödiän> "stroh" du	 
 x
@@ -7745,12 +7810,35 @@ eval >res addrcodec d "$res"
 x
 __EOT
 		#}}}
-		cke0 idna 0 ./tidna '498775983 326'
+		cke0 ed-idna 0 ./ted-idna '498775983 326'
 	else
-		t_echoskip '[!idna:!IDNA]'
+		t_echoskip '[!ed-idna:!IDNA or no UTF-8 locale]'
 	fi
 
-	t_epilog "${@}"
+	#{{{ v15 drop
+	<< '__EOT' $MAILX $ARGS > ./ted-skin 2>$E0
+commandalias x ec '"$?/$^ERRNAME $res"'
+mlist isa1@list
+mlsubscribe isa2@list
+#
+>res addrcodec skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skinlist Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skinlist \
+	Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+x
+>res addrcodec skinlist Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+x
+__EOT
+	#}}}
+	cke0 ed-skin 0 ./ted-skin '1391779299 104'
+
+	t_epilog "$@"
 } #}}}
 
 t_headerpick() { #{{{

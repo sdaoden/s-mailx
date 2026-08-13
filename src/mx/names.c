@@ -43,6 +43,8 @@
 #include <pwd.h>
 
 #include <su/cs.h>
+#include <su/icodec.h>
+#include <su/imf.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
 #include <su/sort.h>
@@ -1419,7 +1421,7 @@ a_nm_elide_sort(void const *s1, void const *s2){
 int
 c_addrcodec(void *vp){ /* {{{ */
 	struct n_string s_b, *s;
-	u8 mode;
+	s32 x;
 	char const *cp;
 	struct mx_cmd_arg *cap;
 	struct mx_cmd_arg_ctx *cacp;
@@ -1441,12 +1443,12 @@ c_addrcodec(void *vp){ /* {{{ */
 		s = n_string_reserve(s, i);
 	}
 
-	for(mode = 0; *cp == '+';){
+	/* v15-compat >> block {{{ */
+	for(x = 0; *cp == '+';){
 		++cp;
-		if(++mode == 3)
+		if(++x == 3)
 			break;
 	}
-
 	if(su_cs_starts_with_case("encode", cp)){
 		struct mx_name *np;
 		char c;
@@ -1454,7 +1456,7 @@ c_addrcodec(void *vp){ /* {{{ */
 		cp = cap->ca_arg.ca_str.s;
 
 		while((c = *cp++) != '\0'){
-			if(((c == '(' || c == ')') && mode < 1) || (c == '"' && mode < 2) || (c == '\\' && mode < 3))
+			if(((c == '(' || c == ')') && x < 1) || (c == '"' && x < 2) || (c == '\\' && x < 3))
 				s = n_string_push_c(s, '\\');
 			s = n_string_push_c(s, c);
 		}
@@ -1466,9 +1468,13 @@ c_addrcodec(void *vp){ /* {{{ */
 			n_pstate_err_no = su_ERR_INVAL;
 			vp = NIL;
 		}
-	}else if(UNLIKELY(mode != 0))
+		goto jleave;
+	}
+
+	if(UNLIKELY(x != 0))
 		goto jesynopsis;
-	else if(su_cs_starts_with_case("decode", cp)){
+
+	if(su_cs_starts_with_case("decode", cp)){
 		char c;
 
 		cp = cap->ca_arg.ca_str.s;
@@ -1504,7 +1510,131 @@ c_addrcodec(void *vp){ /* {{{ */
 			}
 		}
 		cp = n_string_cp(s);
-	}else if(su_cs_starts_with_case("skin", cp) || (mode = 1, su_cs_starts_with_case("skinlist", cp))){
+		goto jleave;
+	}
+	/* << block }}} */
+
+#ifdef mx_HAVE_IDNA
+	x = 0;
+	if(su_cs_starts_with_case("idn-to", cp) || (x = 1, su_cs_starts_with_case("idn-from", cp))){
+		cp = cap->ca_arg.ca_str.s;
+
+		if(!((x == 0 ? n_idna_to_ascii : n_idna_from_ascii)(s, cp, UZ_MAX))){
+			n_pstate_err_no = su_err();
+			vp = NIL;
+		}else
+			cp = n_string_cp(s);
+		goto jleave;
+	}
+#endif
+
+	if(su_cs_starts_with_case("explode", cp)){ /* {{{ */
+		char ibuf[su_IENC_BUFFER_SIZE], *iap;
+		struct su_imf_addr *ap, *apx;
+		char const **cpa;
+		uz i;
+		void *memsnap;
+
+		if(cacp->cac_vput != NIL)
+			goto jesynopsis;
+
+		memsnap = su_imf_snap_create(su_MEM_BAG_SELF);
+
+		i = 0;
+		cpa = NIL;
+		vp = NIL;
+		cp = cap->ca_arg.ca_str.s;
+
+		/* An empty result is not created (parse err first entry) */
+		x = su_imf_parse_addr_header(&ap, cp, (su_IMF_MODE_DISPLAY_NAME_DOT | su_IMF_MODE_ADDR_SPEC_NO_DOMAIN |
+				su_IMF_MODE_DOMAIN_XLABEL | su_IMF_MODE_RELAX), su_MEM_BAG_SELF, &cp);
+		if(x < su_ERR_NONE || ap == NIL){
+			x = su_ERR_INVAL;
+			goto jnorm_e;
+		}
+
+		for(i = 0, apx = ap; apx != NIL; ++i, apx = apx->imfa_next){
+		}
+		/* C99 */{
+			uz j;
+
+			j = i * 5 +1;
+			if(i >= (U32_MAX -1) / 5 || !su_mem_get_can_book(sizeof(char*), 0, j)){
+				x = su_ERR_OVERFLOW;
+				i = 0;
+				cp = cap->ca_arg.ca_str.s;
+				goto jnorm_e;
+			}
+			cpa = su_LOFI_TCALLOC(char const*, j);
+
+			/* no overflow */
+			iap = su_LOFI_TCALLOC(char, i * (5 +1));
+			s = n_string_reserve(n_string_trunc(s, 0), i * 20 +1);
+		}
+
+		for(i = 0, apx = ap; apx != NIL; apx = apx->imfa_next){
+			boole y;
+
+			if(i > 0){
+				s = n_string_push_c(s, ',');
+				s = n_string_push_c(s, ' ');
+			}
+
+			LCTAV(su_IMF_STATE_DISPLAY_NAME_DOT >= 1u<<11);
+			LCTAV(su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY >> 11 <= 0x2000);
+			cp = su_ienc_u32(ibuf, (apx->imfa_mse >> 11) & ((su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY >> 10) -1),
+					10);
+			cpa[i++] = iap;
+			iap = &su_cs_pcopy(iap, cp)[1];
+
+			if(!(apx->imfa_mse & su_IMF_STATE_GROUP_START))
+				cpa[i++] = su_empty;
+			else{
+				cp = (apx->imfa_group_display_name_len == 0) ? n_star : apx->imfa_group_display_name;
+				cpa[i++] = cp;
+				s = n_string_push_cp(s, cp);
+				s = n_string_push_c(s, ':');
+				s = n_string_push_c(s, ' ');
+			}
+
+			if(apx->imfa_display_name_len == 0){
+				cpa[i++] = su_empty;
+				y = FAL0;
+			}else{
+				cpa[i++] = apx->imfa_display_name;
+				s = n_string_push_cp(s, apx->imfa_display_name);
+				s = n_string_push_c(s, ' ');
+				s = n_string_push_c(s, '<');
+				y = TRU1;
+			}
+
+			cpa[i++] = apx->imfa_locpar;
+			s = n_string_push_cp(s, apx->imfa_locpar);
+			s = n_string_push_c(s, '@');
+			cpa[i++] = apx->imfa_domain;
+			s = n_string_push_cp(s, apx->imfa_domain);
+			if(y)
+				s = n_string_push_c(s, '>');
+
+			if(apx->imfa_mse & su_IMF_STATE_GROUP_END)
+				s = n_string_push_c(s, ';');
+		}
+
+jnorm_e:
+		if(i > 0)
+			cp = n_string_cp(s);
+
+		mx_var_result_set_set(NIL, cp, S(u32,i), NIL, C(char const**,cpa));
+
+		su_imf_snap_gut(su_MEM_BAG_SELF, memsnap);
+		if(vp == NIL)
+			n_pstate_err_no = x;
+		/* No normal output */
+		goto j_leave;
+	} /* }}} */
+
+	x = 0;
+	if(su_cs_starts_with_case("skin", cp) || (x = 1, su_cs_starts_with_case("skinlist", cp))){
 		struct mx_name *np;
 
 		cp = cap->ca_arg.ca_str.s;
@@ -1514,56 +1644,21 @@ c_addrcodec(void *vp){ /* {{{ */
 
 			cp = np->n_name;
 
-			if(mode == 1 && (mltype = mx_mlist_query(cp, FAL0)) != mx_MLIST_OTHER &&
+			if(x == 1 && (mltype = mx_mlist_query(cp, FAL0)) != mx_MLIST_OTHER &&
 					mltype != mx_MLIST_POSSIBLY)
 				n_pstate_err_no = su_ERR_EXIST;
 		}else{
 			n_pstate_err_no = su_ERR_INVAL;
 			vp = NIL;
 		}
-	}else if(su_cs_starts_with_case("normalize", cp)){
-		struct mx_name *np, *xp;
 
-		cp = cap->ca_arg.ca_str.s;
 
-		if((np = mx_name_parse(cp, GTO)) == NIL){
-			n_pstate_err_no = su_ERR_INVAL;
-			vp = NIL;
-		}else{
-			char **argv, *ncp;
-			uz l;
-			u32 i;
 
-			for(l = i = 0, xp = np; xp != NIL; ++i, xp = xp->n_flink){
-				l += su_cs_len(xp->n_fullname) + 3; /* xxx UZ_MAX overflow? */
-				/* xxx U32_MAX overflow? */
-			}
+		goto jleave;
+	}
 
-			argv = su_LOFI_TALLOC(char*, i);
-			ncp = su_AUTO_ALLOC(l +1);
-
-			for(l = i = 0, xp = np; xp != NIL; xp = xp->n_flink){
-				uz k;
-
-				argv[i++] = xp->n_fullname;
-				k = su_cs_len(xp->n_fullname);
-				if(l > 0){
-					ncp[l++] = ',';
-					ncp[l++] = ' ';
-				}
-				su_mem_copy(&ncp[l], xp->n_fullname, k);
-				l += k;
-			}
-			ncp[l] = '\0';
-
-			cp = ncp;
-			mx_var_result_set_set(NIL, ncp, i, NIL, C(char const**,argv));
-
-			su_LOFI_FREE(argv);
-		}
-	}else
-		goto jesynopsis;
-
+	goto jesynopsis;
+jleave:
 	if(cacp->cac_vput == NIL){
 		if(fprintf(n_stdout, "%s\n", cp) < 0){
 			n_pstate_err_no = su_err_by_errno();
@@ -1574,7 +1669,7 @@ c_addrcodec(void *vp){ /* {{{ */
 		vp = NIL;
 	}
 
-jleave:
+j_leave:
 	NYD_OU;
 	return (vp != NIL ? su_EX_OK : su_EX_ERR);
 
@@ -1582,7 +1677,7 @@ jesynopsis:
 	mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("addrcodec"), NIL);
 	n_pstate_err_no = su_ERR_INVAL;
 	vp = NIL;
-	goto jleave;
+	goto j_leave;
 } /* }}} */
 
 struct mx_name *
