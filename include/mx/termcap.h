@@ -75,6 +75,13 @@ enum mx_termcap_cmd{
 	/* _MODE_CA: */
 	mx_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
 	mx_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
+
+	/* (for *termcap-ca-mode*=non-empty) */
+	mx_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
+	/* [cl == ho+cd; even though without TERMCAP user could do that, always provide them] */
+	mx_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
+	mx_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
+
 	/* _MODE_SMART: */
 # ifdef mx_HAVE_KEY_BINDINGS /* for now */
 	mx_TERMCAP_CMD_BE, /* BE/-, STRING | enable bracketed paste */
@@ -87,11 +94,6 @@ enum mx_termcap_cmd{
 	mx_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
 	mx_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
 	mx_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
-
-	mx_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
-	/* [cl == ho+cd; even though without TERMCAP user could do that, always provide them] */
-	mx_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
-	mx_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
 # endif
 
 	mx__TERMCAP_CMD_MAX1,
