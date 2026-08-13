@@ -21,7 +21,7 @@
 
 #include <mx/nail.h>
 
-#if defined mx_HAVE_FILTER_QUOTE_FOLD && defined mx_HAVE_C90AMEND1
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
 # include <wchar.h>
 #endif
 
