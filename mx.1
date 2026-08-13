@@ -891,7 +891,7 @@ $ </dev/null \*(xX -:/ -s test $LOGNAME
 
 # Debug dry-run mode:
 $ </dev/null LC_ALL=C \*(xX -d -:/ \e
-   -Sttycharset=utf8 -Sfullnames \e
+   -Sttycharset-detect=latin1 -Sfullnames \e
    -b bcc@exam.ple -c cc@exam.ple -. \e
    '(Lovely) Bob <bob@exam.ple>' ex@am.ple
 
@@ -1067,21 +1067,13 @@ the above specifies the all-compatible 7-bit clean
 .Ev LC_ALL
 .Dq C ,
 but nonetheless takes and sends UTF-8 message text via
-.Va ttycharset ;
-active classification via
-.Va ttycharset-detect
-might be an even better option, reflecting reality.
-.
-.Pp
-If character set conversion is available
-.Pf ( Va features
-includes
-.Ql ,+iconv, ,
-.Va iconv-disable
-not set) invalid (according to input character set) input causes errors:
+.Va ttycharset-detect .
+If character set conversion is available (see
+.Sx "Character sets" )
+invalid input byte sequences cause errors:
 .Va mime-force-sendout ,
-as a last resort, classifies input as binary data, and allows message
-creation to succeed.
+as a last resort, classifies input as binary data,
+and allows message creation to succeed.
 (Such content can be inspected either by installing a
 .Va pipe-TYPE/SUBTYPE
 handler for
@@ -1630,113 +1622,90 @@ perform to work around DMARC etc. standard imposed problems.
 (see also
 .Ev LC_CTYPE , LANG )
 .Sx ENVIRONMENT
-variable (deriving and storing the according character set in
-.Va charset-locale ) ,
+variable; its character set is made available in the
+.Sx VARIABLES
+.Va charset-locale
 and
-.Va ttycharset :
-the latter character set is targeted when displaying data,
-and any user input data is by default expected to be in it, too.
+.Va ttycharset .
+Without locale support
+.Va \&\&ttycharset
+has a default setting.
+It is the character set that is targeted when displaying data,
+and, generally speaking, any user input data is expected to be in it.
 .
 .Pp
 When creating messages character input data is inspected.
 7-bit clean data is classified as
 .Va charset-7bit .
-\*(OPally 8-bit data is classified as
+8-bit data is (simply) classified as
 .Va ttycharset
-unless
-.Va ttycharset-detect Ns
-ion was enabled, and will be converted repeatedly into members of
+except when (more sophisticated)
+.Va ttycharset-detect
+is enabled.
+\*(OP Also, if character set conversions are available, the list of
 .Va sendcharsets
-until a character set conversion succeeds;
+denotes acceptable 8-bit character sets for textual message data; if
+.Va reply-in-same-charset
+is set it defines an implied first member of the list;
 .Va charset-8bit
 is the implied last member of this list.
 If no member of
-.Va sendcharsets
-is capable to represent the
-.Va ttycharset
-(or
-.Va ttycharset-detect )
-data, no message will be sent, and its text will optionally be
+.Va \&\&sendcharsets
+can represent the message that will not be sent,
+but eventually be
 .Va save Ns d
 in
 .Ev DEAD .
 However, sending of non-convertible data as
 .Ql application/octet-stream
 binary content can be enforced with
-.Va mime-force-sendout
-(recipients then may inspect content for example via
-.Va mime-counter-evidence ) .
+.Va mime-force-sendout .
+(When receiving such
+.Va mime-counter-evidence
+is of possible interest.)
 .
 .Pp
-If the \*(oPal character set conversion is not available
-.Pf ( Va features
-misses
-.Ql ,+iconv, ,
-or
-.Va iconv-disable
-.Ic set ) ,
-.Va ttycharset
-(or
-.Va ttycharset-detect )
-is the only supported character set for non 7-bit clean data, and
-it is simply assumed it can be used to exchange 8-bit messages.
-.
-.Pp
-.Va ttycharset
-may also be given an explicit value to send mail in a completely
-.Dq faked
-locale, for example generate and send 8-bit UTF-8 input data
-in a pure 7-bit US-ASCII
+.Va ttycharset ,
+or, better,
+.Va ttycharset-detect ,
+may be given explicit values to send mail in completely
+.Dq faked locale environments ,
+for example to send 8-bit UTF-8 input data in a pure 7-bit US-ASCII
 .Ql LC_ALL=C
 .Sx ENVIRONMENT
 (as shown in
 .Sx "Sending mail, and non-interactive mode" ) .
-Unfortunate: due to lack of programming interfaces reading mail will not
-truly work here: whereas
+.
+.Bd -filled -offset indent
+.Sy Warning!
+Due to lack of usable programming interfaces this mode of operation
+should be restricted to sending mail in non-interactive
+.Fl #
+batch mode.
+Reading messages will not truly work: whereas
 .Va ttycharset
-might be addressable, any output will be made safely printable, as via
-.Ic vexpr
-.Cm makeprint ,
-according to the actual locale, which is not affected by
-.Va ttycharset.
+might be known to character set conversions,
+character data classifications are made through the
+.Ev LC_ALL
+locale, which is not affected by
+.Va \&\&ttycharset .
+.Ed
 .
 .Pp
 Classifying 7-bit clean data as
 .Va charset-7bit
-is a problem if the input character set
-.Pf ( Va ttycharset , ttycharset-detect )
-is a multibyte character set that is itself 7-bit clean.
-For example, the Japanese character set ISO-2022-JP is, but is capable
-to encode the rich set of Japanese Kanji, Hiragana and Katakana
-characters: in order to notify recipients of this character set the mail
-message must be MIME encoded so that the character set ISO-2022-JP can
-be advertised, otherwise an invalid email message would result!
+is a problem for multibyte character sets that are 7-bit clean.
+For example, the Japanese character set ISO-2022-JP is 7-bit clean,
+but capable to encode the rich set of Japanese Kanji, Hiragana and
+Katakana characters.
+In order to notify recipients of such character sets mail messages
+must be MIME encoded in order to actually announce the character set,
+otherwise an invalid email message would result!
 To achieve this, the variable
 .Va charset-7bit
 can be set to ISO-2022-JP.
-(Today a better approach regarding email is the usage of UTF-8, which
-uses 8-bit bytes for non-US-ASCII data.)
 .
 .Pp
-When replying to a message and
-.Va reply-in-same-charset
-is set the character set of the message being replied to is tried first
-as a target character set (still being a subject of
-.Ic charsetalias
-filtering, however).
-Another opportunity is
-.Va sendcharsets-else-ttycharset
-to reflect the user's locale automatically, it will treat
-.Va ttycharset
-as an implied member of (an unset)
-.Va sendcharsets .
-.
-.Pp
-\*(OP When reading messages, text data is converted into
-.Va ttycharset
-as necessary.
-Unprintable characters and invalid byte sequences are detected
-and replaced by substitution characters.
 Character set mappings for source character sets can be established with
 .Ic charsetalias ,
 which may be handy to work around faulty or incomplete character set
@@ -1748,15 +1717,6 @@ Also see
 for another hairy aspect of message interpretation.
 .
 .Pp
-In general, if a message saying
-.Dq cannot convert from a to b
-appears, either some characters are not appropriate for the currently
-selected (terminal) character set,
-or the needed conversion is not supported by the system.
-In the first case, it is necessary to set an appropriate
-.Ev LC_ALL
-locale and/or the variable
-.Va ttycharset .
 The best results are usually achieved when running in a UTF-8
 locale on a UTF-8 capable terminal, in which case the full Unicode
 spectrum of characters is available.
@@ -1764,8 +1724,6 @@ In this setup characters from various countries can be displayed, only
 restricted by the used font, while it is still possible to use more
 simple character sets for sending to retain maximum compatibility with
 older mail clients.
-.
-.Pp
 On the other hand the \*(PO standard defines a locale-independent 7-bit
 .Dq portable character set
 that should be used when overall portability is an issue, the even more
@@ -10037,8 +9995,9 @@ authentication mechanisms (for more see according entries of
 .
 .Mx
 .It Va charset-7bit
+.Sx "Character sets" :
 7-bit character set; defaults to US-ASCII, and should be US-ASCII
-compatible (to comply to email standards); will appear as
+compatible to comply to email standards; will appear as
 .Ql charset=
 in
 .Ql Content-Type:
@@ -10046,20 +10005,24 @@ MIME header fields for 7-bit clean message data.
 .
 .Mx
 .It Va charset-8bit
-\*(OP 8-bit character set used as an implicit last member of
-.Va sendcharsets
-Defaults to UTF-8 if character set conversion is available (see
-.Sx "Character sets" ) ,
+\*(OP
+.Sx "Character sets" :
+8-bit character set used as an implicit last member of
+.Va sendcharsets .
+Defaults to UTF-8 if character set conversion is available,
 to ISO-8859-1 otherwise (unless UTF-8 is always supported).
 .
 .Mx
 .It Va charset-locale
-\*(RO\*(OP Set to the character set of the user's locale; see
-.Sx "Character sets" .
+\*(RO\*(OP
+.Sx "Character sets" :
+Set to the character set of the user's locale.
 .
 .Mx
 .It Va charset-unknown-8bit
-\*(OP RFC 1428 specifies conditions when internet mail gateways shall
+\*(OP
+.Sx "Character sets" :
+RFC 1428 specifies conditions when internet mail gateways shall
 .Dq upgrade
 mail message content to a character set named
 .Ql unknown-8bit :
@@ -12580,11 +12543,12 @@ commands.
 .
 .Mx
 .It Va reply-in-same-charset
-\*(BO If this variable is set \*(Xx first tries to use the same
-character set of the original message for replies.
-If this fails, the mechanism described in
-.Sx "Character sets"
-is evaluated as usual.
+\*(BO
+.Sx "Character sets" :
+when
+.Ic reply Ns
+ing, try to use the same character set that was used by the main text
+MIME part of messages being replied to.
 .
 .Mx
 .It Va reply-strings
@@ -12698,25 +12662,21 @@ The string search is case insensitive.
 .
 .Mx
 .It Va sendcharsets
-\*(OP A comma-separated list of character set names that can be used in
+\*(OP
+.Sx "Character sets" :
+A comma-separated list of character set names that can be used in
 outgoing internet mail.
 The value of the variable
 .Va charset-8bit
-is automatically appended to this list of character sets.
-If no character set conversion capabilities are compiled into \*(Xx then
-the only supported charset is
-.Va ttycharset
-(or
-.Va ttycharset-detect ) .
+is an implied last member of this list.
 Also see
-.Va sendcharsets-else-ttycharset
-and refer to the section
-.Sx "Character sets"
-for the complete picture of character set conversion in \*(Xx.
+.Va sendcharsets-else-ttycharset .
 .
 .Mx
 .It Va sendcharsets-else-ttycharset
-\*(BO\*(OP If set, but
+\*(BO\*(OP
+.Sx "Character sets" :
+If set, but
 .Va sendcharsets
 is not, it is acted as if
 .Va sendcharsets
@@ -14128,34 +14088,36 @@ command series will strip adjacent empty lines and quotations.
 .
 .Mx
 .It Va ttycharset
-The character set of the terminal \*(Xx operates on,
-and the one and only supported character set that \*(Xx can use if no
-character set conversion capabilities have been compiled into it,
-in which case it defaults to ISO-8859-1.
-Otherwise it defaults to UTF-8.
-Sufficient locale support provided the default will be preferably
-deduced from the locale environment if that is set (for example
-.Ev LC_CTYPE ,
-see there for more); runtime locale changes will be reflected by
+.Sx "Character sets" :
+The character set any input data is expected to be in.
+\*(OP Without character set conversions (no
+.Ql ,+iconv,
+in
+.Va features ,
+or
+.Va iconv-disable
+set)
+the only supported 8-bit character set;
+It depends on \*(oPal conditions whether without locale
+.Pf ( Ev LC_ALL )
+support the default is UTF-8 or ISO-8859-1;
+with locale support also runtime changes after startup will
+be reflected by
 .Va \&\&ttycharset
-except during the program startup phase and if
-.Fl S
-had been used to freeze the given value.
-Refer to the section
-.Sx "Character sets"
-for the complete picture about character sets.
+and
+.Va charset-locale .
 .
 .Mx
 .It Va ttycharset-detect
-By default any input text data is expected to be in
-.Va ttycharset
-.Pf ( Sx "Character sets" ) .
-If set active UTF-8 classification is performed: nothing changes for
-7-bit, but if 8-bit input is valid UTF-8 that character set is assumed;
-if set with value non-UTF-8 8-bit input uses it instead.
+.Sx "Character sets" :
+By default message input text data is expected to be in
+.Va ttycharset .
+If set active UTF-8 classification is instead performed: nothing changes
+for 7-bit clean message data, but valid UTF-8 8-bit input is classified
+as such; if set with value any other 8-bit input uses this character set.
 .Bd -literal -offset indent
-$ echo $'\eu263A' > uni.txt
-$ echo $'Hey \eu263A' | \e
+$ echo $'\eu263A' > uni.txt; \e
+  echo $'Hey \eu263A' | \e
   LC_ALL=C \*(xX -:/ -Smta=test \e
     -S ttycharset-detect=LATIN1 \e
     -a uni.txt -s Kn$'\e366'del bob@exam.ple
@@ -14390,8 +14352,10 @@ which indicates the used
 .Sx "Character sets" .
 Runtime changes trigger automatic updates of the entire locale system,
 which includes updating
+.Va charset-locale
+(and
 .Va ttycharset
-(except during startup if the variable has been frozen via
+except during startup when frozen via
 .Fl S ) .
 .
 .Mx
