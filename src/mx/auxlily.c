@@ -330,7 +330,6 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen){
 		idna_utf8[ilen] = '\0';
 		ibuf = idna_utf8;
 	}
-	ilen = 0;
 
 # ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
 	if(n_psonce & n_PSO_UNICODE)
@@ -341,50 +340,29 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen){
 		goto jleave;
 # endif
 
-# if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
-	/* C99 */{
-		char *idna_ascii;
-		int f, rc;
-
-		f = IDN2_NONTRANSITIONAL;
-jidn2_redo:
-		if((rc = idn2_to_ascii_8z(idna_utf8, &idna_ascii, f)) == IDN2_OK){
-			out = n_string_assign_cp(out, idna_ascii);
-			idn2_free(idna_ascii);
-			rv = TRU1;
-			ilen = out->s_len;
-		}else if(rc == IDN2_DISALLOWED && f != IDN2_TRANSITIONAL){
-			f = IDN2_TRANSITIONAL;
-			goto jidn2_redo;
-		}
-	}
-
-# elif mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
+# if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2 || mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
 	/* C99 */{
 		char *idna_ascii;
 
-		if(idna_to_ascii_8z(idna_utf8, &idna_ascii, 0) == IDNA_SUCCESS){
+		if(idna_to_ascii_8z(idna_utf8, &idna_ascii, IDNA_ALLOW_UNASSIGNED
+#  if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
+				| IDN2_NFC_INPUT | IDN2_NONTRANSITIONAL
+#  endif
+				) == IDNA_SUCCESS){
 			out = n_string_assign_cp(out, idna_ascii);
 			idn_free(idna_ascii);
 			rv = TRU1;
 			ilen = out->s_len;
+			n_string_cp(out);
 		}
 	}
 
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 	ilen = su_cs_len(idna_utf8);
 jredo:
-	switch(idn_encodename(
-		/* LOCALCONV changed meaning in v2 and is no longer available for encoding.  This makes sense, bu */
-			(
-#  ifdef IDN_UNICODECONV /* v2 */
-			IDN_ENCODE_APP & ~IDN_UNICODECONV
-#  else
-			IDN_DELIMMAP | IDN_LOCALMAP | IDN_NAMEPREP | IDN_IDNCONV |
-			IDN_LENCHECK | IDN_ASCCHECK
-#  endif
-			), idna_utf8,
-			n_string_resize(n_string_trunc(out, 0), ilen)->s_dat, ilen)){
+	ilen += ilen >> 1;
+	out = n_string_resize(n_string_trunc(out, 0), ilen);
+	switch(idn_encodename((IDN_ENCODE_APP & ~IDN_UNICODECONV), idna_utf8, out->s_dat, ilen)){
 	case idn_buffer_overflow:
 		ilen += 255 +1;
 		goto jredo;
@@ -404,7 +382,80 @@ jredo:
 jleave:
 	if(lofi)
 		su_LOFI_FREE(UNCONST(char*,ibuf));
-	out = n_string_trunc(out, ilen);
+	out = n_string_trunc(out, rv ? ilen : 0);
+
+	NYD_OU;
+	return rv;
+}
+
+FL boole
+n_idna_from_ascii(struct n_string *out, char const *ibuf, uz ilen){
+	char *idna_utf8;
+	boole lofi, rv;
+	NYD_IN;
+
+	if(ilen == UZ_MAX)
+		ilen = su_cs_len(ibuf);
+
+	lofi = FAL0;
+
+	if((rv = (ilen == 0)))
+		goto jleave;
+	if(ibuf[ilen] != '\0'){
+		lofi = TRU1;
+		idna_utf8 = su_LOFI_ALLOC(ilen +1);
+		su_mem_copy(idna_utf8, ibuf, ilen);
+		idna_utf8[ilen] = '\0';
+		ibuf = idna_utf8;
+	}
+
+# if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2 || mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
+	if(idna_to_unicode_8z8z(ibuf, &idna_utf8, 0) == IDNA_SUCCESS){
+		out = n_string_assign_cp(out, idna_utf8);
+		idn_free(idna_utf8);
+		rv = TRU1;
+		ilen = out->s_len;
+		n_string_cp(out);
+	}
+
+# elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
+jredo:
+	ilen += ilen >> 1;
+	out = n_string_resize(n_string_trunc(out, 0), ilen);
+	switch(idn_decodename((IDN_DECODE_APP & ~IDN_LOCALCONV), ibuf, out->s_dat, ilen)){
+	case idn_buffer_overflow:
+		ilen += 255 +1;
+		goto jredo;
+	case idn_success:
+		rv = TRU1;
+		ilen = su_cs_len(out->s_dat);
+		out = n_string_trunc(out, ilen);
+		break;
+	default:
+		break;
+	}
+
+# else
+#  error Unknown mx_HAVE_IDNA
+# endif
+
+# ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
+	if(rv && !(n_psonce & n_PSO_UNICODE)){
+		idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, NIL, NIL, out->s_dat);
+		if(idna_utf8 == NIL){
+			rv = FAL0;
+			goto jleave;
+		}
+		out = n_string_assign_cp(out, idna_utf8);
+		ilen = out->s_len;
+		n_string_cp(out);
+	}
+# endif
+
+jleave:
+	if(lofi)
+		su_LOFI_FREE(UNCONST(char*,ibuf));
+	out = n_string_trunc(out, rv ? ilen : 0);
 
 	NYD_OU;
 	return rv;

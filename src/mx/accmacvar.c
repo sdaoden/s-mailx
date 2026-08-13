@@ -7,7 +7,7 @@
  *@ TODO   - one for amv_var_defvals, and one for amv_var_i3vals,
  *@ TODO   - that could also be a shared 32-bit offset?  .. etc ..
  *@ TODO   - and, i3vals-was-used could be a bitset, so anything else RODATA.
- *@ TODO   - and to make VIP stuff "more loosely bound, add yet another offset
+ *@ TODO   - and to make VIP stuff "more loosely bound", add yet another offset
  *@ TODO     into a secondary array of PTFs which point to funs that actually deal.
  *@ TODO   - Also, storing variable names can be optional for non-chain built-ins.
  *@ TODO   - For *posix* / $POSIXLY_CORRECT we may need alternating defaults!
@@ -1090,6 +1090,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 	char const *emsg, *ccp;
 	boole ok;
 	NYD2_IN;
+	UNUSED(only_import);
 
 	ok = TRU1;
 	emsg = NIL;
@@ -3905,6 +3906,7 @@ mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
 	s32 rv;
 	struct a_amv_pospar *appp;
 	NYD_IN;
+	ASSERT(argc == 0 || (cap_or_nil != NIL || argv_or_nil != NIL));
 
 	/* If in a macro, we need to overwrite the local instead of global argv */
 	appp = ((appp_or_nil != NIL) ? appp_or_nil
