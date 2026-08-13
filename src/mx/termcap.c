@@ -395,6 +395,15 @@ a_termcap_init_altern(void){
 		}
 	}
 
+#ifdef mx_HAVE_TERMCAP
+	/* cl == ho+cd */
+	tep = &a_termcap_g->tg_ents[mx_TERMCAP_CMD_cl];
+	if(!a_OOK(tep)){
+		if(a_OK(mx_TERMCAP_CMD_cd) && a_OK(mx_TERMCAP_CMD_ho))
+			a_SET(tep, mx_TERMCAP_CMD_cl, TRU1);
+	}
+#endif
+
 #ifdef mx_HAVE_MLE
 	/* ce == ch + [:SPACE:] (start column specified by argument) */
 	tep = &a_termcap_g->tg_ents[mx_TERMCAP_CMD_ce];
@@ -429,15 +438,6 @@ a_termcap_init_altern(void){
 		tep->te_off = S(u16,a_termcap_g->tg_dat.s_len);
 		n_string_push_buf(&a_termcap_g->tg_dat, "\033[C", sizeof("\033[C"));
 	}
-
-# ifdef mx_HAVE_TERMCAP
-	/* cl == ho+cd */
-	tep = &a_termcap_g->tg_ents[mx_TERMCAP_CMD_cl];
-	if(!a_OOK(tep)){
-		if(a_OK(mx_TERMCAP_CMD_cd) && a_OK(mx_TERMCAP_CMD_ho))
-			a_SET(tep, mx_TERMCAP_CMD_cl, TRU1);
-	}
-# endif
 #endif /* mx_HAVE_MLE */
 
 	NYD2_OU;
@@ -736,8 +736,10 @@ mx_termcap_resume(BITENUM(u32,mx_termcap_mode) mode){
 
 		any = FAL0;
 
+#ifdef mx_HAVE_TERMCAP
 		if((mode & mx_TERMCAP_MODE_CA) && a_termcap_g->tg_ca_mode)
 			any |= (mx_termcap_cmdx(mx_TERMCAP_CMD_ti) > FAL0);
+#endif
 
 		any |= (mx_termcap_cmdx(mx_TERMCAP_CMD_ks) > FAL0);
 
@@ -763,11 +765,13 @@ mx_termcap_suspend(BITENUM(u32,mx_termcap_mode) mode){
 
 		any = FAL0;
 
+#ifdef mx_HAVE_TERMCAP
 		if((mode & mx_TERMCAP_MODE_CA) && a_termcap_g->tg_ca_mode){
 			if(a_termcap_g->tg_ca_mode_clear_screen)
 				any |= (mx_termcap_cmdx(mx_TERMCAP_CMD_cl) > FAL0);
 			any |= (mx_termcap_cmdx(mx_TERMCAP_CMD_te) > FAL0);
 		}
+#endif
 
 		if(mode & mx_TERMCAP_MODE_SMART){
 #ifdef mx_HAVE_KEY_BINDINGS
@@ -868,6 +872,14 @@ mx_termcap_cmd(BITENUM(u32,mx_termcap_cmd) cmd, sz a1, sz a2){
 			rv = TRUM1;
 			break;
 
+#ifdef mx_HAVE_TERMCAP
+		case mx_TERMCAP_CMD_cl: /* cl = ho + cd */
+			rv = mx_termcap_cmdx(mx_TERMCAP_CMD_ho);
+			if(rv > 0)
+				rv = mx_termcap_cmdx(mx_TERMCAP_CMD_cd | flags);
+			break;
+#endif
+
 #ifdef mx_HAVE_MLE
 		case mx_TERMCAP_CMD_ce: /* ce == ch + [:SPACE:] */
 			if(a1 > 0)
@@ -888,13 +900,6 @@ mx_termcap_cmd(BITENUM(u32,mx_termcap_cmd) cmd, sz a1, sz a2){
 				rv = mx_termcap_cmd(mx_TERMCAP_CMD_nd, a1, -1);
 			}
 			break;
-# ifdef mx_HAVE_TERMCAP
-		case mx_TERMCAP_CMD_cl: /* cl = ho + cd */
-			rv = mx_termcap_cmdx(mx_TERMCAP_CMD_ho);
-			if(rv > 0)
-				rv = mx_termcap_cmdx(mx_TERMCAP_CMD_cd | flags);
-			break;
-# endif
 #endif /* mx_HAVE_MLE */
 		}
 
