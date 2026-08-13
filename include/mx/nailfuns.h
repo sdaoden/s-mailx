@@ -201,7 +201,8 @@ FL s32 mx_var_re_match_set(u32 group_count, char const *dat,
 
 /* argc *does not* include $^0 (name)!  If argc is 0 clears and sets $^0.
  * [appp_or_nil defaults to the current scope; always NIL, local to _amv_.]
- * One of cap_or_nil and argv_or_nil must be set.  NONE,OVERFLOW,NOMEM */
+ * If argc>0 one of cap_or_nil and argv_or_nil must be set.
+ * NONE,OVERFLOW,NOMEM */
 FL s32 mx_var_result_set_set(void *appp_or_nil, char const *name, u32 argc,
       struct mx_cmd_arg const *cap_or_nil, char const * const *argv_or_nil);
 
@@ -259,8 +260,7 @@ FL char const *mx_dead_name(void);
 /* Convert from / to *ttycharset* */
 #ifdef mx_HAVE_IDNA
 FL boole n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen);
-/*TODO FL boole n_idna_from_ascii(struct n_string *out, char const *ibuf,
-            uz ilen);*/
+FL boole n_idna_from_ascii(struct n_string *out, char const *ibuf, uz ilen);
 #endif
 
 /* Check whether the argument string is a TRU1 or FAL0 boolean, or an invalid
