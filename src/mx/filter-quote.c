@@ -31,10 +31,8 @@
 #include <su/mem-bag.h>
 
 #ifdef mx_HAVE_FILTER_QUOTE_FOLD
-# ifdef mx_HAVE_C90AMEND1
-#  include <wchar.h>
-#  include <wctype.h>
-# endif
+# include <wchar.h>
+# include <wctype.h>
 
 # include <su/icodec.h>
 #endif
