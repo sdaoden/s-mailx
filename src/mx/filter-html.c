@@ -65,7 +65,7 @@ su_EMPTY_FILE()
 
 enum a_flthtml_flags{
 	a_FLTHTML_BQUOTE_MASK = 0xFFFFu, /* Quote recursion counter */
-	a_FLTHTML_DEFUNCT = 1u<<16, /* PSO_ENC_MBSTATE unsupported TODO */
+	a_FLTHTML_DEFUNCT = 1u<<16, /* PS_ENC_MBSTATE unsupported TODO */
 	a_FLTHTML_MBSEQ = 1u<<17, /* n_mb_cur_max>1 */
 	a_FLTHTML_UTF8 = 1u<<18, /* Data is in UTF-8 */
 	a_FLTHTML_ERROR = 1u<<19, /* Hard error, bail as soon as possible */
@@ -1465,13 +1465,13 @@ mx_flthtml_reset(struct mx_flthtml *self, FILE *f){
 		self->fh_lmax = S(u32,cols);
 		self->fh_line = su_ALLOC(cols * (n_mb_cur_max +1));
 
-		if(n_psonce & n_PSO_ENC_MBSTATE)
+		if(n_pstate & n_PS_ENC_MBSTATE)
 			self->fh_flags |= a_FLTHTML_DEFUNCT;
 #ifdef mx_HAVE_NATCH_CHAR
 		if(n_mb_cur_max > 1)
 			self->fh_flags |= a_FLTHTML_MBSEQ;
 #endif
-		if(n_psonce & n_PSO_UNICODE) /* TODO not truly generic */
+		if(n_pstate & n_PS_UNICODE)
 			self->fh_flags |= a_FLTHTML_UTF8;
 		self->fh_os = f;
 	}

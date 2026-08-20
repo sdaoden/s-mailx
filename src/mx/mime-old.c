@@ -182,7 +182,9 @@ a_mime_fwrite_display(struct str const *input,
       }
 #endif
 
-      if((err = n_iconv_str(iconvd, n_ICONV_UNIDEFAULT, &out, &in, &in)) != 0){
+      if((err = n_iconv_str(iconvd,
+            ((n_pstate & n_PS_UNICODE) ? n_ICONV_UNIDEFAULT : n_ICONV_DEFAULT),
+            &out, &in, &in)) != 0){
          if(err != su_ERR_INVAL)
             n_iconv_reset(iconvd);
 
@@ -190,7 +192,7 @@ a_mime_fwrite_display(struct str const *input,
             /* Incomplete multibyte at EOF is special xxx _INVAL? */
             if(flags & mx__MIME_DISPLAY_EOF){
                out.s = su_REALLOC(out.s, out.l + sizeof(su_utf8_replacer));
-               if(n_psonce & n_PSO_UNICODE){
+               if(n_pstate & n_PS_UNICODE){
                   su_mem_copy(&out.s[out.l], su_utf8_replacer,
                      sizeof(su_utf8_replacer) -1);
                   out.l += sizeof(su_utf8_replacer) -1;
@@ -523,7 +525,7 @@ jnoenc_retry:
           * artificial spaces to be inserted (bad standard), yuck */
          /* todo This is not multibyte safe, as above; and completely stupid
           * todo P.S.: our _SHOULD_BEE prevents these cases in the meanwhile */
-/* FIXME n_PSO_UNICODE and parse using UTF-8 sync possibility! */
+/* FIXME n_PS_UNICODE and parse using UTF-8 sync possibility! */
          wcur = &wbot[MIME_LINELEN_MAX - 8];
          while(wend > wcur)
             wend -= 4;
@@ -641,7 +643,7 @@ jenc_retry_same:
             goto jenc_retry;
          }*/
 
-/* FIXME n_PSO_UNICODE and parse using UTF-8 sync possibility! */
+/* FIXME n_PS_UNICODE and parse using UTF-8 sync possibility! */
          i = P2UZ(wend - wbot) + !!(flags & a_SPACE);
          j = 3 + !(flags & a_ENC_B64);
          for(;;){
@@ -1019,7 +1021,9 @@ jdec_qm:
          if((flags & mx_MIME_DISPLAY_ICONV) && fhicd != R(iconv_t,-1)){
             /* could live from past ASSERT(!ok_blook(iconv_disable)); */
             cin.s = NIL, cin.l = 0; /* XXX string pool ! */
-            convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NIL);
+            convert = n_iconv_str(fhicd,
+                  ((n_pstate & n_PS_UNICODE) ? n_ICONV_UNIDEFAULT : n_ICONV_DEFAULT),
+                  &cin, &cout, NIL);
             out = n_str_add(out, &cin);
             if(convert){/* su_ERR_INVAL at EOS */
                n_iconv_reset(fhicd);

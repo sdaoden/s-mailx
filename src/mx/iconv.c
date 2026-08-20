@@ -309,9 +309,6 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, c
 	int err;
 	NYD2_IN;
 
-	if((icf & n_ICONV_UNIREPL) && !(n_psonce & n_PSO_UNICODE)) /* TODO depends on iconv_open tocode though! */
-		icf &= ~n_ICONV_UNIREPL;
-
 	for(;;){
 		uz i;
 
