@@ -187,14 +187,14 @@ VAL_WIDTH=80
 
 # Some operating systems only support the C/POSIX (7-bit, but eight bit
 # bytes are passed through unchanged) and UTF-8 based locales, for
-# example Plan9, Musl based Linux variants and newer OpenBSD.  For such
+# example Musl based Linux variants and newer OpenBSD.  For such
 # environments we can avoid a lot of tests and may enable support for
 # features which would otherwise not be available.
 # Note: $OS is available as normalized all-lowercase upon evaluation.
 OPT_ALWAYS_UNICODE_LOCALE=$(\
 	if [ "$OS" = openbsd ]; then \
 		echo yes;\
-	elif [ -f /lib/ld-musl-x86_64.so.1 ]; then \
+	elif thecmd_testandset ldd ldd && $ldd $SHELL 2>/dev/null | $grep -q musl; then \
 		echo yes;\
 	else \
 		echo no;\
@@ -360,8 +360,7 @@ OPT_NET=yes
 
 	# Add support for IMAP protocol.
 	# Reading of mails directly on the server.
-	# Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which
-	# case it only warns.  Can be "require"d.
+	# Requires $OPT_ICONV.  Can be "require"d.
 	OPT_IMAP=yes
 
 	# Support for parsing of user and password credentials from the

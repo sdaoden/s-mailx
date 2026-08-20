@@ -479,16 +479,14 @@ imap_path_encode(char const *cp, boole *err_or_null){
     * local charset to UTF-8, then convert all characters which need to be
     * encoded (except plain "&") to UTF-16BE first, then that to mUTF-7.
     * We can skip the UTF-8 conversion occasionally, however */
-#if (defined mx_HAVE_DEVEL || !defined mx_HAVE_ALWAYS_UNICODE_LOCALE) &&\
-      defined mx_HAVE_ICONV
-   if(!(n_psonce & n_PSO_UNICODE)){
-      char const *x;
-
-      emsg = N_("iconv(3) from locale charset to UTF-8 failed");
-      if((x = n_iconv_onetime_cp(n_ICONV_NONE, n_ICONV_UTF8_NAME, ok_vlook(ttycharset),
-            cp)) == NULL)
+   if(!(n_pstate & n_PS_UNICODE)){
+      emsg = n_iconv_onetime_cp(n_ICONV_NONE, n_ICONV_UTF8_NAME,
+            ok_vlook(ttycharset), cp);
+      if(emsg == NIL){
+         emsg = N_("iconv(3) from *ttycharset* to UTF-8 failed");
          goto jerr;
-      cp = x;
+      }
+      cp = emsg;
 
       /* So: Why not start all over again?
        * Is this a string that works out as "plain US-ASCII"? */
@@ -498,7 +496,6 @@ imap_path_encode(char const *cp, boole *err_or_null){
          else if(c <= 0x1F || c >= 0x7F || c == '&')
             break;
    }
-#endif
 
    /* We need to encode, save what we have, encode the rest */
    l_plain = l;
@@ -789,24 +786,26 @@ jeincpl:
    }
    *rv = '\0';
 
-   /* We can skip the UTF-8 conversion occasionally */
-#if (defined mx_HAVE_DEVEL || !defined mx_HAVE_ALWAYS_UNICODE_LOCALE) &&\
-      defined mx_HAVE_ICONV
-   if(!(n_psonce & n_PSO_UNICODE)){
-      emsg = N_("iconv(3) from UTF-8 to locale charset failed");
-      if((rv = n_iconv_onetime_cp(n_ICONV_NONE, NULL, NULL, rv_base)) == NULL)
+   /* We can skip the UTF-8 conversion occasionally XXX we do not (<> err??) */
+   /* C99 */{
+      char const *ttycs;
+
+      ttycs = ok_vlook(ttycharset);
+
+      /*if(n_pstate & n_PS_UNICODE)
+         rv = rv_base;
+      else*/ if((rv = n_iconv_onetime_cp(n_ICONV_NONE, ttycs, NIL, rv_base)) == NIL){
+         emsg = N_("iconv(3) from UTF-8 to *ttycharset* failed");
          goto jerr;
+      }
    }
-#endif
 
    *err_or_null = FAL0;
-   rv = rv_base;
 jleave:
    NYD2_OU;
    return rv;
 jerr:
    n_err(_("Cannot decode IMAP path %s\n  %s\n"), path, V_(emsg));
-   UNUSED(emsg);
    su_mem_copy(rv = rv_base, path, ++l_orig);
    goto jleave;
 }
@@ -4170,23 +4169,26 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    if (c & 0200) {
       cp = ok_vlook(ttycharset);
 # ifdef mx_HAVE_ICONV
-      if(su_cs_cmp_case(cp, "utf-8") && su_cs_cmp_case(cp, "utf8")){ /* XXX */
+      if(!(n_pstate & n_PS_UNICODE)){
          char const *nspec;
 
-         if((nspec = n_iconv_onetime_cp(n_ICONV_DEFAULT, "utf-8", cp, spec)
-               ) != NULL){
+         nspec = n_iconv_onetime_cp(n_ICONV_DEFAULT, n_ICONV_UTF8_NAME,
+               cp, spec);
+         if(nspec != NIL){
             spec = nspec;
-            cp = "utf-8";
+            cp = su_utf8_name_lower;
          }
       }
 # endif
       cp = imap_quotestr(cp);
-      cs = n_lofi_alloc(n = su_cs_len(cp) + 10);
+      n = su_cs_len(cp) + 10;
+      cs = su_LOFI_ALLOC(n);
       snprintf(cs, n, "CHARSET %s ", cp);
    } else
-      cs = n_UNCONST(n_empty);
+      cs = UNCONST(char*,su_empty);
 
-   o = n_lofi_alloc(n = su_cs_len(spec) + 60);
+   n = su_cs_len(spec) + 60;
+   o = su_LOFI_ALLOC(n);
    snprintf(o, n, "%s UID SEARCH %s%s\r\n", tag(1), cs, spec);
    IMAP_OUT(o, MB_COMD, goto out)
    /* C99 */{
@@ -4216,10 +4218,12 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
          }
       }
    }
+
 out:
-   n_lofi_free(o);
-   if(cs != n_empty)
-      n_lofi_free(cs);
+   su_LOFI_FREE(o);
+   if(cs != su_empty)
+      su_LOFI_FREE(cs);
+
    return rv;
 }
 

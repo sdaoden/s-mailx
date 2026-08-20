@@ -646,7 +646,7 @@ jpushc:
 
 				j = su_utf32_to_8(no, spcp->spc_buf);
 
-				if(n_psonce & n_PSO_UNICODE){
+				if(n_pstate & n_PS_UNICODE){
 					spcp->spc_res_state |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE |
 							n_SHEXP_STATE_CHANGE;
 					if(!(flags & n_SHEXP_PARSE_DRYRUN))

@@ -608,7 +608,7 @@ mx_qp_dec_header(struct str *out, struct str const *in){
 				c = '=';
 				goto jpushc;
 /* TODO jehead:
- * TODO		 if(n_psonce & n_PSO_UNICODE)
+ * TODO		 if(n_pstate & n_PS_UNICODE)
  *					 n_string_push_buf(&s, su_utf_8_replacer,
  *						 sizeof(su_utf_8_replacer) -1);
  * TODO		  else{
@@ -688,7 +688,7 @@ jpushc:
 			c = '=';
 			goto jpushc;
 /* TODO jebody:
- * TODO	 if(n_psonce & n_PSO_UNICODE)
+ * TODO	 if(n_pstate & n_PS_UNICODE)
  *				 n_string_push_buf(&s, su_utf_8_replacer,
  *					 sizeof(su_utf_8_replacer) -1);
  * TODO	  else{
@@ -1013,7 +1013,7 @@ jrepl:
 				/* TODO This would be wrong since iconv(3) may be applied first! */
 				n_err(_("Invalid base64 encoding ignored\n"));
 #if 0
-				if(n_psonce & n_PSO_UNICODE)
+				if(n_pstate & n_PS_UNICODE)
 					n_string_push_buf(&s, su_utf_8_replacer,
 						sizeof(su_utf_8_replacer) -1);
 				else

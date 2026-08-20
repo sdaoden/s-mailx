@@ -566,7 +566,8 @@ jhex_putc:
 		ASSERT(!ok_blook(iconv_disable));
 		sin.s = NIL;
 		sin.l = 0;
-		if(n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &sin, &sou, NIL) != 0){
+		if(n_iconv_str(fhicd, ((n_pstate & n_PS_UNICODE) ? n_ICONV_UNIDEFAULT : n_ICONV_DEFAULT),
+					&sin, &sou, NIL) != 0){
 			if(!(f & a_ERRORS)) /* XXX will not be reported with _UNIDFEFAULT */
 				*emsg = N_("character set conversion failed on value");
 			f |= a_ERRORS;
