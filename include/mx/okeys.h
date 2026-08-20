@@ -467,10 +467,12 @@ EXPORT char *mx_var_oklook(enum okeys okey);
 #define ok_blook(C) (mx_var_oklook(su_CONCAT(ok_b_, C)) != NIL)
 #define ok_vlook(C) mx_var_oklook(su_CONCAT(ok_v_, C))
 
+/* -S frozen: ignored but returns success */
 EXPORT boole mx_var_okset(enum okeys okey, up val);
 #define ok_bset(C) mx_var_okset(su_CONCAT(ok_b_, C), (up)TRU1)
 #define ok_vset(C,V) mx_var_okset(su_CONCAT(ok_v_, C), (up)(V))
 
+/* -S frozen: ignored but returns success */
 EXPORT boole mx_var_okclear(enum okeys okey);
 #define ok_bclear(C) mx_var_okclear(su_CONCAT(ok_b_, C))
 #define ok_vclear(C) mx_var_okclear(su_CONCAT(ok_v_, C))

@@ -38,8 +38,7 @@ enum n_iconv_flags{
 	n_ICONV_NONE,
 	n_ICONV_IGN_ILSEQ = 1u<<0, /* Ignore input EILSEQ (replacement char) */
 	n_ICONV_IGN_NOREVERSE = 1u<<1, /* .. non-reversible conversions in output */
-	/* With n_PSO_UNICODE use Unicode replacement 0xFFFD=EF BF BD TODO iconv_open tocode! */
-	n_ICONV_UNIREPL = 1u<<2,
+	n_ICONV_UNIREPL = 1u<<2, /* Use Unicode replacement 0xFFFD=EF BF BD, not ? */
 	n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE,
 	n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };

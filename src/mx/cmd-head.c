@@ -272,7 +272,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
                cpen_new = mx_colour_pen_create(mx_COLOUR_ID_SUM_DOTMARK,
                      color_tag);
 #endif
-            if((n_psonce & n_PSO_UNICODE) && !ok_blook(headline_plain)){
+            if((n_pstate & n_PS_UNICODE) && !ok_blook(headline_plain)){
                if (c == '>')
                   /* 25B8;BLACK RIGHT-POINTING SMALL TRIANGLE */
                   cbuf[1] = (char)0x96, cbuf[2] = (char)0xB8;
@@ -648,7 +648,7 @@ a_chead__putuc(int u, int c, FILE *fp){
    UNUSED(u);
 
 #ifdef mx_HAVE_NATCH_CHAR
-   if((n_psonce & n_PSO_UNICODE) && (u & ~(wchar_t)0177) &&
+   if((n_pstate & n_PS_UNICODE) && (u & ~(wchar_t)0177) &&
          !ok_blook(headline_plain)){
       char mbb[MB_LEN_MAX];
       int i, n;

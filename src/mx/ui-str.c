@@ -38,14 +38,15 @@
 # include "mx/nail.h"
 #endif
 
-#ifdef mx_HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
 #ifdef mx_HAVE_SETLOCALE
 # include <locale.h>
-#endif
-#ifdef mx_HAVE_C90AMEND1
-# include <wctype.h>
+
+# ifdef mx_HAVE_NL_LANGINFO
+#  include <langinfo.h>
+# endif
+# ifdef mx_HAVE_C90AMEND1
+#  include <wctype.h>
+# endif
 #endif
 
 #include <su/cs.h>
@@ -86,7 +87,7 @@ a_uis_bidi_info_needed(char const *bdat, uz blen){
 
    rv = FAL0;
 
-   if(n_psonce & n_PSO_UNICODE){
+   if(n_pstate & n_PS_UNICODE){
       while(blen > 0){
          /* TODO Checking for BIDI character: use S-CText fromutf8
           * TODO plus isrighttoleft (or whatever there will be)! */
@@ -126,7 +127,7 @@ a_uis_bidi_info_create(struct a_uis_bidi_info *bip){
    su_mem_set(bip, 0, sizeof *bip);
    bip->bi_start.s = bip->bi_end.s = UNCONST(char*,su_empty);
 
-   if((n_psonce & n_PSO_UNICODE) && (hb = ok_vlook(headline_bidi)) != NIL){
+   if((n_pstate & n_PS_UNICODE) && (hb = ok_vlook(headline_bidi)) != NIL){
       switch(*hb){
       case '3':
          bip->bi_pad = 2;
@@ -151,48 +152,56 @@ a_uis_bidi_info_create(struct a_uis_bidi_info *bip){
 
 void
 mx_locale_init(void){
+   char const *ttycs;
    NYD2_IN;
 
-   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
+   n_pstate &= ~(n_PS_UNICODE | n_PS_UNICODE_LC | n_PS_ENC_MBSTATE);
+
+   ttycs = NIL;
 
 #ifndef mx_HAVE_SETLOCALE
    n_mb_cur_max = 1;
-#else
 
+#else
    if(setlocale(LC_ALL, su_empty) == NIL && (n_psonce & n_PSO_INTERACTIVE))
       n_err(_("Cannot set locale to $LC_ALL=%s\n"), mx_var_oklook(ok_v_LC_ALL));
 
    n_mb_cur_max = MB_CUR_MAX;
-# ifdef mx_HAVE_NL_LANGINFO
-   /* C99 */{
-      char const *cp;
-
-      if((cp = nl_langinfo(CODESET)) != NIL && *cp != '\0'){
-         /* (Will log during startup if user set that via -S) */
-         ok_vset(ttycharset, cp);
-         n_PS_ROOT_BLOCK(ok_vset(charset_locale, cp));
-      }
-   }
-# endif /* mx_HAVE_SETLOCALE */
 
 # ifdef mx_HAVE_C90AMEND1
    if(n_mb_cur_max > 1){
 #  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
-      n_psonce |= n_PSO_UNICODE;
+      n_pstate |= n_PS_UNICODE_LC;
+      ttycs = su_utf8_name_lower;
 #  else
       wchar_t wc;
 
       if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
-         n_psonce |= n_PSO_UNICODE;
+            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC){
+         n_pstate |= n_PS_UNICODE_LC;
+         ttycs = su_utf8_name_lower;
+      }
+
       /* Reset possibly messed up state; luckily this also gives us an
        * indication whether the encoding has locking shift state sequences */
       if(mbtowc(&wc, NULL, n_mb_cur_max))
-         n_psonce |= n_PSO_ENC_MBSTATE;
+         n_pstate |= n_PS_ENC_MBSTATE;
 #  endif
    }
 # endif
-#endif /* mx_HAVE_C90AMEND1 */
+
+# ifdef mx_HAVE_NL_LANGINFO
+   if(!(n_pstate & n_PS_UNICODE_LC) &&
+         (ttycs = nl_langinfo(CODESET)) != NIL && *ttycs == '\0')
+      ttycs = NIL;
+# endif
+#endif /* mx_HAVE_SETLOCALE */
+
+   /* vip okeys: after PS_UNICODE!
+    * *charset-locale* first, latter compares against!
+    * Latter may be silently ignored due to -S! */
+   n_PS_ROOT_BLOCK(ok_vset(charset_locale, ttycs));
+   ok_vset(ttycharset, ttycs);
 
    NYD2_OU;
 }
@@ -246,7 +255,7 @@ mx_visual_info(struct mx_visual_info_ctx *vicp,
                break;
             }
             su_mem_set(mbp, 0, sizeof *mbp);
-            vicp->vic_waccu = (n_psonce & n_PSO_UNICODE) ? 0xFFFD : '?';
+            vicp->vic_waccu = (n_pstate & n_PS_UNICODE) ? 0xFFFD : '?';
             i = 1;
          }else if(i == 0){
             il = 0;
@@ -350,7 +359,7 @@ mx_colalign(char const *cp, int col, int fill, int *cols_decr_used_or_nil){
    col_orig = col;
    isbidi = isuni = FAL0;
 #ifdef mx_HAVE_NATCH_CHAR
-   isuni = ((n_psonce & n_PSO_UNICODE) != 0);
+   isuni = ((n_pstate & n_PS_UNICODE) != 0);
 
    a_uis_bidi_info_create(&bi);
    if(bi.bi_start.l == 0)
@@ -489,7 +498,7 @@ mx_makeprint(struct str const *in, struct str *out){ /* TODO <-> TTYCHARSET! */
       int i, n;
       boole isuni;
 
-      isuni = ((n_psonce & n_PSO_UNICODE) != 0);
+      isuni = ((n_pstate & n_PS_UNICODE) != 0);
 
       out->l = 0;
       while(inp < maxp){
@@ -697,7 +706,7 @@ jc:
       cbuf[0] = S(char,c);
       cbuf[1] = '\0';
       l = 1;
-   }else if(n_psonce & n_PSO_UNICODE){
+   }else if(n_pstate & n_PS_UNICODE){
       CTAV(sizeof su_UTF8_REPLACER == sizeof su_utf8_replacer);
       su_mem_copy(cbuf, su_utf8_replacer, sizeof su_utf8_replacer);
       l = sizeof su_utf8_replacer -1;

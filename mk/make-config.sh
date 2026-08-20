@@ -263,16 +263,13 @@ option_update() {
 
 	if feat_no ICONV; then
 		if feat_yes IMAP; then
-			if feat_yes ALWAYS_UNICODE_LOCALE; then
-				msg 'WARN: no ICONV, keeping IMAP due to ALWAYS_UNICODE_LOCALE!'
-			elif feat_require IMAP; then
+			if feat_require IMAP; then
 				msg 'ERROR: need ICONV for required feature IMAP'
 				config_exit 13
-			else
-				msg 'ERROR: disabling IMAP due to missing ICONV'
-				OPT_IMAP=0
 			fi
+			msg 'ERROR: disabling IMAP due to missing ICONV'
 		fi
+		OPT_IMAP=0
 
 		if feat_yes IDNA; then
 			if feat_require IDNA; then
@@ -280,8 +277,8 @@ option_update() {
 				config_exit 13
 			fi
 			msg 'ERROR: disabling IDNA due to missing ICONV'
-			OPT_IDNA=0
 		fi
+		OPT_IDNA=0
 	fi
 
 	if feat_no MLE; then
@@ -1594,6 +1591,9 @@ msg 'done'
 trap "exit 1" HUP INT TERM
 trap "$rm -f $tmp" EXIT
 
+# Needed for OPT_ALWAYS_UNICODE_LOCALE, maybe, and at least
+thecmd_testandset_fail grep grep
+
 msg_nonl 'Joining in %s ... ' "$rc"
 option_join_rc
 msg 'done'
@@ -1603,7 +1603,7 @@ os_setup
 
 msg 'Checking for remaining set of utilities'
 # Needed for path_check
-thecmd_testandset_fail grep grep
+# above thecmd_testandset_fail grep grep
 
 # Before we step ahead with the other utilities perform a path cleanup first.
 path_check PATH

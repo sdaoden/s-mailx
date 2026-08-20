@@ -331,14 +331,12 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen){
 		ibuf = idna_utf8;
 	}
 
-# ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
-	if(n_psonce & n_PSO_UNICODE)
-# endif
+	if(n_pstate & n_PS_UNICODE)
 		idna_utf8 = UNCONST(char*,ibuf);
-# ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
-	else if((idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset), ibuf)) == NIL)
+	else if((idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, n_ICONV_UTF8_NAME, ok_vlook(ttycharset), ibuf)) == NIL){
+		su_err_set(n_iconv_err);
 		goto jleave;
-# endif
+	}
 
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2 || mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
 	/* C99 */{
@@ -354,7 +352,8 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen){
 			rv = TRU1;
 			ilen = out->s_len;
 			n_string_cp(out);
-		}
+		}else
+			su_err_set(su_ERR_INVAL);
 	}
 
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
@@ -371,6 +370,7 @@ jredo:
 		ilen = su_cs_len(out->s_dat);
 		break;
 	default:
+		su_err_set(su_ERR_INVAL);
 		ilen = 0;
 		break;
 	}
@@ -390,7 +390,7 @@ jleave:
 
 FL boole
 n_idna_from_ascii(struct n_string *out, char const *ibuf, uz ilen){
-	char *idna_utf8;
+	char *idn_lc;
 	boole lofi, rv;
 	NYD_IN;
 
@@ -403,20 +403,21 @@ n_idna_from_ascii(struct n_string *out, char const *ibuf, uz ilen){
 		goto jleave;
 	if(ibuf[ilen] != '\0'){
 		lofi = TRU1;
-		idna_utf8 = su_LOFI_ALLOC(ilen +1);
-		su_mem_copy(idna_utf8, ibuf, ilen);
-		idna_utf8[ilen] = '\0';
-		ibuf = idna_utf8;
+		idn_lc = su_LOFI_ALLOC(ilen +1);
+		su_mem_copy(idn_lc, ibuf, ilen);
+		idn_lc[ilen] = '\0';
+		ibuf = idn_lc;
 	}
 
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2 || mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
-	if(idna_to_unicode_8z8z(ibuf, &idna_utf8, 0) == IDNA_SUCCESS){
-		out = n_string_assign_cp(out, idna_utf8);
-		idn_free(idna_utf8);
+	if(idna_to_unicode_8z8z(ibuf, &idn_lc, 0) == IDNA_SUCCESS){
+		out = n_string_assign_cp(out, idn_lc);
+		idn_free(idn_lc);
 		rv = TRU1;
 		ilen = out->s_len;
 		n_string_cp(out);
-	}
+	}else
+		su_err_set(su_ERR_INVAL);
 
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 jredo:
@@ -432,6 +433,7 @@ jredo:
 		out = n_string_trunc(out, ilen);
 		break;
 	default:
+		su_err_set(su_ERR_INVAL);
 		break;
 	}
 
@@ -439,18 +441,20 @@ jredo:
 #  error Unknown mx_HAVE_IDNA
 # endif
 
-# ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
-	if(rv && !(n_psonce & n_PSO_UNICODE)){
-		idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, NIL, NIL, out->s_dat);
-		if(idna_utf8 == NIL){
+	if(rv){
+		ASSERT(out->s_dat[out->s_len] == '\0');
+		/* We can skip the UTF-8 conversion occasionally XXX we do not (<> err??) */
+		/*if(n_pstate & n_PS_UNICODE){
+		}else*/if((idn_lc = n_iconv_onetime_cp(n_ICONV_NONE, ok_vlook(ttycharset), NIL, out->s_dat)) == NIL){
+			su_err_set(n_iconv_err);
 			rv = FAL0;
 			goto jleave;
+		}else{
+			out = n_string_assign_cp(out, idn_lc);
+			ilen = out->s_len;
+			n_string_cp(out);
 		}
-		out = n_string_assign_cp(out, idna_utf8);
-		ilen = out->s_len;
-		n_string_cp(out);
 	}
-# endif
 
 jleave:
 	if(lofi)

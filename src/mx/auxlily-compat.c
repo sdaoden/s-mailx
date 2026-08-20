@@ -305,8 +305,8 @@ n_nodename(boole mayoverride){
 
 			n_string_creat(&cnv);
 			if(!n_idna_to_ascii(&cnv, hn, UZ_MAX))
-				n_panic(_("The system hostname is invalid, IDNA conversion failed: %s\n"),
-					n_shexp_quote_cp(hn, FAL0));
+				n_panic(_("The system hostname is invalid, IDNA conversion failed: %s: %s\n"),
+					n_shexp_quote_cp(hn, FAL0), su_err_doc(-1));
 			sys_hostname = n_string_cp(&cnv);
 			n_string_drop_ownership(&cnv);
 			/*n_string_gut(&cnv);*/

@@ -1314,6 +1314,11 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			if(!(n_pstate & n_PS_ROOT))
 				n_PS_ROOT_BLOCK(ok_vset(SOCKS5_PROXY, *val));
 			break;
+		case ok_v_ttycharset:
+			n_pstate &= ~n_PS_UNICODE;
+			if((n_pstate & n_PS_UNICODE_LC) && !su_cs_cmp_case(*val, ok_vlook(charset_locale)))
+				n_pstate |= n_PS_UNICODE;
+			break;
 		case ok_b_typescript_mode:
 			ok_bset(colour_disable);
 			ok_bset(line_editor_disable);
