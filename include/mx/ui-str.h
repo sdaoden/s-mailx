@@ -88,7 +88,7 @@ struct mx_visual_info_ctx{
 #endif
 };
 
-/* setlocale(3), *ttycharset* etc. */
+/* setlocale(3), *ttycharset*, *charset-locale* etc. */
 EXPORT void mx_locale_init(void);
 
 /* Parse (onechar of) a given buffer, and generate infos along the way.
@@ -119,7 +119,7 @@ EXPORT char *mx_substr(char const *str, char const *sub);
 /* Only remove (remaining) control characters, reterminate, return length */
 EXPORT uz mx_del_cntrl(char *cp, uz len);
 
-/* If byte c is ASCII printable, put it in cbuf[0], else put '?' or su_UTF8_REPLACER in PSO_UNICODE mode, terminate */
+/* If byte c is ASCII printable, put it in cbuf[0], else put '?' or su_UTF8_REPLACER in PS_UNICODE mode, terminate */
 EXPORT uz mx_ui_makeprint_c(int c, char *cbuf);
 
 #ifdef mx_HAVE_NATCH_CHAR

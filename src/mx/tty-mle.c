@@ -1991,7 +1991,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){ /* {{{ TODO optimize */
 		}else{ /* XXX Should not be here <-> CText, ui_str.c */
 			char wbuf[8]; /* XXX magic */
 
-			if(n_psonce & n_PSO_UNICODE){
+			if(n_pstate & n_PS_UNICODE){
 				u32 wc;
 
 				wc = S(u32,tcp_left->tc_wc);
@@ -2417,7 +2417,7 @@ jemb:
 		}
 		tc.tc_count = S(u16,l);
 
-		if(UNLIKELY((n_psonce & n_PSO_ENC_MBSTATE) != 0)){
+		if(UNLIKELY((n_pstate & n_PS_ENC_MBSTATE) != 0)){
 			l = wcrtomb(&tc.tc_cbuf[l], L'\0', &ps);
 			if(LIKELY(l == 1))
 				/* Only NUL terminator */;

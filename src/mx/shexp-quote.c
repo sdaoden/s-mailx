@@ -320,7 +320,7 @@ jpush:
 				/* Not an ASCII character, take care not to split up multibyte sequences etc.  For the
 				 * sake of compile testing, do not enwrap in mx_HAVE_ALWAYS_UNICODE_LOCALE ||
 				 * mx_HAVE_NATCH_CHAR */
-				if(n_psonce & n_PSO_UNICODE){
+				if(n_pstate & n_PS_UNICODE){
 					u32 unic;
 					char const *ib2;
 					uz il2, il3;
@@ -358,8 +358,8 @@ jpush:
 				if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP))
 					u.store = n_string_push_buf(u.store, ib, il);
 #ifdef mx_HAVE_ICONV
-				else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
-							savestrbuf(ib, il))) != NIL){
+				else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE, n_ICONV_UTF8_NAME,
+							ok_vlook(ttycharset), savestrbuf(ib, il))) != NIL){
 					u32 unic;
 					char const *ib2;
 					uz il2, il3;

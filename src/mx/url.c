@@ -564,7 +564,7 @@ jurlp_err:
 		struct n_string idna;
 
 		if(!n_idna_to_ascii(n_string_creat_auto(&idna), urlp->url_host.s, urlp->url_host.l)){
-			n_err(_("URL host fails IDNA conversion: %s\n"), urlp->url_input);
+			n_err(_("URL host fails IDNA conversion: %s: %s\n"), urlp->url_input, su_err_doc(-1));
 			goto jleave;
 		}
 		urlp->url_host.s = n_string_cp(&idna);

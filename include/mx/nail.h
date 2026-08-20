@@ -321,7 +321,7 @@ enum n_shexp_state BITENUM_SPEC(u32){
          /*n_SHEXP_STATE_META_AMPERSAND |*/ n_SHEXP_STATE_META_SEMICOLON,
 
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16, /* \c notation with invalid arg. */
-   n_SHEXP_STATE_ERR_UNICODE = 1u<<17, /* Valid \[Uu] and !n_PSO_UNICODE */
+   n_SHEXP_STATE_ERR_UNICODE = 1u<<17, /* Valid \[Uu] and !n_PS_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1u<<18, /* Bad number (\[UuXx]) */
    n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<19, /* Invalid identifier */
    n_SHEXP_STATE_ERR_BADSUB = 1u<<20, /* Empty/bad ${}/() substitution */
@@ -410,7 +410,7 @@ do if(!su_state_has(su_STATE_REPRODUCIBLE) && V > mx_obsoletion){\
 #define mx_OBSOL_14_10_0(X) mx__OBSOL_BASE(X, 0x0E00A000u, "v14.10.0")
 #define mx_OBSOL2_14_10_0(X,Y) mx__OBSOL2_BASE(X, Y, 0x0E00A000u, "v14.10.0")
 
-/* Program state bits which may regularly fluctuate.
+/* Program state bits which may regulary fluctuate.
  * P.S.: most of these actually hacks, but better ways are hard to find */
 enum n_program_state BITENUM_SPEC(u32){
    n_PS_ROOT = 1u<<30, /* Temporary "bypass any checks" bit */
@@ -433,17 +433,21 @@ do{\
    n_PS_COMPOSE_MODE = 1u<<3, /* State machine recursed */
    n_PS_COMPOSE_FORKHOOK = 1u<<4, /* A hook running in a subprocess */
 
-   n_PS_HOOK_NEWMAIL = 1u<<7,
-   n_PS_HOOK = 1u<<8,
+   n_PS_HOOK_NEWMAIL = 1u<<5,
+   n_PS_HOOK = 1u<<6,
    n_PS_HOOK_MASK = n_PS_HOOK_NEWMAIL | n_PS_HOOK,
 
-   n_PS_EDIT = 1u<<9, /* Current mailbox no "system mailbox" TODO per-MB! */
+   n_PS_UNICODE = 1u<<7, /* *ttycharset*; *charset-locale* .. */
+   n_PS_UNICODE_LC = 1u<<8,
+   n_PS_ENC_MBSTATE = 1u<<9, /* .. is a stateful multibyte encoding */
+
+   n_PS_EDIT = 1u<<10, /* Current mailbox no "system mailbox" TODO per-MB! */
    /* After mailbox switch or `newmail': we have seen any command; if not set,
     * `next' will select message number 1 instead of "next good after dot" */
-   n_PS_SAW_COMMAND = 1u<<10,
-   n_PS_DID_PRINT_DOT = 1u<<11, /* Current message has been printed */
+   n_PS_SAW_COMMAND = 1u<<11,
+   n_PS_DID_PRINT_DOT = 1u<<12, /* Current message has been printed */
 
-   n_PS_SIGWINCH_PEND = 1u<<12, /* Need $COLUMNS/$LINES update (xxx atomic) */
+   n_PS_SIGWINCH_PEND = 1u<<13, /* Need $COLUMNS/$LINES update (xxx atomic) */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
    n_PS_MSGLIST_MASK = BITENUM_MASK(15, 15),
@@ -455,7 +459,7 @@ do{\
    n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<18,
 
    /* Bad hacks */
-   n_PS_SETFILE_OPENED = 1u<<10, /* (hack) setfile() opened a new box */
+   n_PS_SETFILE_OPENED = 1u<<11, /* (bit shared) setfile() opened a new box */
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */
    n_PS_READLINE_NL = 1u<<25, /* readline_input()+ saw a \n */
    n_PS_BASE64_STRIP_CR = 1u<<26, /* Go for text output, strip CR's */
@@ -465,24 +469,18 @@ do{\
 
 /* Various states set once, and first time messages or initializers */
 enum n_program_state_once{
-   /* We have five program states: (0) pre getopt() done, _GETOPT: pre rcfile
-    * loaded etc., _CONFIG_FILES: config files loaded etc, but -A not yet
-    * honoured, _CONFIG: only -X evaluation missing still, _STARTED: setup */
-   n_PSO_STARTED_GETOPT = 1u<<0,
-   n_PSO_STARTED_CONFIG_FILES = 1u<<1,
-   n_PSO_STARTED_CONFIG = 1u<<2,
-   n_PSO_STARTED = 1u<<3,
+   n_PSO_STARTED_EARLY = 1u<<0, /* Before command line parsing */
+   n_PSO_STARTED_GETOPT = 1u<<1, /* Before rcfile loading */
+   n_PSO_STARTED_CONFIG_FILES = 1u<<2, /* Before -A, umask, termcap, tty */
+   n_PSO_STARTED_CONFIG = 1u<<3, /* Before -X evaluation; -S freezing passed */
+   n_PSO_STARTED = 1u<<4, /* Fully done .. and go! */
 
    /* Exit request pending (quick) */
-   n_PSO_XIT = 1u<<4,
-   n_PSO_QUIT = 1u<<5,
+   n_PSO_XIT = 1u<<5,
+   n_PSO_QUIT = 1u<<6,
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
    /* *posix* requires us to exit with error if sending any mail failed */
-   n_PSO_SEND_ERROR = 1u<<6,
-
-   /* Pre _STARTED */
-   n_PSO_UNICODE = 1u<<7,
-   n_PSO_ENC_MBSTATE = 1u<<8,
+   n_PSO_SEND_ERROR = 1u<<7,
 
    n_PSO_SENDMODE = 1u<<9,
    n_PSO_INTERACTIVE = 1u<<10,

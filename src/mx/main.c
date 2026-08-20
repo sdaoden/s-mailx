@@ -764,6 +764,8 @@ main(int argc, char *argv[]){ /* {{{ */
 
 	a_main_startup(argc != 0 ? argv[0] : su_empty);
 
+	n_psonce |= n_PSO_STARTED_EARLY;
+
 	su_mem_set(&mc, 0, sizeof mc);
 	resfiles = a_RF_DEFAULT;
 	UNINIT(emsg, NIL);

@@ -257,7 +257,7 @@ FL s32      n_c_from_hex_base16(char const hex[2]);
 /* Return actual name of $DEAD */
 FL char const *mx_dead_name(void);
 
-/* Convert from / to *ttycharset* */
+/* Convert from / to *ttycharset*; su_err() on error (may be iconv err etc) */
 #ifdef mx_HAVE_IDNA
 FL boole n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen);
 FL boole n_idna_from_ascii(struct n_string *out, char const *ibuf, uz ilen);
