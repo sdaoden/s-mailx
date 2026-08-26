@@ -1694,6 +1694,10 @@ n_shexp_is_valid_varname(char const *name, boole forenviron){
 	NYD2_IN;
 
 	rv = FAL0;
+
+	if(*name == '\0')
+		goto jleave;
+
 	lc = '\0';
 
 	if(!forenviron){
