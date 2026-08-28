@@ -343,8 +343,8 @@ INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
 	no += notoadd;
 	if(no == 0)
 		return TRU1;
-	no = UZ_MAX / no;
-	if(no < size || (size != 1 && no == size))
+	notoadd = UZ_MAX / no;
+	if(notoadd < size || (size != 1 && notoadd == size))
 		return FAL0;
 #ifdef su_MEM_ALLOC_DEBUG
 	if(!su__mem_get_can_book(size, no))
