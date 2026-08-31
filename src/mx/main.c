@@ -1034,7 +1034,7 @@ jgetopt_done:
 	;
 
 	/* The normal arguments may be followed by MTA arguments after a "--"; however, -f may take off an argument,
-	 * too, and before that.  Since MTA arguments after "--" require *expandargv*, delay parsing off those options
+	 * too, and before that.  Since MTA arguments after "--" require *expandargv*, delay parsing of those options
 	 * until after the resource files are loaded... */
 	argc = avo.avo_argc;
 	argv = C(char**,avo.avo_argv);
