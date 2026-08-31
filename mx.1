@@ -280,7 +280,9 @@ over-the-wire.
 .It Fl b Ar addr , Fl Fl bcc Ns =..
 \*(SM Add
 .Ar addr
-to the list of blind (invisible) carbon copy recipients.
+to the list of blind (invisible) carbon copy
+.Mx -sx
+.Sx recipients
 May be used multiple times.
 (Also see
 .Sx "Sending mail, and non-interactive mode" ) .
@@ -354,7 +356,9 @@ then exit with status 0, with non-zero otherwise.
 .Mx
 .It Fl F
 \*(SM Save the message in a file named after the local part of the first
-recipient's address,
+.Mx -sx
+.Sx recipients Ns
+\&' address,
 overwriting
 .Va record ,
 but honouring
@@ -549,7 +553,10 @@ Newline (NL) and carriage-return (CR) are normalized to space (SP).
 parsed like a message header address field (see
 .Fl t ) ,
 and supporting the same modifiers,
-to the list of recipients targeted by
+to the list of
+.Mx -sx
+.Sx recipients
+targeted by
 .Ar field :
 supported are
 .Ql bcc ,
@@ -580,7 +587,10 @@ A header field can span multiple consecutive lines if follow lines start
 with (ignored) whitespace.
 .
 .Pp
-Recipients will be
+All
+.Mx -sx
+.Sx recipients
+are
 .Va expandaddr
 checked, and added onto the command line ones:
 .Ql To: ,
@@ -759,7 +769,10 @@ The
 .Ql shquote
 constraint of
 .Va expandaddr
-applies to recipient addresses on the command line.
+applies to all
+.Mx -sx
+.Sx recipients
+on the command line.
 For more see
 .Sx "Sending mail, and non-interactive mode" .
 .
@@ -876,7 +889,7 @@ and
 .Fl c
 on the command line.
 \*(OPally
-.Mx -ix "IDN"
+.Mx -ix IDN
 international domain names (IDN) are supported (turning apples
 .Ql \(:apfel.example
 into oranges
@@ -916,7 +929,9 @@ $ LC_ALL=C \*(xX -d -:/ -Sttycharset-detect \e
 .Ed
 .
 .Pp
-Plain user names and
+Of
+.Mx -ix recipients
+recipients plain user names and
 .Va metoo
 .Pf ( Ic alternates )
 are expanded through
@@ -1126,7 +1141,9 @@ shows a summary of available command escapes.
 Via
 .Ic ~^
 .Ql Fcc:
-header fields can be created that are not mangled like other recipients,
+header fields can be created that are not mangled like other
+.Mx -sx
+.Sx recipients ,
 so names with vertical bars, or commercial ats, or other special
 characters can be used; they are still subject to
 .Va expandaddr
@@ -1227,7 +1244,9 @@ covered changes will be reverted once compose mode is left.
 .\" .Ss "Reading mail, and more on interactive mode" {{{
 .Ss "Reading mail, and more on interactive mode"
 .
-When invoked without recipients
+When invoked without
+.Mx -sx
+.Sx recipients
 .Dq receive mode
 is entered, and if the standard input and output I/O channels both point
 to a terminal, in interactive mode with
@@ -1616,7 +1635,10 @@ can be created via
 .Va followup-to-add-cc
 whenever the user is placed in
 .Ql Mail-Followup-To: ,
-but is not a regular recipient of the message.
+but is not one of the regular
+.Mx -sx
+.Sx recipients
+of the message.
 .Va reply-to-swap-in
 tries to deal with the address rewriting that many mailing-lists nowadays
 perform to work around DMARC etc. standard imposed problems.
@@ -4448,7 +4470,10 @@ addrc s "\e"Hey, you\e", \e\e out\e\e there" <diet@exam.ple>
 .It Ic alias , unalias
 \*(NQ(a, una) Define or list, and remove, respectively, address aliases:
 personal distribution lists that map single names to none to multiple
-names (recipients), expanded recursively according to
+names
+.Mx -sx
+.Pf ( Sx recipients ) ,
+expanded recursively according to
 .Va metoo
 after
 .Sx "Compose mode"
@@ -5260,63 +5285,47 @@ message state.
 .\"{{{digmsg
 .Mx
 .It Ic digmsg
-\*(NQ\*(NF(first two arguments) An interface object for message
-inspection and modification.
+\*(NQ\*(NF(first two arguments)
+Message inspection and modification.
 An object can be
 .Cm create Ns
-d for a given message number; in
-.Sx "Compose mode"
-hyphen-minus
-.Ql -
-addresses the message draft.
-Objects can be
+d for a given message number, and be
 .Cm remove Ns
-d to release resources; leaving their
+d again to release resources (leaving the owning
 .Ic folder
-does so automatically.
-The optional third argument selects an output mode: circumflex
-.Ql ^
-stores results in the
-.Va ^
-multiplexer sub-variables
-.Va ^# , ^0 , ^1
-etc,
+does so automatically);
+The first argument is an object identifier in all other use cases.
+In
+.Sx "Compose mode"
+a special and directly usable draft object with identifier hyphen-minus
 .Ql -
-selects standard output (an interactive user mode).
-Because errors are handled by the I/O protocol,
+always exists (it may be
+.Dq overlayed ) ,
+also accessible via
+.Ic ~^ .
+.
+.Pp
+The output mode is selectable via optional third argument to
+.Cm create :
+circumflex
+.Ql ^
+chooses assignments to the
+.Va ^
+multiplexer variable (with sub-variables
+.Va ^# , ^0 , ^1
+etc, used by the
+.Sx "Compose mode"
+object by default), whereas hyphen-minus
+.Ql -
+selects an interactive input/output mode via standart I/O;
+input/output mode via dedicated temporary file descriptor is default.
+Errors are handled by the I/O protocol,
 .Va \&!
 and exit status
 .Va \&?
 are not managed; hard errors like I/O failures cannot be handled.
-The compose mode object (also see
-.Ic ~^ )
-may be used directly, without
-.Cm create
-(or after
-.Cm remove ) :
-it places results in the
-.Va ^
-multiplexer.
-In all other use cases the first argument is the object identifier.
 .
 .Pp
-The protocol consists of a command line followed by (a) response
-line(s), or according
-.Va ^
-multiplexer assignments.
-The first field of the first response line represents a status code
-which denotes success, whether result data is to be expected, and if,
-the format of the result data.
-Response data is quoted as necessary for consumption by
-.Ic readsh ,
-or
-.Ic vpospar
-and
-.Cm eval ,
-to name a few.
-.Sy Remarks:
-In I/O mode responses must be fully consumed before further commands can
-be issued in order to avoid deadlocks!
 In multiplexer assignment mode
 .Va ^0
 stores the status code, the remains are those sequential fields that
@@ -5324,11 +5333,66 @@ otherwise make up lines,
 .Dq missing
 optional fields are stored as empty results, also meaning that
 .Va ^1
-may hold what would make up optional status code line remains;
-values are not quoted,
+may hold what would make up optional status code line remains.
+Values are raw
+.Dq as-is ,
 .Va ^@
-is to be expanded within double quotes to achieve this result.
-The status codes are:
+is to be expanded within double quotes to achieve quoting.
+.
+.Pp
+The I/O mode protocol consists of a command line followed by (a)
+response line(s).
+The first field of the first response line represents a status code
+which denotes success, whether result data is to be expected, and if,
+the format of the result data.
+Result data is quoted
+.Pf ( Sx "Shell-style argument quoting" )
+as necessary for consumption by
+.Ic readsh ,
+or
+.Ic vpospar ,
+to name a few.
+.Sy Remarks:
+in I/O mode, responses must be fully consumed before further commands
+can be issued in order to avoid deadlocks!
+.
+.
+.Bd -literal -offset indent
+>msgno =
+se m1=$(($msgno - 1))
+
+digmsg create $msgno
+dig $msgno header list
+readall result
+echo $result
+\*(OU210 'Subject Date From To Message-ID'
+
+dig c $m1 ^
+dig $m1 h l
+ec $^#,$^0,$^1,$^2,$^3,
+\*(OU1,210,Subject Date From To Message-ID,,,
+
+dig $msgno h show To
+dig $m1 h s to
+ec $^#,$^0,$^1,$^2,$^3,
+\*(OU3,211,b@c,"a" <b@c>,
+readall x
+varshow x
+\*(OUset x=$'211 To\ene@f "d" <e@f>\eng@h g@h\en\en'
+
+dig remove $msgno
+dig $m1 h s DATE
+ec $^#,$^0,$^1,$^2,$^3,
+\*(OU2,212,Date,Wed, 25 Feb 2026 21:12:53 +0000,,
+dig r $m1
+
+dig c $msgno -
+dig $msgno h s subject
+\*(OU212 Subject
+\*(OU'Hello, world'
+\*(OU
+dig r $msgno
+.Ed
 .
 .
 .Pp
@@ -5338,13 +5402,24 @@ Status ok; the remains of the line are the result.
 .
 .It Ql 211
 Status ok; more status may optionally be appended.
-None to multiple address lines follow, terminated by an empty line.
-Address lines consist of two shell tokens, the plain address, for example
-.Ql bob@exam.ple ,
+None to multiple address lines (see
+.Mx -sx
+.Sx recipients
+and
+.Va expandaddr )
+follow, terminated by an empty line.
+The lines consist of two shell tokens, the plain address, for example
+.Ql bob@exam.ple
+or
+.Ql root
 followed by the unstripped address (see
 .Va fullnames ) :
-.Ql '(Lovely) Bob <bob@exam.ple>' .
-Non-addresses are indicated via the first token: hyphen-minus
+.Ql '(Lovely) Bob <bob@exam.ple>'
+or
+.Ql <root> ;
+.Sy Note
+when composing messages recipient addresses without domain may exist.
+Non-addresses are indicated by the first token: hyphen-minus
 .Ql -
 for files, vertical bar
 .Ql |
@@ -5552,7 +5627,7 @@ and
 .Ql Bcc:
 support the
 .Ql ?single
-modifier to enforce treatment as a single recipient, for example
+modifier to enforce treatment as a single email recipient, for example
 .Ql header insert To?single: 'exa, <m@ple>' ;
 the word
 .Ql single
@@ -5683,12 +5758,12 @@ for using this command in
 .Ic vexpr
 can be used to convert times, for example:
 .Bd -literal -offset indent
-dig cre 1 ^
+dig c 1 ^
 dig 1 epo
 if $^0 -eq 210
   vex date-utc "$^1"
 en
-dig rem 1
+dig r 1
 \*(OUdutc_year=2023 [..]
 .Ed
 .
@@ -5702,35 +5777,6 @@ Print the protocol version via
 .El
 .
 .
-.Pp
-A few examples:
-.
-.Bd -literal -offset indent
->msgno =
-
-digmsg create $msgno
-digm $msgno header list;  readall x;  echo $x
-\*(OU210 'Subject From To Message-ID References'
-digm $msgno header show Subject;readall x;ec $x
-\*(OU212 Subject 'Hello, world'
-digm remove $msgno
-
-digm cr $msgno -
-digm $msgno hea l
-\*(OU210 'Subject From To Message-ID References'
-digm $msgno hea sho Subject
-\*(OU212 Subject
-\*(OU'Hello, world'
-\*(OU
-digm rem $msgno
-
-digm c $msgno ^
-digm $msgno h l; ec $^#,$^0,$^1,$^2,$^*
-\*(OU1,210,Subject...,,Subject...
-digm $msgno h s subject; ec $^#,$^0,$^1,$^2,$^*
-\*(OU2,212,Subject,Hello, world,Subject Hello, world,
-digm r $msgno
-.Ed
 .\"}}}
 .
 .
@@ -6201,7 +6247,9 @@ will be used for display purposes.
 aka
 .Ic reply ,
 but save the message in a file named after the local part of the first
-recipient's address (like
+.Mx -sx
+.Sx recipients
+address (like
 .Fl F ) ,
 overwriting
 .Va record ,
@@ -6442,7 +6490,10 @@ Only the first part of a MIME multipart message is included but for
 .Pp
 This may generate the errors
 .Va ^ERR Ns -DESTADDRREQ
-if no recipient has been specified, or was rejected by
+if no
+.Mx -sx
+.Sx recipients
+were specified, or were rejected by
 .Va expandaddr
 policy,
 .Va ^ERR Ns -IO
@@ -7067,7 +7118,9 @@ but honouring
 .
 .Mx
 .It Ic mail
-\*(CM(m) Send mail to given (or asked for) list of recipients.
+\*(CM(m) Send mail to given (or asked for) list of
+.Mx -sx
+.Sx recipients .
 Unless
 .Va fullnames
 is set recipient addresses are skinned, and see
@@ -9049,7 +9102,9 @@ The same as
 .
 .Mx
 .It Ic ~b Ar name ...
-Add blind carbon copy recipients.
+Add blind carbon copy
+.Mx -sx
+.Sx recipients .
 .
 .Mx
 .It Ic ~c Ar name ...
@@ -9259,7 +9314,9 @@ Newline (NL) and carriage-return (CR) are normalized to space (SP).
 .
 .Mx
 .It Ic ~t Ar name ...
-Add direct recipients.
+Add direct
+.Mx -sx
+.Sx recipients .
 .
 .Mx
 .It Ic ~U Op Ar messages
@@ -9731,7 +9788,10 @@ an empty line finalizes the list.
 .
 .Mx
 .It Va askbcc
-\*(BO Prompt (interactively) for blind carbon copy recipients (when leaving
+\*(BO Prompt (interactively) for blind carbon copy
+.Mx -sx
+.Sx recipients
+(when leaving
 .Sx "Compose mode"
 with
 .Va askatend
@@ -9825,8 +9885,10 @@ classified as possible spam.
 .
 .Mx
 .It Va autobcc
-A list of blind carbon copy recipients that shall be added to each
-outgoing message.
+A list of blind carbon copy
+.Mx -sx
+.Sx recipients
+that shall be added to each outgoing message.
 .
 .Mx
 .It Va autocc
@@ -10282,7 +10344,10 @@ An empty value disables command escapes.
 .
 .Mx
 .It Va expandaddr
-Unless set only name and email address recipients are allowed
+Unless set only name and email address
+.Mx -sx
+.Sx recipients
+are allowed
 .Pf ( Sx "Sending mail, and non-interactive mode" ) ,
 otherwise all possible recipient types.
 May be set to a comma-separated case-insensitive list that is
@@ -11083,7 +11148,9 @@ See
 .
 .Mx
 .It Va mbox-fcc-and-pcc
-\*(BO File and pipe recipients
+\*(BO File and pipe
+.Mx -sx
+.Sx recipients
 .Pf ( Va expandaddr )
 receive a one-message MBOX file
 .Pf ( Ic folder ) ,
@@ -11219,7 +11286,9 @@ compared according to
 when performing
 .Ic alias
 expansion.
-(Implied for blind carbon copy recipients
+(Implied for blind carbon copy
+.Mx -sx
+.Sx recipients
 .Ql Bcc: . )
 Also passes file-based
 .Va mta Ns
@@ -12541,7 +12610,9 @@ forces usage of
 \*(BO If this variable is set the meaning of
 .Va record
 will be extended to cover messages which target only file and pipe
-recipients (see
+.Mx -sx
+.Sx recipients
+(see
 .Va expandaddr ) .
 These address types will not appear in recipient lists unless
 .Va add-file-recipients
@@ -12751,7 +12822,10 @@ Also see
 .It Va sendwait
 The
 .Va mta
-and command-pipe recipients (see
+and command-pipe
+.Mx -sx
+.Sx recipients
+(see
 .Sx "Sending mail, and non-interactive mode" )
 are executed asynchronously:
 only startup errors are detected, not delivery errors;
