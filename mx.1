@@ -5133,8 +5133,17 @@ and
 are identical.
 .
 .Bl -hang -width ".It Cm length"
-.It Cm length
-Query the argument length.
+.It Cm chr
+The character represented by the given (8-bit) number.
+For example
+.Ql csop chr 65
+is
+.Ql A .
+.It Cm find
+Search for the second in the first argument,
+show 0-based offset upon success.
+.Ql \&?
+modifier is supported.
 .
 .It Cm hash , Cm hash32
 Calculate a (32-bit) hash of the argument.
@@ -5143,11 +5152,18 @@ modifier is supported.
 These use Chris Torek's hash algorithm, the resulting hash value is
 bit mixed as shown by Bret Mulvey.
 .
-.It Cm find
-Search for the second in the first argument,
-show 0-based offset upon success.
-.Ql \&?
-modifier is supported.
+.It Cm length
+Query the argument length.
+.
+.It Cm ord
+The numeric value of the first byte, if any, of the given string.
+For example
+.Ql csop ord ABC
+is
+.Ql 65 ,
+.Ql csop ord ''
+is
+.Ql 0 .
 .
 .It Cm substring
 Create a substring of the first argument.
