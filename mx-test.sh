@@ -5168,80 +5168,97 @@ __EOT
 } #}}}
 
 t_csop() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	if have_feat cmd-csop; then :; else
 		t_echoskip '[!CMD_CSOP]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
 	#{{{
-	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-commandalias x echo '"$?/$^ERRNAME :$res:"'
-echo ' #-2'
+	<< '__EOT' $MAILX $ARGS > ./t1 2>$EX
+commandalias x ec '"$?/$^ERRNAME :$res:"'
+ec ' #-2'
 >res csop find you y;x
->res csop find you o;x
->res csop find you u;x
->res csop find you yo;x
->res csop find you ou;x
->res csop find you you;x
-echo ' #-1'
->res csop find you Y;x
->res csop find? you Y;x
->res csop find?case you O;x
->res csop find? you U;x
->res csop find?ca you yO;x
->res csop find? you oU;x
->res csop find? you YoU;x
-echo ' #0'
->res csop find 'bananarama' 'nana';x
->res csop find 'bananarama' 'bana';x
->res csop find 'bananarama' 'Bana';x
->res csop find 'bananarama' 'rama';x
-echo ' #1'
->res csop find? 'bananarama' 'nana';x
->res csop find? 'bananarama' 'bana';x
->res csop find? 'bananarama' 'Bana';x
->res csop find? 'bananarama' 'rama';x
-echo ' #2'
->res csop substring 'bananarama' 1;x
->res csop substring 'bananarama' 3;x
->res csop substring 'bananarama' 5;x
->res csop substring 'bananarama' 7;x
->res csop substring 'bananarama' 9;x
->res csop substring 'bananarama' 10;x
->res csop substring 'bananarama' 1 3;x
->res csop substring 'bananarama' 3 3;x
->res csop substring 'bananarama' 5 3;x
->res csop substring 'bananarama' 7 3;x
->res csop substring 'bananarama' 9 3;x
->res csop substring 'bananarama' 10 3;x
-echo ' #3'
->res csop substring 'bananarama' -1;x
->res csop substring 'bananarama' -3;x
->res csop substring 'bananarama' -5;x
->res csop substring 'bananarama' -7;x
->res csop substring 'bananarama' -9;x
->res csop substring 'bananarama' -10;x
->res csop substring 'bananarama' 1 -3;x
->res csop substring 'bananarama' 3 -3;x
->res csop substring 'bananarama' 5 -3;x
->res csop substring 'bananarama' 7 -3;x
->res csop substring 'bananarama' 9 -3;x
->res csop substring 'bananarama' 10 -3;x
-echo ' #4'
->res csop trim 'Cocoon  Cocoon';x
->res csop trim '  Cocoon  Cocoon 	  ';x
->res csop trim-front 'Cocoon  Cocoon';x
->res csop trim-front '  Cocoon  Cocoon 	  ';x
->res csop trim-end 'Cocoon  Cocoon';x
->res csop trim-end '  Cocoon  Cocoon 	  ';x
+>res cso f you o;x
+>res cso f you u;x
+>res cso f you yo;x
+>res cso f you ou;x
+>res cso f you you;x
+ec ' #-1'
+>res cso f you Y;x
+>res cso f? you Y;x
+>res cso f?case you O;x
+>res cso f? you U;x
+>res cso f?ca you yO;x
+>res cso f? you oU;x
+>res cso f? you YoU;x
+ec ' #0'
+>res cso f 'bananarama' 'nana';x
+>res cso f 'bananarama' 'bana';x
+>res cso f 'bananarama' 'Bana';x
+>res cso f 'bananarama' 'rama';x
+ec ' #1'
+>res cso f? 'bananarama' 'nana';x
+>res cso f? 'bananarama' 'bana';x
+>res cso f? 'bananarama' 'Bana';x
+>res cso f? 'bananarama' 'rama';x
+ec ' #2'
+>res cso substring 'bananarama' 1;x
+>res cso subs 'bananarama' 3;x
+>res cso su 'bananarama' 5;x
+>res cso s 'bananarama' 7;x
+>res cso s 'bananarama' 9;x
+>res cso s 'bananarama' 10;x
+>res cso s 'bananarama' 1 3;x
+>res cso s 'bananarama' 3 3;x
+>res cso s 'bananarama' 5 3;x
+>res cso s 'bananarama' 7 3;x
+>res cso s 'bananarama' 9 3;x
+>res cso s 'bananarama' 10 3;x
+ec ' #3'
+>res cso substring 'bananarama' -1;x
+>res cso s 'bananarama' -3;x
+>res cso s 'bananarama' -5;x
+>res cso s 'bananarama' -7;x
+>res cso s 'bananarama' -9;x
+>res cso s 'bananarama' -10;x
+>res cso s 'bananarama' 1 -3;x
+>res cso s 'bananarama' 3 -3;x
+>res cso s 'bananarama' 5 -3;x
+>res cso s 'bananarama' 7 -3;x
+>res cso s 'bananarama' 9 -3;x
+>res cso s 'bananarama' 10 -3;x
+ec ' #4'
+>res cso trim 'Cocoon  Cocoon';x
+>res cso t '  Cocoon  Cocoon 	  ';x
+>res cso trim-front 'Cocoon  Cocoon';x
+>res cso trim-f '  Cocoon  Cocoon 	  ';x
+>res cso trim-end 'Cocoon  Cocoon';x
+>res cso trim-e '  Cocoon  Cocoon 	  ';x
+ec ' #5'
+>res cso length abcde;x
+>res cso len abcd;x
+>res cso le abc;x
+>res cso l ab;x
+ec ' #6'
+>res cso chr 65;x
+>res cso ch 66;x
+>res cso c 42;x
+>res cso c 127;x
+>res cso c -1;x
+>res cso c 255;x
+>res cso c 256;x
+ec ' #7'
+>res cso ord A;x
+>res cso or B;x
+>res cso o *;x
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '1892119538 755'
+	ck 1 0 ./t1 '839864922 928' '2559609720 143'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_vexpr() { #{{{

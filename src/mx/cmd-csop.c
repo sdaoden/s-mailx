@@ -54,6 +54,8 @@ enum a_csop_cmd{
 	a_CSOP_CMD_TRIM,
 	a_CSOP_CMD_TRIM_FRONT,
 	a_CSOP_CMD_TRIM_END,
+	a_CSOP_CMD_ORD,
+	a_CSOP_CMD_CHR,
 	a_CSOP_CMD__MAX
 };
 
@@ -76,7 +78,7 @@ enum a_csop_flags{
 	a_CSOP_ERR = 1u<<0, /* There was an error */
 	a_CSOP_SOFTOVERFLOW = 1u<<1,
 	a_CSOP_ISNUM = 1u<<2,
-	a_CSOP_ISDECIMAL = 1u<<3, /* Print only decimal result */
+	a_CSOP_ISDECIMAL = 1u<<3, /* Print only decimal result TODO unused */
 	a_CSOP_MOD_CASE = 1u<<4, /* Case-insensitive / XY */
 	a_CSOP_MOD_MASK = a_CSOP_MOD_CASE,
 
@@ -117,7 +119,9 @@ static struct a_csop_subcmd const a_csop_subcmds[] = {
 	{a_X(a_CSOP_CMD_SUBSTRING, 0), "substring"},
 	{a_X(a_CSOP_CMD_TRIM, 0), "trim"},
 	{a_X(a_CSOP_CMD_TRIM_FRONT, 0), "trim-front"},
-	{a_X(a_CSOP_CMD_TRIM_END, 0), "trim-end"}
+	{a_X(a_CSOP_CMD_TRIM_END, 0), "trim-end"},
+	{a_X(a_CSOP_CMD_ORD, 0), "ord"},
+	{a_X(a_CSOP_CMD_CHR, 0), "chr"}
 
 #undef a_X
 };
@@ -270,9 +274,11 @@ jesubstring_len:
 
 		stf = n_STR_TRIM_BOTH;
 		if(0){
+			FALLTHRU
 	case a_CSOP_CMD_TRIM_FRONT:
 			stf = n_STR_TRIM_FRONT;
 		}else if(0){
+			FALLTHRU
 	case a_CSOP_CMD_TRIM_END:
 			stf = n_STR_TRIM_END;
 		}
@@ -288,6 +294,31 @@ jesubstring_len:
 		(void)n_str_trim(&trim, stf);
 		cscp->csc_varres = savestrbuf(trim.s, trim.l);
 		}break;
+
+	case a_CSOP_CMD_ORD:
+		cscp->csc_flags |= a_CSOP_ISNUM | a_CSOP_ISDECIMAL;
+		FALLTHRU
+	case a_CSOP_CMD_CHR:
+		if(cscp->csc_argv[0] == NIL || cscp->csc_argv[1] != NIL){
+			cscp->csc_flags |= a_CSOP_ERR;
+			cscp->csc_cmderr = a_CSOP_ERR_SYNOPSIS;
+			break;
+		}
+		cscp->csc_arg = cscp->csc_argv[0];
+
+		if(cscp->csc_cmderr == a_CSOP_CMD_ORD)
+			cscp->csc_lhv = S(u8,*cscp->csc_arg);
+		else if((su_idec_s64_cp(&cscp->csc_lhv, cscp->csc_arg, 0, NIL
+					) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)) ||
+				cscp->csc_lhv < 0 || cscp->csc_lhv > U8_MAX){
+			cscp->csc_flags |= a_CSOP_ERR;
+			cscp->csc_cmderr = a_CSOP_ERR_NUM_RANGE;
+		}else{
+			cscp->csc_iencbuf[0] = S(char,cscp->csc_lhv);
+			cscp->csc_iencbuf[1] = '\0';
+			cscp->csc_varres = cscp->csc_iencbuf;
+		}
+		break;
 	}
 
 	NYD2_OU;
