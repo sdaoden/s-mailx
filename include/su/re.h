@@ -49,7 +49,7 @@ enum su_re_setup_flags BITENUM_SPEC(u8){
 	su_RE_SETUP_EXT = 1u<<0, /*!< Use POSIX extended syntax. */
 	su_RE_SETUP_EXTENDED = su_RE_SETUP_EXT, /*!< Equals \r{su_RE_SETUP_EXT}. */
 	su_RE_SETUP_ICASE = 1u<<1, /*!< Match case-insensitively. */
-	su_RE_SETUP_NONL = 1u<<2, /*!< \em ANY matches do not match newlines. */
+	su_RE_SETUP_NONL = 1u<<2, /*!< \em{ANY} matches do not match newlines. */
 	su_RE_SETUP_TEST_ONLY = 1u<<3 /*!< Do not create match position reports. */
 };
 
