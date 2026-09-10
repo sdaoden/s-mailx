@@ -11426,10 +11426,12 @@ the MIME type cache).
 .
 .Mx
 .It Va mta
-Select an alternate Message-Transfer-Agent by either specifying the full
+Select an alternate Message-Transfer-Agent by either specifying the
 pathname of an executable (a
 .Ql file://
-prefix may be given), or \*(oPally a SMTP aka SUBMISSION protocol URL:
+prefix may be given, plain names undergo
+.Ev PATH
+search), or \*(oPally a SMTP aka SUBMISSION protocol URL:
 .Pp
 .Dl submissions://[user[:password]@]server[:port]
 .Pp
