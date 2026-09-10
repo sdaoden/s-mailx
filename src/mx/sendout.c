@@ -1914,8 +1914,12 @@ jstop:
       /* TODO Now with SPAWN_CONTROL we could actually (1) handle $DEAD only
        * TODO in the parent, and (2) report the REAL child error status!! */
       rv = (mx_child_wait(&cc) && cc.cc_exit_status == su_EX_OK);
-      if(!rv)
+      if(!rv){
+         n_err(_("Execution failed: status=%d, error=%s: %s\n"),
+            cc.cc_exit_status, su_err_doc(cc.cc_error),
+            n_shexp_quote_cp(mta, FAL0));
          goto jstop;
+      }
    }else
       rv = TRU1;
 
@@ -1937,7 +1941,7 @@ jkid:
    }else
 #endif
       execv(mta, UNCONST(char*const*,args));
-   mx_child_in_child_notify_error(&cc, su_err(), TRU1);
+   mx_child_in_child_notify_error(&cc, su_err_by_errno(), TRU1);
    /* unreached */
    rv = FAL0;
    goto jleave;
