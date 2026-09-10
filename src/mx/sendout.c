@@ -1940,7 +1940,7 @@ jkid:
       su_err_set(su_ERR_CANCELED);
    }else
 #endif
-      execv(mta, UNCONST(char*const*,args));
+      execvp(mta, UNCONST(char*const*,args));
    mx_child_in_child_notify_error(&cc, su_err_by_errno(), TRU1);
    /* unreached */
    rv = FAL0;
