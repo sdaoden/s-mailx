@@ -1717,7 +1717,7 @@ if feat_yes DOTLOCK; then
 fi
 
 if feat_yes NET_TEST; then
-	printf "#real below OPTIONAL_NET_TEST = net-test\n" >> $newmk
+	printf '#real below OPTIONAL_NET_TEST = net-test\n' >> $newmk
 fi
 
 for i in \
@@ -1734,9 +1734,9 @@ for i in \
 		\
 		cksum; do
 	eval j=\$$i
-	printf -- "$i = $j\n" >> $newmk
+	printf '%s = %s\n' "$i" "$j" >> $newmk
 	[ "$i" = MAKEFLAGS ] && continue # GNU make 4.4 embeds volatile info
-	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
+	printf '%s=%s;export %s\n' "$i" "$(quote_string $j)" "$i" >> $newenv
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
@@ -1786,23 +1786,23 @@ fi
 for i in $OPT_ANYEVAL; do
 	eval j=\$$i
 	if [ "$j" = 0 ]; then
-		printf "\t/* #undef $i */\n" >> $newh
+		printf '\t/* #undef %s */\n' "$i" >> $newh
 	else
 		[ "$j" = require ] && j=1 # lesser possibilities
-		printf "\t/* #define $i */\n" >> $newh
+		printf '\t/* #define %s */\n' "$i" >> $newh
 	fi
-	printf -- "$i = $j\n" >> $newmk
-	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
+	printf '%s = %s\n' "$i" "$j" >> $newmk
+	printf '%s=%s;export %s\n' "$i" "$(quote_string $j)" "$i" >> $newenv
 done
 for i in $VAL_ANYEVAL; do
 	eval j=\$$i
 	if { echo "$i" | $grep $H_VAL_BLACKLIST >/dev/null 2>&1; }; then
 		:
 	else
-		printf "#define $i \"$j\"\n" >> $newh
+		printf '#define %s "%s"\n' "$i" "$j" >> $newh
 	fi
-	printf -- "$i = $j\n" >> $newmk
-	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
+	printf '%s = %s\n' "$i" "$j" >> $newmk
+	printf '%s=%s;export %s\n' "$i" "$(quote_string $j)" "$i" >> $newenv
 done
 
 _ocf=$CFLAGS _old=$LDFLAGS
@@ -1815,7 +1815,7 @@ for i in \
 		DEBUG_IN_EXTERNAL_FILE \
 		; do
 	eval j="\$$i"
-	printf -- "$i=%s;export $i\n" "$(quote_string $j)" >> $newenv
+	printf '%s=%s;export %s\n' "$i" "$(quote_string $j)" "$i" >> $newenv
 done
 CFLAGS=$_ocf LDFLAGS=$_old
 
@@ -3841,7 +3841,7 @@ for i in \
 		SU_CFLAGS SU_CXXFLAGS SU_INCS SU_LDFLAGS SU_LIBS \
 		; do
 	eval j=\$$i
-	printf -- "$i = $j\n" >> $mk
+	printf '%s = %s\n' "$i" "$j" >> $mk
 done
 
 echo >> $mk
@@ -3936,7 +3936,7 @@ do
 	[ -z "$sdoc" ] && continue
 	sopt="$(echo $opt | $tr '[A-Z]_' '[a-z]-')"
 	feat_yes "$opt" && sign=+ || sign=-
-	printf -- "$sep$sign$sopt" >> "$h"
+	printf '%s%s%s' "$sep" "$sign" "$sopt" >> "$h"
 	sep=','
 	printf ' %s %s: %s\n' "$sign" "$sopt" "$sdoc" >> "$tmp"
 done
@@ -3955,14 +3955,14 @@ if feat_yes DOTLOCK; then
 	printf 'OPTIONAL_PS_DOTLOCK = $(VAL_PS_DOTLOCK_HELPER)\n' >> "$mk"
 	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh ps-dotlock/*.c) >> "$mk"
 else
-	printf "OPTIONAL_PS_DOTLOCK =\n" >> "$mk"
+	printf 'OPTIONAL_PS_DOTLOCK =\n' >> "$mk"
 fi
 
 if feat_yes NET_TEST; then
 	printf 'OPTIONAL_NET_TEST = net-test\n' >> "$mk"
 	(cd "$SRCDIR"; $SHELL ../mk/make-rules.sh net-test/*.c) >> "$mk"
 else
-	printf "OPTIONAL_NET_TEST =\n" >> "$mk"
+	printf 'OPTIONAL_NET_TEST =\n' >> "$mk"
 fi
 
 # Not those SU sources with su_USECASE_MX_DISABLED
