@@ -1710,10 +1710,10 @@ printf \
 # Add the known utility and some other variables
 VAL_PS_DOTLOCK_HELPER=$VAL_SID$VAL_MAILX-dotlock-helper
 printf '#define VAL_PS_DOTLOCK_HELPER "%s"\n' "$VAL_PS_DOTLOCK_HELPER" >> $newh
-printf 'VAL_PS_DOTLOCK_HELPER = \$(VAL_UAGENT)-dotlock-helper\n' >> $newmk
+printf 'VAL_PS_DOTLOCK_HELPER = $(VAL_UAGENT)-dotlock-helper\n' >> $newmk
 printf 'VAL_PS_DOTLOCK_HELPER=%s;export VAL_PS_DOTLOCK_HELPER\n' "$VAL_PS_DOTLOCK_HELPER" >> $newenv
 if feat_yes DOTLOCK; then
-	printf '#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK_HELPER)\n' >> $newmk
+	printf '#real below OPTIONAL_PS_DOTLOCK = $(VAL_PS_DOTLOCK_HELPER)\n' >> $newmk
 fi
 
 if feat_yes NET_TEST; then
