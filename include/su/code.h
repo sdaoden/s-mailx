@@ -166,14 +166,16 @@
   * extensions, the \SU checkers can be disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
  /*! The seed source for the built-in \r{RANDOM} seed object.
-  * Inspected during \SU build time, and must be either \c{su_RANDOM_SEED_BUILTIN} (the default),
+  * The value must either be \c{su_RANDOM_SEED_BUILTIN} (the default),
   * \c{su_RANDOM_SEED_GETENTROPY} for \c{gentropy(3p)} seeding,
   * \c{su_RANDOM_SEED_GETRANDOM} for \c{getrandom(2/3)} seeding
   * (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
-  * and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
+  *  and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
   * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
-  * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
-  * the latter only in special builds, of course. */
+  * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN},
+  *  a \r{su_random_generate_fun} that must be available during build.
+  *
+  * \remarks{These are internal constants which do not exist in an accessible namespace.} */
 # define su_RANDOM_SEED
 # define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
@@ -1427,8 +1429,8 @@ enum su_state_create_flags BITENUM_SPEC(u32){
 	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET} (only with \r{su_MEM_ALLOC_DEBUG}).
 	 * It favours \c{0x00} and \c{0xFF} over other random numbers.
 	 * Implies \c{CREATE_RANDOM}.
-	 * \remarks{As this creates a random number, a \r{su_RANDOM_SEED} of \c{su_RANDOM_SEED_HOOK} must be carefully
-	 * written due to hen-and-egg.} */
+	 * \remarks{Because this creates a random number, a possibly chosen \c{su_RANDOM_SEED_HOOK} \r{su_RANDOM_SEED}
+	 * must be careful to avoid hen-and-egg problems.} */
 	su_STATE_CREATE_RANDOM_MEM_FILLER = su_STATE_CREATE_RANDOM | su__STATE_CREATE_RANDOM_MEM_FILLER,
 	su_STATE_CREATE_MD = 1u<<2, /*!< (V1) Initialize \r{MD}. */
 

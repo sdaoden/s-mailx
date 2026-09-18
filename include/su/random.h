@@ -146,7 +146,7 @@ EXPORT void su_random_gut(struct su_random *self);
  * that is to say that a hooked random generator is not assumed to need seeding at all.)
  *
  * The internal built-in seeder uses the algorithm of \r{su_RANDOM_TYPE_VSP},
- * but is itself seeded via the \r{su_RANDOM_SEED} source chosen at build time;
+ * but is itself seeded via the build-time chosen \r{su_RANDOM_SEED} (a hidden symbol);
  * see \r{su_random_builtin_seed()}, and \r{su_random_builtin_set_reseed_after()}. */
 EXPORT boole su_random_seed(struct su_random *self, struct su_random *with_or_nil);
 
@@ -159,7 +159,8 @@ EXPORT boole su_random_generate(struct su_random *self, void *buf, uz len);
  * It will be used by all newly created objects, as long as those exist.
  * If \a{on_generate} is \NIL the default built-in behavior is (re)established,
  * and be picked up by newly created objects.
- * (If \r{su_RANDOM_SEED} is \c{su_RANDOM_SEED_HOOK} the default behavior is redirection through a hook already.)
+ * (If the build-time \r{su_RANDOM_SEED} is \c{su_RANDOM_SEED_HOOK}, both hidden constants,
+ * the default behavior is redirection through a hook already.)
  * \ESTATE_RV; the internal machinery is instantiated as necessary, which may fail; the internal seeder object
  * is not setup: that may still fail later (but see \r{su_STATE_CREATE_RANDOM}).
  *
