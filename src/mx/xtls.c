@@ -2038,7 +2038,7 @@ jleave:
    return rv;
 }
 
-#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3
+#if defined mx_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3
 FL boole
 mx_random_hook(void **cookie, void *buf, uz len){
    NYD2_IN;
@@ -2084,7 +2084,7 @@ mx_random_hook(void **cookie, void *buf, uz len){
    NYD2_OU;
    return TRU1;
 }
-#endif /* su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3 */
+#endif /* defined mx_RANDOM_SEEK_HOOK && mx_RANDOM_SEED_HOOK == 3 */
 
 FL boole
 n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */

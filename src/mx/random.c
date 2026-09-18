@@ -137,7 +137,7 @@ mx_random_create_cp(uz len, u32 *reprocnt_or_nil){
 	return dat;
 }
 
-#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
+#if defined mx_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
 boole
 mx_random_hook(void **cookie, void *buf, uz len){
 	NYD2_IN;
@@ -172,7 +172,7 @@ mx_random_hook(void **cookie, void *buf, uz len){
 	NYD2_OU;
 	return TRU1;
 }
-#endif /* su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3 */
+#endif /* defined mx_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3 */
 
 #include "su/code-ou.h"
 #undef su_FILE

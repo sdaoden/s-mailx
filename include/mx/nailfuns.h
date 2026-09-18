@@ -1265,7 +1265,7 @@ FL int c_tls(void *vp);
 
 #ifdef mx_HAVE_XTLS
 /* Our su_random RAND_bytes(3) hook */
-# if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3
+# if defined mx_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3
 FL boole mx_random_hook(void **cookie, void *buf, uz len);
 # endif
 

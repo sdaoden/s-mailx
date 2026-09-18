@@ -31,7 +31,7 @@ EXPORT char *mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil);
 EXPORT char *mx_random_create_cp(uz len, u32 *reprocnt_or_nil);
 
 /* Any non-TLS su_random hook */
-#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
+#if defined mx_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
 EXPORT boole mx_random_hook(void **cookie, void *buf, uz len);
 #endif
 
