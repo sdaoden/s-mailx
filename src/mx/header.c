@@ -49,6 +49,7 @@
 #include "mx/cmd.h"
 #include "mx/compat.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/mime-old.h"
 #include "mx/mime-probe.h"
 #include "mx/names.h"

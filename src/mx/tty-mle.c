@@ -1321,6 +1321,7 @@ jleave:
 static void
 a_tty_line_config(struct a_tty_line *tlp, boole isfirst){ /* {{{ */
 	NYD2_IN;
+	UNUSED(isfirst);
 
 	/* *line-editor-config* */
 	/* C99 */{
