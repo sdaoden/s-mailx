@@ -1516,8 +1516,8 @@ touch(struct message *mp){
 FL int
 n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
       int *vector, int flags, struct mx_cmd_arg **capp_or_nil){
-   int *ip, mc;
    struct message *mp;
+   int *ip, mc;
    NYD_IN;
 
 	n_pstate &= ~n_PS_GABBY_FUZZ;
@@ -1525,13 +1525,23 @@ n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
    a_msg_list_last_saw_d = a_msg_list_saw_d;
    a_msg_list_saw_d = FAL0;
 
-   *vector = 0;
    if(capp_or_nil != NIL)
       *capp_or_nil = NIL;
-   if(*buf == '\0'){
-      mc = 0;
+
+   if(vector == NIL){
+      n_pstate_err_no = su_ERR_NOMSG;
+      mc = -1;
       goto jleave;
    }
+   *vector = 0;
+
+   mc = 0;
+
+   if(msgCount == 0)
+      goto jleave;
+
+   if(*buf == '\0')
+      goto jleave;
 
    /* TODO Parse the message spec into an ARGV; this should not happen here,
     * TODO but instead cmd_arg_parse() should feed in the list of parsed tokens

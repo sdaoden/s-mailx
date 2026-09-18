@@ -799,7 +799,8 @@ FL struct message *setdot(struct message *mp, boole set_ps_did_print_dot);
 FL void        touch(struct message *mp);
 
 /* Convert user message spec. to message numbers and store them in vector,
- * which should be capable to hold msgCount+1 entries (n_msgvec ASSERTs this).
+ * which should be capable to hold msgCount+1 entries (n_msgvec ASSERTs this,
+ * but can be NIL <> folder_setmsize()).
  * flags is cmd_arg_ctx.cac_msgflag==cmd_desc.cd_mflags_o_minargs==enum mflag.
  * If capp_or_nol is not NIL then the last (string) token is stored in here
  * and not interpreted as a message specification; in addition, if only one
@@ -807,12 +808,13 @@ FL void        touch(struct message *mp);
  * this is used to implement CMD_ARG_DESC_MSGLIST_AND_TARGET).
  * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_nil=NIL].
  * skip_aka_dryrun is passed through to shell expression scanner.
- * Returns the count of messages picked up or -1 on error */
+ * Returns count of messages picked up or -1 on error, including ERR_NOMSG
+ * when there is no folder open (as opposed to 0 return without match) */
 FL int n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun,
       char const *buf, int *vector, int flags,
       struct mx_cmd_arg **capp_or_nil);
 
-/* Find the first message whose flags&m==f and return its message number */
+/* Find first message whose flags&m==f and return its message number, or 0 */
 FL int         first(int f, int m);
 
 /* Mark the named message by setting its mark bit */

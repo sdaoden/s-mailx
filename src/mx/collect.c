@@ -1015,13 +1015,14 @@ a_coll_forward(char const *ms, int f){ /* {{{ */
 
 	if((rv = n_getmsglist(a_coll->cc_scope, FAL0, ms, n_msgvec, 0, NIL)) < 0){
 		rv = n_pstate_err_no; /* XXX not really, should be handled there! */
-		goto jleave;
+		goto jenomsg;
 	}
 	if(rv == 0){
 		*n_msgvec = first(0, MMNORM); /* TODO integrate mode into getmsglist */
 		if(*n_msgvec == 0){
-			n_err(_("No appropriate messages\n"));
 			rv = su_ERR_NOMSG;
+jenomsg:
+			n_err(_("Cannot forward message(s): %s\n"), V_(su_err_doc(rv)));
 			goto jleave;
 		}
 		rv = 1;
