@@ -12630,7 +12630,7 @@ __EOT
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>$EX
 	ck_ex0 2-estat
 	$cat ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '1798962421 8672' '3575876476 49'
+	ck 2-nohtml - ./t2-nohtml '1798962421 8672' '1816134272 103'
 	ck 3-nohtml - ./t3 '1327297557 4917'
 
 	if have_feat filter-html-tagsoup; then
@@ -12639,7 +12639,7 @@ __EOT
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>$EX
 		ck_ex0 2-html-estat
 		$cat ./t2-x >> t2-html
-		ck 2-html - ./t2-html '2767187033 8612' '3575876476 49'
+		ck 2-html - ./t2-html '2767187033 8612' '1816134272 103'
 		ck 3-html - ./t3 '1327297557 4917'
 
 		> ./t3
@@ -12647,7 +12647,7 @@ __EOT
 			-Smta=test://t2-html-cols ./t.mbox >./t2-x 2>$EX
 		ck_ex0 2-html-cols-estat
 		$cat ./t2-x >> t2-html-cols
-		ck 2-html-cols - ./t2-html-cols '1636985055 8928' '3575876476 49'
+		ck 2-html-cols - ./t2-html-cols '1636985055 8928' '1816134272 103'
 		ck 3-html-cols - ./t3 '1585159009 5147'
 	else
 		t_echoskip '[!{2,3}-html{,-cols}:!FILTER_HTML_TAGSOUP]'
