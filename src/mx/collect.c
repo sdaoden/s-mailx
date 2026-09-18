@@ -1013,24 +1013,23 @@ a_coll_forward(char const *ms, int f){ /* {{{ */
 	int rv, *msgvec;
 	NYD_IN;
 
-	if((rv = n_getmsglist(a_coll->cc_scope, FAL0, ms, n_msgvec, 0, NIL)) < 0){
+	msgvec = n_msgvec;
+
+	if((rv = n_getmsglist(a_coll->cc_scope, FAL0, ms, msgvec, 0, NIL)) < 0){
 		rv = n_pstate_err_no; /* XXX not really, should be handled there! */
 		goto jenomsg;
 	}
 	if(rv == 0){
-		*n_msgvec = first(0, MMNORM); /* TODO integrate mode into getmsglist */
-		if(*n_msgvec == 0){
+		msgvec[0] = first(0, MMNORM); /* TODO integrate mode into getmsglist */
+		if(msgvec[0] == 0){
 			rv = su_ERR_NOMSG;
 jenomsg:
 			n_err(_("Cannot forward message(s): %s\n"), V_(su_err_doc(rv)));
 			goto jleave;
 		}
+		msgvec[1] = 0;
 		rv = 1;
 	}
-
-	msgvec = su_AUTO_TALLOC(int, rv +1);
-	su_mem_copy(msgvec, n_msgvec, sizeof(*msgvec) * S(uz,rv));
-	msgvec[rv] = 0;
 
 	STRUCT_ZERO(struct a_coll_quote_ctx, &cqc);
 	cqc.cqc_membag_persist = su_mem_bag_top(su_MEM_BAG_SELF);
