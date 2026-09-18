@@ -1528,20 +1528,14 @@ n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
    if(capp_or_nil != NIL)
       *capp_or_nil = NIL;
 
-   if(vector == NIL){
-      n_pstate_err_no = su_ERR_NOMSG;
-      mc = -1;
+   /* Note: we cannot shortcut, cmd_arg_parse() may;re-inject;tokens */
+   if(vector != NIL)
+      *vector = 0;
+
+   if(*buf == '\0'){
+      mc = 0;
       goto jleave;
    }
-   *vector = 0;
-
-   mc = 0;
-
-   if(msgCount == 0)
-      goto jleave;
-
-   if(*buf == '\0')
-      goto jleave;
 
    /* TODO Parse the message spec into an ARGV; this should not happen here,
     * TODO but instead cmd_arg_parse() should feed in the list of parsed tokens
@@ -1560,7 +1554,16 @@ n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
       cac.cac_inlen = UZ_MAX;
       cac.cac_msgflag = flags;
       cac.cac_msgmask = 0;
-      if(!mx_cmd_arg_parse(&cac, scope, skip_aka_dryrun)){
+
+      mc = mx_cmd_arg_parse(&cac, scope, skip_aka_dryrun);
+
+      if(vector == NIL){
+         n_pstate_err_no = su_ERR_NOMSG;
+         mc = -1;
+         goto jleave;
+      }
+
+      if(!mc){
          mc = -1;
          goto jleave;
       }else if(cac.cac_no == 0){
