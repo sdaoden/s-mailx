@@ -12721,7 +12721,7 @@ body
 !.
 __EOT
 	#}}}
-	ck 4 0 ./t4 "3422189437 200"
+	ck 4 0 ./t4 '3422189437 200'
 	ck 5 - ./t5 '1818580177 59' '3860094852 183'
 
 	# Modifiers and whitespace indulgence; first matches t_eval():1
@@ -12800,6 +12800,22 @@ __EOT
 	< ./txitquit.in $MAILX $ARGS -Smta=test://txitquit.mbox -Sescape=! -Scmd=: -Scall=call > ./txitquit-5 2>$E0
 	cke0 xitquit-5 0 ./txitquit-5 '1559643201 26'
 	ck xitquit-5-mbox - ./txitquit.mbox '823956539 99'
+
+	#{{{ ~[FfMmQUu] without open folder
+	<< '__EOT' $MAILX $ARGS -Smta=test://tfwdnobox -Sescape=! -st a@b >./tfwdnobox 2>$EX
+po.
+!F1
+!f2
+!M3
+!m4
+!Q5
+!U6
+!u7
+.oh
+!.
+__EOT
+	#}}}
+	ck fwdnobox 0 ./tfwdnobox '3430165980 116' '2683711764 371'
 
 	t_epilog "$@"
 } #}}}
