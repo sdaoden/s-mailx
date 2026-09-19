@@ -843,33 +843,26 @@ jwhite:
 	n_pstate &= ~n_PS_GABBY_FUZZ;
 	switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
 	case mx_CMD_ARG_TYPE_MSGLIST:
-		/* Message list defaulting to nearest forward legal message */
-		if(n_msgvec == NIL)
-			goto jmsglist_err;
-		if((c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0), line.s, n_msgvec, cdp->cd_mflags_o_minargs,
-				NIL)) < 0){
-			nerrn = su_ERR_NOMSG;
+	case mx_CMD_ARG_TYPE_NDMLIST:
+		/* Message list defaulting to nearest forward legal message / with no defaults & no error if none */
+		c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0), line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL);
+		if(c < 0){
+ jmsglist_err:
+			if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+				n_err(_("No applicable messages\n"));
+			su_err_set(n_pstate_err_no = nerrn = su_ERR_NOMSG);
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
-		}
-		if(c == 0){
+		}else if(c == 0 && (cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK) != mx_CMD_ARG_TYPE_NDMLIST){
 			if((n_msgvec[0] = first(cdp->cd_mflags_o_minargs, cdp->cd_mmask_o_maxargs)) != 0){
 				c = 1;
 				n_msgmark1 = &message[n_msgvec[0] - 1];
-			}else{
-jmsglist_err:
-				if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
-					n_err(_("No applicable messages\n"));
-				nerrn = su_ERR_NOMSG;
-				flags |= /*a_NO_ERRNO |*/ a_IS_GABBY_FUZZ;
-				break;
-			}
+			}else
+				goto jmsglist_err;
 		}
 
-jmsglist_go:
 		if(n_pstate & n_PS_GABBY_FUZZ)
 			flags |= a_IS_GABBY_FUZZ;
-
 		/* C99 */{
 			int *mvp;
 
@@ -885,18 +878,6 @@ jmsglist_go:
 			ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		}
 		break;
-
-	case mx_CMD_ARG_TYPE_NDMLIST:
-		/* Message list with no defaults, but no error if none exist */
-		if(n_msgvec == NIL)
-			goto jmsglist_err;
-		if((c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0),line.s, n_msgvec, cdp->cd_mflags_o_minargs,
-				NIL)) < 0){
-			nerrn = su_ERR_NOMSG;
-			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
-			break;
-		}
-		goto jmsglist_go;
 
 	case mx_CMD_ARG_TYPE_STRING:
 		/* Just the straight string, old style, with leading blanks removed */
