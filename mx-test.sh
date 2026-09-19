@@ -10688,14 +10688,14 @@ __EOT
 	#}}}
 
 	< ./t.p $MAILX $ARGS -S p=mbox -S o=-f -S f=% > ./t1 2>$EX
-	ck 1-1 0 ./t1 '3220621126 7129' '3778887936 129'
+	ck 1-1 0 ./t1 '2228916673 7126' '3778887936 129'
 	[ -f ./t.mbox ]; ck_exx 1-2
 	ck 1-3 - ./t-mbox.mbox '2668747897 3760'
 	ck 1-4 - ./t-save.mbox '3292035903 131'
 
-	${rm} -f ./t.mbox ./t-mbox.mbox ./t-save.mbox
+	$rm -f ./t.mbox ./t-mbox.mbox ./t-save.mbox
 	< ./t.p $MAILX $ARGS -S p=mbox -S o=-f -S f=%:mbox://t.mbox > ./t2 2>$EX
-	ck 2-1 0 ./t2 '3220621126 7129' '3778887936 129'
+	ck 2-1 0 ./t2 '2228916673 7126' '3778887936 129'
 	[ -f ./t.mbox ]; ck_exx 2-2
 	ck 2-3 - ./t-mbox.mbox '2668747897 3760'
 	ck 2-4 - ./t-save.mbox '3292035903 131'
@@ -10704,7 +10704,7 @@ __EOT
 
 	if have_feat maildir; then
 		< ./t.p $MAILX $ARGS -S p=maildir -S o=-d -S f=% > ./t3 2>$EX
-		ck 3-1 0 ./t3 '3612654491 7258' '3778887936 129'
+		ck 3-1 0 ./t3 '4156838174 7255' '3778887936 129'
 		[ -d ./t.maildir ] &&
 			[ -d ./t.maildir/tmp ] && [ -d ./t.maildir/new ] && [ -d ./t.maildir/cur ]; ck_exx 3-2
 		#ck 3-3 - ./t.maildir
@@ -10713,7 +10713,7 @@ __EOT
 
 		$rm -rf ./t.maildir ./t-mbox.maildir ./t-save.maildir
 		< ./t.p $MAILX $ARGS -S p=maildir -S o=-d -S f=%:maildir://t.maildir > ./t4 2>$EX
-		ck 4-1 0 ./t4 '3612654491 7258' '3778887936 129'
+		ck 4-1 0 ./t4 '4156838174 7255' '3778887936 129'
 		[ -d ./t.maildir ] &&
 			[ -d ./t.maildir/tmp ] && [ -d ./t.maildir/new ] && [ -d ./t.maildir/cur ]; ck_exx 4-2
 		#ck 4-3 - ./t.maildir
@@ -10727,7 +10727,7 @@ __EOT
 
 # TODO`seen' for "states" test above
 	# touch,mbox,hold,preserve {{{
-	$cat << '__EOT' | $MAILX $ARGS > ./t5 2>$EX
+	<< '__EOT' $MAILX $ARGS > ./t5 2>$EX
 \if ! [ -N hold && -N keep && -N keepsave ]; \xit 100; \en
 commandalias x ec '"$?/$^ERRNAME"'
 ec =1;se MBOX=./t5-2m;Fi ./t.tpl;x;c * ./t5-2;x;fi ./t5-2;x;ho1;mb1;tou1;x;tou2;ho2;mb2;x;mb3;tou3;ho3;x;pre3;x;Fi nix
@@ -10749,7 +10749,7 @@ __EOT
 } #}}}
 
 t_specifying_sorting() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	{
 		gpm fr a1 to 2 su s1 bo b1
@@ -10766,7 +10766,7 @@ t_specifying_sorting() { #{{{
 	ck tpl - ./t.tpl '2948526833 4886'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t1 2>${E0}
+	<<- '__EOT' $MAILX $ARGS -Rf ./t.tpl > ./t1 2>$E0
 ec def;h
 ec date;sort date;h
 ec from;sort from;h
@@ -10789,8 +10789,8 @@ ec to;sort to;h
 	cke0 1 0 ./t1 '2781961062 6444'
 
 	#{{{
-	${cp} ./t.tpl ./t.tpl.mod
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -f ./t.tpl.mod > ./t2 2>${EX}
+	$cp ./t.tpl ./t.tpl.mod
+	<<- '__EOT' $MAILX $ARGS -f ./t.tpl.mod > ./t2 2>$EX
 commandalias x echo '"$?/$^ERRNAME"'
 ec 1,`,`
 sea 1;x
@@ -10897,11 +10897,11 @@ sea :d;x
 # TODO :s, :S, :L, :l
 	__EOT
 	#}}}
-	ck 2 0 ./t2 '3460117684 11416' '3869828139 559'
+	ck 2 0 ./t2 '3460117684 11416' '2513170272 1118'
 
 	if have_feat regex; then
 		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t3 2>${E0}
+		<<- '__EOT' $MAILX $ARGS -Rf ./t.tpl > ./t3 2>$E0
 commandalias x echo '"$?/$^ERRNAME"'
 ec @
 sea @hey.*@;x
@@ -10922,7 +10922,7 @@ sea @>@^b10?$;x
 	#	t_echoskip '[!4:!IMAP-SEARCH]'
 	# fi
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 #}}}
 

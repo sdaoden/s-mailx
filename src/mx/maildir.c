@@ -1106,7 +1106,7 @@ jerr:
 	if(!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0){
 		if(mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
 			n_err(_("No mail for %s at %s\n"), who, n_shexp_quote_cp(name, FAL0));
-		su_err_set(su_ERR_NODATA);
+		su_err_set(su_ERR_NOMSG);
 		i = 1;
 		goto jleave;
 	}

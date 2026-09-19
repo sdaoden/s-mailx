@@ -802,9 +802,9 @@ jshexp_restart_inner:
 			 * TODO And consumes too much memory */
 			ASSERT(shin.s[shin.l] == '\0');
 			n_pstate_err_no = su_ERR_NONE;
-			if(n_getmsglist(scope, skip_aka_dryrun, shin.s,
-					(ncap.ca_arg.ca_msglist = su_AUTO_CALLOC_N(sizeof *ncap.ca_arg.ca_msglist, msgCount +1)),
-					cacp->cac_msgflag, target_argpp) < 0){
+			ncap.ca_arg.ca_msglist = su_AUTO_CALLOC_N(sizeof *ncap.ca_arg.ca_msglist, msgCount +1);
+			if(n_getmsglist(scope, skip_aka_dryrun, shin.s, ncap.ca_arg.ca_msglist, cacp->cac_msgflag,
+					target_argpp) < 0){
 				if(n_pstate_err_no != su_ERR_NONE)
 					nerr = n_pstate_err_no;
 				goto jerr;
