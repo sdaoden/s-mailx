@@ -804,7 +804,7 @@ jshexp_restart_inner:
 			n_pstate_err_no = su_ERR_NONE;
 			ncap.ca_arg.ca_msglist = su_AUTO_CALLOC_N(sizeof *ncap.ca_arg.ca_msglist, msgCount +1);
 			if(n_getmsglist(scope, skip_aka_dryrun, shin.s, ncap.ca_arg.ca_msglist, cacp->cac_msgflag,
-					target_argpp) < 0){
+					target_argpp, &shin) < 0){
 				if(n_pstate_err_no != su_ERR_NONE)
 					nerr = n_pstate_err_no;
 				goto jerr;
@@ -845,7 +845,6 @@ jshexp_restart_inner:
 				nerr = su_ERR_NOTSUP;
 				goto jerr;
 			}
-			shin.l = 0;
 			f |= a_STOPLOOP; /* XXX Asserted to be last above! */
 
 			if(target_argpp != NIL &&
@@ -864,6 +863,7 @@ jshexp_restart_inner:
 			shoup = n_string_creat_auto(&shou);
 			shoup = n_string_assign_buf(shoup, shin.s, shin.l);
 			shin.s += shin.l;
+			shin.l = 0;
 			ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
 			ncap.ca_arg_flags = shs = n_SHEXP_STATE_OUTPUT;
 			ncap.ca_arg.ca_str.s = n_string_cp(shoup);
@@ -938,6 +938,8 @@ jloop_break:
 
 	lcap = R(struct mx_cmd_arg*,-1);
 jleave:
+	cacp->cac_restdat = shin.s;
+	cacp->cac_restlen = shin.l;
 	n_pstate_err_no = nerr;
 
 	NYD_OU;
@@ -976,6 +978,8 @@ jerr:
 	if(nerr == su_ERR_NONE)
 		nerr = su_ERR_INVAL;
 
+	shin.s = UNCONST(char*,su_empty);
+	shin.l = 0;
 	lcap = NIL;
 	goto jleave;
 }
@@ -1008,7 +1012,7 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
 
 	for(ncap = NIL, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
 		vp = buf;
-		DVLDBG( STRUCT_ZERO(struct mx_cmd_arg_ctx, vp); )
+		DVLDBG( STRUCT_ZERO(struct mx_cmd_arg, vp); )
 
 		if(ncap == NIL)
 			ncacp->cac_arg = vp;

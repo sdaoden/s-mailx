@@ -1627,80 +1627,102 @@ _EOT
 } #}}}
 
 t_X_errexit() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
-	${cat} <<- '__EOT' > ./t.rc
-	ec one
-	echoerr pre
-	echos nono
-	echoerr post
-	ec two
-	__EOT
+	$cat << '__EOT' > ./t.rc
+ec one
+echoe pre
+echos nono
+echoe post
+ec two
+__EOT
 
-	</dev/null ${MAILX} ${ARGS} -X'ec one' -X' echos nono ' -X'ec two' > ./t1 2>${EX}
+	</dev/null $MAILX $ARGS -X'ec one' -X' echos nono ' -X'ec two' > ./t1 2>$EX
 	ck 1 0 ./t1 '3865817952 8' '681325307 43'
 
-	</dev/null ${MAILX} ${ARGS} -X'source ./t.rc' > ./t2 2>${EX}
+	</dev/null $MAILX $ARGS -X'source ./t.rc' > ./t2 2>$EX
 	ck 2 0 ./t2 '3865817952 8' '2734035291 92'
 
-	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u > ./t3 2>${EX}
+	</dev/null MAILRC=./t.rc $MAILX $ARGS -:u > ./t3 2>$EX
 	ck 3 0 ./t3 '3865817952 8' '2734035291 92'
 
 	##
 
-	</dev/null ${MAILX} ${ARGS} -Serrexit -X'ec one' -X' echos nono ' -X'ec two' > ./t4 2>${EX}
+	</dev/null $MAILX $ARGS -Serrexit -X'ec one' -X' echos nono ' -X'ec two' > ./t4 2>$EX
 	ck 4 1 ./t4 '815791956 4' '681325307 43'
 
-	</dev/null ${MAILX} ${ARGS} -X'source ./t.rc' -Serrexit > ./t5 2>${EX}
+	</dev/null $MAILX $ARGS -X'source ./t.rc' -Serrexit > ./t5 2>$EX
 	ck 5 1 ./t5 '815791956 4' '4049990069 67'
 
-	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Serrexit > ./t6 2>${EX}
+	</dev/null MAILRC=./t.rc $MAILX $ARGS -:u -Serrexit > ./t6 2>$EX
 	ck 6 1 ./t6 '815791956 4' '2310462538 182'
 
-	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sposix > ./t7 2>${EX}
+	</dev/null MAILRC=./t.rc $MAILX $ARGS -:u -Sposix > ./t7 2>$EX
 	ck 7 1 ./t7 '815791956 4' '2310462538 182'
 
 	## Repeat 4-7 with ignerr set
 
-	${sed} -e 's/^echos /ignerr echos /' < ./t.rc > ./t2.rc
+	$sed -e 's/^echos /ignerr echos /' < ./t.rc > ./t2.rc
 
-	</dev/null ${MAILX} ${ARGS} -Serrexit -X'ec one' -X'ignerr echos nono ' -X'ec two' > ./t8 2>${EX}
+	</dev/null $MAILX $ARGS -Serrexit -X'ec one' -X'ignerr echos nono ' -X'ec two' > ./t8 2>$EX
 	ck 8 0 ./t8 '3865817952 8' '681325307 43'
 
-	</dev/null ${MAILX} ${ARGS} -X'source ./t2.rc' -Serrexit > ./t9 2>${EX}
+	</dev/null $MAILX $ARGS -X'source ./t2.rc' -Serrexit > ./t9 2>$EX
 	ck 9 0 ./t9 '3865817952 8' '2734035291 92'
 
-	</dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Serrexit > ./t10 2>${EX}
+	</dev/null MAILRC=./t2.rc $MAILX $ARGS -:u -Serrexit > ./t10 2>$EX
 	ck 10 0 ./t10 '3865817952 8' '2734035291 92'
 
-	</dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Sposix > ./t11 2>${EX}
+	</dev/null MAILRC=./t2.rc $MAILX $ARGS -:u -Sposix > ./t11 2>$EX
 	ck 11 0 ./t11 '3865817952 8' '2734035291 92'
 
-	${cat} <<- '__EOT' > ./t3.rc
-	define oha {
-		echoerr bug
-	}
-	define x {
-		eval set "$xarg"
-		echoerr pre
-		echoes time
-		echoerr post
-		return 0
-	}
-	__EOT
+	$cat << '__EOT' > ./t12.rc
+define x {
+	eval se "$xarg"
+	echoe pre
+	echoes t
+	echoe post
+	retu 0
+}
+__EOT
 
-	printf 'source ./t3.rc\ncall x\nec au' | ${MAILX} ${ARGS} -Sxarg=errexit > ./t12 2>${EX}
+	<< '__EOT' $MAILX $ARGS -Sxarg=errexit > ./t12 2>$EX
+source ./t12.rc
+call x
+ec au
+__EOT
 	ck0 12 1 ./t12 '116615032 68'
 
-	printf 'source ./t3.rc\nse on-history-addition=oha\ncall x\nec au' |
-		${MAILX} ${ARGS} -Sxarg=errexit > ./t13 2>${EX}
+	<< '__EOT' $MAILX $ARGS -Sxarg=errexit > ./t13 2>$EX
+source ./t12.rc
+se o=k
+call x
+ec au
+__EOT
 	ck0 13 1 ./t13 '116615032 68'
 
-	printf 'source ./t3.rc\nse on-history-addition=oha\ncall x\nec au' |
-		${MAILX} ${ARGS} -Sxarg=i > ./t14 2>${EX}
+	<< '__EOT' $MAILX $ARGS -Sxarg=i > ./t14 2>$EX
+source ./t12.rc
+se o=k
+call x
+ec au
+__EOT
 	ck 14 0 ./t14 '1772040099 3' '515198292 93'
 
-	t_epilog "${@}"
+	<< '__EOT' $MAILX $ARGS > ./t15 2>$EX
+ec 0
+ec 1;=99;ec 2
+ec 3;ignerr =99;ec 4
+=99;ec 6
+ignerr =99;ec 7
+se errexit
+ec 8;ignerr =99;ec 9
+ec 10;=99;ec 11
+ec 12
+__EOT
+	ck 15 1 ./t15 '382798677 17' '2890782989 391'
+
+	t_epilog "$@"
 } #}}}
 
 t_Y_errexit() { #{{{
@@ -12727,43 +12749,71 @@ __EOT
 	# Modifiers and whitespace indulgence; first matches t_eval():1
 	#{{{
 	# (<< redirect suffix for Solaris xpg4/bin/sh)
-	$MAILX $ARGS -Smta=test://t7 -Sescape=! -Spwd="$($pwd)" -s testsub one@to.invalid >./t6 2>$EX << '__EOT'
+	$MAILX $ARGS -Smta=test://t7 -Sescape=! -s testsub one@to.invalid >./t6 2>$EX << '__EOT'
 
 body
-!:set i=du
-!:echo 1:
-! : echo $i
-!	:	echo '$i'
-!$:echo '$i'
-!:echo 2:
-!:echo "\"'$i'\""
-!$:echo "\"'$i'\""
-!$$:echo "\"'$i'\""
-!	  $	$	$	$ : echo "\"'$i'\""
-! :echo one
+!:se i=du
+!:ec 1:
+! : ec $i
+!	:	ec '$i'
+!$:ec '$i'
+!:ec 2:
+!:ec "\"'$i'\""
+!$:ec "\"'$i'\""
+!$$:ec "\"'$i'\""
+!	  $	$	$	$ : ec "\"'$i'\""
+! :ec one
 !		  <./t.nosuch
-!					 :echo two
-!	 :		 set i=./t.nosuch
+!				 :ec two
+!	 :		 se i=./t.nosuch
 !	  -	  $	 <			$i
-!:echo three
-!	 :		 set errexit
+!:ec three
+!	 :		 se errexit
 !	  -	$	<	 $i
-!-$: echo four
+!-$: ec four
 !$<		./t.nosuch
-!	 :		 echo five
+!:ec three
 __EOT
 	#}}}
 	ck 6 4 ./t6 '892731775 136' '472073999 207'
 	[ -f ./t7 ]; ck_exx 7
 
+	<< '_EOT' $MAILX $ARGS -Smta=test://t9 -Sescape=! -s s a@b >./t8 2>$EX
+!:ec 0
+!:ec 1;=99;ec 2
+!-:ec 3;=99;ec 4
+!-:=99;ec 5
+!:ec 6;ignerr =99;ec 7
+!:se errexit
+!-:=99;ec 8
+!:ec 9;ignerr =99;ec 10
+!:ec 11; =99;ec 12
+!:ec 13
+_EOT
+	ck 8 5 ./t8 '314459458 18' '253314546 512'
+	[ -f ./t9 ]; ck_exx 9
+
 	# `~x'/`~q' ok
-	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' x |
-		$MAILX $ARGS -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-1-dead > ./txq-1 2>$E0
+	<< '_EOT' $MAILX $ARGS -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-1-dead > ./txq-1 2>$E0
+ec g1
+mail t@o
+!:se i=1
+!i i
+!x
+ec g2
+_EOT
 	cke0 xq-1 0 ./txq-1 '1870974669 6'
 	[ -f ./txq.mbox ]; ck_exx xq-1-mbox
 	[ -f ./txq-1-dead ]; ck_exx xq-1-dead
-	printf 'ec g1\nmail t@o\n!:se i=1\n!i i\n!%s\nec g2\n' q |
-		$MAILX $ARGS -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-2-dead > ./txq-2 2>$E0
+
+	<< '_EOT' $MAILX $ARGS -Smta=test://txq.mbox -Sescape=! -Ssave -SDEAD=txq-2-dead > ./txq-2 2>$E0
+ec g1
+mail t@o
+!:se i=1
+!i i
+!q
+ec g2
+_EOT
 	cke0 xq-2 0 ./txq-2 '822937100 22'
 	[ -f ./txq.mbox ]; ck_exx xq-2-mbox
 	ck xq-2-dead - ./txq-2-dead '452609201 61'
