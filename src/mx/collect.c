@@ -188,7 +188,7 @@ static s32 a_coll_edit(int c, struct header *hp, char const *pipecmd);
 static s32 a_coll_pipe(char const *cmd);
 
 /* Interpolate the named messages into the current message, possibly doing indent stuff.
- * The flag argument is one of the command escapes: [mMfFuU].  Return errno */
+ * The flag argument is one of the command escapes: [FfMmQUu].  Return errno */
 static s32 a_coll_forward(char const *ms, int f);
 
 /**/
