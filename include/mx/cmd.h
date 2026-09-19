@@ -180,6 +180,8 @@ struct mx_cmd_arg_ctx{
 	struct mx_cmd_arg_desc const *cac_desc; /* Input: description of command */
 	char const *cac_indat; /* Input that shall be parsed */
 	uz cac_inlen; /* Input length (UZ_MAX: do a su_cs_len()) */
+	char const *cac_restdat; /* Remains */
+	uz cac_restlen;
 	u32 cac_msgflag; /* Input (option): required flags of messages */
 	u32 cac_msgmask; /* Input (option): relevant flags of messages */
 	struct mx_cmd_arg *cac_arg; /* Output: parsed arguments */

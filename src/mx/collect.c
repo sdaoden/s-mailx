@@ -1015,7 +1015,7 @@ a_coll_forward(char const *ms, int f){ /* {{{ */
 
 	msgvec = n_msgvec;
 
-	if((rv = n_getmsglist(a_coll->cc_scope, FAL0, ms, msgvec, 0, NIL)) < 0){
+	if((rv = n_getmsglist(a_coll->cc_scope, FAL0, ms, msgvec, 0, NIL, NIL)) < 0){
 		rv = n_pstate_err_no; /* XXX not really, should be handled there! */
 		goto jenomsg;
 	}
@@ -2023,6 +2023,8 @@ jearg:
 				c = (n_psonce & n_PS_ERR_XIT) ? 'x' : 'q';
 				goto jqx;
 			}
+			n_pstate &= ~n_PS_ERR_EXIT_MASK;
+
 			if(a_coll->cc_coap == NIL)
 				a_coll->cc_escape = *ok_vlook(escape); /* Reset just in case it was changed */
 			hist &= ~a_HIST_GABBY;

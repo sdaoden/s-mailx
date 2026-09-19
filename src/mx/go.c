@@ -615,10 +615,10 @@ jexec:
 	if(UNLIKELY(flags & a_IS_EMPTY)){
 		cdp = mx_cmd_get_default();
 		if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) || alias_name != NIL)
-			goto jwhite;
+			goto jskip;
 	}
 
-	/* Whether to execute the command -- a conditional is always executed, otherwise check state of cond {{{ */
+	/* Whether to execute the command -- a conditional is always executed, otherwise check state of cond */
 	if(cdp->cd_caflags & mx_CMD_ARG_F){
 		/* This may change the IS_SKIP status, and therefore whether shell evaluation happens on arguments, we
 		 * may not do so for an `elif' that will be a whiteout, even if we are going currently */
@@ -626,54 +626,8 @@ jexec:
 			flags |= a_IS_SKIP;
 		else
 			flags &= ~a_IS_SKIP;
-	}else if(UNLIKELY(flags & a_IS_SKIP)){
-		/* To allow "if 0; echo no; else; echo yes;end" we need to be able to perform input line sequentiation
-		 * / rest injection even in whiteout situations.  See if we can do that. */
-jwhite:
-		gecp->gec_hist_flags = a_GO_HIST_NONE;
-
-		s = n_string_creat_auto(&s_b);
-
-		switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
-		case mx_CMD_ARG_TYPE_WYRA:{
-				char const *v15compat;
-
-				if((v15compat = ok_vlook(v15_compat)) == NIL || *v15compat == '\0')
-					break;
-			}
-			FALLTHRU
-		case mx_CMD_ARG_TYPE_MSGLIST:
-		case mx_CMD_ARG_TYPE_NDMLIST:
-		case mx_CMD_ARG_TYPE_WYSH:
-		case mx_CMD_ARG_TYPE_ARG:{
-			for(;;){
-				u32 shs;
-
-				shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_DRYRUN |
-						n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE),
-						mx_SCOPE_NONE, s, &line, NIL);
-				if(line.l == 0)
-					break;
-				if(shs & n_SHEXP_STATE_META_SEMICOLON){
-					ASSERT(shs & n_SHEXP_STATE_STOP);
-					mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, line.s, line.l);
-					break;
-				}
-			}
-			}break;
-		case mx_CMD_ARG_TYPE_RAWDAT:
-		case mx_CMD_ARG_TYPE_STRING:
-		case mx_CMD_ARG_TYPE_RAWLIST:
-			break;
-		}
-
-		/* Back to defcmd problem: we cannot truly tell bogus with an (dryrun) `eval' on the line, either */
-		if(UNLIKELY((flags & a_IS_EMPTY) && s->s_len != 0 && eval_cnt == 0)){
-			ccp = N_("default command (with arguments) unsupported here and now");
-			goto jenotsup;
-		}
-		goto jret0;
-	} /* }}} */
+	}else if(UNLIKELY(flags & a_IS_SKIP))
+		goto jskip;
 
 	if(s != NIL && gecp->gec_hist_flags != a_GO_HIST_NONE){
 		s = n_string_push_cp(s, cdp->cd_name);
@@ -845,7 +799,8 @@ jwhite:
 	case mx_CMD_ARG_TYPE_MSGLIST:
 	case mx_CMD_ARG_TYPE_NDMLIST:
 		/* Message list defaulting to nearest forward legal message / with no defaults & no error if none */
-		c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0), line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL);
+		c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0), line.s, n_msgvec, cdp->cd_mflags_o_minargs,
+				NIL, &line);
 		if(c < 0){
  jmsglist_err:
 			if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
@@ -883,6 +838,7 @@ jwhite:
 		/* Just the straight string, old style, with leading blanks removed */
 		for(cp = line.s; su_cs_is_space(*cp);)
 			++cp;
+		line.l = 0;
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);
@@ -898,6 +854,7 @@ jwhite:
 		argvp = argv_stack;
 		*argvp++ = line.s;
 		*argvp = NIL;
+		line.l = 0;
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);
@@ -929,8 +886,10 @@ jwhite:
 		ASSERT(!(flags & a_VPUT));
 		argvp = argv_base = su_AUTO_ALLOC(sizeof(*argv_base) * n_MAXARGC);
 
-		if((c = getrawlist(scope_pp, (c != 0), ((flags & a_IS_SKIP) != 0), argvp,
-				n_MAXARGC, line.s, line.l)) < 0){
+		c = getrawlist(scope_pp, (c != 0), ((flags & a_IS_SKIP) != 0), argvp, n_MAXARGC, line.s, line.l);
+		line.l = 0;
+
+		if(c < 0){
 			n_err(_("%s: invalid argument list\n"), cdp->cd_name);
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
@@ -962,13 +921,18 @@ jwhite:
 		 * TODO and that should be passed along all the way.  No more arglists
 		 * TODO here, etc. */
 		struct mx_cmd_arg_ctx cac;
+		boole x;
 
 		cac.cac_desc = cdp->cd_cadp;
 		cac.cac_indat = line.s;
 		cac.cac_inlen = line.l;
 		cac.cac_msgflag = cdp->cd_mflags_o_minargs;
 		cac.cac_msgmask = cdp->cd_mmask_o_maxargs;
-		if(!mx_cmd_arg_parse(&cac, scope_pp, ((flags & a_IS_SKIP) != 0))){
+		x = mx_cmd_arg_parse(&cac, scope_pp, ((flags & a_IS_SKIP) != 0));
+		line.l = cac.cac_restlen;
+		line.s = UNCONST(char*,cac.cac_restdat);
+
+		if(!x){
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
 		}
@@ -991,6 +955,7 @@ jwhite:
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(&cac);
+
 		if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
 			goto jret0;
 		if(n_pstate & n_PS_GABBY_FUZZ)
@@ -1038,6 +1003,10 @@ jleave:
 		if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
 			n_exit_status = su_EX_OK;
 		n_pstate &= ~n_PS_ERR_EXIT_MASK;
+		if(rv != 0 && nerrn != su_ERR_NOSYS && line.l > 0){
+			flags &= ~(a_IGNERR | a_IS_EMPTY);
+			goto jskip;
+		}
 	}else if(UNLIKELY(rv != 0)){
 		if(ok_blook(errexit))
 			n_pstate |= n_PS_ERR_QUIT;
@@ -1075,6 +1044,57 @@ jret:
 
 	NYD_OU;
 	return (rv == 0);
+
+	/* {{{ To allow "if 0; echo no; else; echo yes;end" we need to be able to perform input line sequentiation /
+	 * skip token until we see semicolon plus rest injection even in whiteout situations or ignerr cases. */
+jskip:{
+	gecp->gec_hist_flags = a_GO_HIST_NONE;
+
+	if(line.l == 0)
+		goto jret0;
+
+	s = n_string_creat_auto(&s_b);
+
+	switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
+	case mx_CMD_ARG_TYPE_WYRA:{
+			char const *v15compat;
+
+			if((v15compat = ok_vlook(v15_compat)) == NIL || *v15compat == '\0')
+				break;
+		}
+		FALLTHRU
+	case mx_CMD_ARG_TYPE_MSGLIST:
+	case mx_CMD_ARG_TYPE_NDMLIST:
+	case mx_CMD_ARG_TYPE_WYSH:
+	case mx_CMD_ARG_TYPE_ARG:{
+		for(;;){
+			u32 shs;
+
+			shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_DRYRUN |
+					n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE),
+					mx_SCOPE_NONE, s, &line, NIL);
+			if(line.l == 0)
+				break;
+			if(shs & n_SHEXP_STATE_META_SEMICOLON){
+				ASSERT(shs & n_SHEXP_STATE_STOP);
+				mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, line.s, line.l);
+				break;
+			}
+		}
+		}break;
+	case mx_CMD_ARG_TYPE_RAWDAT:
+	case mx_CMD_ARG_TYPE_STRING:
+	case mx_CMD_ARG_TYPE_RAWLIST:
+		break;
+	}
+
+	/* Back to defcmd problem: we cannot truly tell bogus with an (dryrun) `eval' on the line, either */
+	if(UNLIKELY((flags & a_IS_EMPTY) && s->s_len != 0 && eval_cnt == 0)){
+		ccp = N_("default command (with arguments) unsupported here and now");
+		goto jenotsup;
+	}
+	}goto jret0;
+	/* }}} */
 
 jenotsup:
 	gecp->gec_hist_flags = a_GO_HIST_NONE;

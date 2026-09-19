@@ -307,15 +307,18 @@ n_folder_lazy_load_header(u32 lo, u32 hi){
 	return rv;
 }
 
-FL void
-print_header_summary(char const *Larg){
+FL s32
+n_print_header_summary(char const *Larg){
 	uz i;
+	s32 rv;
 	NYD_IN;
+
+	rv = su_EX_OK;
 
 	n_folder_getmdot(FAL0);
 	if(!n_folder_lazy_load_header(1, n_msgno)){
 		n_err(_("Message data cannot be loaded\n"));
-		n_exit_status = su_EX_IOERR;
+		rv = su_EX_IOERR;
 		goto jleave;
 	}
 	ASSERT(n_msgvec != NIL);
@@ -326,9 +329,9 @@ print_header_summary(char const *Larg){
 			n_stdout = freopen(su_path_null, "w", stdout);
 			n_stderr = freopen(su_path_null, "w", stderr);
 		}
-		i = (n_getmsglist(mx_SCOPE_NONE, FAL0, n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, NIL) <= 0);
+		i = (n_getmsglist(mx_SCOPE_NONE, FAL0, n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, NIL, NIL) <= 0);
 		if(n_poption & n_PO_EXISTONLY)
-			n_exit_status = S(int,i);
+			rv = S(int,i);
 		else if(i == 0)
 			print_headers(n_msgvec, TRU1, FAL0); /* TODO should be iterator! */
 	}else{
@@ -347,6 +350,7 @@ print_header_summary(char const *Larg){
 
 jleave:
 	NYD_OU;
+	return rv;
 }
 
 FL void

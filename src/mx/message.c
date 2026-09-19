@@ -1515,7 +1515,8 @@ touch(struct message *mp){
 
 FL int
 n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
-      int *vector, int flags, struct mx_cmd_arg **capp_or_nil){
+      int *vector, int flags, struct mx_cmd_arg **capp_or_nil,
+      struct str *rest_or_nil){
    struct message *mp;
    int *ip, mc;
    NYD_IN;
@@ -1533,6 +1534,10 @@ n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
       *vector = 0;
 
    if(*buf == '\0'){
+      if(rest_or_nil != NIL){
+         rest_or_nil->s = UNCONST(char*,su_empty);
+         rest_or_nil->l = 0;
+      }
       mc = 0;
       goto jleave;
    }
@@ -1556,6 +1561,11 @@ n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
       cac.cac_msgmask = 0;
 
       mc = mx_cmd_arg_parse(&cac, scope, skip_aka_dryrun);
+
+      if(rest_or_nil != NIL){
+         rest_or_nil->s = UNCONST(char*,cac.cac_restdat);
+         rest_or_nil->l = cac.cac_restlen;
+      }
 
       if(vector == NIL){
          n_pstate_err_no = su_ERR_NOMSG;

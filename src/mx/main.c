@@ -372,7 +372,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){ /* {{{ */
 	if(n_poption & n_PO_QUICKRUN_MASK){
 		n_exit_status = i;
 		if(i == su_EX_OK && (!(n_poption & n_PO_EXISTONLY) || (n_poption & n_PO_HEADERLIST)))
-			print_header_summary(mcp->mc_L);
+			n_exit_status = n_print_header_summary(mcp->mc_L);
 		goto jquit;
 	}
 

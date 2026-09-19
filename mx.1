@@ -526,7 +526,9 @@ iable and optionally assign
 .Ar value ,
 if supported, evaluated as if specified within dollar-single-quotes
 .Pf ( Sx "Shell-style argument quoting" ) .
-Upon failure the program will exit if any of
+Upon failure the program will
+.Pf e Ns xit
+if any of
 .Va errexit
 or
 .Va posix
@@ -3314,7 +3316,9 @@ will be seen).
 A non-0 exit status has a meaning in the state machine: a
 .Ic set
 .Va errexit
-will cause a program exit, just like any error while loading
+will cause a program exit as via
+.Ic quit
+(unless documented otherwise), just like any error while loading
 .Sx "Resource files"
 in
 .Va posix
@@ -5984,7 +5988,7 @@ ly
 free-form variables shadow anything else.)
 .
 .Bd -literal -offset indent
-# With *errexit*, do not exit if PERL5LIB does not exist
+# With *errexit*, do not terminate if PERL5LIB does not exist
 ignerr environ link PERL5LIB
 if $? -ne 0
   echoerr PERL5LIB not in environment, using ~/.perl5
@@ -8069,7 +8073,7 @@ and
 .Va errexit ,
 as well as on the modifier
 .Cm ignerr ,
-encountered errors will stop reading, or cause program exit.
+encountered errors will stop reading, or cause program termination.
 .
 .Mx
 .It Ic source_if
@@ -8947,7 +8951,7 @@ Unless otherwise documented escapes also manage the error number
 and the exit/return status
 .Va \&? ;
 .Va errexit
-may cause leaving compose mode and program exits.
+may cause leaving compose mode and program termination.
 .
 .
 .Bl -tag -width ".It Ic BaNg"
@@ -8967,9 +8971,13 @@ when set (see there; reverse solidus has no other special meaning).
 .
 .Mx
 .It Ic ~: Ar command Ns \0or Ic ~_ Ar command
-Can be used to execute
+Can be used to execute those
 .Sx COMMANDS
-(not all are allowed in compose mode).
+available in compose mode.
+Caveats: if, via
+.Sx "Shell-style argument quoting" ,
+multiple commands are passed, they are interpreted as via
+.Ic source !
 .
 .Mx
 .It Ic ~< Ar filename
@@ -10335,7 +10343,9 @@ and exits the program.
 ed
 .Mx -sx
 .Sx Macro
-that exits non-0 causes a program exit unless prefixed with
+that exits non-0 causes a program exit as via
+.Ic quit
+unless prefixed with
 .Cm ignerr
 .Pf ( Sx "Command modifiers" ) .
 Also affects
@@ -11885,7 +11895,9 @@ manual provides examples.
 .
 .Mx
 .It Va on-history-addition
-Executes with three arguments before a
+Executes as with implied
+.Cm ignerr
+modifier with three arguments before a
 .Mx -sx
 .Sx MLE
 .Ic history
@@ -11916,7 +11928,7 @@ def oha {
     if " $3" =% ' set ' || " $3" =% ' unset '; return 3; en
     if " $3" =% ' chdir '; return 2; en
   el
-    ec v15
+    ec v15 is better
   en
   return 1
 }

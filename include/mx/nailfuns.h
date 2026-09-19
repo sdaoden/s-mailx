@@ -574,7 +574,7 @@ FL void n_folder_setmsize(u32 sz);
 FL boole n_folder_lazy_load_header(u32 lo, u32 hi);
 
 /* Logic behind -H / -L invocations */
-FL void        print_header_summary(char const *Larg);
+FL s32 n_print_header_summary(char const *Larg);
 
 /* Announces the current folder as indicated.
  * Is responsible for updating "dot" (after a folder change). */
@@ -802,7 +802,7 @@ FL void        touch(struct message *mp);
  * which should be capable to hold msgCount+1 entries (n_msgvec ASSERTs this,
  * but can be NIL <> folder_setmsize()).
  * flags is cmd_arg_ctx.cac_msgflag==cmd_desc.cd_mflags_o_minargs==enum mflag.
- * If capp_or_nol is not NIL then the last (string) token is stored in here
+ * If capp_or_nil is not NIL then the last (string) token is stored in here
  * and not interpreted as a message specification; in addition, if only one
  * argument remains and this is the empty string, 0 is returned (*vector=0;
  * this is used to implement CMD_ARG_DESC_MSGLIST_AND_TARGET).
@@ -812,7 +812,7 @@ FL void        touch(struct message *mp);
  * when there is no folder open (as opposed to 0 return without match) */
 FL int n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun,
       char const *buf, int *vector, int flags,
-      struct mx_cmd_arg **capp_or_nil);
+      struct mx_cmd_arg **capp_or_nil, struct str *rest_or_nil);
 
 /* Find first message whose flags&m==f and return its message number, or 0 */
 FL int         first(int f, int m);
