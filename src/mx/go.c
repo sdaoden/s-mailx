@@ -844,15 +844,10 @@ jwhite:
 	switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
 	case mx_CMD_ARG_TYPE_MSGLIST:
 		/* Message list defaulting to nearest forward legal message */
-		if(n_msgvec == NIL)
-			goto jmsglist_err;
 		if((c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0), line.s, n_msgvec, cdp->cd_mflags_o_minargs,
-				NIL)) < 0){
-			nerrn = su_ERR_NOMSG;
-			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
-			break;
-		}
-		if(c == 0){
+				NIL)) < 0)
+			goto jmsglist_err;
+		else if(c == 0){
 			if((n_msgvec[0] = first(cdp->cd_mflags_o_minargs, cdp->cd_mmask_o_maxargs)) != 0){
 				c = 1;
 				n_msgmark1 = &message[n_msgvec[0] - 1];
@@ -860,12 +855,11 @@ jwhite:
 jmsglist_err:
 				if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
 					n_err(_("No applicable messages\n"));
-				nerrn = su_ERR_NOMSG;
-				flags |= /*a_NO_ERRNO |*/ a_IS_GABBY_FUZZ;
+				su_err_set(n_pstate_err_no = nerrn = su_ERR_NOMSG);
+				flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 				break;
 			}
 		}
-
 jmsglist_go:
 		if(n_pstate & n_PS_GABBY_FUZZ)
 			flags |= a_IS_GABBY_FUZZ;
@@ -888,14 +882,9 @@ jmsglist_go:
 
 	case mx_CMD_ARG_TYPE_NDMLIST:
 		/* Message list with no defaults, but no error if none exist */
-		if(n_msgvec == NIL)
-			goto jmsglist_err;
 		if((c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0),line.s, n_msgvec, cdp->cd_mflags_o_minargs,
-				NIL)) < 0){
-			nerrn = su_ERR_NOMSG;
-			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
-			break;
-		}
+				NIL)) < 0)
+			goto jmsglist_err;
 		goto jmsglist_go;
 
 	case mx_CMD_ARG_TYPE_STRING:

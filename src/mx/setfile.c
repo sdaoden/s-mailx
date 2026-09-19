@@ -426,7 +426,7 @@ jlogname:
 
 jxleave:
    if(rv)
-      su_err_set(su_ERR_NODATA);
+      su_err_set(su_ERR_NOMSG);
 
 jleave:
    if(ibuf != NIL){
