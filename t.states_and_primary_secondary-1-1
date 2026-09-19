@@ -72,9 +72,9 @@ t-save.mbox [New file] 131 bytes
 0/NONE
 empty!
 Saved 1 message in MBOX=mbox://t-mbox.mbox
-1/NODATA
+1/NOMSG
 t.mbox: 0 messages [Read-only]
-1/INVAL
+1/NOMSG
 t-mbox.mbox: 3 messages 1 unread [Read-only]
 >U  1 ex1@am.ple         1996-10-02 01:50    8/131   s1                        
  O  2 ex2@am.ple         1996-10-02 01:50   41/701   s2                        
@@ -99,9 +99,9 @@ mbox://t-mbox.mbox [Appended] 932 bytes
  S  2 ex2@am.ple         1996-10-02 01:50   40/690   s2                        
  S  3 ex3@am.ple         1996-10-02 01:50    7/121   s3                        
 0/NONE
-1/NODATA
+1/NOMSG
 t.mbox: 0 messages [Read-only]
-1/INVAL
+1/NOMSG
 t-mbox.mbox: 6 messages 3 new 4 unread [Read-only]
  U  1 ex1@am.ple         1996-10-02 01:50    8/131   s1                        
  O  2 ex2@am.ple         1996-10-02 01:50   41/701   s2                        
@@ -122,9 +122,9 @@ mbox://t-mbox.mbox [Appended] 932 bytes
  S  2 ex2@am.ple         1996-10-02 01:50   40/690   s2                        
  S  3 ex3@am.ple         1996-10-02 01:50    7/121   s3                        
 0/NONE
-1/NODATA
+1/NOMSG
 t.mbox: 0 messages [Read-only]
-1/INVAL
+1/NOMSG
 t-mbox.mbox: 9 messages 6 new 7 unread [Read-only]
  U  1 ex1@am.ple         1996-10-02 01:50    8/131   s1                        
  O  2 ex2@am.ple         1996-10-02 01:50   41/701   s2                        
