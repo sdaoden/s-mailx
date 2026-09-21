@@ -1,0 +1,8 @@
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 2'
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 4'
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 5'
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 7'
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 8'
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 10'
+reproducible_build: ERROR: =: needs an active mailbox: '99;ec 12'
+reproducible_build: Failed to prepare composed message
