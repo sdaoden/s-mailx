@@ -1,0 +1,8 @@
+reproducible_build: charsetalias: no such alias: latin1
+reproducible_build: charsetalias: no such alias: latin1
+reproducible_build: charsetalias: y: invalid target charset ''
+reproducible_build: charsetalias: no such alias: ''
+reproducible_build: charsetalias: no such alias: ''
+reproducible_build: uncharsetalias: no such alias: y
+reproducible_build: uncharsetalias: no such alias: ''
+reproducible_build: uncharsetalias: no such alias: ''
