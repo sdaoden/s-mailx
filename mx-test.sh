@@ -10566,35 +10566,46 @@ __EOT
 } #}}}
 
 t_charsetalias() { #{{{
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '"$?/$^ERRNAME"'
-	echo 1
-	charsetalias latin1 latin15;x
-	charsetalias latin1;x
-	charsetalias - latin1;x
-	echo 2
-	charsetalias cp1252 latin1  latin15 utf8	utf8 utf16;x
-	charsetalias cp1252;x
-	charsetalias latin15;x
-	charsetalias utf8;x
-	echo 3
-	charsetalias - cp1252;x
-	charsetalias - latin15;x
-	charsetalias - utf8;x
-	echo 4
-	charsetalias latin1;x
-	charsetalias - latin1;x
-	uncharsetalias latin15;x
-	charsetalias latin1;x
-	charsetalias - latin1;x
-	__EOT
+	<< '__EOT' $MAILX $ARGS > ./t1 2>$EX
+commandalias x ec '"$?/$^ERRNAME"'
+ec 1
+charsetalias latin1 latin15;x
+charsetali latin1;x
+charset - latin1;x
+ec 2
+char cp1252 latin1  latin15 utf8	utf8 utf16;x
+cha cp1252;x
+cha latin15;x
+cha utf8;x
+ec 3
+cha - cp1252;x
+cha - latin15;x
+cha - utf8;x
+ec 4
+cha latin1;x
+cha - latin1;x
+uncharsetalias latin15;x
+cha latin1;x
+cha - latin1;x
+uncha latin1;x
+cha - latin1;x
+cha latin1;x
+ec 5
+cha x y;x
+cha y '';x
+cha '';x
+cha - x;x
+cha - '';x
+uncha y '';x
+uncha '';x
+__EOT
 	#}}}
-	cke0 1 0 ./t1 '3551595280 433'
+	ck 1 0 ./t1 '14302361 529' '2519635983 440'
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_shortcut() { #{{{
