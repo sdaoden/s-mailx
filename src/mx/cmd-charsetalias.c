@@ -1,7 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of cmd-charsetalias.h.
  *@ TODO Support >, i.e.: >x charsetalias what-this-expands-to
- *@ TODO _CSAL -> _CCSAL
  *
  * Copyright (c) 2017 - 2026 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -38,23 +37,23 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-/* ..of a_csal_dp */
-#define a_CSAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_CSAL_THRESHOLD 4
+/* ..of a_ccsal_dp */
+#define a_CCSAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
+#define a_CCSAL_THRESHOLD 4
 
-static struct su_cs_dict *a_csal_dp, a_csal__d;
+static struct su_cs_dict *a_ccsal_dp, a_ccsal__d;
 
-DVL( static void a_csal__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
+DVL( static void a_ccsal__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 #if DVLOR(1, 0)
 static void
-a_csal__on_gut(BITENUM(u32,su_state_gut_flags) flags){
+a_ccsal__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
-		su_cs_dict_gut(&a_csal__d);
+		su_cs_dict_gut(&a_ccsal__d);
 
-	a_csal_dp = NIL;
+	a_ccsal_dp = NIL;
 
 	NYD2_OU;
 }
@@ -71,15 +70,16 @@ c_charsetalias(void *vp){
 		struct n_strlist *slp;
 
 		slp = NIL;
-		rv = !(mx_xy_dump_dict("charsetalias", a_csal_dp, &slp, NIL, &mx_xy_dump_dict_gen_ptf) &&
-				mx_page_or_print_strlist("charsetalias", slp, FAL0));
+		rv = (mx_xy_dump_dict("charsetalias", a_ccsal_dp, &slp, NIL, &mx_xy_dump_dict_gen_ptf) &&
+					mx_page_or_print_strlist("charsetalias", slp, FAL0))
+				? su_EX_OK : su_EX_ERR;
 	}else if(argv[1] == NIL || (argv[2] == NIL && argv[0][0] == '-' && argv[0][1] == '\0')){
 		if(argv[1] != NIL)
 			key = argv[1];
 		dat = key;
 
-		if((key = n_iconv_norm_name(key, FAL0)) != NIL && a_csal_dp != NIL &&
-				su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_csal_dp), key)){
+		if(*key != '\0' && (key = n_iconv_norm_name(key, FAL0)) != NIL && a_ccsal_dp != NIL &&
+				su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_ccsal_dp), key)){
 			struct n_strlist *slp;
 
 			if(argv[1] == NIL)
@@ -90,39 +90,39 @@ c_charsetalias(void *vp){
 			}
 
 			slp = mx_xy_dump_dict_gen_ptf("charsetalias", key, dat);
-			rv = (fputs(slp->sl_dat, n_stdout) == EOF);
-			rv |= (putc('\n', n_stdout) == EOF);
+			rv = (fputs(slp->sl_dat, n_stdout) != EOF && putc('\n', n_stdout) != EOF
+					) ? su_EX_OK : su_EX_ERR;
 		}else{
-			n_err(_("No such charsetalias: %s\n"), n_shexp_quote_cp(dat, FAL0));
-			rv = 1;
+			n_err(_("charsetalias: no such alias: %s\n"), n_shexp_quote_cp(dat, FAL0));
+			rv = su_EX_ERR;
 		}
 	}else{
-		if(a_csal_dp == NIL){
-			a_csal_dp = su_cs_dict_set_threshold(
-					su_cs_dict_create(&a_csal__d, a_CSAL_FLAGS, &su_cs_toolbox),
-					a_CSAL_THRESHOLD);
-			DVL( su_state_on_gut_install(&a_csal__on_gut, FAL0, su_STATE_ERR_NOPASS); )
+		if(a_ccsal_dp == NIL){
+			a_ccsal_dp = su_cs_dict_set_threshold(
+					su_cs_dict_create(&a_ccsal__d, a_CCSAL_FLAGS, &su_cs_toolbox),
+					a_CCSAL_THRESHOLD);
+			DVL( su_state_on_gut_install(&a_ccsal__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 		}
 
-		for(rv = 0; key != NIL; argv += 2, key = *argv){
-			if((key = n_iconv_norm_name(key, FAL0)) == NIL){
+		for(rv = su_EX_OK; key != NIL; argv += 2, key = *argv){
+			if(*key == '\0' || (key = n_iconv_norm_name(key, FAL0)) == NIL){
 				n_err(_("charsetalias: invalid source charset %s\n"), n_shexp_quote_cp(*argv, FAL0));
-				rv = 1;
+				rv = su_EX_ERR;
 				continue;
 			}else if((dat = argv[1]) == NIL){
 				mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("charsetalias"), NIL);
-				rv = 1;
+				rv = su_EX_ERR;
 				break;
-			}else if((dat = n_iconv_norm_name(dat, FAL0)) == NIL){
+			}else if(*dat == '\0' || (dat = n_iconv_norm_name(dat, FAL0)) == NIL){
 				n_err(_("charsetalias: %s: invalid target charset %s\n"),
 					n_shexp_quote_cp(argv[0], FAL0), n_shexp_quote_cp(argv[1], FAL0));
-				rv = 1;
+				rv = su_EX_ERR;
 				continue;
 			}
 
-			if(su_cs_dict_replace(a_csal_dp, key, C(char*,dat)) > 0){
+			if(su_cs_dict_replace(a_ccsal_dp, key, C(char*,dat)) > 0){
 				n_err(_("Failed to create `charsetalias' storage: %s\n"), n_shexp_quote_cp(key, FAL0));
-				rv = 1;
+				rv = su_EX_ERR;
 			}
 		}
 	}
@@ -138,18 +138,20 @@ c_uncharsetalias(void *vp){
 	NYD_IN;
 
 	rv = su_EX_OK;
-	cp = (argv = vp)[0];
 
-	do{
-		if(cp[1] == '\0' && cp[0] == '*'){
-			if(a_csal_dp != NIL)
-				su_cs_dict_clear(a_csal_dp);
-		}else if((key = n_iconv_norm_name(cp, FAL0)) == NIL || a_csal_dp == NIL ||
-				!su_cs_dict_remove(a_csal_dp, key)){
-			n_err(_("No such `charsetalias': %s\n"), n_shexp_quote_cp(cp, FAL0));
+	for(argv = vp; (cp = *argv++) != NIL;){
+		if(*cp == '\0')
+			goto jeno;
+		else if(cp[1] == '\0' && cp[0] == '*'){
+			if(a_ccsal_dp != NIL)
+				su_cs_dict_clear(a_ccsal_dp);
+		}else if((key = n_iconv_norm_name(cp, FAL0)) == NIL || a_ccsal_dp == NIL ||
+				!su_cs_dict_remove(a_ccsal_dp, key)){
+jeno:
+			n_err(_("uncharsetalias: no such alias: %s\n"), n_shexp_quote_cp(cp, FAL0));
 			rv = su_EX_ERR;
 		}
-	}while((cp = *++argv) != NIL);
+	}
 
 	NYD_OU;
 	return rv;
@@ -163,6 +165,11 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 
 	cp_orig = cp;
 
+	if(*cp == '\0'){
+		cp = NIL;
+		goto jleave;
+	}
+
 	if(!is_normalized){
 		cp = n_iconv_norm_name(cp, FAL0);
 		if(cp == NIL)
@@ -171,9 +178,9 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 		ASSERT(n_iconv_norm_name(cp, FAL0) != NIL);
 	}
 
-	if(a_csal_dp != NIL)
+	if(a_ccsal_dp != NIL)
 		for(i = 0;; ++i){
-			if((dat = S(char*,su_cs_dict_lookup(a_csal_dp, cp))) == NIL)
+			if((dat = S(char*,su_cs_dict_lookup(a_ccsal_dp, cp))) == NIL)
 				break;
 			cp = dat;
 			if(i == 8) /* XXX Magic (same as for `ghost' expansion) */
