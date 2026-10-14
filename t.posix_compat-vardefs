@@ -8,7 +8,7 @@ set asksub
 #unset: crt
 #boolean; unset: debug
 #boolean; unset: dot
-set escape=~
+set escape='~'
 #boolean; unset: flipr
 #unset: folder
 set header
