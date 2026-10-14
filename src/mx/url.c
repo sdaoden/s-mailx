@@ -57,9 +57,14 @@ a_url_last_at_before_slash(char const *cp){
 	char c;
 	NYD2_IN;
 
+	/* RFC 3986: 3.2. Authority
+	 * The authority component [.] is terminated by the next slash ("/"), question mark ("?"), or number sign ("#")
+	 * character, or by the end of the URI.
+	 *	authority = [ userinfo "@" ] host [ ":" port ] */
 	for(xcp = cp; (c = *xcp) != '\0'; ++xcp)
-		if(c == '/')
+		if(c == '/' || c == '?' || c == '#')
 			break;
+
 	for(;;){
 		if(xcp == cp){
 			xcp = NIL;
@@ -72,7 +77,7 @@ a_url_last_at_before_slash(char const *cp){
 	NYD2_OU;
 	return UNCONST(char*,xcp);
 }
-#endif
+#endif /* mx_HAVE_NET */
 
 char *
 (mx_url_xenc)(char const *cp, boole ispath  su_DVL_LOC_ARGS_DECL){
