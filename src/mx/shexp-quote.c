@@ -118,16 +118,6 @@ a_shexp_quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){ /
 #endif
 			flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
 			goto jrecurse;
-		}else if(su_cs_is_space(c) || c == '|' || c == '&' || c == ';' ||
-				/* Whereas we do not support those, quote them for the sh(1)ell */
-				c == '(' || c == ')' || c == '<' || c == '>' || c == '"' || c == '$'){
-			if(flags & a_SHEXP_QUOTE_T_MASK)
-				goto jstep;
-#ifdef a_SHEXP_QUOTE_RECURSE
-			++sqcp->sqc_cnt_single;
-#endif
-			flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_SINGLE;
-			goto jrecurse;
 		}else if(c == '\''){
 			if(flags & (a_SHEXP_QUOTE_T_MASK & ~a_SHEXP_QUOTE_T_SINGLE))
 				goto jstep;
@@ -137,6 +127,22 @@ a_shexp_quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){ /
 			flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
 			goto jrecurse;
 		}else if(c == '\\' || (c == '#' && ib == ib_base)){
+			if(flags & a_SHEXP_QUOTE_T_MASK)
+				goto jstep;
+#ifdef a_SHEXP_QUOTE_RECURSE
+			++sqcp->sqc_cnt_single;
+#endif
+			flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_SINGLE;
+			goto jrecurse;
+		}
+#undef a_XX
+#define a_XX(C) (su_cs_is_space(C) || C == '|' || C == '&' || C == ';' ||\
+			/* Whereas we do not support those, quote them for the sh(1)ell */\
+			C == '(' || C == ')' || C == '<' || C == '>' || C == '"' || C == '$' ||\
+			/* For sh(1), also avoid expansions and assignments */\
+			((flags & a_SHEXP_QUOTE_ROUNDTRIP) && (C == '*' || C == '?' || C == '=' ||\
+				 (ib == ib_base && C == '~'))))
+		else if(a_XX(c)){
 			if(flags & a_SHEXP_QUOTE_T_MASK)
 				goto jstep;
 #ifdef a_SHEXP_QUOTE_RECURSE
@@ -291,9 +297,8 @@ jstep:
 					c ^= 0x40;
 				}
 				goto jpush;
-			}else if(su_cs_is_space(c) || c == '|' || c == '&' || c == ';' ||
-					/* Whereas we do not support those, quote them for sh(1)ell */
-					c == '(' || c == ')' || c == '<' || c == '>' || c == '"' || c == '$'){
+			}else if(a_XX(c)){
+#undef a_XX
 				if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
 					goto jpush;
 				ASSERT(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));

@@ -3190,7 +3190,7 @@ var save screen sendwait showto Sign sign # s
 var toplines # t-z
 xit
 ' > ./tvardefs 2>$E0
-	cke0 vardefs 0 ./tvardefs '4044980853 597'
+	cke0 vardefs 0 ./tvardefs '3246029352 599'
 
 	t_epilog "$@"
 } #}}}
