@@ -94,6 +94,15 @@ a_imf_addr_create(struct su__imf_actx *acp, struct su_mem_bag *membp, struct su_
 	NYD2_OU;
 } /* }}} */
 
+#undef a__MG
+#if DVLOR(1, 0)
+# define a__BIT(X) su__imf_addr_mask |= 1u << X;
+uz const su__imf_addr_mask_goal = BITENUM_MASK(0, 21);
+uz su__imf_addr_mask;
+#else
+# define a__BIT(X)
+#endif
+
 s32
 su_imf_parse_addr_header(struct su_imf_addr **app, char const *header, BITENUM(u32,su_imf_mode) mode, /* {{{ */
 		struct su_mem_bag *membp, char const **endptr_or_nil){

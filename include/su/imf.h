@@ -326,8 +326,8 @@ enum su_imf_state BITENUM_SPEC(u32){
 	 * Related to \r{su_imf_addr::imfa_domain} and \r{su_imf_msgid::imfmi_id_right}. */
 	su_IMF_STATE_DOMAIN_LITERAL = 1u<<14,
 	su_IMF_STATE_GROUP = 1u<<15, /*!< Belongs to an address group (that maybe starts and/or ends). */
-	su_IMF_STATE_GROUP_START = 1u<<16, /*!< Group start. */
-	su_IMF_STATE_GROUP_END = 1u<<17, /*!< Group end. */
+	su_IMF_STATE_GROUP_START = 1u<<16, /*!< Address group start here. */
+	su_IMF_STATE_GROUP_END = 1u<<17, /*!< Address group (effectively) ends here. */
 	su_IMF_STATE_GROUP_EMPTY = 1u<<18, /*!< Group without address, for example \c{Undisclosed recipients:;}. */
 
 	su_IMF_STATE_SEMICOLON = 1u<<21, /*!< With \r{su_IMF_MODE_TOK_SEMICOLON}, a semicolon was seen. */
@@ -347,6 +347,12 @@ enum su_imf_state BITENUM_SPEC(u32){
 
 /*! Shares bit range with \r{su_imf_mode} and \r{su_imf_state}. */
 enum su_imf_err BITENUM_SPEC(u32){
+
+/*
+FIXME we need special SEPARATOR_ERROR (mostly for after group ; mssing ,  , make it RELAXable since content_error
+attached to next node, and that could be bug free other than that
+*/
+
 	su_IMF_ERR_GROUP_DISPLAY_NAME_EMPTY = 1u<<24, /*!< Address group display-name must not be empty, but is. */
 	su_IMF_ERR_DISPLAY_NAME_DOT = 1u<<25, /*!< \c{.} in display-name, no \r{su_IMF_MODE_DISPLAY_NAME_DOT}. */
 	su_IMF_ERR_DQUOTE = 1u<<26, /*!< Quoted-string \c{".."} content invalid, or quote not closed. */
@@ -391,7 +397,10 @@ struct su_imf_addr{
 	struct su_imf_addr *imfa_last; /* Last node: ring for fast pushing */
 	struct su_imf_addr *imfa_next; /*!< Address/xy after this one or \NIL. */
 	u32 imfa_parse_start; /*!< Offset where parsing in data input started for this output. */
-	u32 imfa_parse_len; /*!< Length of input data parsed for this output. */
+	/*! Length of input data parsed for this output.
+	 * \remarks{The \r{su_IMF_STATE_GROUP_END} bit does not imply that the group-ending semicolon was seen in the
+	 * parsed range; it merely signals the effective group end.} */
+	u32 imfa_parse_len;
 	char *imfa_group_display_name; /*!< Only with \r{su_IMF_STATE_GROUP_START}. */
 	char *imfa_display_name; /*!< Any display-name content, joined together. */
 	char *imfa_locpar; /*!< Local part of address. */
@@ -430,6 +439,11 @@ struct su_imf_shtok{
 };
 
 EXPORT_DATA u16 const su__imf_c_tbl[su__IMF_TABLE_SIZE + 1];
+
+#if DVLOR(1, 0)
+EXPORT_DATA uz const su__imf_addr_mask_goal;
+EXPORT_DATA uz su__imf_addr_mask;
+#endif
 
 /*! Create a snap for the bag type \r{IMF} uses; see \r{su_imf_parse_addr_header()}. */
 INLINE void *su_imf_snap_create(struct su_mem_bag *membp){
@@ -533,11 +547,11 @@ SINLINE boole su_imf_c_DIGIT(char c) {return a_X(c, su_IMF_C_DIGIT);}
 SINLINE boole su_imf_c_VCHAR(char c) {return a_X(c, su_IMF_C_VCHAR);}
 /*! \_ */
 SINLINE boole su_imf_c_atext(char c) {return a_X(c, su_IMF_C_ATEXT);}
-/*! \_ */
+/*! \remarks{This does \em{not} include \c{obs-ctext}!} */
 SINLINE boole su_imf_c_ctext(char c) {return a_X(c, su_IMF_C_CTEXT);}
-/*! \_ */
+/*! \remarks{This does \em{not} include \c{obs-dtext}!} */
 SINLINE boole su_imf_c_dtext(char c) {return a_X(c, su_IMF_C_DTEXT);}
-/*! \_ */
+/*! \remarks{This does \em{not} include \c{obs-qtext}!} */
 SINLINE boole su_imf_c_qtext(char c) {return a_X(c, su_IMF_C_QTEXT);}
 /*! \_ */
 SINLINE boole su_imf_c_special(char c) {return a_X(c, su_IMF_C_SPECIAL);}
@@ -560,9 +574,11 @@ SINLINE boole su_imf_c_WSP(char c) {return (a_X(c, su_IMF_C_SP | su_IMF_C_HT));}
 /*! Any of \r{su_imf_c_SP()}, \r{su_imf_c_HT()}, \r{su_imf_c_LF()} or \r{su_imf_c_CR()}. */
 SINLINE boole su_imf_c_ANY_WSP(char c) {return (a_X(c, su_IMF_C_SP | su_IMF_C_HT | su_IMF_C_LF | su_IMF_C_CR));}
 
-/*! Is \a{c2} a valid second byte of a RFC 5322 quoted-pair? */
+/*! Is \a{c2} a valid second byte of a RFC 5322 quoted-pair?
+ * \remarks{This does \em{not} include \c{obs-qp}!} */
 SINLINE boole su_imf_c_quoted_pair_c2(char c2){ /* NIL unsupported (manual) */
-	return (a_X(c2, su_IMF_C_VCHAR | su_IMF_C_SP | su_IMF_C_HT | su_IMF_C_NO_WS_CTL | su_IMF_C_LF | su_IMF_C_CR));
+	return (a_X(c2, su_IMF_C_VCHAR | su_IMF_C_SP | su_IMF_C_HT
+		/*| su_IMF_C_NO_WS_CTL | su_IMF_C_LF | su_IMF_C_CR)*/);
 }
 
 #undef a_X
